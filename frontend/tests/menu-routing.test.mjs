@@ -27,7 +27,7 @@ after(async () => {
   await server?.close();
 });
 
-test("every pause row routes correctly and navigation wraps across all nine items", () => {
+test("every pause row routes correctly and navigation follows the split menu", () => {
   [
     null,
     "debug_menu",
@@ -48,9 +48,13 @@ test("every pause row routes correctly and navigation wraps across all nine item
   ui.setState({ overlay: "pause" });
   ui.getState().setActiveMenuIndex(0);
   route("up");
-  assert.equal(ui.getState().getActiveMenuIndex(), 8);
+  assert.equal(ui.getState().getActiveMenuIndex(), 3);
   route("down");
-  assert.equal(ui.getState().getActiveMenuIndex(), 0);
+  assert.equal(ui.getState().getActiveMenuIndex(), 4);
+  route("next_tab");
+  assert.equal(ui.getState().getActiveMenuIndex(), 6);
+  route("previous_tab");
+  assert.equal(ui.getState().getActiveMenuIndex(), 4);
 });
 
 test("Play and Explore & Build share the garage while all six main destinations retain their actions", () => {

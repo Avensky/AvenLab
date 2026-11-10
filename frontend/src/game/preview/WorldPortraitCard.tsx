@@ -16,5 +16,5 @@ export function WorldPortraitCard({map}:{map:MapDefinition}){
   void fetch(`/world-builder/${map.id}_colliders.json`,{signal:abort.signal,cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.json();}).then(doc=>{const shapes=worldPreviewShapes(doc);show(shapes);}).catch(()=>{if(current){if(canvas.current)drawWorldPortrait(canvas.current,[]);setStatus('PREVIEW PENDING');}});
   return()=>{current=false;abort.abort();};
  },[map.id]);
- return <figure className="world-portrait" aria-label={`Environment portrait: ${map.name}`}><canvas ref={canvas} width={540} height={340} role="img" aria-label={`${map.name} map geometry`}/><figcaption><small>{status}</small><strong>{map.name}</strong><span>{map.desc}</span></figcaption></figure>;
+ return <figure className="world-portrait menu-panel-frame" aria-label={`Environment portrait: ${map.name}`}><canvas ref={canvas} width={540} height={340} role="img" aria-label={`${map.name} map geometry`}/><figcaption><small>{status}</small><strong>{map.name}</strong><span>{map.desc}</span></figcaption></figure>;
 }

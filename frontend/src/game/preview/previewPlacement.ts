@@ -1,4 +1,5 @@
 import { Box3, Mesh, Vector3, type Object3D } from "three";
+import { vehicleSystems } from "../../vehicles/vehicleSystems.ts";
 
 // Native fallback stage while the authored garage pad is loading (long X, short Z).
 export const DEFAULT_PREVIEW_PLATFORM: [number, number] = [8, 8];
@@ -37,6 +38,7 @@ export function measurePreviewBounds(root: Object3D, model?: string) {
   root.updateWorldMatrix(true, true);
   const bounds = new Box3(), contact = new Box3(), chassis = new Box3();
   const vertex = new Vector3();
+  const marine = model !== undefined && vehicleSystems(model) === "marine";
   root.traverseVisible(object => {
     if (!(object instanceof Mesh)) return;
     const slots = Array.isArray(object.material) ? object.material : [object.material];
@@ -45,8 +47,15 @@ export function measurePreviewBounds(root: Object3D, model?: string) {
     // would put a child cannon back into an otherwise chassis-only box.
     const box = new Box3(), positions = object.geometry.getAttribute("position");
     if (!positions) return;
-    for (let i = 0; i < positions.count; i++) {
-      box.expandByPoint(object.getVertexPosition(i, vertex).applyMatrix4(object.matrixWorld));
+    if (marine) {
+      // Ship art is already upright. Bounds per primitive avoid walking the
+      // detailed hull and deck vertices on the UI thread.
+      if (!object.geometry.boundingBox) object.geometry.computeBoundingBox();
+      box.copy(object.geometry.boundingBox!).applyMatrix4(object.matrixWorld);
+    } else {
+      for (let i = 0; i < positions.count; i++) {
+        box.expandByPoint(object.getVertexPosition(i, vertex).applyMatrix4(object.matrixWorld));
+      }
     }
     bounds.union(box);
     if (supportPart(object)) contact.union(box);
@@ -55,7 +64,7 @@ export function measurePreviewBounds(root: Object3D, model?: string) {
   const support = contact.isEmpty() ? bounds : contact;
   // Tracks are the fallback if a future Tank export lacks a named hull.
   const centering = model === "tank" ? (chassis.isEmpty() ? support : chassis) : bounds;
-  return { bounds, support, centering };
+  return { bounds, support, centering, marine };
 }
 
 export function measurePreviewGrounding(root: Object3D): { position: [number, number, number]; footprint: [number, number] } {
@@ -71,13 +80,15 @@ export function previewPlacement(root: Object3D): [number, number, number] { ret
 // accounting for the preview's 90-degree vehicle heading. All models use the
 // same factor so their original relative sizes are retained.
 // Keep the floor contact and its shadow separate from this visual scale.
-export function fitPreviewToPlatform({ bounds, support, centering }: ReturnType<typeof measurePreviewBounds>, platform: readonly [number, number]) {
+export function fitPreviewToPlatform({ bounds, support, centering, marine }: ReturnType<typeof measurePreviewBounds>, platform: readonly [number, number]) {
   if (bounds.isEmpty()) return { scale: 1, position: [0, 0, 0] as [number, number, number], footprint: [2, 4] as [number, number], shadowOffset: [0, 0] as [number, number] };
   const center = centering.getCenter(new Vector3());
   const contactSize = support.getSize(new Vector3()), contactCenter = support.getCenter(new Vector3());
   // Leave the 14cm safety band and a little clear space around the body.
   const length = Math.max(0.1, platform[0] - 0.4), width = Math.max(0.1, platform[1] - 0.4);
-  const scale = Math.min(2, width / PREVIEW_LINEUP_REFERENCE.width, length / PREVIEW_LINEUP_REFERENCE.length);
+  const scale = marine
+    ? Math.min(1, width / Math.max(.1, contactSize.x), length / Math.max(.1, contactSize.z), 2.8 / Math.max(.1, contactSize.y))
+    : Math.min(2, width / PREVIEW_LINEUP_REFERENCE.width, length / PREVIEW_LINEUP_REFERENCE.length);
   return {
     scale,
     position: [-center.x * scale, -support.min.y * scale, -center.z * scale] as [number, number, number],

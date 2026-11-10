@@ -4,10 +4,12 @@ import {CtfMissionLifecycle} from "./stats/CtfMissionLifecycle";
 import {MatchResultsScreen} from "./results/MatchResultsScreen";
 import {CtfMatchHUD} from "./stats/CtfMatchHUD";
 import {MatchScoreboard} from "./stats/MatchScoreboard";
+import {TeamLineup} from "./stats/TeamLineup";
 import {HeroAbilities} from "./heroes/HeroAbilities";
 import {openHeroGuide} from "../store/hud/heroGuideStore";
 import { CombatHUD } from "../combat/CombatHUD";
 import { HeroWorkshop, HeroLoadoutSync } from "./heroes/HeroWorkshop";
+import { useVehicleStudioStore } from "./heroes/vehicleStudioStore";
 import { useAlphaFlow } from "./alpha/useAlphaFlow";
 import { useAppTheme } from "../theme";
 import "../theme/theme.css";
@@ -73,6 +75,7 @@ export function GameUI() {
   const hud = useRenderSettingsStore((s) => s.hud);
   const screen = useUIStore((s) => s.screen);
   const overlay = useUIStore((s) => s.overlay);
+  const garageAbilities = useVehicleStudioStore((s) => s.activeTab === "abilities");
   const vehicleAuthoring = workspace === "vehicle" && overlay === "world_builder";
   const socialReady = useSocialStore((s) => Boolean(s.view));
   useEffect(() => {
@@ -94,19 +97,20 @@ export function GameUI() {
     screen === "signal_recon_setup" ||
     screen === "world_builder";
   const heroOwner = useSocialStore(s=>s.view?.profile.id??"guest");
+  const [characterOpen, setCharacterOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [reconSidebarHidden, setReconSidebarHidden] = useState(false);
 
   return (
-    <div className="relative game-wrapper">
+    <div className="relative game-wrapper" data-live-world={screen === "sandbox" || undefined}>
       <HeroLoadoutSync />
       <MinimapSessionLifecycle />
       <CtfMissionLifecycle />
-      {screen === "heroes" && <HeroWorkshop key={heroOwner} />}
+      {screen === "heroes" && <HeroWorkshop key={heroOwner} onCharacterViewChange={setCharacterOpen} />}
       {/* Requires Canvas */}
       {needsCanvas && (
         <FullCanvas
-          paused={screen === "queue"}
+          paused={screen === "queue" || (screen === "heroes" && (garageAbilities || characterOpen))}
           preview={
             screen === "sandbox_setup" ||
             screen === "heroes" ||
@@ -184,7 +188,8 @@ export function GameUI() {
           <SignalReconSetup collapsed={collapsed} setCollapsed={setCollapsed} />
         )}
       </Suspense>
-      <MatchScoreboard onAbilities={() => openHeroGuide()} />
+      <MatchScoreboard onAbilities={openHeroGuide} />
+      {screen === "sandbox" && <TeamLineup />}
       {overlay === "hero_abilities" && <HeroAbilities />}
       {overlay === "match_results" && <MatchResultsScreen />}
       {/* Menus */}

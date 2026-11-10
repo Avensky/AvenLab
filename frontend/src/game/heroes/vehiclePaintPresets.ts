@@ -16,3 +16,12 @@ export const VEHICLE_PAINT_PRESETS=[
  {label:"Tangerine orange",color:"#ec721d"},
  {label:"Sunset orange",color:"#f5a02d"},
 ] as const;
+
+export const HULL_PAINT_PRESETS = [
+ {label:"Factory",color:"factory"},
+ {label:"Fleet gray",color:"#9aa4ad"},
+ {label:"Storm blue",color:"#597389"},
+ {label:"Deep slate",color:"#454e57"},
+ {label:"Harbor green",color:"#627568"},
+ {label:"Rescue white",color:"#e4e9e9"},
+] as const;

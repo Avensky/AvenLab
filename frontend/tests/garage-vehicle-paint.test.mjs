@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { BoxGeometry, Group, Mesh, MeshStandardMaterial, Texture } from "three";
 import { prepareVehicleVisual } from "../src/vehicles/tools/vehicleMaterials.ts";
-import { prepareGarageVehiclePaint } from "../src/game/preview/garageVehiclePaint.ts";
+import { applyShowroomHighlights, applyShowroomPaint, prepareGarageVehiclePaint } from "../src/game/preview/garageVehiclePaint.ts";
+import { normalizePaintFinish } from "../src/vehicles/cosmetics/paintFinishes.ts";
 
 test("AE86 garage paint retains reflections while reducing white HDR glare without modifying cache or driving", () => {
   const scene = new Group(), geometry = new BoxGeometry(), map = new Texture();
@@ -48,4 +49,25 @@ test("garage calibration leaves other cars, trim, glass and custom AE86 paint al
     assert.deepEqual(material.toJSON(), before);
     geometry.dispose(); material.dispose();
   }
+});
+
+test("named paint finishes affect only the mapped Louisiana hull and retain legacy looks", () => {
+  const root = new Group(), geometry = new BoxGeometry(), texture = new Texture();
+  const hull = new MeshStandardMaterial({ color: 0xb9b9b9, map: texture, roughness: .61 });
+  hull.name = "asb075_louisiana_1949_154";
+  const deck = new MeshStandardMaterial({ color: 0x887744, roughness: .5 });
+  deck.name = "asb075_louisiana_1949_deckhouse_162";
+  root.add(new Mesh(geometry, [hull, deck]));
+  applyShowroomPaint(root, "louisiana", "factory", "#597389");
+  assert.equal(hull.color.getHexString(), "597389");
+  assert.equal(hull.map, texture);
+  assert.equal(deck.color.getHexString(), "887744");
+  assert.equal(normalizePaintFinish("frs"), "gloss");
+  assert.equal(normalizePaintFinish("soft"), "satin");
+  for (const [finish, roughness] of [["matte", .82], ["high-gloss", .18], ["factory", .61]]) {
+    applyShowroomHighlights(root, .45, finish, .42, "louisiana");
+    assert.equal(hull.roughness, roughness);
+    assert.equal(deck.roughness, .5);
+  }
+  geometry.dispose(); hull.dispose(); deck.dispose(); texture.dispose();
 });

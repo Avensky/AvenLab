@@ -74,6 +74,8 @@ test("real App removes the startup cover and opens the latest main menu without 
       "startup cover must be removed after React commits",
     );
     assert.ok(document.querySelector(".main-menu"));
+    assert.equal(document.querySelector(".main-menu .menu-panel-frame"), null);
+    assert.equal(document.querySelectorAll(".main-menu .menu-action-list .menu-icon").length, 6);
     assert.ok(
       document
         .querySelector(".main-menu")
@@ -100,6 +102,46 @@ test("real App removes the startup cover and opens the latest main menu without 
     );
     await act(async () => ui.setState({ screen: "main", overlay: null }));
     assert.ok(document.querySelector(".main-menu"));
+
+    const portraitQuery = new dom.window.EventTarget();
+    portraitQuery.matches = true;
+    window.matchMedia = (query) => query === "(orientation: portrait)"
+      ? portraitQuery : new dom.window.EventTarget();
+    const { usePreferencesStore: prefs } = await server.ssrLoadModule(
+      "/src/store/preferences/preferencesStore.ts",
+    );
+    const { useInputStore: input } = await server.ssrLoadModule("/src/store/input/inputStore.ts");
+    await act(async () => {
+      prefs.getState().update({ menuHeaderStyle: "classic" });
+      ui.setState({ screen: "settings", settingsTab: "display" });
+    });
+    assert(document.querySelector(".tabbed-menu-header"), "desktop can use Classic");
+    assert.equal(document.querySelector(".mobile-rotate-screen"), null);
+
+    Object.defineProperty(navigator, "userAgent", { value: "iPhone Mobile Safari", configurable: true });
+    await act(async () => root.render(h(StrictMode, null, h(App, { key: "phone" }))));
+    assert.match(document.querySelector(".mobile-rotate-screen").textContent, /Rotate to play/i);
+    assert(document.querySelector(".game-viewport[inert]"));
+    const rotate = (portrait) => act(async () => {
+      portraitQuery.matches = portrait;
+      portraitQuery.dispatchEvent(new window.Event("change"));
+    });
+    await rotate(false);
+    assert.equal(document.querySelector(".mobile-rotate-screen"), null);
+    assert(document.querySelector(".angled-tab-header .angled-header-tabs"));
+    assert.equal(document.querySelector(".menu-frame-footer kbd"), null, "mobile defaults to touch");
+    const tab = [...document.querySelectorAll('[role="tab"]')].find((button) => button.textContent === "Appearance");
+    await act(async () => tab.click());
+    assert(document.querySelector('[data-menu-row="menu-header-style"]').disabled);
+    await act(async () => input.getState().setAnalogFromSource("gamepad", { throttle: 0.5 }));
+    await rotate(true);
+    assert(document.querySelector(".game-viewport[inert]"));
+    assert.equal(input.getState().input.throttle, 0, "rotation releases held driving input");
+    await rotate(false);
+    assert.equal(document.querySelector('[role="tab"][aria-selected="true"]').textContent, "Appearance");
+    await act(async () => document.querySelector(".controller-shortcut-back").click());
+    assert.equal(ui.getState().screen, "main");
+
     const { ModeLoadingScreen } = await server.ssrLoadModule(
       "/src/game/ModeLoadingScreen.tsx",
     );

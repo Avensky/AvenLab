@@ -17,6 +17,8 @@ import {VehicleFlags,hasFlag} from "../../store/input/protocol/inputMasks";
 import {Mesh,MeshStandardMaterial} from "three";
 import {useFrame} from "@react-three/fiber";
 import {useRef} from "react";
+import {applyWindowTone} from "./windowTones";
+import {vehicleSystems} from "../../vehicles/vehicleSystems";
 
 // Selection is always the complete GLB, independent of in-game debug modes.
 // Shared material preparation retains the TSX fixes without runtime network poses.
@@ -36,9 +38,11 @@ export function VehiclePreviewModel({platform,model}:{
     [scene, model],
   );
   const partRig=useMemo(()=>createVehiclePartRig(prepared.root,model),[prepared,model]);
+  const marine=vehicleSystems(model)==="marine";
   const glassStyle=useVehicleStudioStore(s=>s.glassStyle);
   const lamps=useMemo(()=>{
     const headlights=new Set<MeshStandardMaterial>(),signals=new Set<MeshStandardMaterial>(),leftSignals=new Set<MeshStandardMaterial>(),rightSignals=new Set<MeshStandardMaterial>();
+    const navigation=new Set<MeshStandardMaterial>(),searchlights=new Set<MeshStandardMaterial>();
     prepared.root.traverse(object=>{
       if(!(object instanceof Mesh))return;
       const objectName=object.name;
@@ -46,6 +50,11 @@ export function VehiclePreviewModel({platform,model}:{
       for(const value of materials){
         if(!(value instanceof MeshStandardMaterial))continue;
         const name=`${objectName} ${value.name}`.toLowerCase();
+        if (marine) {
+          if (/running_lights|stern_light/.test(name)) navigation.add(value);
+          if (/searchligh/.test(name)) searchlights.add(value);
+          continue;
+        }
         if(/head.?light|headlamp|front.?light/.test(name))headlights.add(value);
         if(/indicator|turn.?signal|blinker|amber|ambar|orange|oarnge|tail.?lens|tail.?light|reflector|vehiclelights|lights\./.test(name)){
           signals.add(value);
@@ -54,9 +63,9 @@ export function VehiclePreviewModel({platform,model}:{
         }
       }
     });
-    const all=new Set([...headlights,...signals]);
-    return {headlights,signals,leftSignals,rightSignals,all,originals:new Map([...all].map(material=>[material,{emissive:material.emissive.clone(),intensity:material.emissiveIntensity}] as const))};
-  },[prepared]);
+    const all=new Set([...headlights,...signals,...navigation,...searchlights]);
+    return {headlights,signals,leftSignals,rightSignals,navigation,searchlights,all,originals:new Map([...all].map(material=>[material,{emissive:material.emissive.clone(),intensity:material.emissiveIntensity}] as const))};
+  },[prepared,marine]);
   const lastLampStyle=useRef("");
   useEffect(() => () => prepared.dispose(), [prepared]);
   useEffect(()=>{lastLampStyle.current="";},[lamps]);
@@ -66,29 +75,29 @@ export function VehiclePreviewModel({platform,model}:{
     return ()=>{if(useVehicleStudioStore.getState().availableVehicle===model)useVehicleStudioStore.getState().setAvailable(null);};
   },[model,partRig]);
   useEffect(()=>{
-    const profile={
-      clear:{color:"#68747d",opacity:0.24,roughness:0.2,specular:"#b9c2c9",specularIntensity:0.42,ior:1.36},
-      "light-smoke":{color:"#3d4852",opacity:0.5,roughness:0.2,specular:"#aeb7bf",specularIntensity:0.34,ior:1.33},
-      "dark-smoke":{color:"#202830",opacity:0.68,roughness:0.22,specular:"#929ca5",specularIntensity:0.27,ior:1.3},
-    }[glassStyle];
-    for(const material of prepared.glassMaterials){
-      material.color.set(profile.color);
-      material.opacity=profile.opacity;
-      material.roughness=profile.roughness;
-      material.specularColor.set(profile.specular);
-      material.specularIntensity=profile.specularIntensity;
-      material.ior=profile.ior;
-      material.metalness=0;
-      material.transmission=0;
-    }
-  },[prepared,glassStyle]);
+    if (!marine) applyWindowTone(prepared.glassMaterials, glassStyle);
+  },[prepared,glassStyle,marine]);
   useEffect(() => {
     const appearance = savedAppearance ?? FACTORY_APPEARANCE;
     applyShowroomPaint(prepared.root, model, "factory", appearance.body === "factory" ? undefined : appearance.body);
     applyShowroomHighlights(prepared.root, .45, appearance.finish, appearance.metallic, model);
   }, [prepared, model, savedAppearance]);
   useFrame((state,delta)=>{
-    advanceVehiclePartRig(partRig,useVehicleStudioStore.getState().parts,delta);
+    const studio=useVehicleStudioStore.getState();
+    advanceVehiclePartRig(partRig,studio.parts,delta);
+    if (marine) {
+      const {navigation,searchlights}=studio.marineLights;
+      const key=`${navigation}:${searchlights}`;
+      if(lastLampStyle.current===key)return;
+      lastLampStyle.current=key;
+      for(const material of lamps.all){
+        const active = lamps.navigation.has(material) ? navigation : searchlights;
+        const original = lamps.originals.get(material)!;
+        if (active) { material.emissive.set(0xffecd4); material.emissiveIntensity=.9; }
+        else { material.emissive.copy(original.emissive); material.emissiveIntensity=original.intensity; }
+      }
+      return;
+    }
     const flags=useInputStore.getState().input.vehicleMask;
     const headlight=hasFlag(flags,VehicleFlags.HEADLIGHTS);
     const hazards=hasFlag(flags,VehicleFlags.HAZARDS),left=hasFlag(flags,VehicleFlags.BLINKER_LEFT),right=hasFlag(flags,VehicleFlags.BLINKER_RIGHT);

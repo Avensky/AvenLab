@@ -61,6 +61,17 @@ impl WorldRuntime {
         self.game.match_state=self.round_view();Ok(())
     }
     pub fn round_view(&self) -> Option<crate::ctf::CtfView> {self.round.as_ref().map(|r|r.view())}
+    pub fn validate_hero_change_location(&self, player: &str) -> Result<(), String> {
+        if let Some(round) = &self.round {
+            if round.phase == crate::ctf::CtfPhase::Ended {
+                return Err("This match has ended.".into());
+            }
+            if self.physics.vehicles.contains_key(player) && !self.physics.can_change_hero_at_spawn(player) {
+                return Err("Hero changes require an active vehicle in your team's spawn area and no flag in tow.".into());
+            }
+        }
+        Ok(())
+    }
     fn round_observations(&self) -> Vec<crate::ctf::CtfPlayer> {
         self.game.entities.values().filter_map(|entity|{
             let vehicle=self.physics.vehicles.get(&entity.id)?;let body=self.physics.bodies.get(vehicle.body)?;let p=body.translation();

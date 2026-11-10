@@ -1,9 +1,9 @@
 import { ProgressBadge } from "../alpha/ProgressBadge";
-import { MenuShortcuts } from "../../components/controller";
 import { useUIStore } from "../../store";
 import { GameButton } from "../../components/GameButton";
 import { useEffect, useRef } from "react";
 import { MenuLogo } from "../../components/menus/MenuLogo";
+import { MenuIcon } from "../../components/menus/MenuIcon";
 import { MenuVideoBackground } from "../../components/menus/MenuVideoBackground";
 
 import { MAIN_MENU_ITEMS } from "./menuItems";
@@ -65,6 +65,7 @@ export function MainMenu() {
                 onFocus={() => setActiveMenuIndex(index)}
                 className="menu-row menu-action"
               >
+                <MenuIcon name={item.id} />
                 {item.label}
                 {!item.available && (
                   <span className="menu-control-note">Planned</span>
@@ -72,9 +73,6 @@ export function MainMenu() {
               </GameButton>
             ))}
           </div>
-          <footer className="menu-home-shortcuts">
-            <MenuShortcuts back={false} tabs={false} />
-          </footer>
         </section>
       </div>
     </div>

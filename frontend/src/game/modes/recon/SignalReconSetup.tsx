@@ -74,8 +74,6 @@ export function SignalReconSetup({
         className="garage-selection-header"
         collapsed={collapsed}
         setCollapsed={setCollapsed}
-        exitLabel="BACK"
-        onExit={() => setScreen(reconSetupParent())}
       />
       {startAttempted && !canStart && (
         <div className="pointer-events-none relative z-40">

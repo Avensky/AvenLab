@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {JSDOM} from 'jsdom';import {createServer} from 'vite';import {act,createElement as h} from 'react';import {createRoot} from 'react-dom/client';
 
-test('team filter triggers and Heroes Y have contextual controller ownership',async t=>{
+test('team filters and Heroes respect controller ownership',async t=>{
  const dom=new JSDOM('<div id="root"></div>',{url:'http://localhost/',pretendToBeVisual:true}),old=new Map(),frames=new Map();let serial=0,vite,root;
  for(const[key,value]of Object.entries({window:dom.window,document:dom.window.document,navigator:dom.window.navigator,HTMLElement:dom.window.HTMLElement,Event:dom.window.Event,CustomEvent:dom.window.CustomEvent,localStorage:dom.window.localStorage,IS_REACT_ACT_ENVIRONMENT:true,requestAnimationFrame:cb=>{frames.set(++serial,cb);return serial;},cancelAnimationFrame:id=>frames.delete(id)})){old.set(key,Object.getOwnPropertyDescriptor(globalThis,key));Object.defineProperty(globalThis,key,{value,writable:true,configurable:true});}
  document.hasFocus=()=>true;Object.defineProperty(document,'visibilityState',{value:'visible',configurable:true});
@@ -22,13 +22,14 @@ test('team filter triggers and Heroes Y have contextual controller ownership',as
   await t.test('Stats preserves the driving triggers because it has no team filter',async()=>{
    await act(async()=>board.setState({pinned:true,view:'table'}));await poll();await press(7,true);assert.equal(input.getState().input.throttle,1);await press(7,false);await act(async()=>board.getState().close());
   });
-  await t.test('Heroes Y dispatches once per press without changing the secondary weapon; typing and loading block it',async()=>{
+  await t.test('Y in Heroes leaves the current page and secondary weapon alone',async()=>{
    let calls=0;const handle=()=>calls++;window.addEventListener('avenlab:hero-abilities',handle);
    try{
-    await act(async()=>ui.setState({screen:'heroes',overlay:null}));await poll();const weapon=combat.getState().secondaryWeapon;await press(3,true);assert.equal(calls,1);await poll();assert.equal(calls,1);assert.equal(combat.getState().secondaryWeapon,weapon);await press(3,false);
-    await act(async()=>ui.setState({overlay:'hero_abilities'}));await poll();await press(3,true);assert.equal(calls,2);await press(3,false);
-    await act(async()=>ui.setState({overlay:null,isModeLoading:true}));await poll();await press(3,true);assert.equal(calls,2);await press(3,false);await act(async()=>ui.setState({isModeLoading:false}));
-    const field=document.createElement('input');document.body.append(field);field.focus();await poll();await press(3,true);assert.equal(calls,2);await press(3,false);field.blur();field.remove();
+    await act(async()=>ui.setState({screen:'heroes',overlay:null}));await poll();
+    const weapon=combat.getState().secondaryWeapon;
+    await press(3,true);await poll();await press(3,false);
+    assert.equal(calls,0);assert.equal(ui.getState().overlay,null);
+    assert.equal(combat.getState().secondaryWeapon,weapon);
    }finally{window.removeEventListener('avenlab:hero-abilities',handle);}
   });
   await t.test('result overlay routes LT/RT secondary tabs without drive input',async()=>{

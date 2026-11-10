@@ -58,12 +58,14 @@
   font-size: 10px;
   color: #b6c4ce;
 }
-.alpha-queue-card .menu-control {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+.alpha-queue-footer {
+  margin-top: 12px;
   justify-content: center;
-  margin: 15px auto;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.alpha-queue-footer .menu-control {
+  justify-content: center;
 }
 .alpha-queue-card .controller-shortcuts {
   justify-content: center;
@@ -98,5 +100,4 @@
  .alpha-queue-card h1 { font-size:20px; margin:4px; }
  .alpha-queue-card p { font-size:10px; margin:5px; }
  .alpha-queue-position { font-size:42px; }
- .alpha-queue-card .menu-control { margin:8px auto; min-height:27px; }
 }

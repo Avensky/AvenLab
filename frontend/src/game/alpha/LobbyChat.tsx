@@ -1,6 +1,6 @@
 import { useConnectionView } from "../../store/session/networkViews";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ControllerButton } from "../../components/controller";
+import { ControlGlyph } from "../../components/controller";
 import { AssistedInput } from "../../components/text/AssistedInput";
 import { useChatStore, type ChatChannel } from "../../store/chat/chatStore";
 import { usePresenceStore } from "../../store/chat/presenceStore";
@@ -231,21 +231,14 @@ export function LobbyChat({ driving = false }: { driving?: boolean }) {
           aria-expanded={false}
           onClick={open}
         >
-          {driving ? (
-            <>
-              <ControllerButton button="RB" />
-              <ControllerButton button="VIEW" />
-            </>
-          ) : (
-            <ControllerButton button="X" />
-          )}{" "}
+          <ControlGlyph controller={driving ? ["RB", "VIEW"] : "X"} keyboard={driving ? "Enter" : "T"} />{" "}
           CHAT
         </button>
       ) : (
         <>
           <header>
             <button type="button" className="chat-focus" onClick={open}>
-              CHAT <kbd>{driving ? "ENTER" : "T"}</kbd>
+              CHAT <ControlGlyph controller={driving ? ["RB", "VIEW"] : "X"} keyboard={driving ? "Enter" : "T"} />
             </button>
             <nav aria-label="Chat channel">
               <button

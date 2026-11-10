@@ -73,7 +73,41 @@ test('match category and size select independently through real admission and au
    await act(async()=>route('next_tab'));assert.equal(alpha.getState().mode,'signal_recon');assert(document.querySelector('[data-can-field]'));
    await act(async()=>route('next_tab'));assert.equal(alpha.getState().mode,'swarm');assert(document.querySelector('.alpha-selection-footer button[disabled]'));
    await act(async()=>{ui.setState({screen:'main',overlay:null});ui.getState().setActiveMenuIndex(MAIN_MENU_ITEMS.findIndex(item=>item.id==='play'));ui.getState().activateActiveMenuSelection();});await render(ModeSelection);
-   assert.equal(alpha.getState().mode,'competitive');assert.equal(alpha.getState().teamSize,3);assert.equal(document.querySelector('[data-play-category]').dataset.playCategory,'match');assert.equal(document.querySelectorAll('.alpha-mode-tabs [role=tab]').length,2);
+   assert.equal(alpha.getState().mode,'competitive');assert.equal(alpha.getState().teamSize,3);assert.equal(document.querySelector('[data-play-category]').dataset.playCategory,'play');assert.equal(document.querySelectorAll('.alpha-mode-tabs [role=tab]').length,3);
+  });
+  await t.test('Play requires a new activation, and Solo is a preview in the same tab strip', async () => {
+   const {ModeSelection}=await load('game/alpha/ModeSelection.tsx');
+   const {joinSelectedMode}=await load('game/alpha/sessionActions.ts');
+   await act(async () => {
+    alpha.getState().chooseMode('quickplay');
+    alpha.getState().chooseTeamSize(5);
+    social.setState({view,profileStatus:'ready'});
+    network.setState({connected:true});
+    ui.setState({screen:'mode_select',overlay:null});
+   });
+   await render(ModeSelection);
+   const before=sent.length;
+   const card=document.querySelector('[data-match-size="3"]');
+   await act(async () => card.dispatchEvent(new window.MouseEvent('click',{bubbles:true,detail:1})));
+   assert.equal(alpha.getState().teamSize,5,'a release from another screen must not pick a match size');
+   assert.equal(sent.length,before);
+   const competitive=document.getElementById('mode-selection-tab-competitive');
+   await act(async () => competitive.focus());
+   assert.equal(alpha.getState().mode,'quickplay','focus alone must not change the mode');
+   const enter=element=>element.dispatchEvent(new window.KeyboardEvent('keydown',{bubbles:true,code:'Enter',key:'Enter'}));
+   await act(async () => enter(competitive));
+   assert.equal(alpha.getState().mode,'competitive');
+   await act(async () => route('next_tab'));
+   assert.equal(alpha.getState().mode,'solo');
+   assert.equal(document.getElementById('mode-selection-tab-solo').getAttribute('aria-selected'),'true');
+   assert.equal(document.querySelectorAll('[data-match-size]').length,0);
+   assert(document.querySelector('.alpha-deploy').disabled);
+   await act(async () => route('activate'));
+   await assert.rejects(joinSelectedMode(),/Select a driving mode/);
+   assert.equal(sent.length,before);
+   const back=document.querySelector('.controller-shortcut-back');
+   await act(async () => {back.focus();enter(back);});
+   assert.equal(ui.getState().screen,'main');
   });
   await t.test('queue admission restores the authoritative category and size before hero selection',async()=>{
    const {useAlphaFlow}=await load('game/alpha/useAlphaFlow.ts'),{QueueScreen}=await load('game/alpha/QueueScreen.tsx');

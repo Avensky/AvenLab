@@ -1,14 +1,20 @@
 import type { MenuRow } from "../../components/menus/TabbedMenu";
 import { UI_THEMES, type UITheme } from "../../theme/catalog";
 import type { Preferences, PreferenceUpdate } from "../../store/preferences/preferencesStore";
+import { isMobileBrowser } from "../../controls/inputDevice";
 const cycle = <T,>(values: readonly T[], value: T, dir = 1) => values[(Math.max(0,values.indexOf(value))+dir+values.length)%values.length];
 /** Global readable UI is free. Local cosmetic previews never grant ownership. */
 export function appearanceSettingsRows(prefs: Preferences, update: (patch: PreferenceUpdate) => void): MenuRow[] {
   const cosmetics = prefs.vehicleCosmetics;
+  const mobile = isMobileBrowser();
   return [
     {id:"theme",label:"Global app theme",value:UI_THEMES[prefs.theme].label,
       description:"One palette for every menu, HUD, world editor and garage. Always available.",
       action:dir=>update({theme:cycle(Object.keys(UI_THEMES) as UITheme[],prefs.theme,dir)})},
+    {id:"menu-header-style",label:"Menu header style",value:mobile ? "Angled · mobile" : prefs.menuHeaderStyle === "classic" ? "Classic" : "Angled",
+      description:"Choose the layout for tabbed menus on desktop. Mobile uses the compact angled header.",
+      disabled:mobile,
+      action:()=>update({menuHeaderStyle:prefs.menuHeaderStyle === "classic" ? "angled" : "classic"})},
     {id:"cosmetic-cockpit",label:"Match cockpit panel to vehicle",value:cosmetics.matchCockpit ? "On" : "Off",
       description:"Use the selected vehicle appearance for cockpit panel accents. Wheel, shift knob and parking-brake thread follow the app theme.",
       action:()=>update({vehicleCosmetics:{matchCockpit:!cosmetics.matchCockpit}})},

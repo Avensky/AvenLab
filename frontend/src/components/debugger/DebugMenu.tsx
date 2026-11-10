@@ -90,7 +90,7 @@ export function DebugMenu() {
     label: settings.overlay
       ? "Close performance overlay"
       : "Open performance overlay",
-    value: "F3",
+    shortcut: { keyboard: "F3" },
     adjustable: false,
     action: () => {
       settings.update({ overlay: !settings.overlay });
@@ -125,14 +125,15 @@ export function DebugMenu() {
   return (
     <TabbedMenu
       title="Debugger"
-      eyebrow="REDLINE VECTOR / ENGINE TOOLS"
+      chamferTitle
+      eyebrow=""
       onBack={back}
       status={serviceStatus}
-      subtitle="Inspect physics, isolate visual cost and compare driving captures. Live latency stats appear in the performance overlay."
       tabs={[
         {
           id: "visualizers",
           label: "Visualizers",
+          icon: "visualizers",
           description:
             "Diagnostic streams are separate from model rendering. Disable streams you do not need to reduce debug traffic.",
           rows: [
@@ -167,6 +168,7 @@ export function DebugMenu() {
         {
           id: "vehicles",
           label: "Vehicles & GLBs",
+          icon: "vehicles",
           description:
             "Choose each vehicle's representation independently. These options change the rendering, while collision and simulation stay authoritative on the server.",
           rows: [
@@ -221,13 +223,14 @@ export function DebugMenu() {
         {
           id: "environment",
           label: "Environment",
+          icon: "environment",
           description:
             "Set a world default, override a chunk, or switch individual GLB assets. The list is populated from the server's selected map.",
           rows: [
             {
               id: "world-builder",
               label: "World builder",
-              value: "F9",
+              shortcut: { keyboard: "F9" },
               adjustable: false,
               disabled: !map,
               action: () => {
@@ -272,6 +275,7 @@ export function DebugMenu() {
         {
           id: "rendering",
           label: "Rendering",
+          icon: "rendering",
           description: "Display owns graphics profiles, resolution, distance and effects. Captures and collision visualizers stay in Debugger.",
           rows: [
             {id:"display-settings",label:"Open display settings",adjustable:false,action:()=>useUIStore.getState().openSettings("display")},
@@ -280,6 +284,7 @@ export function DebugMenu() {
         {
           id: "captures",
           label: "Captures",
+          icon: "captures",
           description:
             "Start with a collider baseline. Captures resume gameplay, warm up for 3 seconds and record frame / network metrics. Repeat the same camera and route for useful comparisons.",
           rows: [

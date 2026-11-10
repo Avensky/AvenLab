@@ -12,6 +12,7 @@ import {
 import { useShallow } from "zustand/react/shallow";
 import { usePreferencesStore } from "../../store/preferences";
 import { ControllerAction } from "../../components/controller";
+import { useMenuInputDevice } from "../../components/controller/useMenuInputDevice";
 import "../../components/menus/menus.css";
 import { isTypingTarget, type MenuAction } from "../../controls/inputRouting";
 import { useUIStore } from "../../store/menus/uiStore";
@@ -71,6 +72,7 @@ function LayoutPanel({
   planOnly?: boolean;
   modelReference?: boolean;
 }) {
+  const showKeyboardHints = useMenuInputDevice() === "keyboard";
   const s = useLayoutStore(
       useShallow((s) => ({
         doc: s.doc,
@@ -716,7 +718,7 @@ function LayoutPanel({
               {s.camera === "iso" ? "↗ Isometric" : "↓ Top view"}
             </button>
           </div>
-          <div className="le-stage-help">
+          {showKeyboardHints && <div className="le-stage-help">
             {s.placing ? (
               <>
                 <kbd>CLICK</kbd> place <kbd>Q / E</kbd> turn <kbd>PGUP / PGDN</kbd> floor <kbd>SHIFT</kbd> ×10 <kbd>ESC</kbd>{" "}
@@ -733,7 +735,7 @@ function LayoutPanel({
                 <kbd>SCROLL</kbd> zoom
               </>
             )}
-          </div>
+          </div>}
         </main>
         {presentation !== "hud" && preferences.inspector !== "hidden" && (
           <LayoutInspector

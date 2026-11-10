@@ -1,7 +1,10 @@
 import { useMotionView } from "../../store/session/networkViews";
 import { lazy, Suspense } from "react";
 import { useSocialStore } from "../../store/social/socialStore";
-import { ControllerAction } from "../../components/controller";
+import { useVehicleSelectionAvailable } from "../../store/alpha/matchHeroChange";
+import { MenuShortcuts } from "../../components/controller";
+import { MenuFooter, MenuFrameHeader } from "../../components/menus/MenuFrame";
+import { useAngledMenuHeader } from "../../components/menus/useAngledMenuHeader";
 import { useEffect, useId, useRef, useState } from "react";
 import { trapMenuFocus } from "../../components/menus/menuFocus";
 import { requestVehicleChange } from "../../net/rustSocket";
@@ -20,6 +23,10 @@ const AlphaHeroPicker = lazy(() =>
 );
 export function VehicleMenu() {
   const active = useSocialStore((state) => state.view?.alpha?.active);
+  const available = useVehicleSelectionAvailable();
+  const back = useUIStore(s => s.backToParentMenu);
+  useEffect(() => { if (!available) back(); }, [available, back]);
+  if (!available) return null;
   return active ? (
     <Suspense fallback={<div role="status">Opening hero selection…</div>}>
       <AlphaHeroPicker overlay />
@@ -29,6 +36,7 @@ export function VehicleMenu() {
   );
 }
 function LegacyVehicleMenu() {
+  const angled = useAngledMenuHeader();
   const current = useMotionView((s) => s.getMe()?.vehicle_id ?? "");
   const [selected, setSelected] = useState(() =>
     Math.max(
@@ -118,26 +126,8 @@ function LegacyVehicleMenu() {
         onKeyDown={trapMenuFocus}
         className="menu-vehicle-card"
       >
-        <header className="tabbed-menu-header">
-          <h1 id={`${id}-title`} className="menu-heading-title">
-            CHANGE VEHICLE
-          </h1>
-          <ControllerAction button="B"
-            type="button"
-            className="menu-control menu-back"
-            onClick={back}
-            onKeyDown={(event) => {
-              if (event.code === "Enter" || event.code === "Space") {
-                event.preventDefault();
-                event.stopPropagation();
-                if (!event.repeat) back();
-              }
-            }}
-          >
-
-            BACK
-          </ControllerAction>
-        </header>
+        <MenuFrameHeader title="HEROES" titleId={`${id}-title`} compact
+          className={angled ? "angled-tab-header" : "tabbed-menu-header"} />
         <div className="menu-vehicle-list">
           {vehicleCatalog.map((vehicle, index) => (
             <button
@@ -178,6 +168,9 @@ function LegacyVehicleMenu() {
             {error}
           </p>
         )}
+        <MenuFooter className="menu-vehicle-footer">
+          <MenuShortcuts navigate={false} tabs={false} selectAction={false} backAction={{ onClick: back }} />
+        </MenuFooter>
       </section>
     </div>
   );

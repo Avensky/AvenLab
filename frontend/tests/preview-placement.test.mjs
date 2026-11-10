@@ -87,6 +87,20 @@ test('Tank centers its chassis while a nested cannon overhangs, and cached place
   for (const object of [tracks, body, barrel, hidden]) object.geometry.dispose(); material.dispose();
 });
 
+test('full-size Louisiana fits the same turntable without scaling road vehicles', () => {
+  const root = new Group();
+  const hull = new Mesh(new BoxGeometry(36.67, 24, 188.08), new MeshBasicMaterial());
+  hull.position.set(3, 4, 10);
+  root.add(hull);
+  const measured = measurePreviewBounds(root, 'louisiana');
+  const display = fitPreviewToPlatform(measured, [8, 5]);
+  assert.ok(display.scale < .05);
+  assert.ok(display.footprint[0] <= 4.6 && display.footprint[1] <= 7.6 + 1e-9);
+  assert.ok(Math.abs(display.position[0] + 3 * display.scale) < 1e-6);
+  assert.ok(Math.abs(display.position[1] - 8 * display.scale) < 1e-6);
+  hull.geometry.dispose(); hull.material.dispose();
+});
+
 test('Tank falls back to the track center when an export has no named chassis', () => {
   const root = new Group(), material = new MeshBasicMaterial();
   const tracks = new Mesh(new BoxGeometry(2.7, 1, 5.3), material); tracks.name = 'Tracks'; tracks.position.set(0.2, 0.6, -0.3);

@@ -9,9 +9,9 @@ export function useCockpitNavigation(
   tab: CockpitTab,
 ) {
   useEffect(() => {
-    root.current
-      ?.querySelector<HTMLButtonElement>(`[data-cockpit-tab="${cockpitParent(tab)}"]`)
-      ?.focus({ preventScroll: true });
+    const button = root.current?.querySelector<HTMLButtonElement>(`[data-cockpit-tab="${cockpitParent(tab)}"]`);
+    button?.focus({ preventScroll: true });
+    button?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   }, [tab, root]);
   useEffect(() => {
     const stepControl = (control: HTMLElement, key: string) => {

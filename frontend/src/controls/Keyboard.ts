@@ -5,7 +5,6 @@ import {isMatchMode} from '../store/alpha/alphaStore';
 import {requestNearestRevive,isMechanicPlayer} from '../combat/reviveTargets';
 import {isGuardDpsPlayer,requestGuardBoost,isTankBarrierPlayer,requestTankBarrier,requestDiveShield,isDiveShieldPlayer} from '../combat/guardBoost';
 import {setScoreboardHeld,useScoreboardStore} from "../store/hud/scoreboardStore";
-import {openHeroGuide,closeHeroGuide} from "../store/hud/heroGuideStore";
 import {cycleHealthBarMode,HEALTH_BAR_LABELS} from "../store/preferences/healthVisibility";
 import {useChatStore} from "../store/chat/chatStore";
 import {useTextKeyboardStore} from "../store/text/keyboardStore";
@@ -146,14 +145,6 @@ export function Keyboard() {
         if(ui.overlay==='missions')ui.backToParentMenu();else ui.setOverlay('missions');
         return;
       }
-      if(event.code==='F1' && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey &&
-         !ui.isModeLoading && !useCanDataStore.getState().commandOpen && !useTextKeyboardStore.getState().session &&
-         (ui.overlay==='hero_abilities' || (ui.overlay===null &&
-           ['sandbox','heroes','hero_select','mode_select'].includes(ui.screen) && !useGameStore.getState().editor))){
-        event.preventDefault();release();
-        if(ui.overlay==='hero_abilities')closeHeroGuide();else openHeroGuide();
-        return;
-      }
       if (event.code === "F9" && ui.screen === "world_builder") {
         event.preventDefault();
         release();
@@ -273,7 +264,7 @@ export function Keyboard() {
         }
         if (
           !event.shiftKey &&
-          (ui.overlay === null || ui.overlay === "pause")
+          (ui.overlay === null || ui.overlay === "pause" || ui.overlay === "team_lineup")
         ) {
           event.preventDefault();
           release();

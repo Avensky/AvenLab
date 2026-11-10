@@ -1,6 +1,6 @@
 /* The scene owns the vehicle. This edge-to-edge overlay uses static portraits
    and translucent selector strips; only actual controls capture pointer input. */
-.hero-selection > .menu-frame-header { padding-block: clamp(6px, 1.15dvh, 12px); }
+.hero-selection > .menu-frame-header:not(.angled-tab-header) { padding-block: clamp(4px, .65dvh, 8px); }
 .hero-selection {
   --hero-panel-width: clamp(240px, 30vw, 360px);
   box-sizing: border-box;
@@ -18,44 +18,64 @@
   pointer-events: none;
   font: calc(12px * var(--menu-text-scale, 1))/1.45 ui-sans-serif, system-ui, sans-serif;
 }
+.hero-pick-tabs.angled-header-tabs {
+  width: max-content;
+  max-width: calc(100% + var(--angled-tab-cut));
+}
+.hero-pick-tabs .angled-header-tab {
+  flex: 0 1 auto;
+  max-width: none;
+  padding-inline: calc(var(--angled-tab-cut) / 2 + 9px);
+}
+.hero-pick-tabs.classic-header-tabs {
+  display: flex;
+  align-self: flex-start;
+  max-width: 100%;
+}
 .hero-selection :is(button, input, label, select) {
   pointer-events: auto;
-}
-/* No gutter between the header and the mode row, or between mode buttons. */
-.hero-selection .alpha-mode-tabs {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  flex-shrink: 0;
-  gap: 0;
-  margin: 0;
-  padding: 0;
-}
-.hero-selection .alpha-mode-tabs .menu-control {
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 2px;
-  min-height: var(--menu-action-height, 32px);
-  padding: 4px 8px;
-  font-size: 11px;
-  text-align: center;
-  background: #081622b0;
-  border-top: 0;
-}
-.hero-selection .alpha-mode-tabs .menu-control + .menu-control {
-  border-left: 0;
-}
-.hero-selection .alpha-mode-tabs [aria-selected="true"] {
-  border-color: #e3f4ff;
-  box-shadow: inset 0 -2px #b0e6f7;
-}
-.alpha-mode-planned {
-  font-size: 6px;
-  color: #a9bfca;
 }
 .hero-selection-stage {
   position: relative;
   flex: 1;
   min-height: 0;
+}
+.hero-picker-stage {
+  --hero-roster-gap: 5px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--hero-panel-width);
+  grid-template-rows: minmax(0, 1fr);
+}
+.hero-picker-scene {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.hero-picker-stage > :is(.prematch-team-preview, .scoreboard-team-empty) {
+  grid-area: 2 / 1 / auto / -1;
+  text-align: center;
+}
+.hero-picker-preview {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.hero-picker-preview .hero-summary { width: calc(100% - 10px); }
+.hero-picker-preview .hero-chat-panel { max-width: calc(100% - 10px); }
+.hero-picker-stage > .hero-roster {
+  grid-area: 1 / 2;
+  position: static;
+  width: auto;
+  min-height: 0;
+  max-height: none;
+  margin: var(--hero-roster-gap) var(--hero-roster-gap) var(--hero-roster-gap) 6px;
+}
+.hero-picker-stage .hero-roster-grid { flex: 1; }
+.hero-picker-stage[data-hero-filter="all"] .hero-roster-grid { grid-auto-rows: minmax(max-content, 1fr); }
+.hero-picker-stage[data-hero-filter="all"] .hero-portrait-card {
+  display: grid;
+  align-items: center;
 }
 .hero-selection [data-role="tank"] {
   --hero-color: #e1bd6e;
@@ -66,7 +86,6 @@
 .hero-selection [data-role="support"] {
   --hero-color: #8dd9c2;
 }
-/* Keep the previous image footprint, remove the card-name band and outer box. */
 .hero-roster {
   position: absolute;
   top: 5px;
@@ -75,10 +94,7 @@
   max-height: calc(100% - 10px);
   display: flex;
   flex-direction: column;
-  padding: 0;
   pointer-events: auto;
-  background: none;
-  border: 0;
 }
 .hero-roster header {
   display: flex;
@@ -101,31 +117,34 @@
 .hero-roster-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: max-content;
   gap: 4px;
   min-height: 0;
-  overflow: auto;
+  padding: 2px;
+  overflow: hidden auto;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
   scrollbar-width: none;
 }
 .hero-roster-grid::-webkit-scrollbar {
   display: none;
 }
-.hero-portrait-card {
-  position: relative;
+.hero-roster-empty { grid-column:1/-1; padding:12px 6px; color:var(--app-muted); font-size:9px; font-weight:800; letter-spacing:.08em; text-align:center; }
+.hero-portrait-card.menu-panel-frame {
+  --menu-panel-cut: 6px;
+  --menu-panel-fill: var(--app-background);
+  --hero-card-edge: var(--app-line);
   display: block;
   min-width: 0;
-  padding: 0;
-  border: 1px solid #6d899b44;
+  padding: 3px;
+  border: 0;
   border-radius: 0;
-  background: #0a18256b;
-  color: #d8e7ee;
+  background: transparent;
+  color: var(--app-text);
   cursor: pointer;
-  overflow: hidden;
 }
-.hero-portrait-card:focus-visible {
-  outline: 2px solid var(--app-accent, #82b7ff);
-  outline-offset: 1px;
-  z-index: 2;
-}
+.hero-portrait-card.menu-panel-frame::before { background: var(--hero-card-edge); }
+.hero-portrait-card.menu-panel-frame::after { inset: var(--hero-card-edge-width, 1px); }
 .hero-portrait-card .hero-portrait-art img {
   transition:
     transform 120ms ease-out,
@@ -133,12 +152,22 @@
 }
 .hero-portrait-card[aria-pressed="true"]:not([data-unavailable="true"]) .hero-portrait-art img {
   transform: scale(1.13);
-  filter: drop-shadow(0 0 5px var(--hero-color, #a7e5ff));
+  filter: drop-shadow(0 0 5px var(--app-accent));
 }
 .hero-portrait-card[aria-pressed="true"]:not([data-unavailable="true"]) {
-  border-color: #ffffff44;
-  background: radial-gradient(ellipse, #ecf7ff35, #10253585 75%);
-  box-shadow: 0 0 10px #e6f4ff88;
+  --menu-panel-fill: color-mix(in srgb, var(--app-raised) 85%, var(--app-accent));
+  --hero-card-edge: var(--app-accent);
+}
+@media (hover: hover) {
+  .hero-portrait-card.menu-panel-frame:not(:disabled):hover {
+    --hero-card-edge: var(--app-text);
+    --hero-card-edge-width: 2px;
+  }
+}
+.hero-portrait-card.menu-panel-frame:not(:disabled):is(:focus-visible, [data-input-device="controller"] :focus) {
+  --hero-card-edge: var(--app-text);
+  --hero-card-edge-width: 3px;
+  outline: 0;
 }
 .hero-portrait-card:disabled {
   cursor: wait;
@@ -158,6 +187,10 @@
     color-mix(in srgb, var(--hero-color) 15%, #152b3b80),
     #0b182580 75%
   );
+}
+.hero-portrait-card .hero-portrait-art {
+  background: var(--menu-panel-fill);
+  clip-path: var(--menu-panel-shape);
 }
 .hero-portrait-art img {
   display: block;
@@ -250,7 +283,6 @@
 }
 /* Shared menu chrome owns all header/footer geometry. */
 .hero-selection .alpha-deploy {
-  min-height: var(--menu-action-height, 32px);
   min-width: 180px;
   justify-content: center;
   gap: 6px;
@@ -265,13 +297,6 @@
 @media (max-width: 650px) {
   .hero-selection {
     --hero-panel-width: min(57vw, 222px);
-  }
-  .hero-selection .alpha-mode-tabs {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .hero-selection .alpha-mode-tabs .menu-control {
-    min-height: var(--menu-action-height, 32px);
-    font-size: 10px;
   }
   .hero-roster header {
     display: none;
@@ -306,19 +331,14 @@
     width: min(86vw, 330px);
   }
   .hero-selection .alpha-deploy {
-    min-height: var(--menu-action-height, 32px);
     min-width: 128px;
     font-size: 10px;
   }
 }
 @media (max-height: 500px) and (orientation: landscape) {
+  .hero-picker-stage { --hero-roster-gap: 3px; }
   .hero-selection {
     --hero-panel-width: clamp(206px, 30vw, 260px);
-  }
-  .hero-selection .alpha-mode-tabs .menu-control {
-    min-height: var(--menu-action-height, 28px);
-    font-size: 9px;
-    padding: 2px 4px;
   }
   .hero-selection .alpha-progress {
     font-size: 7px;
@@ -362,7 +382,6 @@
     font-size: 6px;
   }
   .hero-selection .alpha-deploy {
-    min-height: var(--menu-action-height, 28px);
     min-width: 140px;
     font-size: 10px;
   }
@@ -396,10 +415,6 @@
   border-color: #d0f0ff;
   color: #fff;
   box-shadow: inset 0 -1px #d0f0ff;
-}
-.hero-roster-grid {
-  margin: 3px -5px;
-  padding: 5px;
 }
 .hero-environment {
   flex: none;
@@ -569,10 +584,8 @@ html[data-reduce-motion="true"] .hero-portrait-card .hero-portrait-art img {
 }
 
 /* Capacity is a team rule, independent of a player's selected paint. */
-.hero-portrait-card[data-unavailable="true"] { background: #030507; border-color: #26303a; opacity: 1; cursor: not-allowed; box-shadow: none; }
-.hero-portrait-card[data-unavailable="true"] .hero-portrait-art { background: #030507; }
+.hero-portrait-card[data-unavailable="true"] { opacity: 1; cursor: not-allowed; }
 .hero-portrait-card[data-unavailable="true"] .hero-portrait-art img { filter: grayscale(1) brightness(.13); transform: none; }
-.hero-portrait-card[data-unavailable="true"]::after { display: none; }
 .hero-role-full { position: absolute; inset: auto 0 4px; color: #bdc6ce; font: 800 8px/1.2 system-ui; text-align: center; letter-spacing: .08em; }
 .hero-portrait-style-status { position: absolute; inset: auto 2px 2px; display: flex; align-items: center; justify-content: center; gap: 3px; padding: 2px; background: #030507dc; color: #e3e9ef; font: 700 6px/1.2 system-ui; }
 .hero-portrait-style-status i { width: 7px; height: 7px; background: var(--portrait-paint); border: 1px solid #ffffff80; }
@@ -588,4 +601,35 @@ html[data-ui-theme=scarlet]:not([data-high-contrast=true]) .hero-selection:not(.
   --app-background:#11151a;--app-panel:#181d23;--app-raised:#282d34;--app-line:#51555c;
   --app-accent:#d9828a;--app-accent-soft:#35292e;--app-text:#f1eff0;--app-muted:#bec2c8;
   --menu-chrome-surface:#181b21;
+}
+
+/* Dock vehicle role filters into the selection header. Tab widths stay compact;
+   the row scrolls on narrow screens instead of stretching across the scene. */
+.hero-selection:not(.mode-selection) > .menu-frame-header > .hero-role-tabs {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  width: auto;
+  max-width: min(48vw, 560px);
+  margin-left: auto;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: transparent;
+}
+.hero-selection:not(.mode-selection) > .menu-frame-header > .hero-role-tabs::-webkit-scrollbar {
+  display: none;
+}
+.hero-selection:not(.mode-selection) > .menu-frame-header > .hero-role-tabs .menu-control {
+  flex: 0 0 clamp(58px, 6vw, 88px);
+  min-height: clamp(28px, 2.7vw, 36px);
+  padding: 2px 5px;
+  font-size: clamp(8px, .72vw, 10px);
+}
+@media (max-width: 760px) {
+  .hero-selection:not(.mode-selection) > .menu-frame-header > .hero-role-tabs {
+    max-width: 48vw;
+  }
+  .hero-selection:not(.mode-selection) > .menu-frame-header > .hero-role-tabs .menu-control {
+    flex-basis: clamp(46px, 8vw, 62px);
+  }
 }

@@ -19,6 +19,7 @@ test('team and table presentations retain authoritative identities, styles and h
   const {PreMatchTeamPreview}=await load('game/stats/PreMatchTeamPreview.tsx');
   const {preMatchPlayers,scoreboardPlayers}=await load('game/stats/scoreboardData.ts');
   const {useScoreboardStore:board}=await load('store/hud/scoreboardStore.ts');
+  const {usePreferencesStore:prefs}=await load('store/preferences/preferencesStore.ts');
   root=createRoot(document.getElementById('root'));
   const render=async element=>act(async()=>root.render(element));
   await t.test('a new live round defaults to table and a deliberate view survives repeated opens',()=>{
@@ -33,6 +34,7 @@ test('team and table presentations retain authoritative identities, styles and h
    const v=view();v.alpha.active.team=null;await render(h(PreMatchTeamPreview,{view:v}));assert.equal(document.querySelectorAll('.match-composition-seat').length,0);assert.match(document.body.textContent,/Waiting for your confirmed team/);
   });
   await t.test('secondary team filters show all, red or blue without changing player data',async()=>{
+   prefs.getState().update({inputDevice:'controller'});
    const rows=[player('Local','blue'),player('Remote','red')];
    function Filtered(){const filter=board(state=>state.teamFilter);return h('div',null,h(MatchTeamFilterTabs,{filter,onChange:board.getState().setTeamFilter}),h(MatchTeamComposition,{players:rows,teamFilter:filter}));}
    board.getState().setTeamFilter('all');await render(h(Filtered));assert.equal(document.querySelectorAll('.match-composition-seat').length,10);

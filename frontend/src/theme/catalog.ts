@@ -62,6 +62,22 @@ export const UI_THEMES = {
     floor: "#19191f",
     "scene-tint": "#e5cb70",
   },
+  "pit-wall": {
+    label: "Pit Wall",
+    scheme: "dark",
+    background: "#090909",
+    panel: "#151514",
+    raised: "#252521",
+    line: "#666044",
+    text: "#f7f6ee",
+    muted: "#c0bda9",
+    accent: "#ffdc42",
+    physical: "#78e5b4",
+    grid: "#3b3623",
+    axis: "#ad9142",
+    floor: "#22211b",
+    "scene-tint": "#ffdc42",
+  },
   "deep-purple": {
     label: "Deep purple",
     scheme: "dark",
@@ -140,6 +156,7 @@ export function applyUITheme(theme: UITheme) {
   const palette = UI_THEMES[theme],
     root = document.documentElement;
   root.dataset.uiTheme = theme;
+  root.dataset.uiScheme = palette.scheme;
   root.style.colorScheme = palette.scheme;
   for (const [name, value] of Object.entries(palette))
     if (name !== "label" && name !== "scheme")

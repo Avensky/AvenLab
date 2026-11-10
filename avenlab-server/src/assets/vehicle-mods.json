@@ -1,1 +1,21 @@
-{"tires":{"label":"Performance tires","effects":{"mu_base":0.08}},"turbo":{"label":"Turbo kit","effects":{"engine_force":0.12}},"nitrous":{"label":"Nitrous system","effects":{"engine_force":0.08,"max_speed":0.025}},"exhaust":{"label":"Exhaust & muffler","effects":{"engine_force":0.025}},"suspension":{"label":"Suspension kit","effects":{"suspension_damping_ratio":0.08}},"brakes":{"label":"Brake kit","effects":{"brake_force":0.10}},"gearing":{"label":"High-speed gearing","effects":{"max_speed":0.04,"engine_force":-0.015}},"weight":{"label":"Weight reduction","effects":{"mass":-0.025}}}
+{
+  "turbo": { "label": "Turbo kit", "short": "Turbo", "group": "power", "systems": ["road", "tracked"], "effects": { "engine_force": 0.12 } },
+  "intake": { "label": "High-flow intake", "short": "Intake", "group": "power", "systems": ["road"], "effects": { "engine_force": 0.04 } },
+  "nitrous": { "label": "Nitrous system", "short": "Nitrous", "group": "power", "systems": ["road"], "effects": { "engine_force": 0.08, "max_speed": 0.025 } },
+  "exhaust": { "label": "Exhaust & muffler", "short": "Exhaust", "group": "power", "systems": ["road", "tracked"], "effects": { "engine_force": 0.025 } },
+  "intercooler": { "label": "Intercooler", "short": "Intercooler", "group": "power", "systems": ["road"], "effects": { "cooling_multiplier": 0.1 } },
+  "radiator": { "label": "Heavy-duty radiator", "short": "Radiator", "group": "power", "systems": ["road", "tracked"], "effects": { "cooling_multiplier": 0.06 } },
+  "tires": { "label": "Performance tires", "short": "Tires", "group": "chassis", "systems": ["road"], "effects": { "mu_base": 0.08 } },
+  "suspension": { "label": "Suspension kit", "short": "Suspension", "group": "chassis", "systems": ["road", "tracked"], "effects": { "suspension_damping_ratio": 0.08 } },
+  "brakes": { "label": "Brake kit", "short": "Brakes", "group": "chassis", "systems": ["road", "tracked"], "effects": { "brake_force": 0.1 } },
+  "gearing": { "label": "High-speed gearing", "short": "Gearing", "group": "power", "systems": ["road"], "effects": { "max_speed": 0.04, "engine_force": -0.015 } },
+  "weight": { "label": "Weight reduction", "short": "Weight", "group": "chassis", "systems": ["road", "tracked", "marine"], "effects": { "mass": -0.025 } },
+  "aero": { "label": "Low-drag aero kit", "short": "Aero", "group": "chassis", "systems": ["road"], "effects": { "max_speed": 0.02 } },
+  "track_pads": { "label": "High-grip track pads", "short": "Track pads", "group": "chassis", "systems": ["tracked"], "effects": { "mu_base": 0.06 } },
+  "final_drive": { "label": "Track final drive", "short": "Final drive", "group": "power", "systems": ["tracked"], "effects": { "engine_force": 0.035, "max_speed": 0.025 } },
+  "propellers": { "label": "Propeller refit", "short": "Propellers", "group": "power", "systems": ["marine"], "effects": { "engine_force": 0.075 } },
+  "reduction_gear": { "label": "Reduction gear", "short": "Reduction gear", "group": "power", "systems": ["marine"], "effects": { "engine_force": 0.03, "max_speed": 0.03 } },
+  "seawater_cooling": { "label": "Seawater cooling", "short": "Seawater cooling", "group": "power", "systems": ["marine"], "effects": { "cooling_multiplier": 0.1 } },
+  "hull_fairing": { "label": "Hull fairing", "short": "Hull fairing", "group": "chassis", "systems": ["marine"], "effects": { "max_speed": 0.025 } },
+  "stabilizers": { "label": "Hull stabilizers", "short": "Stabilizers", "group": "chassis", "systems": ["marine"], "effects": { "angular_damping": 0.1 } }
+}

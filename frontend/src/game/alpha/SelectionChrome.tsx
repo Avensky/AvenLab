@@ -1,11 +1,14 @@
-import type { ReactNode } from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import type {MatchTeam} from '../../theme/matchTeamTheme';
 import {MenuFrameHeader,MenuFrameFooter} from '../../components/menus/MenuFrame';
+import {useAngledMenuHeader} from '../../components/menus/useAngledMenuHeader';
 /** The same readable chrome as Career and Settings, while the scene remains
  * visible and interactive between the header and footer. */
-export function SelectionHeader({title,onBack,busy=false,eyebrow,team,children}:{title:string;onBack:()=>void;busy?:boolean;eyebrow?:string;team?:MatchTeam;children?:ReactNode}) {
- return <MenuFrameHeader title={title} eyebrow={eyebrow} onBack={onBack} busy={busy} variant="scene" team={team}>{children}</MenuFrameHeader>;
+export function SelectionHeader({title,eyebrow,team,children,compact=false}:{title:string;eyebrow?:string;team?:MatchTeam;children?:ReactNode;compact?:boolean}) {
+ const angled=useAngledMenuHeader()&&compact;
+ return <MenuFrameHeader title={title} eyebrow={eyebrow} compact={compact}
+  className={angled?'angled-tab-header':undefined} variant="scene" team={team}>{children}</MenuFrameHeader>;
 }
-export function SelectionFooter({children,chat=false,secondaryTabs=false,selectLabel}:{children:ReactNode;chat?:boolean;secondaryTabs?:boolean;selectLabel?:string}) {
- return <MenuFrameFooter chat={chat} secondaryTabs={secondaryTabs} selectLabel={selectLabel} variant="scene">{children}</MenuFrameFooter>;
+export function SelectionFooter(props: Omit<ComponentPropsWithoutRef<typeof MenuFrameFooter>, 'variant'>) {
+ return <MenuFrameFooter {...props} variant="scene"/>;
 }

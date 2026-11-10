@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {JSDOM} from 'jsdom';import {createServer} from 'vite';import {createElement as h,act} from 'react';import {createRoot} from 'react-dom/client';
-test('hold Tab and F1 share gameplay focus rules without taking driving ownership',async t=>{
+test('match shortcuts respect gameplay and menu focus',async t=>{
  const dom=new JSDOM('<div id="root"></div>',{url:'http://localhost/',pretendToBeVisual:true}),original=new Map();let server,root,tick=0;
  for(const[k,v]of Object.entries({window:dom.window,document:dom.window.document,navigator:dom.window.navigator,HTMLElement:dom.window.HTMLElement,Node:dom.window.Node,Event:dom.window.Event,CustomEvent:dom.window.CustomEvent,localStorage:dom.window.localStorage,sessionStorage:dom.window.sessionStorage,requestAnimationFrame:dom.window.requestAnimationFrame.bind(dom.window),cancelAnimationFrame:dom.window.cancelAnimationFrame.bind(dom.window),IS_REACT_ACT_ENVIRONMENT:true})){original.set(k,Object.getOwnPropertyDescriptor(globalThis,k));Object.defineProperty(globalThis,k,{value:v,configurable:true,writable:true});}
  document.hasFocus=()=>true;Object.defineProperty(document,'visibilityState',{value:'visible',configurable:true});
@@ -36,16 +36,18 @@ test('hold Tab and F1 share gameplay focus rules without taking driving ownershi
    await reset();board.getState().toggle();assert.equal(board.getState().pinned,true);await down('Tab');await up('Tab');assert.equal(board.getState().pinned,true,'Tab release preserves a deliberately pinned mobile board');await act(async()=>window.dispatchEvent(new window.Event('blur')));assert.equal(board.getState().pinned,false);
    await reset();await down('Tab');await act(async()=>root.render(null));assert.equal(board.getState().held,false);await act(async()=>root.render(h(Keyboard)));
   });
-  await t.test('F1 opens hero abilities, releases held driving and returns to the same screen',async()=>{
-   await reset();await down('KeyW');assert.equal(input.getState().input.throttle,1);const key=await down('F1');assert.equal(key.defaultPrevented,true);assert.equal(ui.getState().overlay,'hero_abilities');assert.equal(ui.getState().screen,'sandbox');assert.equal(input.getState().input.throttle,0);assert.equal(canDrive(),false);
-   await down('F1',{repeat:true});assert.equal(ui.getState().overlay,'hero_abilities');await press('F1');assert.equal(ui.getState().overlay,null);assert.equal(ui.getState().screen,'sandbox');assert.equal(input.getState().input.throttle,0,'closing help never replays a held accelerator');
-   for(const screen of ['heroes','hero_select','mode_select']){await reset();ui.setState({screen});await press('F1');assert.equal(ui.getState().overlay,'hero_abilities');await press('F1');assert.equal(ui.getState().overlay,null);assert.equal(ui.getState().screen,screen);}
-  });
-  await t.test('F1 leaves typing, terminal, unrelated overlays and browser modifiers alone',async()=>{
-   await reset();const typing=document.createElement('input');document.body.append(typing);const typed=await down('F1',{},typing);assert.equal(typed.defaultPrevented,false);assert.equal(ui.getState().overlay,null);typing.remove();
-   for(const modifier of ['shiftKey','ctrlKey','altKey','metaKey']){const key=await down('F1',{[modifier]:true});assert.equal(key.defaultPrevented,false);assert.equal(ui.getState().overlay,null);}
-   for(const patch of [{overlay:'settings'},{screen:'main'},{isModeLoading:true}]){await reset();ui.setState(patch);const key=await down('F1');assert.equal(key.defaultPrevented,false);assert.notEqual(ui.getState().overlay,'hero_abilities');}
-   await reset();can.setState({commandOpen:true});const key=await down('F1');assert.equal(key.defaultPrevented,false);assert.equal(ui.getState().overlay,null);
+  await t.test('F1 is available to the browser in the match and Heroes menus',async()=>{
+   await reset();await down('KeyW');
+   assert.equal((await down('F1')).defaultPrevented,false);
+   assert.equal(ui.getState().overlay,null);
+   assert.equal(input.getState().input.throttle,1);
+   await up('F1');await up('KeyW');
+   for(const screen of ['hero_select','mode_select','heroes']){
+    await reset();ui.setState({screen});
+    assert.equal((await down('F1')).defaultPrevented,false);
+    assert.equal(ui.getState().overlay,null);
+    await up('F1');
+   }
   });
  }finally{if(root)await act(async()=>root.unmount());await server?.close();dom.window.close();for(const[k,v]of original){if(v)Object.defineProperty(globalThis,k,v);else delete globalThis[k];}}
 });

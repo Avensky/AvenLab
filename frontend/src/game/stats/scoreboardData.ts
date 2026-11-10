@@ -3,6 +3,7 @@ import {HEROES,heroForVehicle} from '../../store/alpha/alphaStore';
 import type {PhysicsEntitySnapshot,PhysicsSnapshot,VehicleSessionStats} from '../../store/session/networkStore';
 import type {SocialView} from '../../store/social/socialStore';
 import type {HeroAppearance} from '../../vehicles/cosmetics/heroLoadouts';
+import type {CharacterChoice} from '../characters/characterCatalog';
 
 export type SessionCombatStats=VehicleSessionStats;
 export type ScoreboardPlayer={
@@ -95,6 +96,24 @@ export function preMatchPlayers(view:SocialView|null,revealEnemies=false):Scoreb
   if(card?.hero_hidden||row.team!==active.team&&!revealEnemies)return {...row,hero:null,appearance:null,status:undefined,heroHidden:true,kills:null,deaths:null,stats:null};
   return row;
  });
+}
+
+/** Confirmed picks on this side only. Showcase art is never a lineup pick. */
+export function selectedTeamPlayers(view: SocialView | null, selectedHero?: string | null): (ScoreboardPlayer & {character: CharacterChoice | null})[] {
+  const alpha = view?.alpha, active = alpha?.active;
+  if (!alpha || !active) return [];
+  return preMatchPlayers(view).flatMap(row => {
+    if (row.team !== active.team || row.heroHidden) return [];
+    const member = alpha.roster.find(card => card.id === row.profileId && card.mode === active.mode &&
+      card.team === active.team && (card.world_id === active.world_id || (card.world_id === undefined && row.self)));
+    const hero = HEROES.find(item => item.id === (row.self
+      ? selectedHero === undefined ? active.hero : selectedHero
+      : member?.hero));
+    if (!hero || !member) return [];
+    return [{ ...row, hero: hero.id, status: member.reconnecting ? 'reconnecting' : 'ready',
+      appearance: row.self ? view?.profile.progression?.hero_loadouts?.[hero.vehicle] ?? null : member.appearance ?? null,
+      character: (row.self ? view?.profile.progression?.character : member.character) ?? null }];
+  });
 }
 
 /** Keep row and list identities when only world poses have changed. Appearance

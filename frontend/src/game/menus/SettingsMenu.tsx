@@ -3,10 +3,12 @@ import {HEALTH_BAR_LABELS,cycleHealthBarMode} from "../../store/preferences/heal
 import {NOTICE_CHANNELS,NOTICE_LABELS,DEFAULT_NOTICE_CHANNELS} from '../../combat/noticeModel';
 import { HUD_GROUP_LABELS } from "../../store/preferences/index";
 import { CLIMATE_HUD_LABELS, CLIMATE_HUD_SIZES } from "../../store/preferences/hudVisibility";
-import { ControllerGuide } from "../../components/controller";
+import { ControlGlyph, ControllerGuide } from "../../components/controller";
+import { MENU_INPUT_LABELS, type MenuInputPreference } from "../../controls/inputDevice";
 import { appearanceSettingsRows } from "./appearanceSettingsRows";
 import { useEffect, useState } from "react";
 import { TabbedMenu, type MenuRow } from "../../components/menus/TabbedMenu";
+import { CalibrationPreview } from "./CalibrationPreview";
 import { useRenderSettingsStore } from "../../store/presentation/renderSettingsStore";
 import { useDebugViewStore } from "../../store/presentation/debugViewStore";
 import {
@@ -38,6 +40,7 @@ const step = <T,>(values: readonly T[], value: T, dir: 1 | -1 = 1): T =>
   ];
 const keyLabel = (code: string) =>
   code === "Space" ? "Space" : code.replace(/^Key|^Digit/, "");
+const MENU_INPUT_CHOICES = Object.keys(MENU_INPUT_LABELS) as MenuInputPreference[];
 const BINDING_LABELS: Record<BindingAction, string> = {
   forward: "Accelerate",
   reverse: "Reverse",
@@ -185,12 +188,16 @@ export function SettingsMenu() {
       <TabbedMenu
         initialTab={initialTab}
         title="Settings"
+        eyebrow=""
+        chamferTitle
         onBack={back}
         status={notice}
         tabs={[
           {
             id: "display",
             label: "Display",
+            icon: "display",
+            preview: <CalibrationPreview tab="display" preferences={prefs} />,
             description:
               "Graphics preferences are saved on this device. Higher resolution, reflections and shadows can increase frame time.",
             rows: [
@@ -270,6 +277,8 @@ export function SettingsMenu() {
           {
             id: "hud",
             label: "HUD",
+            icon: "hud",
+            preview: <CalibrationPreview tab="hud" preferences={prefs} />,
             description:
               "Mix any HUD components individually. Presets are shortcuts; each switch below controls its own component. Keyboard and controller inputs remain available.",
             rows: [
@@ -382,6 +391,7 @@ export function SettingsMenu() {
           {
             id: "drivetrain",
             label: "Drivetrain",
+            icon: "drivetrain",
             description:
               "Choose the shifter layout. Forward driving stays automatic; gear taps briefly override it. Neutral and reverse remain explicit selections. No clutch is required.",
             rows: [
@@ -405,6 +415,7 @@ export function SettingsMenu() {
           {
             id: "audio",
             label: "Audio",
+            icon: "audio",
             description:
               "Procedural vehicle audio includes tire squeal, engines, tracks, turbo and nitrous. Nearby sounds use distance and stereo position; tunnel echo uses authored volumes. Radio keeps its own mixer.",
             rows: [
@@ -433,6 +444,8 @@ export function SettingsMenu() {
           {
             id: "keyboard",
             label: "Keyboard",
+            icon: "keyboard",
+            preview: <CalibrationPreview tab="keyboard" preferences={prefs} />,
             description:
               "Select a driving or combat action, then press a key. Hold the primary or secondary fire binding to shoot while driving. Fixed shortcuts remain reserved. Menu navigation always uses arrows / WASD, Enter and Escape.",
             rows: [
@@ -477,7 +490,7 @@ export function SettingsMenu() {
             ],
             content: (
               <p className="mt-1 text-xs leading-tight text-slate-400">
-                Tab Hold scoreboard · F1 Hero abilities · F2 Debugger · F3 Latency overlay · F8 Start/stop capture · H
+                Tab Hold scoreboard · F2 Debugger · F3 Latency overlay · F8 Start/stop capture · H
                 Change vehicle · Shift+H Hazards · E Engine · L Lights · Z/X
                 Indicators · Q ABS · T TCS · Shift Tank Ram / car boost · weapon keys listed above · N Horn · R
                 Reset · ` Terminal
@@ -487,9 +500,18 @@ export function SettingsMenu() {
           {
             id: "controller",
             label: "Controller",
+            icon: "controller",
+            preview: <CalibrationPreview tab="controller" preferences={prefs} />,
             description:
               "Standard gamepad layout: RT accelerate · LT brake · Left stick steer · B handbrake · Start pause. Armed tank: Right stick aim · RB fire · LB charge · Y weapon cycle · R3 angle lock. In menus: A select, B back, LB/RB tabs. Release driving controls after closing a menu before driving again.",
             rows: [
+              {
+                id: "input-device",
+                label: "Input device",
+                description: "Choose menu prompts. Browser / Mobile shows keyboard keys on desktop and touch actions on mobile.",
+                value: MENU_INPUT_LABELS[prefs.inputDevice],
+                action: (dir) => prefs.update({ inputDevice: step(MENU_INPUT_CHOICES, prefs.inputDevice, dir) }),
+              },
               ...turretRows,
               {
                 id: "deadzone",
@@ -535,6 +557,7 @@ export function SettingsMenu() {
           {
             id: "social",
             label: "Social",
+            icon: "social",
             description:
               "Manage teammates, social groups, private worlds and invitations. Team chat and matchmaking are planned.",
             rows: [
@@ -563,6 +586,7 @@ export function SettingsMenu() {
           {
             id: "other",
             label: "Other",
+            icon: "other",
             description:
               "Sandbox is available now. Competitive matches, loot and currency will be added with their supporting game systems.",
             rows: [
@@ -595,6 +619,7 @@ export function SettingsMenu() {
           {
             id: "accessibility",
             label: "Accessibility",
+            icon: "accessibility",
             description:
               "Menus use text labels as well as color. These preferences are saved on this device.",
             rows: [
@@ -652,13 +677,14 @@ export function SettingsMenu() {
             ],
           },
           {
-            id: "appearance", label: "Appearance",
+            id: "appearance", label: "Appearance", icon: "appearance",
             description: "Global interface theme and cockpit matching. Paint and equipped hero loadouts are in Main menu → Heroes.",
             rows: appearanceSettingsRows(prefs, prefs.update),
           },
           {
             id: "garage",
             label: "Garage",
+            icon: "garage",
             description:
               "Lighting, glow and reflections for the selection garage. Colors follow your interface theme.",
             rows: garageSettingsRows(
@@ -685,7 +711,7 @@ export function SettingsMenu() {
               className="menu-control menu-action"
               onClick={() => setPendingBinding(null)}
             >
-              Cancel · Esc / B
+              <ControlGlyph controller="B" /> Cancel
             </button>
           </div>
         </div>

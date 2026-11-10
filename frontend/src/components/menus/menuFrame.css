@@ -1,7 +1,8 @@
 /* One density/surface contract for menus and translucent selection chrome. */
-:is(.menu-frame,.hero-selection,.hero-ability-guide){
+:is(.menu-frame,.hero-selection,.hero-ability-guide,.cockpit-panel){
  --menu-gutter:clamp(16px,3vw,44px);
- --menu-header-y:6px;--menu-footer-y:4px;--menu-action-height:32px;--menu-action-y:4px;
+ --menu-header-y:6px;--menu-action-height:32px;--menu-action-y:4px;
+ --menu-angled-header-height:41px;
  --menu-tab-height:35px;--menu-tab-y:6px;
  --menu-chrome-surface:color-mix(in srgb,var(--app-background) 65%,var(--app-panel));
 }
@@ -18,7 +19,7 @@ html[data-ui-theme] .menu-frame[role=dialog]{background:var(--app-panel);color:v
 .menu-frame :is(button,select):focus-visible{outline:2px solid var(--app-accent);outline-offset:-2px}
 .menu-frame button{cursor:pointer}.menu-frame button:disabled{cursor:default;opacity:.5}
 .menu-frame :is(button,select):hover{text-decoration:none!important}
-.menu-frame-header{box-sizing:border-box;pointer-events:auto;color:var(--app-text);font:calc(12px * var(--menu-text-scale,1))/1.45 ui-sans-serif,system-ui,sans-serif;display:flex;align-items:center;gap:18px;padding:var(--menu-header-y) var(--menu-gutter);flex-shrink:0;border-bottom:1px solid var(--app-line);background:var(--menu-chrome-surface)}
+.menu-frame-header{box-sizing:border-box;pointer-events:auto;color:var(--app-text);font:calc(12px * var(--menu-text-scale,1))/1.45 ui-sans-serif,system-ui,sans-serif;display:flex;align-items:center;gap:18px;padding:var(--menu-header-y,4px) var(--menu-gutter,10px);flex-shrink:0;border-bottom:1px solid var(--app-line);background:var(--menu-chrome-surface,var(--app-panel))}
 .menu-frame-header>div:first-child{flex:1;min-width:0}
 .menu-frame-header small{margin:0;color:var(--app-accent);font-size:10px;font-weight:750;letter-spacing:.16em}
 .menu-frame-header>div:first-child>small{display:block;line-height:1.1}
@@ -43,8 +44,45 @@ html[data-ui-theme] .menu-frame[role=dialog]{background:var(--app-panel);color:v
 .menu-frame .menu-frame-tabs .menu-control{border:0;border-bottom:3px solid transparent;border-radius:0;flex:0 0 auto;min-height:var(--menu-tab-height);padding:var(--menu-tab-y) 16px;background:transparent;color:var(--app-muted);font-weight:750;text-transform:uppercase;font-size:11px;letter-spacing:.04em}
 .menu-frame .menu-frame-tabs .menu-control[aria-selected=true]{color:var(--app-accent);border-bottom-color:var(--app-accent);background:color-mix(in srgb,var(--app-accent) 8%,transparent);outline:0;box-shadow:none}
 .menu-frame .menu-frame-content{flex:1;min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:none;padding:14px var(--menu-gutter) 22px;outline:none}
+.tabbed-menu-with-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 34%);
+  align-items: start;
+  gap: clamp(8px, 2vw, 24px);
+}
+.tabbed-menu-controls, .tabbed-menu-preview { min-width: 0; }
+.tabbed-menu-preview { position: sticky; top: 0; }
+@media (max-width: 520px) and (orientation: portrait) {
+  .tabbed-menu-with-preview { grid-template-columns: minmax(0, 1fr); }
+  .tabbed-menu-preview { position: static; grid-row: 1; }
+}
 .menu-frame ::-webkit-scrollbar{display:none}
-.menu-frame-footer{box-sizing:border-box;pointer-events:auto;color:var(--app-text);font:calc(12px * var(--menu-text-scale,1))/1.45 ui-sans-serif,system-ui,sans-serif;display:flex;align-items:center;flex-shrink:0;gap:16px;border-top:1px solid var(--app-line);padding:var(--menu-footer-y) var(--menu-gutter);background:var(--menu-chrome-surface);min-height:calc(var(--menu-action-height) + 2 * var(--menu-footer-y) + 1px)}
+.menu-footer {
+  --menu-footer-action-height: 26px;
+  --menu-footer-surface: var(--app-background);
+  box-sizing: border-box;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  min-height: 29px;
+  padding: 1px var(--menu-footer-gutter, var(--menu-gutter, 12px));
+  border-top: 1px solid var(--app-line);
+  background: var(--menu-footer-surface);
+  color: var(--app-text);
+  pointer-events: auto;
+}
+.menu-footer[data-input-device="touch"] { --menu-footer-action-height: 36px; }
+.menu-footer:has(> .controller-shortcuts:empty:only-child) { display: none; }
+.menu-footer :is(.menu-control, .controller-action, .controller-shortcut-back),
+.menu-surface .menu-footer .controller-action,
+.menu-frame .menu-footer .menu-control {
+  min-height: var(--menu-footer-action-height);
+  padding-block: 2px;
+}
+.menu-frame-footer {
+  gap: 16px;
+  font: calc(12px * var(--menu-text-scale, 1))/1.45 ui-sans-serif, system-ui, sans-serif;
+}
 .menu-frame-footer .controller-shortcuts{margin-right:auto;color:var(--app-muted)}
 .menu-frame .menu-frame-status{min-width:0;margin:0;color:var(--app-muted);font-size:9px;line-height:1.4;overflow-wrap:anywhere}
 /* Scoped frame rules take precedence over generic menu utility styles. */
@@ -59,7 +97,7 @@ html[data-ui-theme] .menu-frame .menu-row:is(:hover,:focus-visible,[data-selecte
 html[data-ui-theme] .menu-frame .menu-row-label{font-weight:700;font-size:calc(13px * var(--menu-text-scale,1))}
 html[data-ui-theme] .menu-frame .menu-row-description{color:var(--app-muted);font-size:calc(10px * var(--menu-text-scale,1))}
 @media(max-width:760px){
- :is(.menu-frame,.hero-selection,.hero-ability-guide){--menu-gutter:16px;--menu-header-y:4px;--menu-footer-y:3px;--menu-tab-height:32px;--menu-tab-y:4px}
+ :is(.menu-frame,.hero-selection,.hero-ability-guide,.cockpit-panel){--menu-gutter:16px;--menu-header-y:4px;--menu-angled-header-height:39px;--menu-tab-height:32px;--menu-tab-y:4px}
  .menu-frame-header{gap:10px}
  .menu-frame-header small{font-size:7px}.menu-frame-header .alpha-progress{display:none}
  .menu-frame .menu-frame-tabs,html[data-ui-theme] .menu-frame .menu-frame-tabs{padding:0 6px}
@@ -71,21 +109,38 @@ html[data-ui-theme] .menu-frame .menu-row-description{color:var(--app-muted);fon
  html[data-ui-theme] .menu-frame .menu-row{min-height:48px;padding:12px 10px}
 }
 @media(max-height:480px) and (min-width:560px){
- :is(.menu-frame,.hero-selection,.hero-ability-guide){--menu-gutter:15px;--menu-header-y:3px;--menu-footer-y:3px;--menu-action-height:28px;--menu-action-y:3px;--menu-tab-height:28px;--menu-tab-y:3px}
+ :is(.menu-frame,.hero-selection,.hero-ability-guide,.cockpit-panel){--menu-gutter:15px;--menu-header-y:3px;--menu-angled-header-height:35px;--menu-action-height:28px;--menu-action-y:3px;--menu-tab-height:28px;--menu-tab-y:3px}
  .menu-frame-header h1{font-size:20px}.menu-frame-header small,.menu-frame-header .alpha-progress{display:none}
  .menu-frame .menu-frame-tabs .menu-control{padding-inline:10px}
 }
 .menu-frame-footer .controller-shortcuts{flex:1 1 auto;min-width:0}
-@media(max-width:760px){.menu-frame-footer .controller-shortcuts>span>kbd:not(.controller-key){display:none}}
-/* Keep a single mobile footer row: Back is already in the header, and a
-   clickable A action does not need a second A hint alongside it. */
+/* Keep the mobile footer on one row and preserve its clickable actions. */
 @media(max-width:650px){
- .menu-frame-footer .controller-shortcuts>span:first-child,.menu-frame-footer .controller-shortcuts>span:last-child{display:none}
- .menu-frame-footer:has(>.controller-action>[data-controller-key=A]) .controller-shortcuts>span:nth-child(2){display:none}
+ .menu-frame-footer .controller-shortcuts>[data-shortcut=navigate]{display:none}
 }
 
 /* Scene variants keep the existing palette and the open garage between bars. */
-.menu-frame-header[data-menu-chrome=scene],.menu-frame-footer[data-menu-chrome=scene]{background:color-mix(in srgb,var(--menu-chrome-surface) 97%,transparent)}
-.menu-frame-header .menu-control,.menu-frame-footer>.controller-action{min-height:var(--menu-action-height);padding:var(--menu-action-y) 13px;font:700 11px/1.3 system-ui;white-space:nowrap}
+.menu-frame-header[data-menu-chrome=scene]{background:color-mix(in srgb,var(--menu-chrome-surface) 97%,transparent)}
+.menu-frame-footer[data-menu-chrome=scene]{background:color-mix(in srgb,var(--menu-footer-surface) 97%,transparent)}
+.menu-frame-header .menu-control{min-height:var(--menu-action-height);padding-block:var(--menu-action-y)}
+.menu-frame-header .menu-control,.menu-frame-footer>.controller-action{padding-inline:13px;font:700 11px/1.3 system-ui;white-space:nowrap}
 .menu-frame-header :is(button,button:hover),.menu-frame-footer :is(button,button:hover){text-decoration:none!important}
 @media(max-width:760px){.menu-frame-header .menu-control,.menu-frame-footer>.controller-action{padding-inline:9px;font-size:10px}}
+
+.menu-footer[data-input-device="touch"] :is(.controller-shortcut-back, .alpha-deploy) {
+  --controller-action-border: 1px solid var(--app-line);
+  --controller-action-background: var(--app-raised);
+  justify-content: center;
+  min-width: 72px;
+  padding-inline: 12px;
+  border: var(--controller-action-border);
+  border-radius: 0;
+  background: var(--controller-action-background);
+  color: var(--app-text);
+  font-size: 11px;
+  font-weight: 750;
+}
+.menu-footer[data-input-device="touch"] .alpha-deploy {
+  --controller-action-border: 1px solid var(--app-accent);
+  --controller-action-background: color-mix(in srgb, var(--app-raised) 88%, var(--app-accent));
+}

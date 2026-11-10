@@ -1,23 +1,58 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { useVehicleStudioStore, type VehicleStudioTab } from "./vehicleStudioStore";
-import { getPerformanceReadouts, getVehicleStockPerformance, type VehiclePerformanceSummary } from "./vehiclePerformance";
+import { getPerformanceReadouts, getVehicleStockPerformance, getVehicleTuningLimits, type VehiclePerformanceSummary } from "./vehiclePerformance";
+
+import { VehicleGarageIcon } from "./VehicleGarageIcon";
+import { VehicleDrivetrainSummary } from "./VehicleDrivetrainSummary";
+import { VehicleUpgradeProgress } from "./VehicleMods";
+import { drivetrainProfileFor } from "./vehicleDrivetrainOptions";
+import { vehicleSystems } from "../../vehicles/vehicleSystems";
 
 export const VEHICLE_STUDIO_TABS = [
-  { id: "overview", label: "OVERVIEW", description: "Vehicle and build summary" },
+  { id: "abilities", label: "ABILITIES", description: "Weapons and abilities for this vehicle" },
   { id: "performance", label: "PERFORMANCE", description: "Power, drivetrain and handling" },
   { id: "paint", label: "APPEARANCE", description: "Color, glass and finish" },
   { id: "body", label: "BODY", description: "Doors, panels and glass" },
   { id: "lighting", label: "LIGHTING", description: "Headlights, signals and lamps" },
-  { id: "studio", label: "PORTRAIT", description: "Capture the current look" },
+  { id: "studio", label: "PORTRAIT", description: "Preview the current look" },
 ] as const;
 
 export type { VehicleStudioTab };
 export type { VehiclePerformanceSummary } from "./vehiclePerformance";
+
 export const STOCK_VEHICLE_SUMMARY = getVehicleStockPerformance("gt86");
+
+type GarageStat = { key: string; label: string; valueText: string; ratio: number; title?: string };
+
+function GarageStatCell({ row }: { row: GarageStat }) {
+  return <div className="vehicle-studio-stat" data-stat={row.key} title={row.title}>
+    <VehicleGarageIcon name={row.key} />
+    <div className="vehicle-studio-stat-main">
+      <div className="vehicle-studio-stat-line"><span>{row.label}</span><strong>{row.valueText}</strong></div>
+      <meter min={0} max={1.25} value={row.ratio} optimum={1} aria-label={`${row.label} ${row.valueText}`} />
+    </div>
+  </div>;
+}
+
+function StudioPanelHeading({ title, contentId, collapsed, toggle, children }: {
+  title: string; contentId: string; collapsed: boolean; toggle: () => void; children?: ReactNode;
+}) {
+  return <header className="vehicle-studio-panel-heading" data-controller-row>
+    <h2>{title}</h2>
+    {children}
+    <button type="button" className="vehicle-studio-panel-toggle"
+      aria-label={`${collapsed ? "Expand" : "Minimize"} ${title.toLowerCase()}`}
+      aria-expanded={!collapsed} aria-controls={contentId} onClick={toggle}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+        <path d={collapsed ? "M12 5v14M5 12h14" : "M5 12h14"} />
+      </svg>
+    </button>
+  </header>;
+}
 
 export function VehicleStudioTabIcon({tab}:{tab:VehicleStudioTab}) {
   const paths:Record<VehicleStudioTab,string>={
-    overview:"M3 10 12 3l9 7M5 9v12h14V9M9 21v-7h6v7",
+    abilities:"M13 2 4 14h7l-1 8 10-12h-7l1-8Z",
     performance:"M4 20V11M9 20V5M14 20v-8M19 20V8M2 20h20",
     paint:"m14 6 4 4M4 20l4-1 11-11a2.8 2.8 0 0 0-4-4L4 15l-1 5Z",
     body:"M3 14h18l-1.5-5a2 2 0 0 0-2-1.5h-9A2 2 0 0 0 6.5 9L5 14Zm1 0v4h2m14-4v4h-2M7 18h10m-9-2.5h.01m10 0h.01",
@@ -31,7 +66,9 @@ export function VehicleStudio({
   name,
   role,
   note,
-  stats,
+  vehicleId,
+  speedUnit,
+  stages = {},
   summary = STOCK_VEHICLE_SUMMARY,
   tab,
   footer,
@@ -40,80 +77,102 @@ export function VehicleStudio({
   name: string;
   role: string;
   note: string;
-  stats: { armor: number; speed: number; handling: number; support: number };
+  vehicleId: string;
+  speedUnit: "kmh" | "mph";
+  stages?: Record<string, number>;
   summary?: VehiclePerformanceSummary;
   tab: VehicleStudioTab;
   footer?: ReactNode;
   children: ReactNode;
 }) {
   const setActiveTab = useVehicleStudioStore((state) => state.setActiveTab);
+  type Panel = VehicleStudioTab | "stats" | "drivetrain";
+  const [collapsedPanels, setCollapsedPanels] = useState<Partial<Record<Panel, boolean>>>({});
+  const collapsed = Boolean(collapsedPanels[tab]);
+  const toggle = (panel: Panel) => setCollapsedPanels(previous => ({ ...previous, [panel]: !previous[panel] }));
+  const contentId = useId();
   useEffect(() => {
     setActiveTab(tab);
   }, [setActiveTab, tab]);
   useEffect(() => () => setActiveTab(null), [setActiveTab]);
 
-  const rows = getPerformanceReadouts(summary);
+  if (tab === "abilities") {
+    return <div className="hero-guide-scroll" id="vehicle-studio-tab-panel" role="tabpanel"
+      aria-labelledby="vehicle-studio-tab-abilities" tabIndex={0}>{children}</div>;
+  }
+
+  const rows = getPerformanceReadouts(summary, speedUnit, vehicleId);
   const selected = VEHICLE_STUDIO_TABS.find((item) => item.id === tab)!;
+  const limits = getVehicleTuningLimits(vehicleId);
+  const systems = vehicleSystems(vehicleId);
+  const marine = systems === "marine";
+  const drivetrainTitle = marine ? "Propulsion" : "Drivetrain";
+  const stage = (id: string) => Math.max(0, Math.min(limits.maxStage, stages[id] ?? 0));
+  const keys = marine ? [["engine_force", "max_speed"], ["hull_hp", "mass"], ["length", "beam"]]
+    : [["engine_force", "max_speed"], ["acceleration", "quarter_mile"], ["mu_base", "brake_force"]];
+  const pairs: GarageStat[][] = keys.map(pair =>
+    rows.filter(row => pair.includes(row.key)).sort((a, b) => pair.indexOf(a.key) - pair.indexOf(b.key))
+  ).filter(pair => pair.length > 0);
+  const stockCooling = getVehicleStockPerformance(vehicleId).cooling_multiplier ?? 1;
+  const coolingBonus = Math.round(((summary.cooling_multiplier ?? stockCooling) / stockCooling - 1) * 100);
+  pairs.push([
+    ...(systems === "road" ? [{ key: "nitrous", label: "NITROUS", valueText: stage("nitrous") ? `STAGE ${stage("nitrous")}` : "STOCK", ratio: stage("nitrous") / limits.maxStage * 1.25, title: "Selected nitrous upgrade stage" }] : []),
+    { key: "intercooler", label: "COOLING", valueText: coolingBonus ? `+${coolingBonus}%` : "STOCK", ratio: 1 + coolingBonus / 100, title: "Cooling capacity relative to stock" },
+  ]);
+  const panelTitle = tab === "performance" ? "Upgrades" : selected.label.toLowerCase();
 
   return (
     <div className="vehicle-studio">
       <div className="vehicle-studio-main">
-        <aside className="vehicle-studio-details" aria-label="Power and vehicle details">
-          <header>
-            <small>{role.toUpperCase()} · VEHICLE DETAILS</small>
-            <h2>{name}</h2>
-            <p>{note}</p>
-          </header>
-          <section className="vehicle-studio-power">
-            <h3>PERFORMANCE PROFILE</h3>
-            {rows.map((row) => (
-              <div className="vehicle-studio-stat" key={row.key}>
-                <div>
-                  <span>{row.label}</span>
-                  <strong>{row.grade} · {row.valueText}</strong>
-                </div>
-                <small>VS SUPERCAR · {row.benchmarkText}</small>
-                <meter min={0} max={1.25} value={row.ratio} optimum={1} aria-label={row.label + " grade " + row.grade + ", " + row.valueText + ", benchmark " + row.benchmarkText} />
+        <aside className="vehicle-studio-details" aria-label="Vehicle details and performance"
+          onFocus={event => (event.target as HTMLElement).scrollIntoView?.({ block: "nearest", inline: "nearest" })}>
+          <section className="vehicle-studio-baseline menu-panel-frame" data-collapsed={Boolean(collapsedPanels.stats)} aria-label="Stats">
+            <StudioPanelHeading title="Stats" contentId={contentId + "-stats"} collapsed={Boolean(collapsedPanels.stats)} toggle={() => toggle("stats")} />
+            <div id={contentId + "-stats"} className="vehicle-studio-panel-content" hidden={collapsedPanels.stats}>
+              <header className="vehicle-studio-identity">
+                <h2>{name}</h2>
+                <p><strong>{role.toUpperCase()}</strong> · {note}</p>
+              </header>
+              <div className="vehicle-studio-power" aria-label="Vehicle performance statistics">
+                {pairs.map(pair => <div className="vehicle-studio-stat-pair" key={pair[0].key} data-count={pair.length}>
+                  {pair.map(row => <GarageStatCell key={row.key} row={row} />)}
+                </div>)}
               </div>
-            ))}
-            <p className="vehicle-studio-estimate">Configured in-game physics · chassis-specific tuning limits</p>
+            </div>
           </section>
-          <section className="vehicle-studio-class-stats" aria-label="Vehicle class ratings">
-            <h3>CLASS PROFILE</h3>
-            {([
-              ["SPEED", stats.speed],
-              ["HANDLING", stats.handling],
-              ["SUPPORT", stats.support],
-            ] as const).map(([label, value]) => (
-              <div key={label}>
-                <span>{label}</span>
-                <strong>{value}</strong>
-              </div>
-            ))}
+          <section className="vehicle-studio-drivetrain menu-panel-frame" data-collapsed={Boolean(collapsedPanels.drivetrain)} aria-label={drivetrainTitle}>
+            <StudioPanelHeading title={drivetrainTitle} contentId={contentId + "-drivetrain"}
+              collapsed={Boolean(collapsedPanels.drivetrain)} toggle={() => toggle("drivetrain")}>
+              <small>{drivetrainProfileFor(vehicleId).driveLayout}</small>
+            </StudioPanelHeading>
+            <div id={contentId + "-drivetrain"} className="vehicle-studio-panel-content" hidden={collapsedPanels.drivetrain}>
+              <VehicleDrivetrainSummary vehicle={vehicleId} weight={rows.find(row => row.key === "mass")?.valueText ?? "—"} economy={rows.find(row => row.key === "fuel_economy")?.valueText}
+                suspension={stage("suspension")} damping={summary.suspension_damping_ratio} yawDamping={summary.angular_damping} />
+            </div>
           </section>
         </aside>
 
         <section
-          className="vehicle-studio-panel"
+          className="vehicle-studio-panel menu-panel-frame"
+          data-collapsed={collapsed}
           role="tabpanel"
           id="vehicle-studio-tab-panel"
           aria-labelledby={"vehicle-studio-tab-" + tab}
         >
-          <header className="vehicle-studio-panel-heading">
-            <small>{selected.description.toUpperCase()}</small>
-            <h2>{selected.label}</h2>
-          </header>
-          <div className="vehicle-studio-panel-content">{children}</div>
+          <StudioPanelHeading title={panelTitle} contentId={contentId} collapsed={collapsed} toggle={() => toggle(tab)}>
+            {tab === "performance" && <VehicleUpgradeProgress vehicle={vehicleId} stages={stages} maxStage={limits.maxStage} />}
+          </StudioPanelHeading>
+          <div id={contentId} hidden={collapsed} className="vehicle-studio-panel-content" data-controller-row data-controller-columns="1"
+            onFocus={event => (event.target as HTMLElement).scrollIntoView?.({ block: "nearest", inline: "nearest" })}>
+            {children}
+          </div>
+          {!collapsed && footer && <div className="vehicle-studio-panel-actions" data-controller-row>{footer}</div>}
         </section>
       </div>
 
       <div className="vehicle-studio-rotate-hint" aria-hidden="true">
         <span>↔</span> DRAG TO ROTATE
       </div>
-      <footer className="vehicle-studio-dock">
-        <small>{selected.label} OPTIONS</small>
-        <div className="vehicle-studio-dock-actions">{footer ?? <span>{selected.description}</span>}</div>
-      </footer>
     </div>
   );
 }

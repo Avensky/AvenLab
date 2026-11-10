@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { ControlGlyph, MenuShortcuts } from "../controller";
+import { useMenuInputDevice } from "../controller/useMenuInputDevice";
 import { trapMenuFocus } from "../menus/menuFocus";
 import { useTextKeyboardStore } from "../../store/text/keyboardStore";
 import type { MenuAction } from "../../controls/inputRouting";
@@ -12,6 +14,7 @@ const SYMBOLS = ["1234567890", "!@#$%&*()-", "_+=?/.:,;"].map((row) =>
 );
 
 function KeyboardDialog() {
+  const inputDevice = useMenuInputDevice();
   const session = useTextKeyboardStore((s) => s.session)!;
   const [upper, setUpper] = useState(true),
     [symbols, setSymbols] = useState(false);
@@ -119,7 +122,7 @@ function KeyboardDialog() {
             className="menu-control"
             onClick={() => useTextKeyboardStore.getState().close(true)}
           >
-            B CANCEL
+            <ControlGlyph controller="B" /> CANCEL
           </button>
         </header>
         <output
@@ -164,9 +167,10 @@ function KeyboardDialog() {
             </div>
           ))}
         </div>
-        <small>
-          D-PAD MOVE · A TYPE · B CANCEL · LB / RB LETTERS & NUMBERS
-        </small>
+        {inputDevice !== "touch" && <div className="text-keyboard-shortcuts">
+          <MenuShortcuts back={false} tabs={false} directions="both" selectLabel="Type" />
+          {inputDevice === "controller" && <small><ControlGlyph controller={["LB", "RB"]} /> Letters & numbers</small>}
+        </div>}
       </section>
     </div>
   );

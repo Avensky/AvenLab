@@ -1,5 +1,7 @@
 import { useConnectionView } from "../../store/session/networkViews";
-import {MenuTabButton} from "../../components/menus/MenuTabButton";
+import { MenuLogo } from "../../components/menus/MenuLogo";
+import { SceneTabHeader } from "../../components/menus/SceneTabHeader";
+import { useMenuPressOwner } from "../../components/menus/useMenuPressOwner";
 import {MatchModePortraits} from "./ModePortraitCard";
 import {useSelectionStore as useWorldSelection} from '../../store/selection/selectionStore';
 import {WorldPortraitCard} from '../preview/WorldPortraitCard';
@@ -14,8 +16,11 @@ import {
   useAlphaStore,
   showFavoriteHero,
   isMatchMode,
+  isPlannedMode,
+  isPlayMenuMode,
   canonicalGameMode,
   type MatchTeamSize,
+  type PlayMode,
 } from "../../store/alpha/alphaStore";
 import { useUIStore } from "../../store/menus/uiStore";
 
@@ -31,7 +36,7 @@ import { useSelectionNavigation } from "./useSelectionNavigation";
 import { useSelectionStore } from "../../store/selection/selectionStore";
 import type { MenuAction } from "../../controls/inputRouting";
 import { joinSelectedMode } from "./sessionActions";
-import { SelectionHeader, SelectionFooter } from "./SelectionChrome";
+import { SelectionFooter } from "./SelectionChrome";
 import { LobbyChat } from "./LobbyChat";
 import "./heroSelection.css";
 
@@ -53,29 +58,27 @@ export function ModeSelection() {
   const [busy, setBusy] = useState(false),
     [status, setStatus] = useState("");
   const [canField, setCanField] = useState(0);
-  const research = mode === "signal_recon",
-    planned = mode === "swarm";
-  const destinations=GAME_MODES.filter(entry=>isMatchMode(entry.id)===isMatchMode(mode));
+  const research = mode === "signal_recon";
+  const planned = isPlannedMode(mode);
+  const match = isMatchMode(mode);
+  const play = isPlayMenuMode(mode);
+  const destinations = GAME_MODES.filter(entry => isPlayMenuMode(entry.id) === play);
   const item = GAME_MODES.find((m) => m.id === canonicalGameMode(mode))!;
+  const pressOwner = useMenuPressOwner();
   const back = useCallback(() => {
     if (!pending.current) useUIStore.getState().setScreen("main");
   }, []);
-  const tab = useCallback((direction: number) => {
+  const selectMode = useCallback((id: string) => {
     if (pending.current) return;
-    const current = useAlphaStore.getState().mode;
-    const entries=GAME_MODES.filter(entry=>isMatchMode(entry.id)===isMatchMode(current));
-    useAlphaStore
-      .getState()
-      .chooseMode(
-        entries[
-          (entries.findIndex((m) => m.id === canonicalGameMode(current)) +
-            direction +
-            entries.length) %
-            entries.length
-        ].id,
-      );
+    useAlphaStore.getState().chooseMode(id as PlayMode);
     setStatus("");
   }, []);
+  const tab = useCallback((direction: number) => {
+    const current = useAlphaStore.getState().mode;
+    const entries = GAME_MODES.filter(entry => isPlayMenuMode(entry.id) === isPlayMenuMode(current));
+    const index = entries.findIndex(entry => entry.id === canonicalGameMode(current));
+    selectMode(entries[(index + direction + entries.length) % entries.length].id);
+  }, [selectMode]);
   useEffect(() => {
     showFavoriteHero();
   }, [defaultHero]);
@@ -175,50 +178,36 @@ export function ModeSelection() {
   useSelectionNavigation(root, { back, tab, direction, option, confirm: next });
   return (
     <section
+      {...pressOwner}
       ref={root}
       className="game-ui menu-surface alpha-selection hero-selection mode-selection"
-      data-play-category={isMatchMode(mode)?'match':'tools'}
+      data-play-category={play ? "play" : "tools"}
       data-controller-form
       data-controller-rows
       tabIndex={-1}
       aria-label="Game mode selection"
     >
-      <SelectionHeader title={isMatchMode(mode)?'PLAY':'EXPLORE & BUILD'} onBack={back} busy={busy}/>
-      <nav
-        className="alpha-mode-tabs"
-        role="tablist"
-        aria-label="Game mode"
-        data-controller-tab-only
-      >
-        {destinations.map((entry) => (
-          <MenuTabButton
-            key={entry.id}
-            selected={mode === entry.id}
-            tabIndex={mode === entry.id ? 0 : -1}
-            disabled={busy}
-            onFocus={() => {
-              useAlphaStore.getState().chooseMode(entry.id);
-              setStatus("");
-            }}
-            onClick={() => {
-              useAlphaStore.getState().chooseMode(entry.id);
-              setStatus("");
-            }}
-          >
-            {entry.label}
-            {entry.id === "swarm" && (
-              <small className="alpha-mode-planned">PLANNED</small>
-            )}
-          </MenuTabButton>
-        ))}
-      </nav>
-      <div className="hero-selection-stage">
+      <SceneTabHeader
+        title={play ? "PLAY" : "EXPLORE & BUILD"}
+        logo={play ? <MenuLogo /> : undefined}
+        showProgress
+        busy={busy}
+        tablistLabel="Game mode"
+        tablistClassName="alpha-mode-tabs"
+        idPrefix="mode-selection"
+        panelId="mode-selection-panel"
+        activeTab={item.id}
+        tabs={destinations.map(entry => ({ id: entry.id, label: entry.label, badge: isPlannedMode(entry.id) ? "PLANNED" : undefined }))}
+        onTabChange={selectMode}
+      />
+      <div className="hero-selection-stage" id="mode-selection-panel" role="tabpanel" aria-labelledby={"mode-selection-tab-" + item.id}>
         {(mode==='sandbox'||mode==='editor')&&<WorldPortraitCard map={selectedWorld}/>}
-        {isMatchMode(mode)&&<MatchModePortraits selected={teamSize} disabled={busy} onSelect={size=>void next(size)}/>}
+        {match && <MatchModePortraits selected={teamSize} disabled={busy} onSelect={size=>void next(size)}/>}
         <section className="hero-summary" aria-label="Selected game mode">
           <small>GAME MODE</small>
           <h2>{item.label}</h2>
-          {isMatchMode(mode)&&<p className="alpha-status" role="note">{teamSize===3?'3 VS 3 · One Tank, DPS and Support per team. ':'5 VS 5 · '}First to 3 captures · 15 minutes. Career records are live; {mode==='competitive'?'ranked MMR is pending.':'choose a match size to find a game.'}</p>}
+          {match&&<p className="alpha-status" role="note">{teamSize===3?'3 VS 3 · One Tank, DPS and Support per team. ':'5 VS 5 · '}First to 3 captures · 15 minutes. Career records are live; {mode==='competitive'?'ranked MMR is pending.':'choose a match size to find a game.'}</p>}
+          {mode === "solo" && <p className="alpha-status" role="note">{item.description} City course in development.</p>}
           {!research&&!planned&&!profileReady&&<div className="profile-recovery" aria-label="Player profile recovery">
             <p role="status">{connected?profileMessage:"Connect to the game server to restore your player."}</p>
             {connected&&profileStatus!=="restoring"&&<>
@@ -262,7 +251,12 @@ export function ModeSelection() {
           )}
         </div>
       )}
-      <SelectionFooter chat secondaryTabs={research}>
+      <SelectionFooter
+        chat
+        secondaryTabs={research}
+        hasPrimaryAction
+        backAction={{ onClick: back, disabled: busy }}
+      >
         <ControllerAction button="A"
           type="button"
           className="menu-control  alpha-deploy"

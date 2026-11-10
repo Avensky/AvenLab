@@ -1,0 +1,182 @@
+.prematch-team-preview {
+  --team-badge-width: min(18dvh, 16vw, 116px);
+  display: flex;
+  justify-content: center;
+  gap: clamp(7px, 1.5vw, 18px);
+  margin: 0;
+  padding: 2px 8px 7px;
+  list-style: none;
+}
+.prematch-team-preview > li {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 3px;
+  width: var(--team-badge-width);
+  min-width: 0;
+  text-align: center;
+}
+.prematch-team-preview strong {
+  max-width: 100%;
+  overflow: hidden;
+  color: #f4f6ff;
+  font: 800 clamp(9px, 2.3dvh, 13px)/1.2 system-ui, sans-serif;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 4px #000, 0 0 6px #000;
+  white-space: nowrap;
+}
+.team-portrait-badge.menu-panel-frame {
+  --menu-panel-shape: polygon(50% 0, 100% 22%, 100% 78%, 50% 100%, 0 78%, 0 22%);
+  --menu-panel-fill: color-mix(in srgb, var(--app-background) 86%, #000);
+  --portrait-edge: var(--app-line);
+  display: grid;
+  place-items: center;
+  width: var(--team-badge-width);
+  aspect-ratio: 1.18;
+  box-sizing: border-box;
+  color: var(--app-text);
+}
+.team-portrait-badge.menu-panel-frame::before { background: var(--portrait-edge); }
+.team-portrait-badge[data-empty="true"] { --menu-panel-fill: color-mix(in srgb, var(--app-background) 82%, transparent); }
+.team-portrait-badge[data-self="true"] {
+  --portrait-edge: var(--app-accent);
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--app-accent) 65%, transparent));
+}
+.team-portrait-badge .hero-portrait-art[data-role] {
+  width: 94%;
+  background: transparent;
+  clip-path: var(--menu-panel-shape);
+}
+.team-portrait-ellipsis {
+  margin-block-start: -.28em;
+  padding-inline-start: .14em;
+  font: 900 17px/1 system-ui, sans-serif;
+  letter-spacing: .14em;
+}
+
+.team-lineup {
+  position: fixed;
+  inset: 0;
+  z-index: 54;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe flex-end;
+  gap: clamp(9px, 2.6dvh, 24px);
+  box-sizing: border-box;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+    max(5dvh, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  overflow: auto;
+  background: var(--app-background);
+}
+.team-lineup > .menu-video-background { z-index: -1; }
+.team-lineup-heading {
+  text-align: center;
+  color: #f4f6ff;
+  text-transform: uppercase;
+  text-shadow: 0 2px 6px #000;
+}
+.team-lineup-heading p {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 0 0 5px;
+  font-weight: 750;
+  letter-spacing: .1em;
+}
+.team-lineup-heading [data-team] {
+  padding: 2px 5px;
+  background: var(--app-panel);
+  color: var(--team-blue);
+  text-shadow: none;
+}
+.team-lineup-heading [data-team="red"] { color: var(--team-red); }
+.team-lineup-heading h1 {
+  margin: 0;
+  font-size: calc(clamp(24px, 5.6dvh, 52px) * var(--menu-text-scale, 1));
+  font-style: italic;
+  font-weight: 900;
+  line-height: 1;
+}
+.team-lineup-cards {
+  display: grid;
+  grid-template-columns: repeat(var(--lineup-size), minmax(0, 1fr));
+  gap: clamp(5px, 1vw, 12px);
+  width: min(100%, calc(var(--lineup-size) * clamp(112px, 19vw, 174px)));
+}
+.team-lineup-card {
+  --team-badge-width: clamp(42px, 15dvh, 101px);
+  --menu-panel-fill: color-mix(in srgb, var(--app-panel) 92%, transparent);
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: clamp(3px, 1dvh, 9px);
+  min-width: 0;
+  min-height: clamp(102px, 30dvh, 226px);
+  padding: clamp(7px, 1.6dvh, 14px) clamp(5px, 1vw, 12px);
+  color: var(--app-text);
+}
+.team-lineup-card.menu-panel-frame::before { background: var(--app-line); }
+.team-lineup-card[data-self="true"]::before { background: var(--app-accent); }
+.team-lineup-card > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3px;
+  width: 100%;
+  color: var(--app-muted);
+  font-size: calc(clamp(8px, 2.15dvh, 12px) * var(--menu-text-scale, 1));
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.team-lineup-role { display: inline-flex; align-items: center; gap: 4px; }
+.team-lineup-role .attack-icon {
+  flex: none;
+  width: 1.2em;
+  height: 1.2em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+.team-lineup-card :is(strong, .team-lineup-vehicle) {
+  max-width: 100%;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.team-lineup-identity {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  width: 100%;
+}
+.team-lineup-identity .character-portrait {
+  flex: none;
+  width: clamp(16px, 4.2dvh, 26px);
+  border: 1px solid var(--app-line);
+}
+.team-lineup-card strong {
+  font-size: calc(clamp(11px, 3.1dvh, 20px) * var(--menu-text-scale, 1));
+  font-style: italic;
+  font-weight: 850;
+  line-height: 1.1;
+}
+.team-lineup-card[data-self="true"] strong { color: var(--app-accent); }
+.team-lineup-vehicle {
+  color: var(--app-muted);
+  font-size: calc(clamp(8px, 2.3dvh, 12px) * var(--menu-text-scale, 1));
+  font-weight: 750;
+}
+.team-lineup-actions { gap: 8px; }
+.team-lineup-actions > .menu-control {
+  justify-content: center;
+  padding-inline: 12px;
+}
+@media (max-width: 520px) {
+  .team-lineup-card > header { flex-wrap: wrap; }
+}

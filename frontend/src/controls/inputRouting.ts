@@ -45,7 +45,8 @@ export function canNavigateMenu() {
         "debug_menu",
         "settings",
         "hero_abilities",
-      "match_results",
+        "match_results",
+        "team_lineup",
         "career",
         "missions",
         "vehicle_select",
@@ -102,6 +103,7 @@ export function routeMenuAction(action: MenuAction) {
       "settings",
       "hero_abilities",
       "match_results",
+      "team_lineup",
       "career",
       "missions",
       "vehicle_select",
@@ -120,7 +122,10 @@ export function routeMenuAction(action: MenuAction) {
     );
     return;
   }
-  if (action === "previous_tab" || action === "next_tab") return;
+  if (action === "previous_tab" || action === "next_tab") {
+    if (panel === "pause") ui.moveActiveMenuHorizontal(action === "previous_tab" ? -1 : 1);
+    return;
+  }
   if (action === "up" || action === "down")
     ui.moveActiveMenuSelection(action === "up" ? -1 : 1);
   else if (action === "left" || action === "right")

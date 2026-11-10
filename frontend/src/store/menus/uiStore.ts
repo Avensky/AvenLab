@@ -1,5 +1,7 @@
 import { create } from "zustand";
+import { PAUSE_RESUME_INDEX } from "../../game/menus/menuItems";
 import { useInputStore } from "../input/inputStore";
+import { canOpenVehicleSelection } from "../alpha/matchHeroChange";
 
 import { createMenuActions } from "./menuActions";
 import { isDrivingScreen, type SignalMission, type UIState } from "./types";
@@ -49,7 +51,8 @@ export const useUIStore = create<UIState>()((set, get, api) => ({
     if (
       !isDrivingScreen(state.screen) ||
       state.isModeLoading ||
-      (state.overlay !== null && state.overlay !== "pause")
+      (state.overlay !== null && state.overlay !== "pause" && state.overlay !== "team_lineup") ||
+      !canOpenVehicleSelection()
     )
       return;
     set({ overlay: "vehicle_select", vehicleSelectionParent: state.overlay });
@@ -81,6 +84,7 @@ export const useUIStore = create<UIState>()((set, get, api) => ({
         "debug_menu",
         "vehicle_select",
         "leave_game",
+        "team_lineup",
         "cockpit",
         "world_builder",
       ].includes(overlay) &&
@@ -91,7 +95,7 @@ export const useUIStore = create<UIState>()((set, get, api) => ({
   },
   selectedMenuIndexById: {
     main: 0,
-    pause: 0,
+    pause: PAUSE_RESUME_INDEX,
     settings: 0,
     sandbox_setup: 0,
     signal_recon_setup: 0,
@@ -119,10 +123,15 @@ export const useUIStore = create<UIState>()((set, get, api) => ({
     }),
 
   openPause: () => {
-    const { screen, overlay } = get();
+    const { screen, overlay, selectedMenuIndexById } = get();
     if (!isDrivingScreen(screen) || overlay === "match_results") return;
 
-    set({ overlay: "pause" });
+    set({
+      overlay: "pause",
+      selectedMenuIndexById: overlay === null
+        ? { ...selectedMenuIndexById, pause: PAUSE_RESUME_INDEX }
+        : selectedMenuIndexById,
+    });
   },
   closeOverlay: () => {
     if(get().overlay === "match_results") return;
@@ -152,9 +161,8 @@ export const useUIStore = create<UIState>()((set, get, api) => ({
 
     if (!isDrivingScreen(screen) || overlay === "match_results") return;
 
-    set({
-      overlay: overlay === "pause" ? null : "pause",
-    });
+    if (overlay === "pause") set({ overlay: null });
+    else get().openPause();
   },
   selectedMission: null,
   setSelectedMission: (mission: SignalMission | null) =>

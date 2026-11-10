@@ -152,6 +152,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         (el) => el.textContent === label,
       );
     const row = (id) => document.querySelector(`[data-menu-row="${id}"]`);
+    const pauseAction = (id) => document.querySelector(`[data-pause-action="${id}"]`);
     const key = async (code, key = code, options = {}) =>
       act(async () =>
         document.activeElement.dispatchEvent(
@@ -766,12 +767,10 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
     await t.test(
       "Settings and Leave hover/click select their actual pause rows",
       async () => {
-        for (const [index, target] of [
-          [PAUSE_MENU_ITEMS.findIndex(i => i.id === "settings"), "settings"],
-          [PAUSE_MENU_ITEMS.findIndex(i => i.id === "leave_game"), "leave_game"],
-        ]) {
+        for (const target of ["settings", "leave_game"]) {
           await reset("sandbox", "pause");
-          const element = document.querySelectorAll('[role="button"]')[index];
+          const index = PAUSE_MENU_ITEMS.findIndex((item) => item.id === target);
+          const element = pauseAction(target);
           await act(async () =>
             element.dispatchEvent(
               new dom.window.MouseEvent("pointerover", { bubbles: true }),
@@ -797,9 +796,10 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
       "keyboard focus tracks row navigation and Enter opens Settings once",
       async () => {
         await reset("sandbox", "pause");
-        for(let i=0;i<PAUSE_MENU_ITEMS.findIndex(item => item.id === "settings");i++)
-          await key("ArrowDown", "ArrowDown");
-        assert.ok(document.activeElement.textContent.includes("Settings"));
+        await key("KeyQ", "q");
+        await key("ArrowDown");
+        await key("ArrowDown");
+        assert.equal(document.activeElement, pauseAction("settings"));
         await key("Enter", "Enter");
         assert.equal(ui.getState().overlay, "settings");
         assert.equal(
@@ -809,6 +809,56 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         );
       },
     );
+    await t.test("the split Game Menu keeps one focus across rails and shows device-specific shortcuts", async () => {
+      const previousDevice = preferences.getState().inputDevice;
+      try {
+        await reset("sandbox");
+        await act(async () => preferences.getState().update({ inputDevice: "controller" }));
+        await button(9);
+        assert.equal(document.activeElement, pauseAction("resume"));
+        const footer = document.querySelector(".pause-menu-footer");
+        assert.equal(footer.querySelector(".controller-shortcuts kbd").dataset.controllerKey, "MENU");
+        assert.equal(footer.querySelectorAll('[data-controller-key="A"]').length, 1);
+        assert.ok(pauseAction("resume").querySelector('[data-controller-key="A"]'));
+        assert.ok(document.querySelector('.pause-menu-rail[aria-label="Drive"] [data-controller-key="LB"]'));
+        assert.ok(document.querySelector('.pause-menu-rail[aria-label="Session"] [data-controller-key="RB"]'));
+
+        await button(4);
+        assert.equal(document.activeElement, pauseAction("vehicle_select"));
+        await button(13);
+        assert.equal(document.activeElement, pauseAction("cockpit"));
+        await button(5);
+        assert.equal(document.activeElement, pauseAction("career"));
+        await button(14);
+        assert.equal(document.activeElement, pauseAction("cockpit"));
+        await button(13);
+        assert.equal(document.activeElement, pauseAction("settings"));
+        assert.ok(pauseAction("settings").querySelector(".menu-icon"));
+        assert.equal(pauseAction("settings").querySelector("kbd"), null);
+        assert.ok(footer.querySelector('.controller-shortcuts [data-controller-key="A"]'));
+        assert.equal(pauseAction("resume").querySelector("kbd"), null);
+
+        await button(0);
+        assert.equal(ui.getState().overlay, "settings");
+        await button(1);
+        assert.equal(document.activeElement, pauseAction("settings"));
+        await button(1);
+        assert.equal(ui.getState().overlay, null);
+        await button(9);
+        assert.equal(document.activeElement, pauseAction("resume"));
+
+        await act(async () => preferences.getState().update({ inputDevice: "keyboard" }));
+        assert.ok(pauseAction("resume").querySelector(".menu-icon"));
+        assert.equal(pauseAction("resume").querySelector("kbd"), null);
+        assert.ok(document.querySelector('.pause-menu-footer .controller-shortcuts:last-child [data-keyboard-key="Enter"]'));
+        assert.equal(document.querySelector(".pause-menu [data-controller-key]"), null);
+        await act(async () => preferences.getState().update({ inputDevice: "touch" }));
+        assert.equal(document.querySelector(".pause-menu kbd"), null);
+        assert.ok(pauseAction("resume").querySelector(".menu-icon"));
+      } finally {
+        await act(async () => preferences.getState().update({ inputDevice: previousDevice }));
+      }
+    });
     await t.test(
       "controller in a nonzero slot navigates rows, tabs, values and Back",
       async () => {
@@ -1295,7 +1345,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
             "H picker returns directly to driving",
           );
           await reset("sandbox", "pause");
-          await pointerPress(document.querySelectorAll('[role="button"]')[PAUSE_MENU_ITEMS.findIndex(item=>item.id==='vehicle_select')]);
+          await pointerPress(pauseAction("vehicle_select"));
           assert.equal(ui.getState().overlay, "vehicle_select");
           assert.equal(connection.closed, false);
           await button(1);
@@ -1371,7 +1421,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
       },
     );
     await t.test(
-      "Leave shows Xbox A/Enter and B/Escape actions; cancel shortcuts and pointer cancel never leave",
+      "Leave shows keys or Xbox glyphs and preserves every cancel shortcut",
       async () => {
         await reset("sandbox", "leave_game");
         assert.ok(document.querySelector('[role="alertdialog"]'));
@@ -1382,10 +1432,14 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
           /Are you sure you want to leave game\?/,
         );
         assert.equal(document.activeElement.getAttribute("role"), "alertdialog");
-        assert.equal(row("confirm").querySelector("[data-controller-key]").dataset.controllerKey, "A");
-        assert.equal(row("cancel").querySelector("[data-controller-key]").dataset.controllerKey, "B");
-        assert.match(row("confirm").textContent, /CONFIRMEnter/);
-        assert.match(row("cancel").textContent, /CANCELEsc/);
+        await act(async () => preferences.getState().update({inputDevice:"keyboard"}));
+        assert(row("confirm").querySelector('[data-keyboard-key="Enter"]'));
+        assert(row("cancel").querySelector('[data-keyboard-key="Esc"]'));
+        assert.equal(document.querySelector(".menu-confirm-actions [data-controller-key]"),null);
+        await act(async () => preferences.getState().update({inputDevice:"controller"}));
+        assert(row("confirm").querySelector('[data-controller-key="A"]'));
+        assert(row("cancel").querySelector('[data-controller-key="B"]'));
+        assert.equal(document.querySelector(".menu-confirm-actions [data-keyboard-key]"),null);
         const dialog = document.activeElement;
         await key("Tab", "Tab");
         assert.equal(document.activeElement, dialog);
@@ -1401,6 +1455,7 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         await reset("sandbox", "leave_game");
         await click(row("cancel"));
         assert.equal(ui.getState().overlay, "pause");
+        await act(async () => preferences.getState().update({inputDevice:"browser"}));
       },
     );
     await t.test(

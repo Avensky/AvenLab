@@ -1,9 +1,42 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import catalog from "../../../../avenlab-server/src/assets/vehicle-mods.json";
-import type { VehiclePerformanceSummary } from "./VehicleStudio";
+import type { VehiclePerformanceSummary } from "./vehiclePerformance";
 import { useVehicleStudioStore } from "./vehicleStudioStore";
 import { drivetrainProfileFor } from "./vehicleDrivetrainOptions";
-import { getPerformanceReadouts, getVehicleStockPerformance, getVehicleTuningLimits } from "./vehiclePerformance";
+import { getVehicleStockPerformance, getVehicleTuningLimits } from "./vehiclePerformance";
+import { vehicleSystems } from "../../vehicles/vehicleSystems";
+
+import { VehicleGarageIcon } from "./VehicleGarageIcon";
+
+const PARTS = Object.entries(catalog);
+const PARTS_BY_SYSTEM = {
+  road: PARTS.filter(([,part]) => part.systems.includes("road")),
+  tracked: PARTS.filter(([,part]) => part.systems.includes("tracked")),
+  marine: PARTS.filter(([,part]) => part.systems.includes("marine")),
+};
+
+function upgradeStage(stages: Record<string, number>, id: string, maxStage: number) {
+  return Math.max(0, Math.min(maxStage, stages[id] ?? 0));
+}
+
+function UpgradeBars({ value, max, label, bars = max }: { value: number; max: number; label: string; bars?: number }) {
+  return (
+    <span className="vehicle-upgrade-segments" role="meter" aria-label={label}
+      aria-valuemin={0} aria-valuemax={max} aria-valuenow={value} title={`${value} / ${max} stages`}>
+      {Array.from({ length: bars }, (_, index) => (
+        <i key={index} aria-hidden="true" style={{
+          "--bar-fill": `${Math.max(0, Math.min(1, value * bars / max - index)) * 100}%`,
+        } as CSSProperties} />
+      ))}
+    </span>
+  );
+}
+
+export function VehicleUpgradeProgress({ vehicle, stages, maxStage }: { vehicle: string; stages: Record<string, number>; maxStage: number }) {
+  const parts = PARTS_BY_SYSTEM[vehicleSystems(vehicle)];
+  const installed = parts.reduce((total, [id]) => total + upgradeStage(stages, id, maxStage), 0);
+  return <UpgradeBars value={installed} max={parts.length * maxStage} bars={5} label="Installed upgrade stages" />;
+}
 
 export function VehicleMods({
   vehicle,
@@ -18,15 +51,18 @@ export function VehicleMods({
   onSummaryChange?: (summary: VehiclePerformanceSummary) => void;
   onFooterChange?: (footer: ReactNode | null) => void;
 }) {
+  const [upgradeGroup, setUpgradeGroup] = useState("power");
+  const systems = vehicleSystems(vehicle);
+  const parts = PARTS_BY_SYSTEM[systems];
   const stock = useMemo(() => getVehicleStockPerformance(vehicle), [vehicle]);
   const limits = useMemo(() => getVehicleTuningLimits(vehicle), [vehicle]);
   const effects = useMemo(() => {
     const next: Record<string, number> = {};
-    for (const [id, part] of Object.entries(catalog))
+    for (const [id, part] of parts)
       for (const [stat, amount] of Object.entries(part.effects))
-        next[stat] = (next[stat] ?? 1) + amount * Math.min(limits.maxStage, stages[id] ?? 0);
+        next[stat] = (next[stat] ?? 1) + amount * upgradeStage(stages, id, limits.maxStage);
     return next;
-  }, [limits.maxStage, stages]);
+  }, [limits.maxStage, parts, stages]);
 
   const summary = useMemo(() => {
     const capped = {
@@ -44,9 +80,10 @@ export function VehicleMods({
       brake_force: stock.brake_force * capped.brake_force,
       suspension_damping_ratio: stock.suspension_damping_ratio * capped.suspension_damping_ratio,
       mass: stock.mass * capped.mass,
+      cooling_multiplier: (stock.cooling_multiplier ?? 1) * Math.min(1 + limits.maxStage * 0.1, effects.cooling_multiplier ?? 1),
+      angular_damping: stock.angular_damping === undefined ? undefined : stock.angular_damping * (effects.angular_damping ?? 1),
     };
   }, [effects, limits, stock]);
-  const readouts = getPerformanceReadouts(summary);
 
   const restore = useCallback(() => onStagesChange({}), [onStagesChange]);
   const exportBuild = useCallback(() => {
@@ -75,84 +112,39 @@ export function VehicleMods({
   useEffect(() => { onSummaryChange?.(summary); }, [summary, onSummaryChange]);
   useEffect(() => {
     onFooterChange?.(
-      <details className="vehicle-build-options">
-        <summary>BUILD OPTIONS</summary>
-        <div>
-          <button type="button" onClick={restore}>RESTORE STOCK</button>
-          <button type="button" onClick={exportBuild}>EXPORT BUILD</button>
-        </div>
-      </details>,
+      <>
+        <button type="button" onClick={restore}>RESTORE STOCK</button>
+        <button type="button" onClick={exportBuild}>EXPORT BUILD</button>
+      </>,
     );
     return () => onFooterChange?.(null);
   }, [onFooterChange, restore, exportBuild]);
 
   return (
-    <section className="vehicle-studio-card vehicle-performance-page" aria-label="Performance modifications">
-      <header><small>{limits.className} CHASSIS · STOCK PHYSICS</small><h3>Performance parts</h3></header>
-      <p>Grades compare this configured chassis with a supercar benchmark. Fictional upgrades are capped by vehicle class and do not change driving physics yet.</p>
-
-      <section className="vehicle-drivetrain-card" aria-label="Drivetrain and transmission preview">
-        <header><small>VEHICLE-SPECIFIC CONFIGURATION</small><h3>{profile.driveLayout} · TRANSMISSION</h3></header>
-        {profile.transmissions.length > 0 ? (
-          <>
-            <div className="vehicle-drivetrain-modes" role="group" aria-label="Transmission mode">
-              <button
-                type="button"
-                disabled={!profile.transmissions.includes("manual")}
-                aria-pressed={selectedTransmission === "manual"}
-                onClick={() => setTransmission(vehicle, "manual")}
-              >MANUAL · H-PATTERN</button>
-              <button
-                type="button"
-                disabled={!profile.transmissions.includes("automatic")}
-                aria-pressed={selectedTransmission === "automatic"}
-                onClick={() => setTransmission(vehicle, "automatic")}
-              >AUTOMATIC</button>
-              <button
-                type="button"
-                disabled={!profile.paddleShifters}
-                aria-pressed={profile.paddleShifters && paddlesEnabled}
-                onClick={() => setPaddlesEnabled((value) => !value)}
-              >PADDLE SHIFTERS</button>
-            </div>
-            <p>{profile.transmissions.length === 1
-              ? "This chassis is configured for automatic modes only."
-              : "Only transmission modes configured for this chassis can be selected."}</p>
-          </>
-        ) : (
-          <p>Dedicated propulsion controls for this vehicle class.</p>
-        )}
-      </section>
-
-      {Object.entries(catalog).map(([id, part]) => (
-        <label key={id}>
-          {part.label}
-          <select
-            aria-label={part.label}
-            value={Math.min(limits.maxStage, stages[id] ?? 0)}
-            onChange={(event) => onStagesChange({ ...stages, [id]: Number(event.target.value) })}
-          >
-            {["Stock", "Street · Stage 1", "Sport · Stage 2", "Race · Stage 3"].slice(0, limits.maxStage + 1).map((label, index) => (
-              <option key={index} value={index}>{label}</option>
-            ))}
-          </select>
-        </label>
-      ))}
-
-      <figure className="vehicle-performance-stats" aria-label="Configured vehicle performance compared with supercar benchmark">
-        <figcaption className="sr-only">In-game values and chassis-specific supercar grades</figcaption>
-        {readouts.map((row) => (
-          <div className="vehicle-performance-stat" key={row.key}>
-            <label>
-              <span>{row.label}</span>
-              <strong>{row.grade} · {row.valueText}</strong>
-              <small>SUPERCAR {row.benchmarkText}</small>
-              <meter min={0} max={1.25} value={row.ratio} optimum={1} aria-label={row.label + " grade " + row.grade + ", " + row.valueText + ", benchmark " + row.benchmarkText} />
-            </label>
+    <section className="vehicle-performance-page" aria-label="Performance modifications" data-upgrade-group={upgradeGroup}>
+      <div className="vehicle-upgrade-limit">{limits.className} · MAX STAGE {limits.maxStage}</div>
+      <div className="vehicle-upgrade-filter" role="group" aria-label="Upgrade categories">
+        {["power", "chassis"].map((group,index) => <button type="button" key={group} aria-pressed={upgradeGroup === group} onClick={() => setUpgradeGroup(group)}>{(systems === "marine" ? ["propulsion", "hull"][index] : group).toUpperCase()}</button>)}
+      </div>
+      {parts.map(([id, part]) => {
+        const stage = upgradeStage(stages, id, limits.maxStage);
+        return <div className="vehicle-upgrade-row" key={id} data-upgrade-group={part.group} role="group" aria-labelledby={`upgrade-label-${id}`}>
+          <VehicleGarageIcon name={id} />
+          <span className="vehicle-upgrade-name" id={`upgrade-label-${id}`}>{part.short}</span>
+          <div className="vehicle-upgrade-stepper">
+            <button type="button" aria-label={`Downgrade ${part.label}`} disabled={stage === 0} onClick={() => onStagesChange({ ...stages, [id]: stage - 1 })}>−</button>
+            <UpgradeBars value={stage} max={limits.maxStage} label={`${part.label} stage`} />
+            <button type="button" aria-label={`Upgrade ${part.label}`} disabled={stage >= limits.maxStage} onClick={() => onStagesChange({ ...stages, [id]: stage + 1 })}>+</button>
           </div>
-        ))}
-      </figure>
-      <p className="vehicle-mod-limit-note">CHASSIS LIMIT · {limits.className} · STAGE {limits.maxStage} MAX</p>
+        </div>;
+      })}
+      {profile.transmissions.length > 0 && <div className="vehicle-gearbox-controls" role="group" aria-label="Gearbox configuration">
+        <span><VehicleGarageIcon name="gearing" /> GEARBOX</span>
+        <div className="vehicle-drivetrain-modes">
+          {profile.transmissions.map(mode => <button key={mode} type="button" aria-pressed={selectedTransmission === mode} onClick={() => setTransmission(vehicle, mode)}>{mode === "manual" ? "MANUAL" : "AUTO"}</button>)}
+          {profile.paddleShifters && <button type="button" aria-pressed={paddlesEnabled} onClick={() => setPaddlesEnabled(value => !value)}>PADDLES</button>}
+        </div>
+      </div>}
     </section>
   );
 }

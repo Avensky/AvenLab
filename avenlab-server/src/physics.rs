@@ -174,6 +174,29 @@ impl PhysicsWorld {
         };
         Ok([point("red", &map.team_spawns.red)?, point("blue", &map.team_spawns.blue)?])
     }
+
+    /// Match swaps use the team's authored pads on the same floor as the car.
+    pub(crate) fn can_change_hero_at_spawn(&self, player: &str) -> bool {
+        const SPAWN_RADIUS: f32 = 12.0;
+        const SPAWN_HEIGHT_TOLERANCE: f32 = 3.0;
+        if self.is_defeated(player) || self.ctf_carriers.contains(player) { return false; }
+        let Some(map) = self.active_map.as_ref() else { return false; };
+        let Some(vehicle) = self.vehicles.get(player) else { return false; };
+        let Some(body) = self.bodies.get(vehicle.body) else { return false; };
+        let pads = match vehicle.team.as_str() {
+            "red" => &map.team_spawns.red,
+            "blue" => &map.team_spawns.blue,
+            _ => return false,
+        };
+        let pos = body.translation();
+        pads.iter().any(|pad| {
+            let [x, z] = pad.world_xz(map.cell);
+            let y = vehicle.config.spawn_height(pad.surface_y.unwrap_or(map.surface.road_y));
+            (pos.x - x).powi(2) + (pos.z - z).powi(2) <= SPAWN_RADIUS.powi(2)
+                && (pos.y - y).abs() <= SPAWN_HEIGHT_TOLERANCE
+        })
+    }
+
     /// Claim each authored home pad once, independently of where a car drove
     /// during warmup. Validate the entire formation before touching any body.
     fn kickoff_formation(&self) -> Result<Vec<(String, Isometry<Real>, Real)>, String> {

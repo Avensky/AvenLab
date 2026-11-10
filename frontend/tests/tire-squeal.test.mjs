@@ -2,13 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createTireSqueal} from '../src/vehicles/effects/tireSqueal.ts';
 test('tire audio is gesture-created, bounded, silent at grip, and can remount after cleanup',()=>{
- const original=globalThis.AudioContext,values=[],contexts=[];
+ const original=globalThis.AudioContext,values=[],frequencies=[],contexts=[];
  const node=()=>({connect(){return this;},disconnect(){},start(){},stop(){}});
  class AudioContext {
   state='running';currentTime=0;sampleRate=8;destination={};
   constructor(){contexts.push(this);}
   createGain(){return {...node(),gain:{value:0,setTargetAtTime:v=>values.push(v)}};}
-  createBiquadFilter(){return {...node(),frequency:{value:0,setTargetAtTime(){}},Q:{value:0}};}
+  createBiquadFilter(){return {...node(),frequency:{value:0,setTargetAtTime:v=>frequencies.push(v)},Q:{value:0}};}
   createBuffer(){return {getChannelData:()=>new Float32Array(16)};}
   createBufferSource(){return node();}
   async close(){this.state='closed';}
@@ -19,6 +19,9 @@ test('tire audio is gesture-created, bounded, silent at grip, and can remount af
   audio.unlock();audio.unlock();assert.equal(contexts.length,1);
   audio.update(99,99);assert(values.at(-1)<=.16);audio.update(0,1);assert.equal(values.at(-1),0);
   audio.update(NaN,1);assert.equal(values.at(-1),0);audio.update(1,NaN);assert.equal(values.at(-1),0);
-  audio.dispose();audio.unlock();assert.equal(contexts.length,2);audio.dispose();
+  const gainUpdates=values.length, pitchUpdates=frequencies.length;
+  audio.update(1,0);assert.equal(values.length,gainUpdates);assert.equal(frequencies.length,pitchUpdates);
+  audio.dispose();audio.unlock();assert.equal(contexts.length,2);
+  audio.update(1,0);assert.equal(values.length,gainUpdates+1);assert.equal(frequencies.length,pitchUpdates+1);audio.dispose();
  }finally{globalThis.AudioContext=original;}
 });

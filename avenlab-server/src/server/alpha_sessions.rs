@@ -362,6 +362,22 @@ impl Server {
                 }
                 Ok(json!({}))
             }
+            "character_equip" => {
+                let actor = self.actor(player).await?;
+                let choice: crate::alpha::character::CharacterChoice = serde_json::from_value(value["character"].clone())
+                    .map_err(|_| "Choose a character and outfit.")?;
+                if !choice.is_available() { return Err("Choose an available character outfit.".into()); }
+                let mut data = self.data.lock().await;
+                let profile = data.profiles.get(&actor).ok_or("Profile unavailable.")?;
+                if profile.progression.character.as_ref() == Some(&choice) {
+                    return Ok(json!({"character":choice}));
+                }
+                let previous = data.clone();
+                data.profiles.get_mut(&actor).ok_or("Profile unavailable.")?.progression.character = Some(choice.clone());
+                drop(data);
+                self.commit(previous).await?;
+                Ok(json!({"character":choice}))
+            }
             "skin_redeem" | "skin_equip" => {
                 let actor = self.actor(player).await?;
                 let previous = self.data.lock().await.clone();
@@ -398,53 +414,39 @@ impl Server {
         Ok(())
     }
     async fn select_hero(&self, player: &str, id: &str) -> Result<Value, String> {
-        if let Ok(runtime) = self.runtime(player).await {
-            let room = runtime.lock().await;
-            if let Some(round) = &room.round {
-                if round.phase == crate::ctf::CtfPhase::Ended {
-                    return Err("This match has ended.".into());
-                }
-                if round.phase == crate::ctf::CtfPhase::Running {
-                    let alpha = self.alpha.lock().await;
-                    let member = alpha.members.get(player).ok_or("Join a mode before choosing a hero.")?;
-                    // A replacement arrives without a pick. Its first selection goes
-                    // through the same role checks as a waiting-room selection.
-                    if !member.hero.is_empty() {
-                        if member.hero != id {
-                            return Err("Your hero is locked for this CTF round. Choose a different hero for the next match.".into());
-                        }
-                        return Ok(json!({"hero":id,"vehicle":policy::hero(id)?.vehicle}));
-                    }
-                }
-            }
-        }
+        let runtime = self.runtime(player).await?;
         if id.is_empty() {
             // Back may clear a pre-deployment choice without releasing its
             // seat. A live vehicle must keep its validated role/loadout.
-            let runtime = self.runtime(player).await?;
-            if runtime.lock().await.physics.vehicles.contains_key(player) {
+            let room = runtime.lock().await;
+            if room.physics.vehicles.contains_key(player) {
                 return Err("A deployed hero cannot be cleared; use Change vehicle.".into());
             }
+            room.validate_hero_change_location(player)?;
             let mut alpha = self.alpha.lock().await;
             let member = alpha.members.get_mut(player).ok_or("Join a mode before choosing a hero.")?;
             member.hero.clear();
             return Ok(json!({"hero":""}));
         }
         let selected = policy::hero(id)?;
-        let member = self
-            .alpha
-            .lock()
-            .await
-            .members
+        let appearance = self.saved_appearance(player, selected.vehicle).await;
+        let mut room = runtime.lock().await;
+        let alpha = self.alpha.lock().await;
+        let member = alpha.members
             .get(player)
-            .cloned()
+            .filter(|member| member.world == room.game.room_id)
             .ok_or("Join a mode before locking a hero.")?;
+        let spawned = room.physics.vehicles.contains_key(player);
+        if spawned && room.round.as_ref().is_some_and(|round| round.phase != crate::ctf::CtfPhase::Ended)
+            && member.hero == id {
+            return Ok(json!({"hero":id,"vehicle":selected.vehicle}));
+        }
+        room.validate_hero_change_location(player)?;
         if member.mode.bucket()==0 && crate::naval::is_ship(selected.vehicle) {
             return Err("Naval craft are only selectable in Sandbox and World Editor.".into());
         }
-        if member.mode.bucket() == 0 && self.alpha.lock().await.enforce_roles {
-            let a = self.alpha.lock().await.clone();
-            let roles: Vec<_> = a
+        if member.mode.bucket() == 0 && alpha.enforce_roles {
+            let roles: Vec<_> = alpha
                 .members
                 .iter()
                 .filter(|(key, m)| {
@@ -452,7 +454,7 @@ impl Server {
                 })
                 .filter_map(|(_, m)| policy::hero(&m.hero).ok().map(|h| h.role))
                 .chain(
-                    a.reservations
+                    alpha.reservations
                         .values()
                         .filter(|r| {
                             r.expires > timestamp()
@@ -466,17 +468,8 @@ impl Server {
                 return Err(format!("That role would leave an invalid {}-player team.", member.team_size));
             }
         }
-        let runtime = self.runtime(player).await?;
-        let appearance=self.saved_appearance(player,selected.vehicle).await;
-        let mut room = runtime.lock().await;
-        if room.physics.vehicles.contains_key(player) {
-            room.physics
-                .change_vehicle_for_player(player, selected.vehicle)?;
-            room.game.set_vehicle_id(player, selected.vehicle);
-            if let Some(entity)=room.game.entities.get_mut(player) { entity.appearance=appearance; }
-            if let Some(entity) = room.game.entities.get_mut(player) {
-                entity.last_packet = None;
-            }
+        drop(alpha);
+        if spawned {
             let connection = self
                 .connections
                 .lock()
@@ -484,6 +477,12 @@ impl Server {
                 .get(player)
                 .cloned()
                 .ok_or("Connection closed.")?;
+            room.physics.change_vehicle_for_player(player, selected.vehicle)?;
+            room.game.set_vehicle_id(player, selected.vehicle);
+            if let Some(entity) = room.game.entities.get_mut(player) {
+                entity.appearance = appearance;
+                entity.last_packet = None;
+            }
             connection.input_tx.send_replace(None);
             let config = room.physics.vehicles.get(player).map(|v| v.config);
             if let Some(config) = config {
@@ -492,7 +491,6 @@ impl Server {
             }
         }
         room.physics.set_assigned_hero(player,id);
-        drop(room);
         if let Some(current) = self.alpha.lock().await.members.get_mut(player) {
             current.hero = id.into();
         }
@@ -825,8 +823,7 @@ impl Server {
             value["match_phase"]=phase.map(|(_,phase)|json!(phase)).unwrap_or(Value::Null);
         }
         let viewer=a.members.get(player).or_else(||a.reservations.get(actor).filter(|r|r.expires>timestamp()).map(|r|&r.member));
-        // Public cards expose only the equipped vehicle appearance, never the
-        // profile's credentials, inventory or other vehicle loadouts.
+        // Public cards carry the equipped vehicle and character cosmetics.
         let card = |profile: &Profile, member: &Member, reconnecting: bool| {
             let teammate=viewer.is_some_and(|viewer|viewer.world==member.world&&viewer.team==member.team);
             let started=phases.get(&member.world).is_some_and(|(_,phase)|*phase!=crate::ctf::CtfPhase::Waiting);
@@ -837,7 +834,8 @@ impl Server {
                 .cloned().unwrap_or_default();
             json!({"id":profile.id,"name":profile.name,"team":member.team.as_str(),
                 "hero":if hidden{""}else{&member.hero},"showcase_hero":if hidden{""}else{showcase},"hero_hidden":hidden,"mode":member.mode,"team_size":member.team_size,"world_id":member.world,
-                "reconnecting":reconnecting,"appearance":if hidden{Value::Null}else{json!(appearance)}})
+                "reconnecting":reconnecting,"appearance":if hidden{Value::Null}else{json!(appearance)},
+                "character":if hidden{None}else{profile.progression.equipped_character()}})
         };
         let roster: Vec<_> = a.members.iter().filter(|(_, m)| m.mode.bucket() == 0)
             .filter_map(|(id, member)| clients.get(id)

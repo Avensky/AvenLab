@@ -16,7 +16,7 @@ export const ModePortraitCard = memo(function ModePortraitCard({mode, selected, 
   onSelect:(size: MatchTeamSize)=>void;
 }) {
   const gradient = useId().replaceAll(":", "");
-  return <button type="button" className="mode-portrait-card" data-match-size={mode.id} aria-label={mode.title} aria-pressed={selected} disabled={disabled} onClick={()=>onSelect(mode.id)}>
+  return <button type="button" className="mode-portrait-card menu-panel-frame" data-match-size={mode.id} aria-label={mode.title} aria-pressed={selected} disabled={disabled} onClick={()=>onSelect(mode.id)}>
     <span className="mode-portrait-scene" aria-hidden="true">
       <svg viewBox="0 0 180 220" preserveAspectRatio="xMidYMid slice">
         <defs><linearGradient id={gradient} x2="0" y2="1"><stop stopColor="var(--app-accent)" stopOpacity=".34"/><stop offset="1" stopColor="#081320"/></linearGradient></defs>

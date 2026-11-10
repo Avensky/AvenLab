@@ -1,20 +1,23 @@
 import { ProgressOrbit } from "./ProgressOrbit";
 import type { ComponentProps } from "react";
-import { ControllerButton, type ControllerKey } from "./ControllerButton";
+import type { ControllerKey } from "./ControllerButton";
+import { ControlGlyph } from "./ControlGlyph";
 
-/** Shared clickable Xbox action. Glyph hints elsewhere stay non-interactive. */
+/** Shared clickable menu action with a prompt for the selected input device. */
 export function ControllerAction({
   button,
+  keyboard,
   progress,
   progressClassName,
   className = "",
   children,
   type = "button",
   ...props
-}: ComponentProps<"button"> & { button: ControllerKey; progress?:number|null; progressClassName?:string }) {
+}: ComponentProps<"button"> & { button: ControllerKey; keyboard?: string | null; progress?:number|null; progressClassName?:string }) {
+  const glyph = <ControlGlyph controller={button} keyboard={keyboard} />;
   return (
     <button {...props} type={type} className={`controller-action ${className}`}>
-      {progress===undefined?<ControllerButton button={button}/>:<ProgressOrbit progress={progress} className={progressClassName}><ControllerButton button={button}/></ProgressOrbit>}
+      {progress===undefined?glyph:<ProgressOrbit progress={progress} className={progressClassName}>{glyph}</ProgressOrbit>}
       {children}
     </button>
   );

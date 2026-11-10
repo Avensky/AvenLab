@@ -5,6 +5,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { shallow } from "zustand/shallow";
 import { isUITheme, type UITheme } from "../../theme/catalog";
+import { MENU_INPUT_LABELS, type MenuInputPreference } from "../../controls/inputDevice";
 import {
   DEFAULT_GARAGE_EFFECTS,
   sanitizeGarageEffects,
@@ -33,6 +34,7 @@ export {
   DEFAULT_HUD_GROUPS,
   type HudGroupId,
 } from "./hudVisibility";
+export type MenuHeaderStyle = "classic" | "angled";
 export type Preferences = {
   /** Marks the one-time migration from hidden parent gates to independent widgets. */
   hudVisibilityVersion: number;
@@ -40,6 +42,8 @@ export type Preferences = {
   healthBars: HealthBarMode;
   notificationChannels:Record<NoticeChannel,boolean>;
   theme: UITheme;
+  menuHeaderStyle: MenuHeaderStyle;
+  inputDevice: MenuInputPreference;
   vehicleCosmetics: Pick<VehicleCosmetics,"matchCockpit">;
   garageEffects: GarageEffects;
   ignitionVisibility: "always" | "hidden";
@@ -91,6 +95,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
   healthBars: "all",
   notificationChannels:DEFAULT_NOTICE_CHANNELS,
   theme: "navy",
+  menuHeaderStyle: "angled",
+  inputDevice: "browser",
   vehicleCosmetics: {matchCockpit:DEFAULT_VEHICLE_COSMETICS.matchCockpit},
   garageEffects: DEFAULT_GARAGE_EFFECTS,
   ignitionVisibility: "always",
@@ -173,6 +179,10 @@ export function sanitizePreferences(value: unknown): Preferences {
         ? data.radioHudStyle
         : "no-tabs",
     theme: isUITheme(data.theme) ? data.theme : "navy",
+    menuHeaderStyle: data.menuHeaderStyle === "classic" ? "classic" : "angled",
+    inputDevice: typeof data.inputDevice === "string" && Object.hasOwn(MENU_INPUT_LABELS, data.inputDevice)
+      ? data.inputDevice
+      : DEFAULT_PREFERENCES.inputDevice,
     vehicleCosmetics: {matchCockpit:sanitizeVehicleCosmetics(data.vehicleCosmetics).matchCockpit},
     garageEffects: sanitizeGarageEffects(data.garageEffects),
     ignitionVisibility: data.ignitionVisibility === "hidden" ? "hidden" : "always",

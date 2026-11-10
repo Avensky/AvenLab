@@ -89,11 +89,8 @@ export function SandboxSetup({ collapsed, setCollapsed }: Sandbox) {
         className="garage-selection-header"
         collapsed={collapsed}
         setCollapsed={setCollapsed}
-        exitLabel="BACK"
         showCanControls={false}
         showStatus={false}
-        exitDisabled={false}
-        onExit={() => setScreen("main")}
       />
       {/* Selection Components */}
       <div

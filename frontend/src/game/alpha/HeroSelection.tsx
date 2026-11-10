@@ -4,11 +4,14 @@ import { unavailableHeroes } from "./heroAvailability";
 import { prepareReconSelection } from "../../store/recon/captureSetup";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ControllerAction } from "../../components/controller";
+import { MenuLogo } from "../../components/menus/MenuLogo";
+import { useMenuPressOwner } from "../../components/menus/useMenuPressOwner";
 import {
   useAlphaStore,
   HEROES,
   HERO_FILTERS,
   isMatchMode,
+  isPlannedMode,
   matchModeLabel,
   canonicalGameMode,
   modeTeamSize,
@@ -22,8 +25,10 @@ import { useSelectionNavigation } from "./useSelectionNavigation";
 import { navigateFormRows } from "../social/formRows";
 import type { MenuAction } from "../../controls/inputRouting";
 import { deploySelectedHero } from "./sessionActions";
-import {SelectionHeader,SelectionFooter} from './SelectionChrome';
+import {SelectionFooter} from './SelectionChrome';
+import {SceneTabHeader} from "../../components/menus/SceneTabHeader";
 import { HeroRoster } from "./HeroRoster";
+import { heroRoleHeaderTabs, heroMatchesFilter } from "./heroRoleFilters";
 import { PreMatchTeamPreview } from "../stats/PreMatchTeamPreview";
 import { LobbyChat } from "./LobbyChat";
 import "./heroSelection.css";
@@ -45,9 +50,12 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
     root = useRef<HTMLElement>(null);
   const inMode = !!active&&canonicalGameMode(active.mode)===canonicalGameMode(mode)&&(!isMatchMode(mode)||modeTeamSize(active.mode,active.team_size)===selectedTeamSize||overlay);
   const research = mode === "signal_recon";
-  const planned = mode === "swarm";
+  const planned = isPlannedMode(mode);
   const match = isMatchMode(mode);
+  const matchHeader = match && !overlay;
+  const pressOwner = useMenuPressOwner();
   const allowBoats=!match && !research && !planned;
+  useEffect(() => { if (!allowBoats && (role === "air" || role === "sea")) setRole("all"); }, [allowBoats, role]);
   const confirmedTeam = match && inMode && (active?.team === "red" || active?.team === "blue")
     ? active.team : undefined;
   const customWorld = Boolean(world && !active);
@@ -68,7 +76,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
   }, []);
   const tab = useCallback(
     (step: number) => {
-      const filters=HERO_FILTERS.filter(item=>allowBoats||item!=='boat');
+      const filters=HERO_FILTERS.filter(item=>allowBoats||!["air","sea"].includes(item));
       filter(
         filters[
           (filters.indexOf(role) + step + filters.length) %
@@ -183,8 +191,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
     const focused = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>("[data-hero]");
     const id = focused?.dataset.hero ??
       useAlphaStore.getState().previewHero ??
-      HEROES.find((h) => (allowBoats||!['hawaii-rescue','louisiana'].includes(h.vehicle)) &&
-        (role==='all'||(role==='boat'?['hawaii-rescue','louisiana'].includes(h.vehicle):h.role===role)))?.id;
+      HEROES.find((candidate) => heroMatchesFilter(candidate, role, allowBoats))?.id;
     if (!id) return;
     void choose(id);
   }, [choose, role, allowBoats]);
@@ -192,6 +199,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
   const selected = HEROES.find((h) => h.id === previewId);
   return (
     <section
+      {...pressOwner}
       ref={root}
       inert={inspecting}
       className="game-ui menu-surface alpha-selection hero-selection"
@@ -201,10 +209,25 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
       aria-label={overlay ? "Change hero" : "Hero selection"}
       style={overlay ? { zIndex: 50, background:"transparent", backdropFilter:"none" } : undefined}
     >
-      <SelectionHeader title={overlay?'CHANGE HERO':'CHOOSE HERO'} eyebrow={matchModeLabel(mode,active&&inMode?active.team_size:selectedTeamSize)} team={confirmedTeam} onBack={()=>void back()} busy={busy}/>
-      <div className="hero-selection-stage">
+      <SceneTabHeader
+        title={matchHeader || overlay ? "HEROES" : "CHOOSE HERO"}
+        logo={matchHeader ? <MenuLogo /> : undefined}
+        compact={matchHeader || overlay}
+        eyebrow={overlay ? "" : matchModeLabel(mode, active && inMode ? active.team_size : selectedTeamSize)}
+        titleTeam={confirmedTeam}
+        showProgress={matchHeader}
+        tabs={heroRoleHeaderTabs(allowBoats)}
+        tablistClassName="hero-pick-tabs"
+        activeTab={role}
+        onTabChange={next => filter(next as HeroFilter)}
+        idPrefix="hero-selection-role"
+        panelId="hero-role-panel"
+        busy={busy}
+      />
+      <div className="hero-selection-stage hero-picker-stage" data-hero-filter={role} id="hero-role-panel" role="tabpanel" aria-labelledby={"hero-selection-role-tab-"+role}>
         {(!match || inMode || overlay) && (
           <HeroRoster
+            showFilters={false}
             selected={heroId}
             filter={role}
             allowBoats={allowBoats}
@@ -214,28 +237,25 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
             onChoose={(id) => void choose(id)}
           />
         )}
-        <section
-          className="hero-summary"
-          aria-label="Selected hero"
-          data-role={selected?.role}
-        >
-          <small>{selected?.role.toUpperCase() ?? "CHOOSE YOUR HERO"}</small>
-          <h2>{selected?.name ?? "AWAITING PICK"}</h2>
-          {status && (
-            <p className="alpha-status" role="status">
-              {status}
-            </p>
-          )}
-        </section>
-        <div className="hero-chat-panel">
-          <LobbyChat />
+        <div className="hero-picker-scene">
+          <div className="hero-picker-preview">
+            <section className="hero-summary" aria-label="Selected hero" data-role={selected?.role}>
+              <small>{selected?.role.toUpperCase() ?? "CHOOSE YOUR HERO"}</small>
+              <h2>{selected?.name ?? "AWAITING PICK"}</h2>
+              {status && <p className="alpha-status" role="status">{status}</p>}
+            </section>
+            <div className="hero-chat-panel">
+              <LobbyChat />
+            </div>
+          </div>
         </div>
+        {match && inMode && !overlay && <PreMatchTeamPreview key={`${active.world_id}:${mode}`} view={view} selectedHero={heroId}/>}
       </div>
-      {match && inMode && !overlay && <PreMatchTeamPreview key={`${active.world_id}:${mode}`} view={view} selectedHero={heroId}/>}
-      <SelectionFooter chat>
+      <SelectionFooter chat hasPrimaryAction backAction={{ onClick: back, disabled: busy }}>
         <ControllerAction button="A"
           type="button"
           className="menu-control  alpha-deploy"
+          tabIndex={-1}
           disabled={
             busy ||
             planned ||

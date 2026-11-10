@@ -46,7 +46,7 @@ function forceOpaqueCamaroSurface(material: Material) {
 }
 
 const nonWindowGlass = /(?:red|amber|ambar|orange|oarnge|blue)_?glass|glass_?surr|surround|frame|mirror|lamp|light|lens|instrument/i;
-/** All vehicle windows use the BRZ/FR-S neutral tinted-glass profile. Lamp
+/** Vehicle windows start with the neutral tinted-glass profile. Lamp
  * covers, mirrors, and colored marker lenses keep their authored materials. */
 export function isVehicleWindowMaterial(name: string, object?: Object3D, model?: string) {
   if (model === "camaro" && object && isCamaroWindow(object)) return true;

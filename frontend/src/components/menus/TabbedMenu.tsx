@@ -1,6 +1,10 @@
 import {MenuTabButton} from "./MenuTabButton";
 import {MenuFrame,MenuFrameHeader,MenuFrameFooter} from "./MenuFrame";
+import { MenuIcon, type MenuIconName } from "./MenuIcon";
+import { useAngledMenuHeader } from "./useAngledMenuHeader";
+import { ControlGlyph, type ControlGlyphProps } from "../controller";
 import { trapMenuFocus } from "./menuFocus";
+import { useMenuPressOwner } from "./useMenuPressOwner";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { MenuAction } from "../../controls/inputRouting";
 
@@ -8,6 +12,7 @@ export type MenuRow = {
   id: string;
   label: string;
   value?: string;
+  shortcut?: ControlGlyphProps;
   description?: string;
   action?: (direction: 1 | -1) => void;
   adjustable?: boolean;
@@ -17,9 +22,11 @@ export type MenuRow = {
 export type MenuTab = {
   id: string;
   label: string;
+  icon?: MenuIconName;
   description?: string;
   rows: MenuRow[];
   content?: ReactNode;
+  preview?: ReactNode;
 };
 
 export function TabbedMenu({
@@ -31,6 +38,7 @@ export function TabbedMenu({
   backLabel = "Back",
   status,
   initialTab,
+  chamferTitle = false,
 }: {
   initialTab?: string;
   title: string;
@@ -40,7 +48,9 @@ export function TabbedMenu({
   onBack: () => void;
   backLabel?: string;
   status?: string;
+  chamferTitle?: boolean;
 }) {
+  const angled = useAngledMenuHeader();
   const [selection, setSelection] = useState({
     tab: tabs.find((tab) => tab.id === initialTab)?.id ?? tabs[0].id,
     row: "",
@@ -57,8 +67,7 @@ export function TabbedMenu({
   const content = useRef<HTMLDivElement>(null);
   const buttons = useRef(new Map<string, HTMLButtonElement>());
   const panelId = useId();
-  const pointerOwner = useRef<Element | null>(null);
-  const keyboardOwner = useRef<EventTarget | null>(null);
+  const pressOwner = useMenuPressOwner();
   const tabId = `${panelId}-${tab.id}`;
 
   const selectTab = (index: number, focus = "row") =>
@@ -73,7 +82,7 @@ export function TabbedMenu({
       .getElementById(`${panelId}-${tab.id}-tab`)
       ?.scrollIntoView({ block: "nearest", inline: "nearest" });
     if (content.current) content.current.scrollTop = 0;
-  }, [tab.id, panelId]);
+  }, [tab.id, panelId, angled]);
   useEffect(() => {
     const element =
       selection.focus === "tab"
@@ -83,7 +92,7 @@ export function TabbedMenu({
           : document.getElementById(`${panelId}-${tab.id}-tab`);
     element?.focus({ preventScroll: true });
     element?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [tab.id, selectedId, selection.focus, panelId]);
+  }, [tab.id, selectedId, selection.focus, panelId, angled]);
   useEffect(() => {
     const handle = (event: Event) => {
       const action = (event as CustomEvent<MenuAction>).detail;
@@ -119,153 +128,132 @@ export function TabbedMenu({
     return () => window.removeEventListener("avenlab:panel-action", handle);
   }, [onBack, rows, selectedRow, tab.id, tabIndex, tabs]);
 
-  return (
-    <div className="game-ui menu-surface tabbed-menu fixed inset-0 z-50 bg-slate-950 text-slate-100">
-      <MenuFrame
-        onKeyDown={trapMenuFocus}
-        onPointerDownCapture={(event) => {
-          pointerOwner.current =
-            event.button === 0
-              ? (event.target as Element).closest("button")
-              : null;
-        }}
-        onPointerCancelCapture={() => {
-          pointerOwner.current = null;
-        }}
-        onClickCapture={(event) => {
-          if (event.detail > 0) {
+  const navigation = (
+    <div
+      role="tablist"
+      aria-label={`${title} categories`}
+      className={angled ? "angled-header-tabs" : "tabbed-menu-tabs menu-frame-tabs"}
+    >
+      {tabs.map((item, index) => (
+        <MenuTabButton
+          key={item.id}
+          id={`${panelId}-${item.id}-tab`}
+          selected={tab.id === item.id}
+          angled={angled}
+          data-selected={tab.id === item.id}
+          aria-controls={`${panelId}-${item.id}-panel`}
+          tabIndex={tab.id === item.id ? 0 : -1}
+          onClick={() => selectTab(index)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ")
+              event.stopPropagation();
             if (
-              pointerOwner.current !==
-              (event.target as Element).closest("button")
+              ["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)
             ) {
               event.preventDefault();
               event.stopPropagation();
+              const next =
+                event.key === "Home"
+                  ? 0
+                  : event.key === "End"
+                    ? tabs.length - 1
+                    : (index +
+                        (event.key === "ArrowLeft" ? -1 : 1) +
+                        tabs.length) %
+                      tabs.length;
+              selectTab(next, "tab");
             }
-            pointerOwner.current = null;
-          }
-        }}
-        onKeyDownCapture={(event) => {
-          if (event.key !== "Enter" && event.key !== " ") return;
-          if (event.repeat) {
-            event.preventDefault();
-            event.stopPropagation();
-          } else keyboardOwner.current = event.target;
-        }}
-        onKeyUpCapture={(event) => {
-          if (event.key !== "Enter" && event.key !== " ") return;
-          // Space released after opening a menu must not click its newly focused row.
-          if (keyboardOwner.current !== event.target) {
-            event.preventDefault();
-            event.stopPropagation();
-          }
-          keyboardOwner.current = null;
-        }}
+          }}
+          className={angled ? undefined : "menu-tab"}
+        >
+          {item.icon && <MenuIcon name={item.icon} />}
+          {item.label}
+        </MenuTabButton>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="game-ui menu-surface tabbed-menu fixed inset-0 z-50 bg-slate-950 text-slate-100">
+      <MenuFrame
+        {...pressOwner}
+        onKeyDown={trapMenuFocus}
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${panelId}-title`}
         aria-describedby={subtitle ? `${panelId}-description` : undefined}
         className="menu-shell tabbed-menu-shell flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-slate-950"
       >
-        <MenuFrameHeader title={title} titleId={`${panelId}-title`} eyebrow={eyebrow} onBack={onBack} backLabel={backLabel} className="tabbed-menu-header"/>
+        <MenuFrameHeader title={title} titleId={`${panelId}-title`} eyebrow={eyebrow} compact={angled && !eyebrow}
+          showProgress={!angled}
+          className={angled ? `angled-tab-header${chamferTitle ? " angled-tab-header--chamfered" : ""}` : "tabbed-menu-header"}>
+          {angled && <div className="tabbed-angled-scroll">{navigation}</div>}
+        </MenuFrameHeader>
         {subtitle&&<p id={`${panelId}-description`} className="sr-only">{subtitle}</p>}
-        <div
-          role="tablist"
-          aria-label={`${title} categories`}
-          className="tabbed-menu-tabs menu-frame-tabs"
-        >
-          {tabs.map((item, index) => (
-            <MenuTabButton
-              key={item.id}
-              id={`${panelId}-${item.id}-tab`}
-              selected={tab.id === item.id}
-              data-selected={tab.id === item.id}
-              aria-controls={`${panelId}-${item.id}-panel`}
-              tabIndex={tab.id === item.id ? 0 : -1}
-              onClick={() => selectTab(index)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ")
-                  event.stopPropagation();
-                if (
-                  ["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)
-                ) {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  const next =
-                    event.key === "Home"
-                      ? 0
-                      : event.key === "End"
-                        ? tabs.length - 1
-                        : (index +
-                            (event.key === "ArrowLeft" ? -1 : 1) +
-                            tabs.length) %
-                          tabs.length;
-                  selectTab(next, "tab");
-                }
-              }}
-              className="menu-tab"
-            >
-              {item.label}
-            </MenuTabButton>
-          ))}
-        </div>
+        {!angled && navigation}
         <div
           ref={content}
           role="tabpanel"
           id={`${tabId}-panel`}
           aria-labelledby={`${tabId}-tab`}
-          className="tabbed-menu-content menu-frame-content min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain"
+          className={`tabbed-menu-content menu-frame-content min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain${tab.preview ? " tabbed-menu-with-preview" : ""}`}
         >
-          {tab.description && (
-            <p className="menu-description">{tab.description}</p>
-          )}
-          <div className="menu-row-list">
-            {tab.rows.map((row) => (
-              <button
-                type="button"
-                key={row.id}
-                ref={(element) => {
-                  if (element) buttons.current.set(row.id, element);
-                  else buttons.current.delete(row.id);
-                }}
-                disabled={row.disabled || !row.action}
-                data-menu-row={row.id}
-                data-selected={selectedRow?.id === row.id}
-                data-danger={row.danger || undefined}
-                onFocus={() => {
-                  if (selection.row !== row.id)
-                    setSelection({ tab: tab.id, row: row.id, focus: "row" });
-                }}
-                onPointerEnter={() => {
-                  if (!row.disabled && row.action && selection.row !== row.id)
-                    setSelection({ tab: tab.id, row: row.id, focus: "row" });
-                }}
-                onClick={() => row.action?.(1)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ")
-                    event.stopPropagation();
-                }}
-                className="menu-control menu-row"
-              >
-                <span className="menu-row-copy">
-                  <span className="menu-row-label">{row.label}</span>
-                  {row.description && (
-                    <span className="menu-row-description">
-                      {row.description}
-                    </span>
+          <div className="tabbed-menu-controls">
+            {tab.description && (
+              <p className="menu-description">{tab.description}</p>
+            )}
+            <div className="menu-row-list">
+              {tab.rows.map((row) => (
+                <button
+                  type="button"
+                  key={row.id}
+                  ref={(element) => {
+                    if (element) buttons.current.set(row.id, element);
+                    else buttons.current.delete(row.id);
+                  }}
+                  disabled={row.disabled || !row.action}
+                  data-menu-row={row.id}
+                  data-selected={selectedRow?.id === row.id}
+                  data-danger={row.danger || undefined}
+                  onFocus={() => {
+                    if (selection.row !== row.id)
+                      setSelection({ tab: tab.id, row: row.id, focus: "row" });
+                  }}
+                  onPointerEnter={() => {
+                    if (!row.disabled && row.action && selection.row !== row.id)
+                      setSelection({ tab: tab.id, row: row.id, focus: "row" });
+                  }}
+                  onClick={() => row.action?.(1)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ")
+                      event.stopPropagation();
+                  }}
+                  className="menu-control menu-row"
+                >
+                  <span className="menu-row-copy">
+                    <span className="menu-row-label">{row.label}</span>
+                    {row.description && (
+                      <span className="menu-row-description">
+                        {row.description}
+                      </span>
+                    )}
+                  </span>
+                  {row.value && (
+                    <span className="menu-row-value" data-toggle={
+                      /^(on|show|enabled)$/i.test(row.value) ? "on" :
+                      /^(off|hide|disabled)$/i.test(row.value) ? "off" : undefined
+                    }>{row.value}</span>
                   )}
-                </span>
-                {row.value && (
-                  <span className="menu-row-value" data-toggle={
-                    /^(on|show|enabled)$/i.test(row.value) ? "on" :
-                    /^(off|hide|disabled)$/i.test(row.value) ? "off" : undefined
-                  }>{row.value}</span>
-                )}
-              </button>
-            ))}
+                  {row.shortcut && <ControlGlyph {...row.shortcut} />}
+                </button>
+              ))}
+            </div>
+            {tab.content && <div className="menu-extras">{tab.content}</div>}
           </div>
-          {tab.content && <div className="menu-extras">{tab.content}</div>}
+          {tab.preview && <div className="tabbed-menu-preview">{tab.preview}</div>}
         </div>
-        <MenuFrameFooter className="tabbed-menu-footer" status={status}/>
+        <MenuFrameFooter className="tabbed-menu-footer" status={status}
+          backAction={{ onClick: onBack, label: backLabel }} />
       </MenuFrame>
     </div>
   );

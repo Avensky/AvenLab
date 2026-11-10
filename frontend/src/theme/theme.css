@@ -26,7 +26,6 @@ html[data-ui-theme]
     .menu-shell,
     .cockpit-overlay,
     .cockpit-panel,
-    .pause-menu,
     .menu-bind-card
   ) {
   background: var(--app-background);
@@ -38,7 +37,7 @@ html[data-ui-theme]
     .menu-tab,
     .cockpit-panel button,
     .theme-choice select
-  ) {
+  ):where(:not(.menu-panel-frame, .angled-header-tab)) {
   background: var(--app-panel);
   color: var(--app-text);
   border-color: var(--app-line);
@@ -52,7 +51,7 @@ html[data-ui-theme]
     [aria-pressed="true"],
     [aria-selected="true"],
     [data-selected="true"]
-  ):not(:disabled) {
+  ):not(:disabled, .menu-panel-frame, .angled-header-tab) {
   background: var(--app-raised);
   border-color: var(--app-accent);
   color: var(--app-text);
@@ -96,7 +95,7 @@ html[data-ui-theme] .cockpit-content {
   background: var(--app-background);
   font-size: calc(12px * var(--menu-text-scale, 1));
 }
-html[data-ui-theme] .cockpit-panel button {
+html[data-ui-theme] .cockpit-panel button:where(:not(.angled-header-tab)) {
   font-size: calc(10px * var(--menu-text-scale, 1));
   min-height: 30px;
   touch-action: manipulation;
@@ -126,32 +125,6 @@ html[data-ui-theme] .theme-choice select {
   padding: 5px;
   font: inherit;
 }
-html[data-ui-theme] .cockpit-header {
-  flex-wrap: wrap;
-  height: auto;
-  min-height: 42px;
-}
-html[data-ui-theme] .cockpit-header h1 {
-  letter-spacing: 0.05em;
-}
-html[data-ui-theme] .cockpit-panel .cockpit-shortcuts {
-  height: auto;
-  min-height: 30px;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-html[data-ui-theme] .main-menu {
-  background: var(--app-background);
-}
-html[data-ui-theme] .main-menu .menu-home-content {
-  color: var(--app-text);
-}
-html[data-ui-theme] .menu-home .menu-action {
-  text-shadow: none;
-}
-
 html[data-high-contrast="true"]
   :is(.menu-surface, .cockpit-panel, .cockpit-overlay) {
   --app-text: #fff;
@@ -162,7 +135,7 @@ html[data-high-contrast="true"]
   --app-line: #ccc;
   --app-accent: #fff;
 }
-html[data-high-contrast="true"] :is(.menu-control, .cockpit-panel button) {
+html[data-high-contrast="true"] :is(.menu-control, .cockpit-panel button):not(.menu-panel-frame, .angled-header-tab) {
   border-width: 2px;
 }
 html[data-reduce-motion="true"] :is(.cockpit-panel, .driving-hud) * {
@@ -177,12 +150,6 @@ html[data-reduce-motion="true"] :is(.cockpit-panel, .driving-hud) * {
   }
 }
 @media (max-width: 600px) {
-  html[data-ui-theme] .cockpit-header {
-    gap: 6px;
-  }
-  html[data-ui-theme] .cockpit-header h1 {
-    font-size: 12px;
-  }
   html[data-ui-theme] .theme-choice {
     margin-left: auto;
   }
@@ -213,37 +180,53 @@ html[data-ui-theme] .menu-video-background::after {
   background: linear-gradient(90deg,#060a14b8,#060a144d,#060a14b8),
     color-mix(in srgb,var(--app-scene-tint) 18%,transparent);
 }
+html[data-ui-theme] .main-menu .menu-video-background::after {
+  background: linear-gradient(90deg, #060a1499, #060a140a 49%, #060a1455);
+}
+html[data-ui-theme] .main-menu .menu-home-content { text-shadow: 0 1px 4px #000; }
 html[data-ui-theme] .main-menu :is(.menu-home-content,.menu-brand-title,.menu-action) { color: var(--scene-ink); }
 html[data-ui-theme] .main-menu :is(.menu-brand-tagline,.controller-shortcuts,.alpha-progress,.alpha-progress small) { color: var(--scene-muted); }
-html[data-ui-theme] .main-menu .menu-action {
-  background: #060a1470;
+html[data-ui-theme]:not([data-high-contrast="true"]) .main-menu .menu-action {
+  background: #060a147d;
   border-color: #d7e5ff30;
-  border-radius: var(--app-radius-sm);
 }
-html[data-ui-theme] .main-menu .menu-action:is(:hover,:focus-visible,[data-selected="true"]) {
+html[data-ui-theme]:not([data-high-contrast="true"]) .main-menu .menu-action:is(:hover,:focus-visible,[data-selected="true"]) {
   color: var(--scene-ink);
   background: color-mix(in srgb,var(--app-scene-tint) 25%,#060a14c9);
   border-color: color-mix(in srgb,var(--app-scene-tint) 65%,#fff);
+}
+html[data-ui-theme]:not([data-high-contrast="true"]) [data-live-world] .tabbed-menu {
+  background: color-mix(in srgb, var(--app-background) 78%, transparent);
+  backdrop-filter: blur(4px);
+}
+html[data-ui-theme]:not([data-high-contrast="true"]) [data-live-world] .tabbed-menu-shell {
+  background: transparent;
+}
+html[data-ui-theme]:not([data-high-contrast="true"]) [data-live-world] .tabbed-menu .menu-row {
+  background: var(--app-panel);
+}
+html[data-ui-theme]:not([data-high-contrast="true"]) [data-live-world] .tabbed-menu .menu-row:is(:hover,:focus-visible,[data-selected="true"]):not(:disabled) {
+  background: var(--app-raised);
 }
 html[data-ui-theme] .hero-selection {
   background: color-mix(in srgb,var(--app-scene-tint) 6%,transparent);
   backdrop-filter: none;
 }
-html[data-ui-theme] .hero-selection :is(.alpha-header,.alpha-selection-footer) {
+html[data-ui-theme] .hero-selection .alpha-header {
   background: color-mix(in srgb,var(--app-panel) 97%,transparent);
   color: var(--app-text);
   border-color: var(--app-line);
 }
 html[data-ui-theme] .hero-selection :is(.alpha-header h1,.hero-summary h2,.hero-roster h2,.hero-team-strip strong) { color: var(--app-text);text-shadow:none; }
-html[data-ui-theme] .hero-selection :is(.alpha-header small,.alpha-mode-planned,.hero-roster header span,.hero-team-strip small,.alpha-progress small,.alpha-progress span) { color: var(--app-muted);text-shadow:none; }
-html[data-ui-theme] .hero-selection :is(.alpha-mode-tabs,.hero-role-tabs) {
+html[data-ui-theme] .hero-selection :is(.alpha-header small,.hero-roster header span,.hero-team-strip small,.alpha-progress small,.alpha-progress span) { color: var(--app-muted);text-shadow:none; }
+html[data-ui-theme] .hero-selection .hero-role-tabs {
   background: var(--app-panel);
   color: var(--app-text);
 }
-html[data-ui-theme] .hero-selection :is(.alpha-mode-tabs,.hero-role-tabs) .menu-control {
+html[data-ui-theme] .hero-selection .hero-role-tabs .menu-control {
   color: var(--app-text);background: var(--app-panel);border-color: var(--app-line);
 }
-html[data-ui-theme] .hero-selection :is(.alpha-mode-tabs,.hero-role-tabs) [aria-selected="true"] {
+html[data-ui-theme] .hero-selection .hero-role-tabs [aria-selected="true"] {
   background: var(--app-raised);color:var(--app-text);border-color:var(--app-accent);
   box-shadow:inset 0 -2px var(--app-accent);
 }
@@ -255,7 +238,7 @@ html[data-ui-theme] .hero-selection .hero-summary {background:transparent;paddin
 html[data-ui-theme] .hero-selection .hero-summary h2 {color:#f3f6ff;text-shadow:0 2px 6px #000,0 0 2px #000;}
 /* Scene captions use readable world text; chrome keeps the player's palette. */
 html[data-ui-theme] .hero-selection .hero-summary > small {color:#e4edf6;text-shadow:0 1px 4px #000,0 0 2px #000;}
-html[data-ui-theme] .hero-selection :is(.alpha-mode-tabs,.hero-role-tabs) .menu-control {border-radius:0;}
+html[data-ui-theme] .hero-selection .hero-role-tabs .menu-control {border-radius:0;}
 html[data-ui-theme] .hero-selection .hero-roster>header {padding:6px;border-radius:var(--app-radius-sm);}
 
 /* Shared full-screen menu surfaces live in components/menus/menuFrame.css.

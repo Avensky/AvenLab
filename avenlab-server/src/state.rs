@@ -35,6 +35,9 @@ use crate::physics::{PhysicsWorld, SIMULATION_DT, SIMULATION_HZ};
 use crate::spawn::{PlayerSpawnInfo, SpawnManager, Team};
 use crate::vehicle_state::{Vehicle, VehicleConfig, PhysicsWheelSnapshot};
 use crate::powertrain::HudCalibration;
+
+// Server-owned resource_mask bit for the match Change Hero action.
+const CAN_CHANGE_HERO: u16 = 1 << 8;
 // ============================================================================
 // Network Payloads (What the Frontend Sees)
 // ============================================================================
@@ -654,7 +657,9 @@ impl SharedGameState {
                 condition: vehicle.powertrain.condition,
                 ultimate_fraction: physics.barrages.get(&ent.id).map_or(vehicle.powertrain.ultimate_fraction, |b| b.fraction_remaining()),
                 boost_fraction: vehicle.powertrain.boost_fraction(vehicle.config.resources),
-                resource_mask: vehicle.powertrain.resource_mask(vehicle.config.resources),
+                resource_mask: vehicle.powertrain.resource_mask(vehicle.config.resources)
+                    | if self.match_state.as_ref().is_some_and(|m| m.phase != crate::ctf::CtfPhase::Ended)
+                        && physics.can_change_hero_at_spawn(player_id) { CAN_CHANGE_HERO } else { 0 },
                 cockpit_mask: vehicle.cockpit.snapshot(),
                 parking_brake: vehicle.cockpit.parking_fraction,
                 cabin_mask: vehicle.cockpit.cabin_snapshot(vehicle.powertrain.running,vehicle.powertrain.engine_requested),

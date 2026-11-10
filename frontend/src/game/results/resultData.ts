@@ -1,5 +1,6 @@
 import type {CareerAward,CareerMatch,CareerParticipant,CareerStats} from '../career/careerTypes';
 import type {ScoreboardPlayer} from '../stats/scoreboardData';
+import {isPaintFinish} from '../../vehicles/cosmetics/paintFinishes.ts';
 
 export const RESULT_TABS=['awards','team','stats'] as const;
 export type ResultTab=typeof RESULT_TABS[number];
@@ -18,7 +19,9 @@ function validStats(value:unknown):value is CareerStats{
 function validParticipant(value:unknown):value is CareerParticipant{
  if(!object(value)||!text(value.profile_id,128)||!text(value.name,120)||!side(value.team)||!text(value.hero,80)||!validStats(value.stats)||typeof value.abandoned!=='boolean')return false;
  const appearance=value.appearance;
- if(!object(appearance)||!text(appearance.body,80)||!text(appearance.skin,120)||!['factory','frs','soft'].includes(String(appearance.finish))||!['factory','black','red'].includes(String(appearance.seats))||(appearance.metallic!==undefined&&(!number(appearance.metallic,1))))return false;
+ if(!object(appearance)||!text(appearance.body,80)||!text(appearance.skin,120)||
+  (!isPaintFinish(appearance.finish)&&appearance.finish!=='frs'&&appearance.finish!=='soft')||
+  !['factory','black','red'].includes(String(appearance.seats))||(appearance.metallic!==undefined&&!number(appearance.metallic,1)))return false;
  if(!Array.isArray(value.awards)||value.awards.length>4||value.awards.some(award=>!AWARDS.includes(award))||new Set(value.awards).size!==value.awards.length)return false;
  if(value.level!==undefined&&!integer(value.level,1e9))return false;
  return true;

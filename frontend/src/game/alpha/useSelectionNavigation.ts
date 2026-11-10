@@ -10,15 +10,15 @@ type Handlers = {
   option?: (direction: number) => void;
 };
 
-/** Selection has one primary action, independent of footer focus. Native text
- * editing and the assisted chat keyboard retain their existing input owner. */
+/** Controller confirm uses the screen's primary action. A focused tab or Back
+ * button keeps its keyboard action, and chat owns its input while open. */
 export function useSelectionNavigation(
   root: RefObject<HTMLElement | null>,
   { confirm, back, direction, tab, option }: Handlers,
 ) {
   useEffect(() => {
-    const action = (next: MenuAction) => {
-      if (root.current?.inert) return;
+    const action = (next: MenuAction, keyboard = false) => {
+      if (!root.current || root.current.inert) return;
       if(["hero_abilities","match_results"].includes(useUIStore.getState().overlay??""))return;
       const active = document.activeElement as HTMLElement | null;
       const chat = active?.closest('.lobby-chat[data-expanded="true"]');
@@ -36,8 +36,13 @@ export function useSelectionNavigation(
         }
         return;
       }
-      if (next === "activate") confirm();
-      else if (next === "back") back();
+      if (next === "activate") {
+        const button = keyboard ? active?.closest<HTMLButtonElement>(
+          "button[role=tab], .controller-shortcut-back",
+        ) : null;
+        if (button) button.click();
+        else confirm();
+      } else if (next === "back") back();
       else if (next === "next_tab" || next === "previous_tab")
         tab(next === "next_tab" ? 1 : -1);
       else if (next === "next_option" || next === "previous_option")
@@ -91,7 +96,7 @@ export function useSelectionNavigation(
       event.preventDefault();
       event.stopPropagation();
       if (!event.repeat || ["up", "down", "left", "right"].includes(key))
-        action(key);
+        action(key, true);
     };
     const element = root.current;
     window.addEventListener("avenlab:panel-action", panel);

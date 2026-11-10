@@ -1,0 +1,44 @@
+.calibration-preview {
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--app-line);
+  background: var(--app-background);
+  color: var(--app-text);
+}
+.calibration-preview figcaption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+.calibration-preview figcaption .menu-icon { color: var(--app-accent); }
+.calibration-scene {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: min(32dvh, 230px);
+  background: linear-gradient(var(--app-raised), var(--app-panel));
+  overflow: hidden;
+}
+.calibration-ground { fill: var(--app-panel); }
+.calibration-skyline { fill: color-mix(in srgb, var(--app-line) 55%, var(--app-panel)); }
+.calibration-road { fill: var(--app-background); }
+.calibration-lanes { fill: none; stroke: var(--app-muted); stroke-width: 1.5; }
+.calibration-markers,
+.calibration-reticle { fill: none; stroke: var(--app-accent); stroke-width: 2; }
+.calibration-values {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 9px;
+  margin: 6px 0 0;
+  font-size: calc(10px * var(--menu-text-scale, 1));
+}
+.calibration-values > div {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0 5px;
+}
+.calibration-values dt { color: var(--app-muted); }
+.calibration-values dd { margin: 0; font-weight: 750; white-space: nowrap; }

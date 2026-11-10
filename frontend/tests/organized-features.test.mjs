@@ -200,8 +200,8 @@ test("organized feature APIs, pause braking, shared themes and bounded display u
       assert.equal(commits, 0);
       assert.ok(document.querySelector('[aria-label="Interface theme"]'));
       assert.equal(
-        document.querySelector('[data-controller-key="B"]').textContent,
-        "B",
+        document.querySelector('[data-keyboard-key="Esc"]').textContent,
+        "Esc",
       );
       await act(async () => root.unmount());
       root = null;

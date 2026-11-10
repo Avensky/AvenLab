@@ -1,6 +1,31 @@
 @import "./components/menus/menus.css";
 @import "./ui/drivingHud.css";
 
+.game-viewport { width: 100%; height: 100%; }
+.game-viewport[inert] { visibility: hidden; }
+.mobile-rotate-screen {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 9px;
+  padding: 24px;
+  background: radial-gradient(ellipse at center, var(--app-panel), var(--app-background) 72%);
+  color: var(--app-text);
+  text-align: center;
+}
+.mobile-rotate-screen svg { color: var(--app-accent); }
+.mobile-rotate-screen h1 {
+  margin: 0;
+  font-size: clamp(23px, 8vw, 36px);
+  font-style: italic;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+.mobile-rotate-screen p { margin: 0; color: var(--app-muted); }
+
 .game-canvas {
   touch-action: none;
 }

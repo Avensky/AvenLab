@@ -1,6 +1,7 @@
 import { reconSetupParent, useAlphaStore } from "../alpha/alphaStore";
 import type { StateCreator } from "zustand";
-import { MAIN_MENU_ITEMS, PAUSE_MENU_ITEMS } from "../../game/menus/menuItems";
+import { MAIN_MENU_ITEMS, PAUSE_MENU_ITEMS, PAUSE_RESUME_INDEX, pauseMenuRails } from "../../game/menus/menuItems";
+import { canOpenVehicleSelection } from "../alpha/matchHeroChange";
 import { cycleCanInterface, cycleCaptureMode } from "../recon/captureSetup";
 import { useSelectionStore } from "../selection/selectionStore";
 import { useNetworkStore } from "../session/networkStore";
@@ -27,6 +28,24 @@ function getActiveMenu(screen: MenuScreen, overlay: UIOverlay): MenuId | null {
   if (screen === "sandbox_setup") return "sandbox_setup";
   if (screen === "signal_recon_setup") return "signal_recon_setup";
   return null;
+}
+
+function nextPauseIndex(index: number, step: 1 | -1, axis: "horizontal" | "vertical") {
+  const rails = pauseMenuRails(canOpenVehicleSelection());
+  if (index === PAUSE_RESUME_INDEX) {
+    if (axis === "horizontal") return rails[step === -1 ? 0 : 1].indices[0];
+    return step === -1 ? rails[0].indices[0] : index;
+  }
+
+  const column = rails.findIndex(({ indices }) => indices.includes(index));
+  const rail = rails[column];
+  if (!rail) return PAUSE_RESUME_INDEX;
+
+  const row = rail.indices.indexOf(index);
+  if (axis === "horizontal") return rails[column + step]?.indices[row] ?? index;
+
+  const nextRow = row + step;
+  return nextRow === rail.indices.length ? PAUSE_RESUME_INDEX : (rail.indices[nextRow] ?? index);
 }
 
 export const createMenuActions: StateCreator<
@@ -76,14 +95,9 @@ export const createMenuActions: StateCreator<
 
     const count = menuItemCounts[activeMenu];
     const current = get().selectedMenuIndexById[activeMenu] ?? 0;
-    const next = (current + dir + count) % count;
-
-    set({
-      selectedMenuIndexById: {
-        ...get().selectedMenuIndexById,
-        [activeMenu]: next,
-      },
-    });
+    get().setActiveMenuIndex(activeMenu === "pause"
+      ? nextPauseIndex(current, dir, "vertical")
+      : (current + dir + count) % count);
   },
 
   activateActiveMenuSelection: () => {
@@ -146,6 +160,11 @@ export const createMenuActions: StateCreator<
     if (!activeMenu) return;
 
     const index = get().selectedMenuIndexById[activeMenu] ?? 0;
+
+    if (activeMenu === "pause") {
+      get().setActiveMenuIndex(nextPauseIndex(index, dir, "horizontal"));
+      return;
+    }
 
     if (activeMenu === "signal_recon_setup") {
       const selection = useSelectionStore.getState();

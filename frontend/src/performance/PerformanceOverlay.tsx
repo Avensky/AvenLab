@@ -1,5 +1,5 @@
 import { useConnectionView } from "../store/session/networkViews";
-import { ControllerButton, MenuShortcuts } from "../components/controller";
+import { ControlGlyph, MenuShortcuts } from "../components/controller";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { inputRef, useInputStore } from "../store/input/inputStore";
 import { useRenderSettingsStore } from "../store/presentation/renderSettingsStore";
@@ -349,11 +349,11 @@ function Readout() {
           data-performance-control="record"
           aria-label={stats.capturing ? "Stop recording" : "Start recording"}
           aria-keyshortcuts="F8"
-          title="Start / stop · F8 · A / Cross"
+          title="Start or stop recording"
           onClick={record}
           className="menu-control perf-control perf-record"
         >
-          {stats.capturing ? "STOP" : "START"} <ControllerButton button="A" />
+          {stats.capturing ? "STOP" : "START"} <ControlGlyph controller="A" keyboard="F8" />
         </button>
         <button
           type="button"
@@ -378,20 +378,20 @@ function Readout() {
             panel.expanded ? "Minimize diagnostics" : "Open diagnostics"
           }
           aria-expanded={panel.expanded}
-          title="Diagnostics · View/Select · Shift+F3"
+          title="Toggle diagnostics"
           onClick={() =>
             panel.expanded ? minimizePerformanceOverlay() : panel.expand()
           }
           className="menu-control perf-control"
         >
-          {panel.expanded ? "MIN" : "OPEN"} <ControllerButton button="VIEW" />
+          {panel.expanded ? "MIN" : "OPEN"} <ControlGlyph controller="VIEW" keyboard="Shift + F3" />
         </button>
         <button
           type="button"
           data-performance-control="close"
           onClick={closePerformanceOverlay}
           aria-label="Close performance overlay"
-          title="Close · F3"
+          title="Close performance overlay"
           className="menu-control perf-control perf-close"
         >
           ×
@@ -750,9 +750,6 @@ function Readout() {
           {panel.focused && (
             <div className="perf-help">
               <MenuShortcuts />
-              <span>
-                <ControllerButton button="VIEW" /> Minimize
-              </span>
             </div>
           )}
           {overlay && (

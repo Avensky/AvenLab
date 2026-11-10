@@ -92,9 +92,7 @@ export function SessionMenu() {
               className="menu-control"
               onClick={action === "confirm" ? confirm : cancel}
             >
-
               {action.toUpperCase()}
-              <kbd>{action === "confirm" ? "Enter" : "Esc"}</kbd>
             </ControllerAction>
           ))}
         </nav>

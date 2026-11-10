@@ -1,6 +1,7 @@
 /** Original procedural friction noise. No external sample or download. */
 export function createTireSqueal(){
  let context:AudioContext|null=null,gain:GainNode|null=null,filter:BiquadFilterNode|null=null,source:AudioBufferSourceNode|null=null;
+ let lastGain:number|undefined,lastFrequency:number|undefined;
  return {
   unlock(){
    try{
@@ -17,9 +18,13 @@ export function createTireSqueal(){
   update(intensity:number,volume:number){
    if(!context||!gain||!filter||context.state!=='running')return;
    const strength=Number.isFinite(intensity)?Math.min(1,Math.max(0,intensity)):0;
-   gain.gain.setTargetAtTime(strength*(Number.isFinite(volume)?Math.min(1,Math.max(0,volume)):0)*.16,context.currentTime,.05);
-   filter.frequency.setTargetAtTime(1100+strength*1200,context.currentTime,.08);
+   const gainTarget=strength*(Number.isFinite(volume)?Math.min(1,Math.max(0,volume)):0)*.16;
+   const frequency=1100+strength*1200;
+   if(gainTarget===lastGain&&frequency===lastFrequency)return;
+   const time=context.currentTime;
+   if(gainTarget!==lastGain){gain.gain.setTargetAtTime(gainTarget,time,.05);lastGain=gainTarget;}
+   if(frequency!==lastFrequency){filter.frequency.setTargetAtTime(frequency,time,.08);lastFrequency=frequency;}
   },
-  dispose(){source?.stop();source?.disconnect();filter?.disconnect();gain?.disconnect();void context?.close().catch(()=>{});context=null;source=null;gain=null;filter=null;},
+  dispose(){source?.stop();source?.disconnect();filter?.disconnect();gain?.disconnect();void context?.close().catch(()=>{});context=null;source=null;gain=null;filter=null;lastGain=undefined;lastFrequency=undefined;},
  };
 }

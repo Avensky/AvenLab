@@ -1,16 +1,17 @@
-.match-mode-portraits{position:absolute;top:8px;right:6px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;width:calc(var(--hero-panel-width) - 10px);max-height:calc(100% - 16px);overflow:auto;scrollbar-width:none;pointer-events:auto;padding:2px}
+.match-mode-portraits{position:absolute;top:8px;right:6px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;width:calc(var(--hero-panel-width) - 10px);max-height:calc(100% - 16px);overflow:auto;scrollbar-width:none;pointer-events:auto}
 .match-mode-portraits::-webkit-scrollbar{display:none}
-.mode-portrait-card{display:flex;flex-direction:column;min-width:0;margin:0;padding:0;border:1px solid var(--app-line);border-radius:0;background:var(--app-panel);color:var(--app-text);text-align:center;cursor:pointer;text-decoration:none!important}
-.mode-portrait-scene{position:relative;display:block;width:100%;aspect-ratio:180/220;overflow:hidden}
+.mode-portrait-card{display:flex;flex-direction:column;min-width:0;margin:0;padding:1px;border:0;background:transparent;color:var(--app-text);text-align:center;cursor:pointer;text-decoration:none!important}
+.mode-portrait-card.menu-panel-frame::before{background:var(--app-line)}
+.mode-portrait-card:is([aria-pressed=true],:hover,:focus-visible)::before{background:var(--app-accent)}
+.mode-portrait-scene{position:relative;display:block;width:100%;aspect-ratio:180/220;overflow:hidden;clip-path:var(--menu-panel-shape)}
 .mode-portrait-scene>svg{position:absolute;inset:0;width:100%;height:100%}
 .mode-portrait-scene>img{position:absolute;left:-9%;bottom:4%;width:118%;height:65%;object-fit:contain;filter:drop-shadow(0 8px 5px #0009);pointer-events:none}
 .mode-portrait-format{position:absolute;top:8px;left:0;right:0;font:900 clamp(12px,1.65vw,24px)/1 system-ui;color:#f4f8ff;text-shadow:0 2px 5px #0008;letter-spacing:.03em}
-.mode-portrait-card:is(:hover,:focus-visible){outline:1px solid var(--app-accent);outline-offset:1px;box-shadow:0 0 12px var(--app-accent-soft)}
-.mode-portrait-card[aria-pressed=true]{border-color:var(--app-accent);box-shadow:inset 0 -3px var(--app-accent),0 0 12px var(--app-accent-soft)}
+.mode-portrait-card:focus-visible{outline:0;filter:drop-shadow(0 0 4px var(--app-accent))}
 .mode-portrait-card[aria-pressed=true] .mode-portrait-scene>img{transform:scale(1.04)}
 .mode-portrait-card:disabled{opacity:.55;cursor:wait}
 .mode-selection:has(.match-mode-portraits) .hero-summary{width:calc(100% - var(--hero-panel-width) - 16px);max-width:600px}
-.mode-selection[data-play-category=match] .alpha-mode-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}
-.mode-selection[data-play-category=tools] .alpha-mode-tabs{grid-template-columns:repeat(4,minmax(0,1fr))}
-@media(max-width:650px){.mode-selection[data-play-category=tools] .alpha-mode-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.match-mode-portraits{gap:3px;right:3px}.mode-portrait-card>strong{font-size:7px}.mode-portrait-card>small{font-size:5px}.mode-portrait-format{font-size:16px;top:6px}.mode-selection:has(.match-mode-portraits) .hero-summary h2{font-size:clamp(19px,6vw,29px);overflow-wrap:anywhere}}
-@media(max-height:500px) and (orientation:landscape){.match-mode-portraits{top:3px}.mode-portrait-scene{aspect-ratio:180/180}.mode-portrait-card{padding-bottom:4px}.mode-portrait-card>strong{font-size:7px;margin-top:3px}.mode-portrait-card>small{font-size:5px;margin-top:2px}}
+.mode-selection[data-play-category=play] .classic-header-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}
+.mode-selection[data-play-category=tools] .classic-header-tabs{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:650px){.mode-selection[data-play-category=tools] .classic-header-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.match-mode-portraits{gap:3px;right:3px}.mode-portrait-format{font-size:16px;top:6px}.mode-selection:has(.match-mode-portraits) .hero-summary h2{font-size:clamp(19px,6vw,29px);overflow-wrap:anywhere}}
+@media(max-height:500px) and (orientation:landscape){.match-mode-portraits{top:3px}.mode-portrait-scene{aspect-ratio:1}}
