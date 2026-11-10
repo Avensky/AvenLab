@@ -1,10 +1,10 @@
 import type { Emote, Palm } from "./garageEmotes";
 import { FOLDED_ARMS } from "./garageLean";
+import { SIDEWAYS_CHECK } from "./walkingEmotes";
 
 const armsApart = { leftHand: [1.28, -.35, .59], rightHand: [-1.27, -.35, .61] } as const;
 const huffFoot = [0.057, 0, .025, .12] as const;
-const asideFoot = [-.036, 0, -.055, -.76] as const;
-const aside = { turn: -.79, sway: -.048, rise: -.028, feet: { r: asideFoot, l: [.027, 0, .028, -.61] } } as const;
+const huffFold = { ...FOLDED_ARMS, fingers: ["cup", "cup"] } as const;
 const thumbsUp: Palm = [[.83, .15, .37], [0, 0, -1]];
 const protest = {
   leftHand: [1.41, .19, .59], rightHand: [-1.41, .21, .6],
@@ -17,7 +17,11 @@ const guard = {
   leftPalm: [[.71, .47, .5], [0, 0, 1]], fingers: ["open", null],
   travel: .115, sway: .13, rise: -.035, feet: { l: [.188, 0, .154, .15], r: [.084, 0, .036, .09] },
 } as const;
-const flickPalm: Palm = [[-.28, .7, .61], [0, .66, -.75]];
+const flickAtLips = {
+  rightHand: [-.69, .11, .51], rightPalm: [[.53, .81, -.15], [0, -.16, -1]],
+  fingers: [null, "cup"], rightAtLips: true,
+} as const;
+const privateFist = { fingers: [null, "fist"], elbowsBack: true } as const;
 const sleeveHold = {
   leftHand: [1.17, -.31, .66], rightHand: [.34, -.32, .66],
   leftPalm: [[.24, -.29, .92], [-1, 0, .26]], rightPalm: [[.96, .14, .23], [0, -1, .15]],
@@ -35,24 +39,16 @@ const proudStance = {
 export const TSUNDERE_EMOTES = [
   { id: "041", name: "Arms crossed huff", duration: 3.55, keys: [
     [.13, { ...armsApart, sway: -.026, rise: -.021, head: [.07, -.12, .035], face: [-.15, -.24] }],
-    [.25, { ...FOLDED_ARMS, sway: -.034, rise: -.027, feet: { l: [.037, .033, .022, .09] }, torso: [.08, -.055, -.035], head: [.14, -.18, .045], face: [-.24, -.46] }],
-    [.38, { ...FOLDED_ARMS, sway: .062, rise: -.042, feet: { l: huffFoot }, torso: [-.08, .11, -.085], head: [-.09, .43, .073], face: [-.31, -.49] }],
-    [.61, { ...FOLDED_ARMS, sway: .073, rise: -.035, feet: { l: huffFoot }, torso: [-.056, .1, -.075], head: [-.04, .48, .06], face: [-.16, -.23] }],
-    [.73, { ...FOLDED_ARMS, sway: .061, rise: -.035, feet: { l: huffFoot }, torso: [-.035, .075, -.058], head: [.035, .19, .07], face: [.14, .09] }],
+    [.25, { ...huffFold, sway: -.034, rise: -.027, feet: { l: [.037, .033, .022, .09] }, torso: [.08, -.055, -.035], head: [.14, -.18, .045], face: [-.24, -.46] }],
+    [.38, { ...huffFold, sway: .062, rise: -.042, feet: { l: huffFoot }, torso: [-.08, .11, -.085], head: [-.09, .43, .073], face: [-.31, -.49] }],
+    [.61, { ...huffFold, sway: .073, rise: -.035, feet: { l: huffFoot }, torso: [-.056, .1, -.075], head: [-.04, .48, .06], face: [-.16, -.23] }],
+    [.73, { ...huffFold, sway: .061, rise: -.035, feet: { l: huffFoot }, torso: [-.035, .075, -.058], head: [.035, .19, .07], face: [.14, .09] }],
     [.87, { ...armsApart, sway: -.02, rise: -.022, feet: { l: [.028, .027, .013, .06] }, head: [.065, .05, .04], face: [.24, .14] }],
   ] },
-  { id: "042", name: "Sideways check", duration: 3.45, keys: [
-    [.13, { turn: -.17, sway: .021, rise: -.023, feet: { r: [-.021, .035, -.024, -.43] }, torso: [.02, -.045, .014], head: [.035, -.32, -.02], face: [-.08, .15] }],
-    [.24, { turn: -.56, sway: -.041, rise: -.032, feet: { r: asideFoot, l: [.017, .035, .018, -.38] }, torso: [.015, -.04, .014], head: [.035, -.24, .05], face: [-.12, -.21] }],
-    [.38, { ...aside, torso: [.019, .09, .045], head: [-.075, .75, -.11], face: [.48, .57] }],
-    [.58, { ...aside, torso: [.021, .034, .013], head: [-.038, .68, -.105], face: [.33, .41] }],
-    [.72, { ...aside, torso: [-.027, -.09, .014], head: [.065, -.18, .055], face: [.05, .14] }],
-    [.82, { turn: -.46, sway: -.036, rise: -.026, feet: { r: asideFoot, l: [.02, .028, .015, -.28] }, head: [.06, -.08, .03], face: [.19, .15] }],
-    [.93, { turn: -.15, sway: .014, rise: -.018, feet: { r: [-.016, .027, -.022, -.32] }, head: [.055, .02, .02] }],
-  ] },
+  SIDEWAYS_CHECK,
   { id: "043", name: "Reluctant thumbs up", duration: 3.25, keys: [
     [.16, { ...armsApart, sway: -.024, rise: -.022, torso: [-.035, -.07, .023], head: [.045, -.18, .066], face: [-.08, -.24] }],
-    [.29, { ...FOLDED_ARMS, sway: .027, rise: -.029, torso: [-.055, .02, -.045], head: [.1, -.23, .078], face: [-.13, -.22] }],
+    [.29, { ...huffFold, sway: .027, rise: -.029, torso: [-.055, .02, -.045], head: [.1, -.23, .078], face: [-.13, -.22] }],
     [.42, { leftHand: [-.16, -.36, .57], rightHand: [-1.4, -.53, .68], rightPalm: thumbsUp, fingers: [null, "thumb-up"], sway: -.031, rise: -.027, head: [.09, .15, .035], face: [.2, .14] }],
     [.59, { leftHand: [-.12, -.37, .58], rightHand: [-1.35, -.49, .7], rightPalm: thumbsUp, fingers: [null, "thumb-up"], sway: -.035, rise: -.026, head: [.075, .19, .04], face: [.52, .19] }],
     [.72, { leftHand: [1.38, -.49, .52], rightHand: [-1.51, -.56, .61], rightPalm: thumbsUp, fingers: [null, "thumb-up"], sway: -.02, rise: -.018, head: [.075, .32, .05], face: [.32, .11] }],
@@ -84,20 +80,22 @@ export const TSUNDERE_EMOTES = [
     [.93, { leftHand: [1.7, -.48, .53], rightHand: [-1.4, -.45, .54], travel: .032, sway: .027, rise: -.023, feet: { l: [.079, .029, .066, .07] }, head: [.022, .025, .024], face: [.21, .09] }],
   ] },
   { id: "047", name: "Dismissive hand flick", duration: 2.95, keys: [
-    [.17, { rightHand: [-.66, -.27, .55], rightPalm: flickPalm, fingers: [null, "paw"], sway: -.022, rise: -.02, head: [.035, -.1, .064], face: [-.17, -.24] }],
-    [.32, { rightHand: [-.91, -.11, .59], rightPalm: flickPalm, fingers: [null, "paw"], sway: -.031, rise: -.025, torso: [.018, -.09, .058], head: [.06, -.21, .095], face: [-.2, -.28] }],
-    [.43, { rightHand: [-2.16, -.15, .68], rightPalm: [[-.85, .21, .47], [0, .76, -.63]], fingers: [null, "open"], sway: -.042, rise: -.026, torso: [.056, -.12, .078], head: [-.078, .25, .06], face: [.05, .36] }],
-    [.58, { rightHand: [-1.73, -.37, .62], rightPalm: [[-.6, -.15, .79], [0, .9, .15]], fingers: [null, "open"], sway: -.023, rise: -.021, head: [.035, .38, .055], face: [.12, .17] }],
-    [.77, { head: [.05, .19, -.075], torso: [.013, .05, -.024], sway: .019, rise: -.016, face: [.34, .25] }],
+    [.17, { ...flickAtLips, rightAtLips: false, rightHand: [-1.05, -.22, .59], sway: -.022, rise: -.02, head: [.035, -.1, .064], face: [-.17, -.24] }],
+    [.31, { ...flickAtLips, sway: -.031, rise: -.025, torso: [.018, -.09, .058], head: [.06, -.14, .095], face: [-.17, -.19] }],
+    [.47, { ...flickAtLips, sway: -.033, rise: -.025, torso: [.015, -.095, .06], head: [.065, -.15, .092], face: [.1, .04] }],
+    [.52, { rightHand: [-1.02, .05, .72], rightPalm: [[-.24, .48, .84], [0, .82, -.43]], fingers: [null, "cup"], sway: -.043, rise: -.024, head: [-.025, .08, .064], face: [.43, .31] }],
+    [.59, { rightHand: [-1.93, -.06, .77], rightPalm: [[-.76, .29, .59], [0, .9, -.18]], fingers: [null, "open"], sway: -.042, rise: -.026, torso: [.056, -.12, .078], head: [-.078, .25, .06], face: [.68, .46] }],
+    [.73, { rightHand: [-1.53, -.31, .64], rightPalm: [[-.47, -.29, .81], [0, .83, .25]], fingers: [null, "open"], sway: -.023, rise: -.021, head: [.035, .38, .055], face: [.39, .26] }],
+    [.88, { head: [.05, .19, -.075], torso: [.013, .05, -.024], sway: .019, rise: -.016, face: [.31, .2] }],
   ] },
   { id: "048", name: "Private fist pump", duration: 3.3, keys: [
-    [.16, { rightHand: [-1.77, -.46, .39], fingers: [null, "fist"], sway: -.026, rise: -.024, torso: [.035, -.075, .03], head: [.047, -.33, .067], face: [.24, .28] }],
-    [.29, { rightHand: [-1.89, -.43, -.24], fingers: [null, "fist"], elbowsBack: true, sway: -.031, rise: -.022, torso: [.043, -.16, .03], head: [.13, .12, -.046], face: [.62, .38] }],
-    [.43, { rightHand: [-1.86, -.19, -.32], fingers: [null, "fist"], elbowsBack: true, sway: -.043, rise: -.039, torso: [.085, -.12, .056], head: [.083, .09, -.036], face: [.9, .48] }],
-    [.52, { rightHand: [-1.85, -.46, -.28], fingers: [null, "fist"], elbowsBack: true, sway: -.027, rise: -.026, torso: [-.047, -.06, .033], head: [-.12, .035, .036], face: [.13, .81] }],
-    [.67, { rightHand: [-2.05, -.42, -.31], fingers: [null, "fist"], elbowsBack: true, sway: -.031, rise: -.028, head: [.065, .28, .086], face: [-.04, .28] }],
-    [.77, { rightHand: [-2.17, -.3, .25], fingers: [null, "fist"], sway: -.021, rise: -.018, head: [.059, .23, .058], face: [.13, .21] }],
-    [.86, { rightHand: [-1.72, -.43, .43], head: [.06, .15, .043], face: [.28, .13] }],
+    [.15, { ...privateFist, rightHand: [-1.62, -.56, .28], sway: -.019, rise: -.015, torso: [.025, -.055, .025], head: [.047, -.24, .067], face: [.24, .28] }],
+    [.28, { ...privateFist, rightHand: [-1.74, -.47, .09], sway: -.026, rise: -.025, torso: [.042, -.09, .04], head: [.11, -.04, -.041], face: [.56, .36] }],
+    [.4, { ...privateFist, rightHand: [-1.78, -.28, -.135], sway: -.032, rise: -.035, torso: [.057, -.092, .053], head: [.085, .08, -.036], face: [.87, .48] }],
+    [.47, { ...privateFist, rightHand: [-1.77, -.25, -.151], sway: -.033, rise: -.035, torso: [.052, -.087, .049], head: [.056, .1, -.029], face: [.93, .52] }],
+    [.57, { ...privateFist, rightHand: [-1.77, -.33, -.066], sway: -.028, rise: -.028, torso: [.033, -.061, .041], head: [-.055, .12, .031], face: [.71, .44] }],
+    [.7, { ...privateFist, rightHand: [-1.74, -.46, .1], sway: -.023, rise: -.024, torso: [.012, -.033, .033], head: [.025, .19, .057], face: [.43, .25] }],
+    [.86, { ...privateFist, rightHand: [-1.63, -.55, .29], sway: -.011, rise: -.012, head: [.06, .15, .043], face: [.28, .13] }],
   ] },
   { id: "049", name: "Almost a pat", duration: 3.65, keys: [
     [.17, { rightHand: [-1.51, -.39, .55], rightPalm: [[-.19, .34, .92], [0, -1, .36]], fingers: [null, "open"], head: [.015, -.18, .075], sway: -.022, rise: -.023, face: [.31, .28] }],

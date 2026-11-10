@@ -76,9 +76,11 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('.character-emotes button:nth-child(4)');
     assert.equal(preview.getState().emote.id, '004');
     await click('[aria-label="Emote collection"] button:nth-child(3)');
-    assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
+    assert.equal(document.querySelectorAll('.character-emotes button').length, 11);
     await click('.character-emotes button:first-child');
     assert.equal(preview.getState().emote.id, '021');
+    await click('.character-emotes button:last-child');
+    assert.equal(preview.getState().emote.id, 'robot-dance');
     await click('[aria-label="Emote collection"] button:nth-child(4)');
     assert.equal(document.querySelectorAll('.character-emotes button').length, 11);
     await click('.character-emotes button:first-child');
@@ -245,13 +247,27 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     mixer.update(march.getClip().duration * .2);
     assert(foot('r').y - rightRest.y > .04 && foot('r').y - rightRest.y < .065 && Math.abs(foot('l').y - leftRest.y) < .002);
     march.stop();
-    const stroll = mixer.clipAction(clips[ids.indexOf('walk-casual')]).reset().play();
-    mixer.update(stroll.getClip().duration * .22);
-    const plantedLeft = foot('l');
-    mixer.update(stroll.getClip().duration * .11);
-    assert(foot('l').distanceTo(plantedLeft) < .002 && foot('r').y - rightRest.y > .04);
-    assert(model.root.position.z > .12);
-    stroll.stop();
+    for (const id of ['walk-casual', 'walk-glance', '042']) {
+      const clip = clips[ids.indexOf(id)];
+      const walk = mixer.clipAction(clip).reset().play();
+      const startsRight = id === 'walk-glance';
+      const plant = startsRight ? 'r' : 'l';
+      const swing = startsRight ? 'l' : 'r';
+      mixer.update(clip.duration / 9);
+      const planted = foot(plant);
+      mixer.update(clip.duration / 18);
+      assert(foot(plant).distanceTo(planted) < .006, id);
+      assert(foot(swing).y - (startsRight ? leftRest : rightRest).y > .04, id);
+      assert(model.root.position.z > .1, id);
+      assert(foot('l').distanceTo(foot('r')) > .12, id);
+      walk.stop();
+    }
+    const robot = mixer.clipAction(clips[ids.indexOf('robot-dance')]).reset().play();
+    mixer.update(robot.getClip().duration * .28);
+    const robotLock = capture();
+    mixer.update(robot.getClip().duration * .07);
+    assert(capture().every((value, i) => Math.abs(value - robotLock[i]) < 1e-6));
+    robot.stop();
     const retreat = mixer.clipAction(clips[ids.indexOf('044')]).reset().play();
     mixer.update(retreat.getClip().duration * .27);
     assert(foot('l').y - leftRest.y > .035 && foot('r').distanceTo(rightRest) < .002);

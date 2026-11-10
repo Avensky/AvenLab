@@ -13,7 +13,7 @@ import { garageLeanPose, type GarageLeanFit } from "./garageLean";
 
 export type XYZ = readonly [number, number, number];
 type Arm = readonly [upper: XYZ, lower: XYZ];
-type HandShape = "fist" | "peace" | "heart" | "open" | "paw" | "point" | "three" | "finger-heart" | "finger-gun" | "thumb-up";
+type HandShape = "fist" | "peace" | "heart" | "open" | "paw" | "cup" | "point" | "three" | "finger-heart" | "finger-gun" | "thumb-up";
 export type Palm = readonly [fingerDirection: XYZ, normal: XYZ];
 // Offsets from the resting ankle in stage meters, with optional toe yaw.
 type Foot = readonly [across: number, lift: number, forward: number, pivot?: number, pitch?: number];
@@ -321,7 +321,10 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[]) {
           const curved = (shape === "heart" && (name === "index" || name === "thumb"))
             || (shape === "finger-heart" && name === "index");
           const bend = extended ? -.16 : curved ? .39 : shape === "paw" ? .66 : .96;
-          joint.rotateOnAxis(axis, bend * [1, .95, .57][segment] * (name === "thumb" ? .36 : 1));
+          const curl = shape === "thumb-up" && name !== "thumb" ? [1.04, 1.34, .67][segment]
+            : shape === "cup" ? [.49, .85, .51][segment]
+            : bend * [1, .95, .57][segment];
+          joint.rotateOnAxis(axis, curl * (name === "thumb" ? .36 : 1));
         }
         if (shape === "finger-heart" && rig.thumb && rig.index) {
           const { thumb, index: [, middleIndex, endIndex] } = rig;

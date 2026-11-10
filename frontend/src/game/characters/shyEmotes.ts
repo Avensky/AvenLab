@@ -16,6 +16,10 @@ const coverMouth = {
   rightHand: [-.64, .18, .55], rightPalm: [[.82, .32, .31], [0, 0, -1]],
   fingers: [null, "open"],
 } as const;
+const cupAtMouth = {
+  rightHand: [-.67, .13, .56], rightPalm: [[.47, .85, .24], [0, .12, -1]],
+  fingers: [null, "cup"], rightAtLips: true,
+} as const;
 const handOverLips = {
   ...coverMouth, rightAtLips: true,
   leftPalm: [[.05, .96, .22], [0, 0, 1]], fingers: ["point", "open"],
@@ -75,11 +79,11 @@ export const SHY_EMOTES = [
     [.8, { rightHand: [-1.03, -.41, .63], rightPalm: offerPalm, fingers: [null, "open"], head: [.02, .17, -.04], sway: .018, rise: -.016, face: [.58, .28] }],
   ] },
   { id: "037", name: "Suppressed giggle", duration: 3.25, keys: [
-    [.18, { ...coverMouth, sway: -.019, rise: -.018, head: [.07, -.08, .06], face: [.56, .31] }],
-    [.31, { ...coverMouth, sway: -.029, rise: -.033, torso: [.055, -.035, .048], head: [.13, -.1, .09], face: [.91, .47] }],
-    [.42, { ...coverMouth, sway: -.021, rise: -.02, torso: [.01, -.02, .021], head: [.09, -.09, .06], face: [.95, .42] }],
-    [.53, { ...coverMouth, sway: -.029, rise: -.035, torso: [.062, -.03, .049], head: [.135, -.09, .09], face: [1, .47] }],
-    [.64, { ...coverMouth, sway: -.017, rise: -.022, torso: [.02, -.02, .029], head: [.08, -.04, .055], face: [.87, .35] }],
+    [.18, { ...cupAtMouth, rightAtLips: false, rightHand: [-1.06, -.13, .58], sway: -.019, rise: -.018, head: [.07, -.08, .06], face: [.56, .31] }],
+    [.31, { ...cupAtMouth, sway: -.029, rise: -.033, torso: [.055, -.035, .048], head: [.13, -.1, .09], face: [.91, .47] }],
+    [.42, { ...cupAtMouth, sway: -.021, rise: -.02, torso: [.01, -.02, .021], head: [.09, -.09, .06], face: [.95, .42] }],
+    [.53, { ...cupAtMouth, sway: -.029, rise: -.035, torso: [.062, -.03, .049], head: [.135, -.09, .09], face: [1, .47] }],
+    [.64, { ...cupAtMouth, sway: -.017, rise: -.022, torso: [.02, -.02, .029], head: [.08, -.04, .055], face: [.87, .35] }],
     [.79, { rightHand: [-1.15, -.27, .56], head: [.13, .08, -.032], rise: -.015, face: [.65, .27] }],
   ] },
   { id: "038", name: "Secret excitement", duration: 3.6, keys: [

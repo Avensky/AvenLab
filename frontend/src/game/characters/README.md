@@ -33,14 +33,15 @@ Victory Essentials (011–020) is available under Emotes → Victory. On a live
 win, the Awards tab can play Small fist pump with the equipped driver.
 Cute and Playful (021–030) is available under Emotes → Playful. The imported
 rigs articulate individual fingers for the heart trace and the counting gag.
+The Playful group also has Robot dance, with deliberate freezes and chest pops.
 Shy and Sweet (031–040) is available under Emotes → Shy. Casual walk and Side
 step and glance are in the Garage preview group. They take short steps and
-return to the turntable mark. Victory also has Rap hands, three heart
+turn on planted feet to walk back to the turntable mark. Victory also has Rap hands, three heart
 silhouettes, and a Finger guns gesture.
 Quiet thank you leads the Shy list and the empty-handed garage idle rotation.
 The Shy preview group also includes Oh, no.
 Tsundere (041–050) is available under Emotes → Tsundere. Four of its gestures
-can be previewed while holding the bag.
+can be previewed while holding the bag. Sideways check glances over during a walk.
 Expressions (051–060) includes Fingertip plea, a two-handed gesture with
 watery eyes. Select the Hands camera to see the touch or Face for the expression.
 
