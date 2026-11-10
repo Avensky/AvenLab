@@ -38,6 +38,7 @@ const levelHands = {
 const bump = {
   rightHand: [-.93, -.19, .82], rightPalm: [[-.08, .5, .86], [.91, 0, .19]], fingers: [null, "fist"],
 } as const;
+const bumpStep = { r: [-.019, 0, .074, -.08] } as const;
 
 const PIT_CREW_EMOTES = [
   { id: "081", name: "Radio check", duration: 3.2, keys: [
@@ -110,10 +111,15 @@ const PIT_CREW_EMOTES = [
   ] },
   { id: "090", name: "Crew fist bump", duration: 3.15, keys: [
     [.17, { ...bump, rightHand: [-1.26, -.32, .55], head: [.042, -.11, .042], face: [.38, .31] }],
-    [.34, { ...bump, rightHand: [-.92, -.13, .69], sway: -.026, rise: -.024, torso: [-.058, -.08, .038], head: [-.045, -.05, .059], face: [.72, .55] }],
-    [.47, { ...bump, rightHand: [-.63, -.12, .97], sway: -.038, rise: -.033, torso: [.074, -.15, .044], head: [.084, .04, .053], face: [.95, .52] }],
-    [.62, { ...bump, rightHand: [-.78, -.18, .73], sway: -.02, rise: -.024, torso: [.012, -.08, .036], head: [-.037, .105, .042], face: [.91, .46] }],
-    [.8, { rightHand: [-1.28, -.34, .55], head: [.032, .105, .04], face: [.72, .3] }],
+    [.31, { ...bump, rightHand: [-.92, -.13, .69], sway: -.012, rise: -.022, travel: .012,
+      feet: { r: [-.01, .025, .04, -.046] }, torso: [.024, -.08, .038], head: [-.045, -.05, .059], face: [.72, .55] }],
+    [.47, { ...bump, rightHand: [-.63, -.12, .94], sway: -.038, rise: -.041, travel: .052,
+      feet: bumpStep, torso: [.16, -.15, .044], head: [-.048, .04, .053], face: [.95, .52] }],
+    [.6, { ...bump, rightHand: [-.78, -.18, .73], sway: -.026, rise: -.033, travel: .036,
+      feet: bumpStep, torso: [.09, -.08, .036], head: [-.037, .105, .042], face: [.91, .46] }],
+    [.73, { rightHand: [-1.13, -.28, .61], sway: -.008, rise: -.022, travel: .014,
+      feet: { r: [-.01, .024, .035, -.036] }, torso: [.039, -.035, .025], head: [.032, .105, .04], face: [.78, .36] }],
+    [.87, { rightHand: [-1.37, -.38, .5], rise: -.014, head: [.019, .073, .028], face: [.61, .26] }],
   ] },
 ] as const satisfies readonly Emote[];
 

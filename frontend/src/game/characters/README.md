@@ -52,6 +52,8 @@ Rivalry (071–080) adds a starting countdown, racing gestures, a photo pose,
 and a post-race nod. Five are available while carrying the shop bag.
 Pit Crew (081–090) includes radio checks, pit signals, mirror checks, and a crew
 fist bump. Five are available with the shop bag.
+After Hours (091–100) adds small reactions, a shaka, and a two-step shuffle.
+Six are available with the shop bag.
 
 Character → Face opens a close-up for iris color, eyebrow tint, and glasses.
 Both villagers use these settings in the live model and their rendered portrait.

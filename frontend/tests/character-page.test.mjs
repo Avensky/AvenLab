@@ -111,11 +111,18 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(preview.getState().emote.id, '071');
     await click('.character-emotes button:last-child');
     assert.equal(preview.getState().emote.id, '080');
-    await click('[aria-label="Emote collection"] button:last-child');
-    assert.equal(find('[aria-label="Emote collection"] button:last-child').textContent, 'Pit Crew');
+    await click('[aria-label="Emote collection"] button:nth-child(9)');
+    assert.equal(find('[aria-label="Emote collection"] button:nth-child(9)').textContent, 'Pit Crew');
     assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
     await click('.character-emotes button:last-child');
     assert.equal(preview.getState().emote.id, '090');
+    await click('[aria-label="Emote collection"] button:last-child');
+    assert.equal(find('[aria-label="Emote collection"] button:last-child').textContent, 'After Hours');
+    assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
+    await click('.character-emotes button:first-child');
+    assert.equal(preview.getState().emote.id, '091');
+    await click('.character-emotes button:last-child');
+    assert.equal(preview.getState().emote.id, '100');
     await click('[aria-label="Emote collection"] button:first-child');
     await click('[data-character-option="jules-okafor"]');
     assert.equal(find('[data-character-preview]').dataset.characterPreview, 'jules-okafor');
@@ -184,9 +191,12 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('[aria-label="Emote collection"] button:nth-child(8)');
     assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
       ['Grid countdown', 'Two-finger salute', 'Photo finish', 'Call the line', 'Good race']);
-    await click('[aria-label="Emote collection"] button:last-child');
+    await click('[aria-label="Emote collection"] button:nth-child(9)');
     assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
       ['Radio check', 'Last lap', 'Box this lap', 'Check the mirrors', 'Crew fist bump']);
+    await click('[aria-label="Emote collection"] button:last-child');
+    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
+      ['Neck reset', 'Fix the fringe', 'Hang loose', 'Shade the lights', 'Rain check', 'Keys check']);
     await click('[aria-label="Preview gender"] [data-character-option="mara-vega"]');
     assert.equal(drafts.at(-1).id, 'mara-vega');
     assert.equal(drafts.at(-1).prop, 'shop-bag');
@@ -245,7 +255,7 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     const mixer = new AnimationMixer(model.root);
     const ids = clips.map(clip => clip.name.split(' ')[0]);
     const numbered = [...ids.filter(id => /^\d+$/.test(id)), ...COCKPIT_TAKES.map(take => take.id)].sort();
-    assert.deepEqual(numbered, Array.from({length: 90}, (_, i) => String(i + 1).padStart(3, '0')));
+    assert.deepEqual(numbered, Array.from({length: 100}, (_, i) => String(i + 1).padStart(3, '0')));
     assert.deepEqual(ids.filter(id => id.startsWith('walk-')), ['walk-casual', 'walk-glance']);
     assert.deepEqual(buildGarageEmotes(model.root).map(clip => clip.name.split(' ')[0]), [...ids.slice(0, 10), '035']);
     assert(!buildGarageEmotes(model.root, true).some(clip => clip.name.startsWith('035 ')));
@@ -293,6 +303,13 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     mixer.update(march.getClip().duration * .2);
     assert(foot('r').y - rightRest.y > .04 && foot('r').y - rightRest.y < .065 && Math.abs(foot('l').y - leftRest.y) < .002);
     march.stop();
+    const bump = mixer.clipAction(clips[ids.indexOf('090')]).reset().play();
+    mixer.update(bump.getClip().duration * .31);
+    assert(foot('r').y - rightRest.y > .02 && foot('l').distanceTo(leftRest) < .002);
+    mixer.update(bump.getClip().duration * .16);
+    assert(model.root.position.z > .04 && foot('r').z - rightRest.z > .055);
+    assert(Math.abs(foot('r').y - rightRest.y) < .002 && foot('l').distanceTo(leftRest) < .002);
+    bump.stop();
     for (const id of ['walk-casual', 'walk-glance', '042']) {
       const clip = clips[ids.indexOf(id)];
       const walk = mixer.clipAction(clip).reset().play();

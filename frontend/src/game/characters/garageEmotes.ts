@@ -11,12 +11,13 @@ import { availableExpressionEmotes } from "./expressionEmotes";
 import { availableRoadsideEmotes } from "./roadsideEmotes";
 import { availableRivalryEmotes } from "./rivalryEmotes";
 import { availablePitCrewEmotes } from "./pitCrewEmotes";
+import { availableAfterHoursEmotes } from "./afterHoursEmotes";
 import { WALK_EMOTES } from "./walkingEmotes";
 import { garageLeanPose, type GarageLeanFit } from "./garageLean";
 
 export type XYZ = readonly [number, number, number];
 type Arm = readonly [upper: XYZ, lower: XYZ];
-type HandShape = "fist" | "peace" | "heart" | "open" | "paw" | "cup" | "point" | "three" | "finger-heart" | "finger-gun" | "thumb-up" | "pinch" | "frame";
+type HandShape = "fist" | "peace" | "heart" | "open" | "paw" | "cup" | "point" | "three" | "finger-heart" | "finger-gun" | "thumb-up" | "pinch" | "frame" | "shaka";
 export type Palm = readonly [fingerDirection: XYZ, normal: XYZ];
 // Offsets from the resting ankle in stage meters, with optional toe yaw.
 type Foot = readonly [across: number, lift: number, forward: number, pivot?: number, pitch?: number];
@@ -56,7 +57,7 @@ const claspLeft: Arm = [[1, -4, 1.2], [-2.4, 1.3, 3.5]];
 const claspRight: Arm = [[-1, -4, 1.2], [2.4, 1.3, 3.5]];
 const wave: Arm = [[-1, -.55, .28], [-.24, 1, .28]];
 
-export const EMOTE_GROUPS = ["Garage", "Victory", "Playful", "Shy", "Tsundere", "Expressions", "Roadside", "Rivalry", "Pit Crew"] as const;
+export const EMOTE_GROUPS = ["Garage", "Victory", "Playful", "Shy", "Tsundere", "Expressions", "Roadside", "Rivalry", "Pit Crew", "After Hours"] as const;
 export type EmoteGroup = typeof EMOTE_GROUPS[number];
 
 export const GARAGE_EMOTES = [
@@ -319,8 +320,9 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[]) {
         if (!rig) return;
         for (const { joint, axis, name, segment } of rig.fingers) {
           const extended = shape === "open" || (name === "index" && ["point", "peace", "three", "finger-gun", "frame"].includes(shape))
-            || (name === "thumb" && ["finger-gun", "thumb-up", "frame"].includes(shape))
-            || (name === "middle" && (shape === "peace" || shape === "three")) || (name === "ring" && shape === "three");
+            || (name === "thumb" && ["finger-gun", "thumb-up", "frame", "shaka"].includes(shape))
+            || (name === "middle" && (shape === "peace" || shape === "three")) || (name === "ring" && shape === "three")
+            || (name === "pinky" && shape === "shaka");
           const curved = (shape === "heart" && (name === "index" || name === "thumb"))
             || ((shape === "finger-heart" || shape === "pinch") && name === "index");
           const bend = extended ? -.16 : curved ? .39 : shape === "paw" ? .66 : .96;
@@ -344,11 +346,11 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[]) {
             aimLimb(indexBase, middleIndex, endIndex, contact, arc);
           }
         }
-        if ((shape === "thumb-up" || shape === "finger-gun" || shape === "frame") && rig.thumb) {
+        if ((shape === "thumb-up" || shape === "finger-gun" || shape === "frame" || shape === "shaka") && rig.thumb) {
           const [base, middle, tip] = rig.thumb;
           const inward = side === 0 ? -1 : 1;
-          const direction = (shape === "frame" ? new Vector3(inward, .19, .09) : new Vector3(inward * .13, 1, .08))
-            .applyQuaternion(modelRotation);
+          const direction = (shape === "shaka" ? new Vector3(inward, .62, .15)
+            : shape === "frame" ? new Vector3(inward, .19, .09) : new Vector3(inward * .13, 1, .08)).applyQuaternion(modelRotation);
           aimDriverJoint(base, middle, direction.clone());
           aimDriverJoint(middle, tip, direction);
         }
@@ -431,6 +433,7 @@ export function emoteCollection(group: EmoteGroup, bag: boolean, includeWalks = 
   if (group === "Roadside") return availableRoadsideEmotes(bag);
   if (group === "Rivalry") return availableRivalryEmotes(bag);
   if (group === "Pit Crew") return availablePitCrewEmotes(bag);
+  if (group === "After Hours") return availableAfterHoursEmotes(bag);
   if (bag) return [...GARAGE_EMOTES.filter(item => compatibleGarageEmotes(item.id)), ...BAG_EMOTES];
   return includeWalks ? [...GARAGE_EMOTES, ...WALK_EMOTES] : GARAGE_EMOTES;
 }
