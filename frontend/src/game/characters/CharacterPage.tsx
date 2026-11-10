@@ -137,7 +137,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
   </div>;
   const pickedEmotes = emoteCollection(emoteGroup, Boolean(previewChoice.prop));
   const emotePicker = <>
-    <div className="character-outfits" role="group" aria-label="Emote collection" data-controller-row>
+    <div className="character-outfits character-emote-packs" role="group" aria-label="Emote collection" data-controller-row>
       {EMOTE_GROUPS.map(group => <button key={group} type="button" className="menu-control"
         aria-pressed={emoteGroup === group} onClick={() => setEmoteGroup(group)}>{group}</button>)}
     </div>

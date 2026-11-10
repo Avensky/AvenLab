@@ -6,12 +6,13 @@ import { driverFaceTargets } from "./villagerFace";
 import { availableVictoryEmotes } from "./victoryEmotes";
 import { availablePlayfulEmotes } from "./playfulEmotes";
 import { availableShyEmotes } from "./shyEmotes";
+import { availableTsundereEmotes } from "./tsundereEmotes";
 import { WALK_EMOTES } from "./walkingEmotes";
 import { garageLeanPose, type GarageLeanFit } from "./garageLean";
 
 export type XYZ = readonly [number, number, number];
 type Arm = readonly [upper: XYZ, lower: XYZ];
-type HandShape = "fist" | "peace" | "heart" | "open" | "paw" | "point" | "three" | "finger-heart" | "finger-gun";
+type HandShape = "fist" | "peace" | "heart" | "open" | "paw" | "point" | "three" | "finger-heart" | "finger-gun" | "thumb-up";
 export type Palm = readonly [fingerDirection: XYZ, normal: XYZ];
 // Offsets from the resting ankle in stage meters, with optional toe yaw.
 type Foot = readonly [across: number, lift: number, forward: number, pivot?: number, pitch?: number];
@@ -49,7 +50,7 @@ const claspLeft: Arm = [[1, -4, 1.2], [-2.4, 1.3, 3.5]];
 const claspRight: Arm = [[-1, -4, 1.2], [2.4, 1.3, 3.5]];
 const wave: Arm = [[-1, -.55, .28], [-.24, 1, .28]];
 
-export const EMOTE_GROUPS = ["Garage", "Victory", "Playful", "Shy"] as const;
+export const EMOTE_GROUPS = ["Garage", "Victory", "Playful", "Shy", "Tsundere"] as const;
 export type EmoteGroup = typeof EMOTE_GROUPS[number];
 
 export const GARAGE_EMOTES = [
@@ -309,7 +310,7 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[]) {
         if (!rig) return;
         for (const { joint, axis, name, segment } of rig.fingers) {
           const extended = shape === "open" || (name === "index" && ["point", "peace", "three", "finger-gun"].includes(shape))
-            || (name === "thumb" && shape === "finger-gun")
+            || (name === "thumb" && (shape === "finger-gun" || shape === "thumb-up"))
             || (name === "middle" && (shape === "peace" || shape === "three")) || (name === "ring" && shape === "three");
           const curved = shape === "heart" || (shape === "finger-heart" && name === "index");
           const bend = extended ? -.16 : curved ? .39 : shape === "paw" ? .66 : .96;
@@ -322,6 +323,12 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[]) {
           const palm = rig.palm.clone().applyQuaternion(rig.hand.getWorldQuaternion(new Quaternion()));
           const target = mid.lerp(tip, .7).addScaledVector(palm, .01 * rig.hand.getWorldScale(new Vector3()).x);
           aimLimb(thumb[0], thumb[1], thumb[2], target, palm);
+        }
+        if (shape === "thumb-up" && rig.thumb) {
+          const [base, middle, tip] = rig.thumb;
+          const up = new Vector3(side === 0 ? -.13 : .13, 1, .08).applyQuaternion(modelRotation);
+          aimDriverJoint(base, middle, up.clone());
+          aimDriverJoint(middle, tip, up);
         }
       });
       const [leftRig, rightRig] = handRigs;
@@ -374,6 +381,7 @@ export function emoteCollection(group: EmoteGroup, bag: boolean, includeWalks = 
   if (group === "Victory") return availableVictoryEmotes(bag);
   if (group === "Playful") return availablePlayfulEmotes(bag);
   if (group === "Shy") return availableShyEmotes(bag);
+  if (group === "Tsundere") return availableTsundereEmotes(bag);
   if (bag) return [...GARAGE_EMOTES.filter(item => compatibleGarageEmotes(item.id)), ...BAG_EMOTES];
   return includeWalks ? [...GARAGE_EMOTES, ...WALK_EMOTES] : GARAGE_EMOTES;
 }
