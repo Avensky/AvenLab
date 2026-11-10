@@ -31,6 +31,8 @@ Vesper also has procedural blink, smile, and brow shapes in the live preview.
 The rain and sparks seen during loading use one GPU point batch.
 Victory Essentials (011–020) is available under Emotes → Victory. On a live
 win, the Awards tab can play Small fist pump with the equipped driver.
+Cute and Playful (021–030) is available under Emotes → Playful. The imported
+rigs articulate individual fingers for the heart trace and the counting gag.
 
 The Props tab loads the black-and-gold bag from
 `frontend/public/models/characters/props/bag-black-gold/`. The mobile GLB is

@@ -111,7 +111,7 @@ export function VehiclePreview({
         >
           <Suspense fallback={null}>
             <group rotation={[0, Math.PI / 2, 0]}>
-              <VehiclePreviewModel platform={platform} model={vehicleId} driver={driver} previewVictory={wardrobeOpen} />
+              <VehiclePreviewModel platform={platform} model={vehicleId} driver={driver} previewPacks={wardrobeOpen} />
             </group>
           </Suspense>
         </AssetBoundary>}

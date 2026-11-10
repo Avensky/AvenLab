@@ -17,8 +17,8 @@ function setBlinkWeight(targets: ReturnType<typeof driverFaceTargets>, weight: n
   for (const { mesh, index } of targets) mesh.morphTargetInfluences![index] = weight;
 }
 
-export function GarageEmotePlayer({ root, bag = false, previewVictory = false, victory }: {
-  root: Object3D; bag?: boolean; previewVictory?: boolean; victory?: VictoryPlayback;
+export function GarageEmotePlayer({ root, bag = false, previewPacks = false, victory }: {
+  root: Object3D; bag?: boolean; previewPacks?: boolean; victory?: VictoryPlayback;
 }) {
   const reducedMotion = usePreferencesStore(state => state.reducedMotion);
   const player = useRef<{
@@ -41,7 +41,7 @@ export function GarageEmotePlayer({ root, bag = false, previewVictory = false, v
     const celebration = victory && availableVictoryEmotes(bag).find(emote => emote.id === victory.id);
     const [breathing, ...clips] = victory
       ? buildEmoteClips(root, celebration ? [GARAGE_EMOTES[0], celebration] : [GARAGE_EMOTES[0]])
-      : buildGarageEmotes(root, bag, previewVictory);
+      : buildGarageEmotes(root, bag, previewPacks);
     const idle = mixer.clipAction(breathing).play();
     const actions = new Map(clips.map(clip => [clip.name.split(" ")[0], mixer.clipAction(clip).setLoop(LoopOnce, 1)]));
     actions.set("001", mixer.clipAction(breathing.clone()).setLoop(LoopOnce, 1));
@@ -56,7 +56,7 @@ export function GarageEmotePlayer({ root, bag = false, previewVictory = false, v
       mixer.uncacheRoot(root);
       setBlinkWeight(blink, 0);
     };
-  }, [reducedMotion, root, bag, previewVictory, victory]);
+  }, [reducedMotion, root, bag, previewPacks, victory]);
 
   useFrame((_, delta) => {
     const current = player.current;

@@ -6,8 +6,7 @@ import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 import { CHARACTERS, CHARACTER_APPEARANCE_OPTIONS, DEFAULT_CHARACTER, OUTFIT_THEMES, ROOK_ID, VILLAGER_ID, characterLook, type CharacterStyleField, type CharacterChoice } from "./characterCatalog";
 import { CharacterPortrait } from "./CharacterPortrait";
 import { CHARACTER_CAMERAS, CHARACTER_ZOOM_MIN, CHARACTER_ZOOM_MAX, useCharacterPreviewStore } from "./characterPreviewStore";
-import { GARAGE_EMOTES, BAG_EMOTES, compatibleGarageEmotes } from "./garageEmotes";
-import { availableVictoryEmotes } from "./victoryEmotes";
+import { EMOTE_GROUPS, emoteCollection, type EmoteGroup } from "./garageEmotes";
 
 export const CHARACTER_TABS = [
   { id: "appearance", label: "Appearance" }, { id: "clothes", label: "Clothes" },
@@ -37,7 +36,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
   const [locked, setLocked] = useState(() => Boolean(characterLook(saved)));
   const [status, setStatus] = useState<"idle" | "pending" | "saving" | "saved" | "error">("idle");
   const [message, setMessage] = useState("");
-  const [emoteGroup, setEmoteGroup] = useState<"Garage" | "Victory">("Garage");
+  const [emoteGroup, setEmoteGroup] = useState<EmoteGroup>("Garage");
   const [comparison, setComparison] = useState<CharacterChoice | null>(null);
   const acknowledged = useRef(locked ? choice : null);
   const queued = useRef<CharacterChoice | null>(null);
@@ -136,15 +135,14 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
       <span>{gender === "female" ? "Female" : "Male"}</span>
     </button>)}
   </div>;
-  const pickedEmotes = emoteGroup === "Victory" ? availableVictoryEmotes(Boolean(previewChoice.prop))
-    : previewChoice.prop ? [...GARAGE_EMOTES.filter(item => compatibleGarageEmotes(item.id)), ...BAG_EMOTES] : GARAGE_EMOTES;
+  const pickedEmotes = emoteCollection(emoteGroup, Boolean(previewChoice.prop));
   const emotePicker = <>
     <div className="character-outfits" role="group" aria-label="Emote collection" data-controller-row>
-      {(["Garage", "Victory"] as const).map(group => <button key={group} type="button" className="menu-control"
+      {EMOTE_GROUPS.map(group => <button key={group} type="button" className="menu-control"
         aria-pressed={emoteGroup === group} onClick={() => setEmoteGroup(group)}>{group}</button>)}
     </div>
     {reducedMotion && <p>Emote playback is paused by Reduced Motion.</p>}
-    {emoteGroup === "Victory" && previewChoice.prop && <p>Empty hands unlock the full Victory set.</p>}
+    {emoteGroup !== "Garage" && previewChoice.prop && <p>Empty hands unlock the full {emoteGroup} set.</p>}
     <div className="character-emotes">
       {pickedEmotes.map(item => <button key={item.id} type="button" className="menu-control" data-controller-row disabled={reducedMotion}
         aria-pressed={emote?.id === item.id} onClick={() => useCharacterPreviewStore.setState({ emote: { id: item.id } })}>{item.name}</button>)}

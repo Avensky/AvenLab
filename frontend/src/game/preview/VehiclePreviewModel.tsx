@@ -24,11 +24,11 @@ import {vehicleSystems} from "../../vehicles/vehicleSystems";
 
 // Selection is always the complete GLB, independent of in-game debug modes.
 // Shared material preparation retains the TSX fixes without runtime network poses.
-export function VehiclePreviewModel({platform,model,driver,previewVictory}:{
+export function VehiclePreviewModel({platform,model,driver,previewPacks}:{
   platform: readonly [number, number];
   model: VehicleModelId;
   driver?: CharacterChoice | null;
-  previewVictory?: boolean;
+  previewPacks?: boolean;
 }) {
   const path=VEHICLE_MODEL_PATHS[model];
   const savedAppearance = useHeroLoadouts(s => s.draft?.vehicle === model ? s.draft.appearance : s.loadouts[model]);
@@ -145,7 +145,7 @@ export function VehiclePreviewModel({platform,model,driver,previewVictory}:{
     <>
       {driver && <group position={[driverAcross, .023, driverAlong]} scale={driverScale} rotation={[0, doorSide * Math.PI / 2, 0]}>
         <PreviewContactShadow footprint={[.55, .46]} offset={[0, 0]} />
-        <GarageDriver choice={driver} previewVictory={previewVictory} />
+        <GarageDriver choice={driver} previewPacks={previewPacks} />
       </group>}
       <PreviewContactShadow
         footprint={display.footprint}
