@@ -8,17 +8,21 @@ import tailwindcss from "@tailwindcss/vite";
 
 import { findVillagerModel, hasCharacterModel } from "./scripts/character-model-paths.mts";
 
-const bagModelUrl = "/models/characters/shop-bag.glb";
-const bagFile = new URL(`./public${bagModelUrl}`, import.meta.url);
+const bagFolder = "/models/characters/props/bag-black-gold";
+const bagModelUrl = [
+  `${bagFolder}/bag-black-gold-mobile.glb`,
+  `${bagFolder}/bag-black-gold-garage.glb`,
+  "/models/characters/shop-bag.glb",
+].find(url => hasCharacterModel(new URL(`./public${url}`, import.meta.url)));
 function villagerLod(gender: "female" | "male", kind: "garage" | "portrait") {
   const asset = findVillagerModel(gender);
   if (!asset) return null;
-  return hasCharacterModel(asset.output(kind)) ? asset.url(kind) : asset.sourceUrl;
+  return asset.bundledLod(kind) ?? (hasCharacterModel(asset.output(kind)) ? asset.url(kind) : asset.sourceUrl);
 }
 
 export default defineConfig({
   define: {
-    __CHARACTER_BAG_URL__: JSON.stringify(hasCharacterModel(bagFile) ? bagModelUrl : null),
+    __CHARACTER_BAG_URL__: JSON.stringify(bagModelUrl ?? null),
     __VILLAGER_MODEL_URL__: JSON.stringify(villagerLod("female", "garage")),
     __VILLAGER_PORTRAIT_URL__: JSON.stringify(villagerLod("female", "portrait")),
     __ROOK_MODEL_URL__: JSON.stringify(villagerLod("male", "garage")),

@@ -15,6 +15,7 @@ async function buildCharacterLods(gender) {
   ];
   const pending = [];
   for (const target of targets) {
+    if (asset.bundledLod(target.kind)) continue;
     const output = await stat(asset.output(target.kind)).catch(error => {
       if (error.code !== "ENOENT") throw error;
       return null;

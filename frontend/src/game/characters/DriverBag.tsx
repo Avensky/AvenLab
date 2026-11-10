@@ -19,8 +19,14 @@ function BagFallback() {
 
 function BagModel({ url }: { url: string }) {
   const { scene } = useGLTF(url);
-  const model = useMemo(() => scene.clone(), [scene]);
-  return <primitive object={model} position={[0, -.13, 0]} dispose={null} />;
+  const model = useMemo(() => {
+    const copy = scene.clone();
+    const grip = copy.getObjectByName("Grip_Handle");
+    if (grip) copy.position.sub(grip.getWorldPosition(new Vector3()));
+    else copy.position.y -= .13;
+    return copy;
+  }, [scene]);
+  return <primitive object={model} dispose={null} />;
 }
 
 export function DriverBag({ driver }: { driver: Object3D }) {

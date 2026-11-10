@@ -13,19 +13,26 @@ export function hasCharacterModel(path: URL) {
 
 export function findVillagerModel(gender: "female" | "male") {
   const nestedNames = [`village-${gender}`, `villager-${gender}`];
+  const bundledBase = `${characterPath}villagers/villager-${gender}/villager-${gender}`;
   const sources = [
     ...nestedNames.map(name => ({ root: sourceRoot, base: villagerPath + name })),
+    { root: publicRoot, base: bundledBase },
     ...nestedNames.map(name => ({ root: publicRoot, base: villagerPath + name })),
     { root: publicRoot, base: characterPath + `villager-${gender}` },
   ];
   for (const { root, base } of sources) {
     const source = new URL(base + ".glb", root);
     if (!hasCharacterModel(source)) continue;
+    const outputBase = base === bundledBase ? `${villagerPath}villager-${gender}` : base;
     return {
       source,
-      output: (kind: "garage" | "portrait") => new URL(`${base}.${kind}.glb`, publicRoot),
-      url: (kind: "garage" | "portrait") => `/${base}.${kind}.glb`,
+      output: (kind: "garage" | "portrait") => new URL(`${outputBase}.${kind}.glb`, publicRoot),
+      url: (kind: "garage" | "portrait") => `/${outputBase}.${kind}.glb`,
       sourceUrl: root === publicRoot ? `/${base}.glb` : null,
+      bundledLod: (kind: "garage" | "portrait") => {
+        const path = `${base}.${kind}.glb`;
+        return base === bundledBase && hasCharacterModel(new URL(path, publicRoot)) ? `/${path}` : null;
+      },
     };
   }
   return null;
