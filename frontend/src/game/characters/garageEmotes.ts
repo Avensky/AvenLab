@@ -8,6 +8,7 @@ import { availablePlayfulEmotes } from "./playfulEmotes";
 import { availableShyEmotes, QUIET_THANK_YOU } from "./shyEmotes";
 import { availableTsundereEmotes } from "./tsundereEmotes";
 import { availableExpressionEmotes } from "./expressionEmotes";
+import { availableRoadsideEmotes } from "./roadsideEmotes";
 import { WALK_EMOTES } from "./walkingEmotes";
 import { garageLeanPose, type GarageLeanFit } from "./garageLean";
 
@@ -53,7 +54,7 @@ const claspLeft: Arm = [[1, -4, 1.2], [-2.4, 1.3, 3.5]];
 const claspRight: Arm = [[-1, -4, 1.2], [2.4, 1.3, 3.5]];
 const wave: Arm = [[-1, -.55, .28], [-.24, 1, .28]];
 
-export const EMOTE_GROUPS = ["Garage", "Victory", "Playful", "Shy", "Tsundere", "Expressions"] as const;
+export const EMOTE_GROUPS = ["Garage", "Victory", "Playful", "Shy", "Tsundere", "Expressions", "Roadside"] as const;
 export type EmoteGroup = typeof EMOTE_GROUPS[number];
 
 export const GARAGE_EMOTES = [
@@ -155,7 +156,7 @@ export function aimDriverJoint(joint: Object3D, child: Object3D, direction: Vect
   joint.quaternion.copy(parent.multiply(new Quaternion().setFromUnitVectors(from, direction.normalize())).multiply(world));
 }
 
-function alignJointNormal(joint: Object3D, axis: Vector3, localNormal: Vector3, target: Vector3) {
+export function alignJointNormal(joint: Object3D, axis: Vector3, localNormal: Vector3, target: Vector3) {
   const world = joint.getWorldQuaternion(new Quaternion());
   const current = localNormal.clone().applyQuaternion(world);
   current.addScaledVector(axis, -current.dot(axis)).normalize();
@@ -164,7 +165,7 @@ function alignJointNormal(joint: Object3D, axis: Vector3, localNormal: Vector3, 
   joint.rotateOnAxis(axis.clone().applyQuaternion(world.invert()), twist);
 }
 
-function aimLimb(first: Object3D, second: Object3D, end: Object3D, goal: Vector3, pole: Vector3, hinge?: Vector3) {
+export function aimLimb(first: Object3D, second: Object3D, end: Object3D, goal: Vector3, pole: Vector3, hinge?: Vector3) {
   const start = first.getWorldPosition(new Vector3());
   const middle = second.getWorldPosition(new Vector3());
   const upper = start.distanceTo(middle);
@@ -185,7 +186,7 @@ function aimLimb(first: Object3D, second: Object3D, end: Object3D, goal: Vector3
   aimDriverJoint(second, end, lowerDirection);
 }
 
-function driverHand(root: Object3D, side: "l" | "r") {
+export function driverHand(root: Object3D, side: "l" | "r") {
   const bone = (name: string) => root.getObjectByName(`${name}_${side}`);
   const hand = bone("hand"), index = bone("index_01"), middle = bone("middle_01"), pinky = bone("pinky_01");
   if (!hand || !index || !middle || !pinky) return null;
@@ -416,6 +417,7 @@ export function emoteCollection(group: EmoteGroup, bag: boolean, includeWalks = 
   if (group === "Shy") return availableShyEmotes(bag);
   if (group === "Tsundere") return availableTsundereEmotes(bag);
   if (group === "Expressions") return availableExpressionEmotes(bag);
+  if (group === "Roadside") return availableRoadsideEmotes(bag);
   if (bag) return [...GARAGE_EMOTES.filter(item => compatibleGarageEmotes(item.id)), ...BAG_EMOTES];
   return includeWalks ? [...GARAGE_EMOTES, ...WALK_EMOTES] : GARAGE_EMOTES;
 }

@@ -1,5 +1,5 @@
 import { FACTORY_APPEARANCE, useHeroLoadouts } from "../../vehicles/cosmetics/heroLoadouts";
-import { useEffect, useMemo } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useGLTF } from "@react-three/drei";
 import { prepareVehicleVisual } from "../../vehicles/tools/vehicleMaterials";
 import {
@@ -14,13 +14,14 @@ import {createVehiclePartRig,advanceVehiclePartRig,availableVehicleParts,measure
 import {useVehicleStudioStore} from "../heroes/vehicleStudioStore";
 import {useInputStore} from "../../store/input/inputStore";
 import {VehicleFlags,hasFlag} from "../../store/input/protocol/inputMasks";
-import {Mesh,MeshStandardMaterial,Vector3} from "three";
+import {Mesh,MeshStandardMaterial,Vector3,type Group} from "three";
 import { GarageDriver } from "../characters/GarageDriver";
 import { ROOK_ID, type CharacterChoice } from "../characters/characterCatalog";
 import {useFrame} from "@react-three/fiber";
-import {useRef} from "react";
 import {applyWindowTone} from "./windowTones";
 import {vehicleSystems} from "../../vehicles/vehicleSystems";
+import { prepareGarageCockpit } from "./garageCockpit";
+import { useCharacterPreviewStore } from "../characters/characterPreviewStore";
 
 // Selection is always the complete GLB, independent of in-game debug modes.
 // Shared material preparation retains the TSX fixes without runtime network poses.
@@ -31,6 +32,7 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks}:{
   previewPacks?: boolean;
 }) {
   const path=VEHICLE_MODEL_PATHS[model];
+  const motion = useRef<Group>(null);
   const savedAppearance = useHeroLoadouts(s => s.draft?.vehicle === model ? s.draft.appearance : s.loadouts[model]);
   const { scene } = useGLTF(path, "/draco/");
   const prepared = useMemo(
@@ -41,6 +43,14 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks}:{
     },
     [scene, model],
   );
+  const cockpit = useMemo(() => previewPacks && model === "ae86"
+    ? prepareGarageCockpit(prepared.root, () => motion.current, prepared.glassMaterials) : undefined, [prepared, model, previewPacks]);
+  const cockpitAvailable = Boolean(driver && cockpit);
+  useLayoutEffect(() => {
+    if (!cockpitAvailable) return;
+    useCharacterPreviewStore.setState({ cockpitAvailable: true });
+    return () => useCharacterPreviewStore.setState({ cockpitAvailable: false });
+  }, [cockpitAvailable]);
   const driverDoor = useMemo(() => vehicleSystems(model) === "road" ? measureDriverDoor(prepared.root) : null, [prepared, model]);
   const partRig=useMemo(()=>createVehiclePartRig(prepared.root,model),[prepared,model]);
   const marine=vehicleSystems(model)==="marine";
@@ -151,10 +161,10 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks}:{
   // Vehicles without an authored front door still stage beside the front seat.
   const driverAlong = staging.along === undefined ? display.footprint[1] * .12 : staging.along * display.scale + display.position[2];
   return (
-    <>
+    <group ref={motion}>
       {driver && <group position={[driverAcross, .023, driverAlong]} scale={driverScale} rotation={[0, staging.side * Math.PI / 2, 0]}>
-        <PreviewContactShadow footprint={[.55, .46]} offset={[0, 0]} />
-        <GarageDriver choice={driver} previewPacks={previewPacks} leanFit={lean} />
+        <group name="garage-driver-shadow"><PreviewContactShadow footprint={[.55, .46]} offset={[0, 0]} /></group>
+        <GarageDriver choice={driver} previewPacks={previewPacks} leanFit={lean} cockpit={cockpit} />
       </group>}
       <PreviewContactShadow
         footprint={display.footprint}
@@ -167,6 +177,6 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks}:{
       >
         <primitive object={prepared.root} dispose={null} />
       </group>
-    </>
+    </group>
   );
 }

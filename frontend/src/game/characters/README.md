@@ -44,6 +44,9 @@ Tsundere (041–050) is available under Emotes → Tsundere. Four of its gesture
 can be previewed while holding the bag. Sideways check glances over during a walk.
 Expressions (051–060) includes Fingertip plea, a two-handed gesture with
 watery eyes. Select the Hands camera to see the touch or Face for the expression.
+Roadside (061–070) adds driver and spotter gestures plus three scripted cockpit
+scenes. Choose the AE86 in Heroes and preview with empty hands. The last two
+scenes roll the car on the garage pad and return it to the mark.
 
 Character → Face opens a close-up for iris color, eyebrow tint, and glasses.
 Both villagers use these settings in the live model and their rendered portrait.

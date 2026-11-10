@@ -91,10 +91,19 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
     await click('.character-emotes button:last-child');
     assert.equal(preview.getState().emote.id, '050');
-    await click('[aria-label="Emote collection"] button:last-child');
+    await click('[aria-label="Emote collection"] button:nth-child(6)');
     assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
     await click('.character-emotes button:first-child');
     assert.equal(preview.getState().emote.id, '051');
+    await click('[aria-label="Emote collection"] button:last-child');
+    assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
+    const reversePark = '.character-emotes button:last-child';
+    assert.equal(find(reversePark).textContent, 'Reverse park');
+    assert.equal(find(reversePark).disabled, true);
+    await act(async () => preview.setState({ cockpitAvailable: true }));
+    await click(reversePark);
+    assert.equal(preview.getState().emote.id, '070');
+    await act(async () => preview.setState({ cockpitAvailable: false }));
     await click('[aria-label="Emote collection"] button:first-child');
     await click('[data-character-option="jules-okafor"]');
     assert.equal(find('[data-character-preview]').dataset.characterPreview, 'jules-okafor');
@@ -155,7 +164,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('[aria-label="Emote collection"] button:nth-child(5)');
     assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
       ['Sideways check', 'Caught smiling', 'Dismissive hand flick', 'Private fist pump']);
-    await click('[aria-label="Emote collection"] button:last-child');
+    await click('[aria-label="Emote collection"] button:nth-child(6)');
     assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
       ['Little double take', 'Peek past the palm', 'Bashful heel twist']);
     await click('[aria-label="Preview gender"] [data-character-option="mara-vega"]');
@@ -198,6 +207,7 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
   try {
     const { buildGarageEmotes } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
+    const { sampleCockpitMotion } = await vite.ssrLoadModule('/src/game/preview/garageCockpit.ts');
     const { characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
     const { prepareStylizedDriver } = await vite.ssrLoadModule('/src/game/characters/stylizedDriverModel.ts');
     const model = prepareStylizedDriver(characterLook({ id: 'jules-okafor', outfit: 'night-run' }));
@@ -213,7 +223,7 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     const clips = buildGarageEmotes(model.root, false, true);
     const mixer = new AnimationMixer(model.root);
     const ids = clips.map(clip => clip.name.split(' ')[0]);
-    assert.deepEqual(ids.filter(id => /^\d+$/.test(id)).sort(), Array.from({length: 60}, (_, i) => String(i + 1).padStart(3, '0')));
+    assert.deepEqual(ids.filter(id => /^\d+$/.test(id)).sort(), Array.from({length: 67}, (_, i) => String(i + 1).padStart(3, '0')));
     assert.deepEqual(ids.filter(id => id.startsWith('walk-')), ['walk-casual', 'walk-glance']);
     assert.deepEqual(buildGarageEmotes(model.root).map(clip => clip.name.split(' ')[0]), [...ids.slice(0, 10), '035']);
     assert(!buildGarageEmotes(model.root, true).some(clip => clip.name.startsWith('035 ')));
@@ -221,6 +231,14 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     const lean = buildGarageEmotes(model.root, false, false, leanFit).at(-1);
     assert(lean.name.startsWith('pose-lean '));
     assert(!buildGarageEmotes(model.root, true, false, leanFit).some(clip => clip.name.startsWith('pose-lean ')));
+    assert.equal(sampleCockpitMotion('068', .4).travel, 0);
+    assert(sampleCockpitMotion('068', .4).steering > .2);
+    assert(sampleCockpitMotion('069', .49).travel > .85);
+    assert(sampleCockpitMotion('070', .49).travel < -.72);
+    for (const take of ['069', '070']) {
+      assert.equal(Math.abs(sampleCockpitMotion(take, 1).along), 0);
+      assert.equal(Math.abs(sampleCockpitMotion(take, 1).steering), 0);
+    }
     for (const clip of clips) {
       const action = mixer.clipAction(clip).setLoop(LoopOnce, 1);
       action.reset().play();

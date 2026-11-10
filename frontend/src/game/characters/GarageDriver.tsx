@@ -8,9 +8,10 @@ import { GarageEmotePlayer, type VictoryPlayback } from "./GarageEmotePlayer";
 import { CharacterLoadingEffect } from "./CharacterLoadingEffect";
 import { applyVillagerLook, prepareVillager, villagerModelUrl } from "./villagerModel";
 import type { GarageLeanFit } from "./garageLean";
+import type { GarageCockpit } from "../preview/garageCockpit";
 
-function VillagerDriver({ url, look, bag, previewPacks, leanFit, victory }: {
-  url: string; look: CharacterLook; bag: boolean; previewPacks?: boolean; leanFit?: GarageLeanFit; victory?: VictoryPlayback;
+function VillagerDriver({ url, look, bag, previewPacks, leanFit, victory, cockpit }: {
+  url: string; look: CharacterLook; bag: boolean; previewPacks?: boolean; leanFit?: GarageLeanFit; victory?: VictoryPlayback; cockpit?: GarageCockpit;
 }) {
   const { scene } = useGLTF(url);
   const femaleWithBag = look.female && bag;
@@ -23,24 +24,24 @@ function VillagerDriver({ url, look, bag, previewPacks, leanFit, victory }: {
     invalidate();
   }, [model, look, invalidate]);
 
-  return <GarageEmotePlayer root={model.root} bag={bag} previewPacks={previewPacks} leanFit={leanFit} victory={victory} />;
+  return <GarageEmotePlayer root={model.root} bag={bag} previewPacks={previewPacks} leanFit={leanFit} victory={victory} cockpit={cockpit} />;
 }
 
-export function GarageDriver({ choice, previewPacks, leanFit, victory }: {
-  choice: CharacterChoice; previewPacks?: boolean; leanFit?: GarageLeanFit; victory?: VictoryPlayback;
+export function GarageDriver({ choice, previewPacks, leanFit, victory, cockpit }: {
+  choice: CharacterChoice; previewPacks?: boolean; leanFit?: GarageLeanFit; victory?: VictoryPlayback; cockpit?: GarageCockpit;
 }) {
   const look = useMemo(() => characterLook(choice), [choice]);
   if (!look) return null;
   const bag = choice.prop === "shop-bag";
   const coatFitsLean = choice.id === ROOK_ID && (choice.outfit === "night-run" || choice.outfit === "race-crew");
-  const fallback = choice.id === VILLAGER_ID ? null : <StylizedDriver look={look} bag={bag} previewPacks={previewPacks} victory={victory} />;
+  const fallback = choice.id === VILLAGER_ID ? null : <StylizedDriver look={look} bag={bag} previewPacks={previewPacks} victory={victory} cockpit={cockpit} />;
   const url = villagerModelUrl(look);
   return (
     <group name="garage-driver" rotation={[-.095, -.16, -.045]}>
       {url
         ? <AssetBoundary key={url} fallback={fallback}>
             <Suspense fallback={<CharacterLoadingEffect />}><VillagerDriver url={url} look={look} bag={bag} previewPacks={previewPacks}
-              leanFit={coatFitsLean ? leanFit : undefined} victory={victory} /></Suspense>
+              leanFit={coatFitsLean ? leanFit : undefined} victory={victory} cockpit={cockpit} /></Suspense>
           </AssetBoundary>
         : fallback}
     </group>

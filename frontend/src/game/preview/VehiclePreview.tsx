@@ -69,6 +69,12 @@ export function VehiclePreview({
   }, [aspect, cameraPosition, driverStage, height, heroLayout, sandboxPicker, wardrobeOpen, width, workshop, zoom]);
   useFrame(() => {
     if (!wardrobeOpen || !cameraRef.current) return;
+    const cockpit = turntable?.getObjectByName("garage-cockpit-camera");
+    if (cockpit) {
+      cockpit.children[0].getWorldPosition(cameraRef.current.position);
+      cameraRef.current.lookAt(cockpit.getWorldPosition(aim.target));
+      return;
+    }
     const anchor = turntable?.getObjectByName("garage-driver");
     if (!anchor) return;
     const view = useCharacterPreviewStore.getState();

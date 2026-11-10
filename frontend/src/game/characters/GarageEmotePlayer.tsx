@@ -9,6 +9,8 @@ import { DriverBag } from "./DriverBag";
 import { availableVictoryEmotes, type VictoryEmoteId } from "./victoryEmotes";
 import { GARAGE_LEAN_ID, type GarageLeanFit } from "./garageLean";
 import { QUIET_THANK_YOU } from "./shyEmotes";
+import { COCKPIT_TAKES } from "./roadsideEmotes";
+import type { CockpitPlayback, GarageCockpit } from "../preview/garageCockpit";
 
 const REST_SECONDS = 4.5;
 const FADE_SECONDS = .24;
@@ -19,8 +21,8 @@ function setBlinkWeight(targets: ReturnType<typeof driverFaceTargets>, weight: n
   for (const { mesh, index } of targets) mesh.morphTargetInfluences![index] = weight;
 }
 
-export function GarageEmotePlayer({ root, bag = false, previewPacks = false, leanFit, victory }: {
-  root: Object3D; bag?: boolean; previewPacks?: boolean; leanFit?: GarageLeanFit; victory?: VictoryPlayback;
+export function GarageEmotePlayer({ root, bag = false, previewPacks = false, leanFit, victory, cockpit }: {
+  root: Object3D; bag?: boolean; previewPacks?: boolean; leanFit?: GarageLeanFit; victory?: VictoryPlayback; cockpit?: GarageCockpit;
 }) {
   const reducedMotion = usePreferencesStore(state => state.reducedMotion);
   const player = useRef<{
@@ -29,6 +31,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     actions: Map<string, AnimationAction>;
     automatic: AnimationAction[];
     active: AnimationAction | null;
+    take: { playback: CockpitPlayback; seconds: number; duration: number } | null;
     rest: number;
     next: number;
     wave: boolean;
@@ -55,14 +58,15 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     if (lean) automatic.splice(2, 0, lean);
     const blink = driverFaceTargets(root, "blink");
     const active = celebration ? actions.get(celebration.id)!.reset().setEffectiveWeight(0).play() : null;
-    player.current = { mixer, idle, actions, automatic, active, rest: REST_SECONDS, next: 0, wave: false, blink, elapsed: 0, preview: null };
+    player.current = { mixer, idle, actions, automatic, active, take: null, rest: REST_SECONDS, next: 0, wave: false, blink, elapsed: 0, preview: null };
     return () => {
+      player.current?.take?.playback.stop();
       player.current = null;
       mixer.stopAllAction();
       mixer.uncacheRoot(root);
       setBlinkWeight(blink, 0);
     };
-  }, [reducedMotion, root, bag, previewPacks, leanFit, victory]);
+  }, [reducedMotion, root, bag, previewPacks, leanFit, victory, cockpit]);
 
   useFrame((_, delta) => {
     const current = player.current;
@@ -79,12 +83,40 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     }
     if (!victory && preview !== current.preview) {
       current.preview = preview;
+      if (current.take) {
+        current.take.playback.stop();
+        current.take = null;
+        current.idle.reset().setEffectiveWeight(1).play();
+        current.rest = REST_SECONDS;
+      }
+      const take = cockpit && previewPacks && !bag && COCKPIT_TAKES.find(take => take.id === preview?.id);
+      if (take) {
+        current.active?.stop();
+        current.active = null;
+        current.idle.stop();
+        current.wave = false;
+        const playback = cockpit(root, take);
+        if (playback) current.take = { playback, seconds: 0, duration: take.duration };
+        else current.idle.reset().setEffectiveWeight(1).play();
+      }
       const action = preview && current.actions.get(preview.id);
       if (action) {
         current.active?.stop();
         current.active = action.reset().setEffectiveWeight(0).play();
         current.idle.setEffectiveWeight(1);
       }
+    }
+    if (current.take) {
+      const { playback, duration } = current.take;
+      current.take.seconds += step;
+      if (current.take.seconds < duration) {
+        playback.sample(current.take.seconds / duration);
+        return;
+      }
+      playback.stop();
+      current.take = null;
+      current.idle.reset().setEffectiveWeight(1).play();
+      current.rest = REST_SECONDS;
     }
     if (current.active) {
       const active = current.active;
@@ -118,10 +150,10 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
       const blink = MathUtils.smoothstep(age, 0, .066) * (1 - MathUtils.smoothstep(age, .075, .19));
       setBlinkWeight(current.blink, blink);
     }
-  });
+  }, cockpit ? -.5 : 0);
 
   return <group onClick={event => {
-    if (victory || !player.current || event.delta > 5) return;
+    if (victory || !player.current || player.current.take || event.delta > 5) return;
     event.stopPropagation();
     player.current.wave = true;
   }}>
