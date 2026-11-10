@@ -6,8 +6,8 @@ import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 import { CHARACTERS, CHARACTER_APPEARANCE_OPTIONS, DEFAULT_CHARACTER, OUTFIT_THEMES, ROOK_ID, VILLAGER_ID, characterLook, type CharacterStyleField, type CharacterChoice } from "./characterCatalog";
 import { CharacterPortrait } from "./CharacterPortrait";
 import { CHARACTER_CAMERAS, CHARACTER_ZOOM_MIN, CHARACTER_ZOOM_MAX, useCharacterPreviewStore } from "./characterPreviewStore";
-import { EMOTE_GROUPS, emoteCollection, type EmoteGroup } from "./garageEmotes";
-import { COCKPIT_TAKES } from "./roadsideEmotes";
+import { EMOTE_GROUPS, garagePreviewCollection, type EmoteGroup } from "./garageEmotes";
+import { COCKPIT_TAKES } from "./cockpitEmotes";
 
 export const CHARACTER_TABS = [
   { id: "appearance", label: "Appearance" }, { id: "face", label: "Face" }, { id: "clothes", label: "Clothes" },
@@ -38,14 +38,14 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
   const [locked, setLocked] = useState(() => Boolean(characterLook(saved)));
   const [status, setStatus] = useState<"idle" | "pending" | "saving" | "saved" | "error">("idle");
   const [message, setMessage] = useState("");
-  const [emoteGroup, setEmoteGroup] = useState<EmoteGroup>("Garage");
+  const [emoteGroup, setEmoteGroup] = useState<EmoteGroup | "Best">("Garage");
   const [comparison, setComparison] = useState<CharacterChoice | null>(null);
   const acknowledged = useRef(locked ? choice : null);
   const queued = useRef<CharacterChoice | null>(null);
   const running = useRef<Promise<boolean> | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const { character, outfit, appearance, fabric, trim } = characterLook(choice)!;
-  const { camera, zoom, emote, cockpitAvailable } = useCharacterPreviewStore();
+  const { camera, zoom, emote, cockpitAvailable, insideCar } = useCharacterPreviewStore();
   const previewChoice = useMemo(() => tab === "emotes" && comparison && comparison.id !== choice.id
     ? { ...comparison, prop: choice.prop } : choice, [tab, comparison, choice]);
 
@@ -81,8 +81,11 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
   useLayoutEffect(() => { onPreview?.(previewChoice); }, [previewChoice, onPreview]);
   useLayoutEffect(() => { onReady(locked); }, [locked, onReady]);
   useLayoutEffect(() => {
-    if (tab === "emotes") return () => useCharacterPreviewStore.setState({ emote: null });
+    if (tab === "emotes") return () => useCharacterPreviewStore.setState({ emote: null, insideCar: false });
   }, [tab]);
+  useLayoutEffect(() => {
+    if ((!cockpitAvailable || reducedMotion) && insideCar) useCharacterPreviewStore.setState({ insideCar: false, emote: null });
+  }, [cockpitAvailable, reducedMotion, insideCar]);
   useLayoutEffect(() => {
     if (!locked || tab !== "face") return;
     const { camera, zoom } = useCharacterPreviewStore.getState();
@@ -93,7 +96,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
     clearTimeout(timer.current);
     onPreview?.(null);
     onReady(false);
-    useCharacterPreviewStore.setState({ camera: "Full body", zoom: 1, emote: null });
+    useCharacterPreviewStore.setState({ camera: "Full body", zoom: 1, emote: null, insideCar: false });
   }, [onPreview, onReady]);
 
   function update(next: CharacterChoice) {
@@ -142,29 +145,41 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
     aria-label={locked ? "Preview gender" : "Gender"} data-controller-row>
     {PREVIEW_CAST.map(({ gender, choice: next }) => <button key={next.id} type="button" className="menu-control"
       disabled={!locked && status === "saving"} data-character-option={next.id} aria-pressed={previewChoice.id === next.id}
-      onClick={() => locked ? setComparison(next) : update(next)}>
+      onClick={() => {
+        if (insideCar) useCharacterPreviewStore.setState({ emote: null });
+        if (locked) setComparison(next);
+        else update(next);
+      }}>
       {!locked && <CharacterPortrait choice={next} compact />}
       <span>{gender === "female" ? "Female" : "Male"}</span>
     </button>)}
   </div>;
   const bag = Boolean(previewChoice.prop);
-  const roadside = emoteGroup === "Roadside" && !bag;
-  const gestures = emoteCollection(emoteGroup, bag);
-  const pickedEmotes = roadside ? [...gestures, ...COCKPIT_TAKES] : gestures;
+  const cockpitReady = locked && tab === "emotes" && cockpitAvailable && !bag && !reducedMotion;
+  const seated = cockpitReady && insideCar;
+  const pickedEmotes = seated ? COCKPIT_TAKES : garagePreviewCollection(emoteGroup, bag);
+  function chooseEmoteGroup(group: EmoteGroup | "Best") {
+    setEmoteGroup(group);
+    useCharacterPreviewStore.setState({ emote: null });
+  }
   const emotePicker = <>
-    <div className="character-outfits character-emote-packs" role="group" aria-label="Emote collection" data-controller-row>
+    {!seated && <div className="character-outfits" role="group" aria-label="Emote preview" data-controller-row>
+      <button type="button" className="menu-control" aria-pressed={emoteGroup === "Best"}
+        onClick={() => chooseEmoteGroup("Best")}>Best</button>
+      {locked && <button type="button" className="menu-control" data-cockpit-toggle disabled={!cockpitReady}
+        onClick={() => useCharacterPreviewStore.setState({ insideCar: true, emote: null })}>
+        {cockpitAvailable ? "Inside car" : "Inside car · AE86"}
+      </button>}
+    </div>}
+    {!seated && <div className="character-outfits character-emote-packs" role="group" aria-label="Emote collection" data-controller-row>
       {EMOTE_GROUPS.map(group => <button key={group} type="button" className="menu-control"
-        aria-pressed={emoteGroup === group} onClick={() => {
-          setEmoteGroup(group);
-          useCharacterPreviewStore.setState({ emote: null });
-        }}>{group}</button>)}
-    </div>
+        aria-pressed={emoteGroup === group} onClick={() => chooseEmoteGroup(group)}>{group}</button>)}
+    </div>}
     {reducedMotion && <p>Emote playback is paused by Reduced Motion.</p>}
-    {emoteGroup !== "Garage" && previewChoice.prop && <p>Empty hands unlock the full {emoteGroup} set.</p>}
-    {roadside && !cockpitAvailable && <p>Choose the AE86 in Heroes to preview the three cockpit scenes.</p>}
-    <div className="character-emotes">
+    {!seated && bag && cockpitAvailable && <p>Equip Empty hands to preview inside the car.</p>}
+    <div className="character-emotes" aria-label={seated ? "Driving emotes" : `${emoteGroup} emotes`}>
       {pickedEmotes.map(item => <button key={item.id} type="button" className="menu-control" data-controller-row
-        disabled={reducedMotion || (!cockpitAvailable && !("keys" in item))}
+        disabled={reducedMotion}
         aria-pressed={emote?.id === item.id} onClick={() => useCharacterPreviewStore.setState({ emote: { id: item.id } })}>{item.name}</button>)}
     </div>
   </>;
@@ -221,7 +236,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
           <p>Equipping the shop bag unlocks bag emotes in this preview.</p>
         </>}
         {tab === "emotes" && <>
-          <h2>Preview emotes</h2>
+          <h2>{seated ? "Driving emotes" : "Preview emotes"}</h2>
           {genderPicker}
           {emotePicker}
         </>}
@@ -238,7 +253,10 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
       </section>}
       <section className="character-controls menu-panel-frame character-controls--bottom" aria-label="Color palette, camera and save status">
         {(tab === "appearance" || tab === "clothes") && palette}
-        <div className="character-camera" data-controller-row>
+        {seated ? <div className="character-camera" data-controller-row>
+          <button type="button" className="menu-control" data-cockpit-toggle
+            onClick={() => useCharacterPreviewStore.setState({ insideCar: false, emote: null })}>Exit car</button>
+        </div> : <div className="character-camera" data-controller-row>
           <label>Camera<select className="menu-control" aria-label="Preview camera" value={camera}
             onChange={event => useCharacterPreviewStore.setState({ camera: event.target.value as typeof camera, zoom: 1 })}>
             {CHARACTER_CAMERAS.map(view => <option key={view}>{view}</option>)}
@@ -251,7 +269,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
             <button type="button" className="menu-control" aria-label="Zoom in" disabled={zoom >= CHARACTER_ZOOM_MAX}
               onClick={() => useCharacterPreviewStore.setState({ zoom: Math.min(CHARACTER_ZOOM_MAX, +(zoom + .05).toFixed(2)) })}>+</button>
           </div>
-        </div>
+        </div>}
         <div className="character-equip" data-controller-row>
           <p role="status">{status === "error" ? message : status === "saving" || status === "pending" ? "Saving…" : "Changes save automatically."}</p>
           {status === "error" && <>

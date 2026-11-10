@@ -1,12 +1,5 @@
 import type { Emote } from "./garageEmotes";
 
-export const COCKPIT_TAKES = [
-  { id: "068", name: "Take the wheel", duration: 4.25 },
-  { id: "069", name: "Roll out and brake", duration: 6.5 },
-  { id: "070", name: "Reverse park", duration: 6.2 },
-] as const;
-export type CockpitTake = typeof COCKPIT_TAKES[number];
-
 const glove = {
   leftHand: [.34, -.31, .65], rightHand: [-.13, -.28, .69],
   leftPalm: [[-.54, .37, .76], [0, -.95, .18]], rightPalm: [[.91, .19, .37], [0, -.84, .35]],
@@ -59,8 +52,8 @@ export const ROADSIDE_EMOTES = [
   ] },
   { id: "066", name: "Check the tires", duration: 3.7, keys: [
     [.19, { feet: { l: [.055, .04, .047, .1] }, sway: -.026, torso: [.11, .06, .025], head: [.15, .15, -.055], rise: -.03 }],
-    [.39, { feet: checkStep, sway: .054, rise: -.13, torso: [.44, .09, -.1], head: [.31, .2, -.045], face: [.02, .3] }],
-    [.61, { feet: checkStep, sway: .055, rise: -.125, torso: [.39, .12, -.08], head: [.22, -.02, -.028], face: [.35, .25] }],
+    [.39, { feet: checkStep, sway: .054, rise: -.035, torso: [.26, .09, -.1], head: [.31, .2, -.045], face: [.02, .3] }],
+    [.61, { feet: checkStep, sway: .055, rise: -.032, torso: [.23, .12, -.08], head: [.22, -.02, -.028], face: [.35, .25] }],
     [.81, { feet: { l: [.047, .028, .039, .09] }, sway: .03, rise: -.045, torso: [.1, .06, -.03], head: [-.04, -.12, .025], face: [.59, .31] }],
   ] },
   { id: "067", name: "Wave them through", duration: 3.2, keys: [

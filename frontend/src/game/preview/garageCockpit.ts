@@ -1,34 +1,40 @@
 import { Bone, Box3, MathUtils, Object3D, Quaternion, Vector3, type Group, type MeshPhysicalMaterial } from "three";
 import { aimDriverJoint, aimLimb, alignJointNormal, driverArm, driverHand } from "../characters/garageEmotes";
-import type { CockpitTake } from "../characters/roadsideEmotes";
-import { RACE_FACE } from "../characters/rivalryEmotes";
+import type { CockpitTake } from "../characters/cockpitEmotes";
 import { driverFaceTargets } from "../characters/villagerFace";
 
-export type CockpitPlayback = { sample: (phase: number) => void; stop: () => void };
-export type GarageCockpit = (driver: Object3D, take: CockpitTake) => CockpitPlayback | null;
+type TakeId = CockpitTake["id"];
+export type CockpitPlayback = { sample: (id: TakeId | null, phase: number) => void; stop: () => void };
+export type GarageCockpit = (driver: Object3D) => CockpitPlayback | null;
 
 const AXLE = new Vector3(1, 0, 0);
 const UP = new Vector3(0, 1, 0);
 const RIM_AXIS = new Vector3(0, .4, -.9165).normalize();
 const ELBOW_HINGE = new Vector3(0, 0, -1);
 const ROLL_START = .285;
+const RACE_FACE = [-.21, -.28] as const;
 
-export function sampleCockpitMotion(id: CockpitTake["id"], phase: number) {
+export function sampleCockpitMotion(id: TakeId | null, phase: number) {
   const ease = (from: number, to: number) => MathUtils.smoothstep(phase, from, to);
-  const parked = id === "068";
+  const mirrors = id === "086";
+  const parked = id === null || id === "068" || mirrors;
   const reversing = id === "070";
-  const distance = reversing ? -.77 : .9;
+  const overtake = id === "076";
+  const gesture = id === "101" || id === "102" ? ease(.33, .44) - ease(.58, .73) : 0;
+  const distance = reversing ? -.77 : overtake ? 1.18 : .9;
   const travel = parked ? 0 : distance * (ease(ROLL_START, .49) - ease(.63, .95));
-  const curve = reversing ? -.13 : .12;
+  const curve = reversing ? -.13 : overtake ? .23 : .12;
   const heading = travel * curve;
-  const steering = parked ? .23 * (ease(.16, .36) - 2 * ease(.41, .65) + ease(.7, .92))
-    : Math.atan(2.4 * curve) * (ease(.06, .22) - ease(.78, .98));
+  const steering = id === "068" ? .23 * (ease(.16, .36) - 2 * ease(.41, .65) + ease(.7, .92))
+    : parked ? 0 : Math.atan(2.4 * curve) * (ease(.06, .22) - ease(.78, .98));
   const brake = parked ? 0 : ease(.39, .49) - ease(.55, .63) + ease(.87, .95) - ease(.96, 1);
   const sideCheck = reversing ? -.82 * (ease(.045, .14) - ease(.49, .67)) : -.57 * (ease(.035, .115) - ease(.145, .205));
+  const farMirror = mirrors ? .62 * (ease(.25, .48) - ease(.61, .83)) : 0;
   const nod = .18 * (ease(.165, .218) - ease(.225, ROLL_START));
   const focus = ease(.19, .29) - ease(.85, 1);
   return { travel, heading, across: (1 - Math.cos(heading)) / curve, along: Math.sin(heading) / curve, steering, brake,
-    lookYaw: sideCheck + steering * .24, lookPitch: nod, focus, closeShot: parked || phase < ROLL_START };
+    lookYaw: sideCheck + farMirror + steering * .24 - gesture * .12, lookPitch: nod, focus: focus * (1 - gesture * .65),
+    gesture, closeShot: parked || id === "077" || id === "101" || id === "102" || phase < ROLL_START };
 }
 
 function localRest(object: Object3D) {
@@ -59,7 +65,7 @@ export function prepareGarageCockpit(car: Object3D, motionGroup: () => Group | n
   });
   if (roadWheels.length !== 4) return;
 
-  return (driver, take) => {
+  return driver => {
     const motion = motionGroup();
     const parent = driver.parent;
     const head = driver.getObjectByName("head");
@@ -83,7 +89,8 @@ export function prepareGarageCockpit(car: Object3D, motionGroup: () => Group | n
     const rest = [head, ...arms.flatMap(({ shoulder, elbow, hand, rig }) =>
       [shoulder, elbow, hand, ...(rig?.fingers.map(({ joint }) => joint) ?? [])]), ...legs.flatMap(({ hip, knee, foot }) => [hip, knee, foot])].map(localRest);
     const expression = (["smile", "brow"] as const).flatMap((shape, channel) => driverFaceTargets(driver, shape)
-      .map(({ mesh, index }) => ({ weights: mesh.morphTargetInfluences!, index, rest: mesh.morphTargetInfluences![index], weight: RACE_FACE[channel] })));
+      .map(({ mesh, index }) => ({ weights: mesh.morphTargetInfluences!, index, rest: mesh.morphTargetInfluences![index],
+        focus: RACE_FACE[channel], greeting: channel === 0 ? .55 : .21 })));
     const driverRotation = driver.getWorldQuaternion(new Quaternion()).invert();
     const feet = legs.map(({ foot }) => driverRotation.clone().multiply(foot.getWorldQuaternion(new Quaternion())));
     const camera = new Object3D();
@@ -91,19 +98,23 @@ export function prepareGarageCockpit(car: Object3D, motionGroup: () => Group | n
     const lens = new Object3D();
     camera.add(lens);
     car.add(camera);
+    const shadowWasVisible = driverShadow?.visible;
     if (driverShadow) driverShadow.visible = false;
-    const glass = [...glassMaterials].map(material => ({ material, opacity: material.opacity }));
-    for (const { material } of glass) material.opacity = .09;
+    const glass = [...glassMaterials].map(material => ({ material, opacity: material.opacity, reflection: material.envMapIntensity }));
+    for (const { material } of glass) {
+      material.opacity = .06;
+      material.envMapIntensity = .06;
+    }
     const scale = car.getWorldScale(new Vector3()).y;
     const carRotation = new Quaternion(), roll = new Quaternion(), steer = new Quaternion(), rimTurn = new Quaternion();
     const headAxes = new Quaternion(), localAxis = new Vector3();
 
     return {
-      sample(phase) {
-        const pose = sampleCockpitMotion(take.id, phase);
+      sample(id, phase) {
+        const pose = sampleCockpitMotion(id, phase);
         if (pose.closeShot) {
-          camera.position.set(center.x, .92, center.z - .19);
-          lens.position.set(-.38, .25, 1.30);
+          camera.position.set(center.x - .065, .96, center.z - .205);
+          lens.position.set(.31, .22, 1.17);
         } else {
           camera.position.set(0, .60, .08);
           lens.position.set(-4.25, 2.15, 3.75);
@@ -135,7 +146,9 @@ export function prepareGarageCockpit(car: Object3D, motionGroup: () => Group | n
         head.getWorldQuaternion(headAxes).invert().multiply(carRotation);
         head.rotateOnAxis(localAxis.copy(UP).applyQuaternion(headAxes), pose.lookYaw);
         head.rotateOnAxis(localAxis.copy(AXLE).applyQuaternion(headAxes), pose.lookPitch);
-        for (const { weights, index, rest, weight } of expression) weights[index] = MathUtils.lerp(rest, weight, pose.focus);
+        for (const { weights, index, rest, focus, greeting } of expression) {
+          weights[index] = MathUtils.lerp(MathUtils.lerp(rest, focus, pose.focus), greeting, pose.gesture);
+        }
         for (const [index, { hip, knee, foot, side }] of legs.entries()) {
           const ankle = car.localToWorld(new Vector3(seat.x + side * .102, .24 + (side < 0 ? pose.brake * .042 : 0), center.z + .20));
           aimLimb(hip, knee, foot, ankle, new Vector3(side * .11, 1, .12).applyQuaternion(carRotation));
@@ -143,15 +156,35 @@ export function prepareGarageCockpit(car: Object3D, motionGroup: () => Group | n
         }
         for (const { shoulder, elbow, hand, rig, side } of arms) {
           const grip = new Vector3(side * .131, .081, .034).applyQuaternion(rimTurn).add(center);
-          const wrist = car.localToWorld(grip.clone().add(new Vector3(side * .027, -.024, -.085)));
+          const release = side < 0 ? pose.gesture : 0;
+          const wave = id === "101" ? Math.sin((phase - .44) * Math.PI * 25) : 0;
+          const wrist = grip.clone().add(new Vector3(side * .027, -.024, -.085));
+          if (release) wrist.lerp(new Vector3(-.205 + wave * .021, .235, -.225).add(center), release);
+          car.localToWorld(wrist);
           const pole = new Vector3(side * .47, -1, -.16).applyQuaternion(carRotation);
           aimLimb(shoulder, elbow, hand, wrist, pole, shoulder instanceof Bone ? ELBOW_HINGE : undefined);
           if (!rig) continue;
           const direction = car.localToWorld(grip).sub(hand.getWorldPosition(new Vector3())).normalize();
+          const palmNormal = new Vector3(-side, -.35, .15).applyQuaternion(carRotation);
+          if (release) {
+            direction.lerp(new Vector3(-.06 + wave * .28, .95, .25).applyQuaternion(carRotation).normalize(), release).normalize();
+            palmNormal.lerp(new Vector3(.17, -.12, 1).applyQuaternion(carRotation), release);
+          }
           aimDriverJoint(hand, rig.middle, direction.clone());
-          alignJointNormal(hand, direction, rig.palm, new Vector3(-side, -.35, .15).applyQuaternion(carRotation));
+          alignJointNormal(hand, direction, rig.palm, palmNormal);
           for (const { joint, axis, name, segment } of rig.fingers) {
-            joint.rotateOnAxis(axis, (name === "thumb" ? .3 : [.52, .81, .54][segment]));
+            const gripCurl = name === "thumb" ? .3 : [.52, .81, .54][segment];
+            const gestureCurl = id === "101" ? .05 : name === "thumb" ? .04 : [1.04, 1.27, .64][segment];
+            joint.rotateOnAxis(axis, MathUtils.lerp(gripCurl, gestureCurl, release));
+          }
+          if (release && id === "102" && rig.thumb) {
+            const [base, middle, tip] = rig.thumb;
+            const thumbDirection = new Vector3(.19, 1, .10).applyQuaternion(carRotation);
+            for (const [joint, child] of [[base, middle], [middle, tip]]) {
+              const gripRotation = joint.quaternion.clone();
+              aimDriverJoint(joint, child, thumbDirection.clone());
+              joint.quaternion.slerp(gripRotation, 1 - release);
+            }
           }
         }
       },
@@ -164,9 +197,12 @@ export function prepareGarageCockpit(car: Object3D, motionGroup: () => Group | n
           restore(part);
           if (part.caliper) restore(part.caliper);
         }
-        for (const { material, opacity } of glass) material.opacity = opacity;
+        for (const { material, opacity, reflection } of glass) {
+          material.opacity = opacity;
+          material.envMapIntensity = reflection;
+        }
         for (const { weights, index, rest } of expression) weights[index] = rest;
-        if (driverShadow) driverShadow.visible = true;
+        if (driverShadow && shadowWasVisible !== undefined) driverShadow.visible = shadowWasVisible;
         camera.removeFromParent();
       },
     };

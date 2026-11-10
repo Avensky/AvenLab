@@ -44,16 +44,17 @@ Tsundere (041–050) is available under Emotes → Tsundere. Four of its gesture
 can be previewed while holding the bag. Sideways check glances over during a walk.
 Expressions (051–060) includes Fingertip plea, a two-handed gesture with
 watery eyes. Select the Hands camera to see the touch or Face for the expression.
-Roadside (061–070) adds driver and spotter gestures plus three scripted cockpit
-scenes. Choose the AE86 in Heroes and preview with empty hands. The last two
-scenes open with a close view of the driver's side check and focused nod before
-the car rolls on the garage pad and returns to the mark.
-Rivalry (071–080) adds a starting countdown, racing gestures, a photo pose,
-and a post-race nod. Five are available while carrying the shop bag.
-Pit Crew (081–090) includes radio checks, pit signals, mirror checks, and a crew
-fist bump. Five are available with the shop bag.
+Roadside has spotter gestures and an upright tire check. Rivalry includes a
+starting countdown, a photo pose, and a post-race nod. Pit Crew has radio
+checks, pit signals, and a crew fist bump.
 After Hours (091–100) adds small reactions, a shaka, and a two-step shuffle.
 Six are available with the shop bag.
+
+Garage puts the recommended standing emotes first. Best collects the strongest
+gestures from across the packs. Choose the AE86 in Heroes, equip Empty hands,
+then open Character → Emotes → Inside car for the driving set. Window wave and
+Driver thumbs-up keep the left hand on the steering wheel while the car rolls.
+The driver stays seated between clips. Exit car returns to the standing preview.
 
 Character → Face opens a close-up for iris color, eyebrow tint, and glasses.
 Both villagers use these settings in the live model and their rendered portrait.

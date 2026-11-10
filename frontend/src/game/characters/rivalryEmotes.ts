@@ -1,7 +1,5 @@
 import type { Emote } from "./garageEmotes";
 
-export const RACE_FACE = [-.21, -.28] as const;
-
 const count = {
   rightHand: [-1.46, .28, .59], rightPalm: [[.04, 1, .14], [0, 0, 1]],
   sway: -.027, rise: -.02,
@@ -26,14 +24,6 @@ const closeCall = {
 } as const;
 const trace = {
   rightPalm: [[.14, .01, 1], [0, -1, 0]], fingers: [null, "peace"],
-} as const;
-const pass = {
-  leftHand: [.89, -.25, .62], rightHand: [-.76, -.29, .53],
-  leftPalm: [[.015, .1, 1], [0, -1, .09]], rightPalm: [[-.015, .1, 1], [0, -1, .09]],
-  fingers: ["open", "open"],
-} as const;
-const gridStance = {
-  l: [.07, 0, .118, .16], r: [-.023, 0, -.066, -.14],
 } as const;
 const viewfinder = {
   leftHand: [1.1, .23, .57], rightHand: [-1.1, .17, .63],
@@ -93,24 +83,6 @@ const RIVALRY_EMOTES = [
     [.61, { ...trace, rightHand: [.53, -.24, .78], rightPalm: [[.49, -.15, .86], [0, -1, .03]],
       torso: [.075, .19, -.045], head: [.165, .34, -.045], sway: .044, rise: -.025, face: [.67, .49] }],
     [.81, { rightHand: [-1.25, -.38, .56], head: [.02, .17, .026], rise: -.018, face: [.62, .23] }],
-  ] },
-  { id: "076", name: "Smooth overtake", duration: 3.55, keys: [
-    [.17, { ...pass, leftHand: [1.18, -.42, .54], rightHand: [-1.24, -.4, .55], head: [.16, -.09, .032], face: [.28, .3] }],
-    [.33, { ...pass, torso: [.07, -.04, .018], head: [.19, -.07, .03], rise: -.024, face: [.45, .35] }],
-    [.48, { ...pass, rightHand: [-.98, -.17, .74], torso: [.08, -.1, .053], sway: -.029, rise: -.026, head: [.16, -.13, .055], face: [.62, .41] }],
-    [.62, { ...pass, rightHand: [-.72, -.07, 1], torso: [.07, -.08, .04], sway: -.035, rise: -.028, head: [.12, -.095, .06], face: [.92, .54] }],
-    [.79, { ...pass, leftHand: [1.27, -.4, .57], rightHand: [-1.18, -.25, .71], head: [-.018, .055, -.04], face: [.64, .28] }],
-  ] },
-  { id: "077", name: "Race face", duration: 3.75, keys: [
-    [.16, { feet: { l: [.039, .035, .067, .1] }, sway: -.026, rise: -.02, head: [.075, -.25, .02], face: [.25, .21] }],
-    [.3, { feet: { l: gridStance.l, r: [-.016, .029, -.034, -.08] }, sway: .043, rise: -.039,
-      leftHand: [1.49, -.61, .44], rightHand: [-1.49, -.57, .47], torso: [.1, -.05, -.045], head: [.02, -.04, -.035], face: [.08, .29] }],
-    [.46, { feet: gridStance, sway: .024, rise: -.058, travel: .03,
-      leftHand: [1.56, -.59, .52], rightHand: [-1.56, -.57, .51], torso: [.173, -.018, -.018], head: [-.035, 0, .02], face: RACE_FACE }],
-    [.68, { feet: gridStance, sway: .022, rise: -.052, travel: .035,
-      leftHand: [1.53, -.62, .48], rightHand: [-1.54, -.59, .48], torso: [.153, 0, -.015], head: [-.023, .035, .01], face: [-.05, -.24] }],
-    [.81, { feet: { l: gridStance.l, r: [-.013, .029, -.035, -.07] }, sway: .037, rise: -.031, head: [.03, .14, -.016], face: [.41, .27] }],
-    [.92, { feet: { l: [.034, .025, .053, .075] }, sway: .019, rise: -.016, face: [.39, .18] }],
   ] },
   { id: "078", name: "Frame the shot", duration: 3.55, keys: [
     [.17, { ...viewfinder, leftHand: [1.43, -.14, .58], rightHand: [-1.41, -.16, .61], head: [.055, -.075, .032], face: [.49, .35] }],

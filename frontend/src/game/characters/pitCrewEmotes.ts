@@ -78,14 +78,6 @@ const PIT_CREW_EMOTES = [
     [.58, { ...boxSignal, rightHand: [-1.26, -.12, .78], sway: -.043, rise: -.038, torso: [.068, -.08, .054], head: [.15, -.03, .032], face: [.85, .43] }],
     [.79, { rightHand: [-1.4, -.37, .55], head: [.01, .07, .033], face: [.65, .27] }],
   ] },
-  { id: "086", name: "Check the mirrors", duration: 3.45, keys: [
-    [.17, { sway: -.03, rise: -.019, torso: [.033, -.12, .04], head: [.067, -.38, .051], face: [-.08, .44] }],
-    [.33, { sway: -.037, rise: -.025, torso: [.038, -.18, .053], head: [.095, -.55, .07], face: [-.14, .48] }],
-    [.49, { sway: .002, rise: -.021, torso: [.045, .01, .016], head: [.095, -.035, -.02], face: [.13, .31] }],
-    [.63, { sway: .039, rise: -.025, torso: [.037, .165, -.05], head: [.065, .51, -.076], face: [.27, .49] }],
-    [.77, { sway: .032, rise: -.022, torso: [.025, .12, -.042], head: [.135, .43, -.06], face: [.63, .43] }],
-    [.89, { head: [.05, .055, -.03], face: [.52, .2] }],
-  ] },
   { id: "087", name: "Dial the setup", duration: 3.5, keys: [
     [.17, { ...adjustment, leftHand: [1.05, -.4, .61], rightHand: [-.93, -.36, .57], head: [.15, .08, -.025], face: [.18, .29] }],
     [.34, { ...adjustment, sway: .022, rise: -.025, torso: [.088, .06, -.038], head: [.21, .09, -.04], wrist: -.24, face: [-.09, .41] }],
@@ -123,7 +115,7 @@ const PIT_CREW_EMOTES = [
   ] },
 ] as const satisfies readonly Emote[];
 
-const BAG_COMPATIBLE = ["081", "083", "085", "086", "090"];
+const BAG_COMPATIBLE = ["081", "083", "085", "090"];
 
 export function availablePitCrewEmotes(bag: boolean) {
   return bag ? PIT_CREW_EMOTES.filter(emote => BAG_COMPATIBLE.includes(emote.id)) : PIT_CREW_EMOTES;

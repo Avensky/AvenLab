@@ -2,14 +2,13 @@ import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { AnimationMixer, LoopOnce, MathUtils, type AnimationAction, type Object3D } from "three";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
-import { buildEmoteClips, buildGarageEmotes, GARAGE_EMOTES } from "./garageEmotes";
+import { AUTOMATIC_GARAGE_EMOTE_IDS, buildEmoteClips, buildGarageEmotes, GARAGE_EMOTES } from "./garageEmotes";
 import { driverFaceTargets } from "./villagerFace";
 import { useCharacterPreviewStore } from "./characterPreviewStore";
 import { DriverBag } from "./DriverBag";
 import { availableVictoryEmotes, type VictoryEmoteId } from "./victoryEmotes";
 import { GARAGE_LEAN_ID, type GarageLeanFit } from "./garageLean";
-import { QUIET_THANK_YOU } from "./shyEmotes";
-import { COCKPIT_TAKES } from "./roadsideEmotes";
+import { COCKPIT_TAKES, type CockpitTake } from "./cockpitEmotes";
 import type { CockpitPlayback, GarageCockpit } from "../preview/garageCockpit";
 import { garageHoldEmotes } from "./garageHolds";
 
@@ -44,7 +43,8 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     actions: Map<string, AnimationAction>;
     automatic: AnimationAction[];
     active: AnimationAction | null;
-    take: { playback: CockpitPlayback; seconds: number; duration: number } | null;
+    cabin: CockpitPlayback | null;
+    take: { clip: CockpitTake; seconds: number } | null;
     rest: number;
     next: number;
     wave: boolean;
@@ -64,17 +64,15 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     const holds = victory ? [idle] : [idle, ...buildEmoteClips(root, garageHoldEmotes(bag)).map(clip => mixer.clipAction(clip))];
     const actions = new Map(clips.map(clip => [clip.name.split(" ")[0], mixer.clipAction(clip).setLoop(LoopOnce, 1)]));
     actions.set("001", mixer.clipAction(breathing.clone()).setLoop(LoopOnce, 1));
-    const automatic = [...actions].filter(([id]) => bag ? id.startsWith("bag-")
-      : GARAGE_EMOTES.some(emote => emote.id === id && id !== "001" && id !== "010")).map(([, action]) => action);
-    const thanks = actions.get(QUIET_THANK_YOU.id);
-    if (thanks) automatic.unshift(thanks);
+    const automatic = bag ? [...actions].filter(([id]) => id.startsWith("bag-")).map(([, action]) => action)
+      : AUTOMATIC_GARAGE_EMOTE_IDS.flatMap(id => actions.get(id) ?? []);
     const lean = actions.get(GARAGE_LEAN_ID);
     if (lean) automatic.splice(2, 0, lean);
     const blink = driverFaceTargets(root, "blink");
     const active = celebration ? actions.get(celebration.id)!.reset().setEffectiveWeight(0).play() : null;
-    player.current = { mixer, idle, holds, holdIndex: 0, actions, automatic, active, take: null, rest: REST_SECONDS, next: 0, wave: false, blink, elapsed: 0, preview: null };
+    player.current = { mixer, idle, holds, holdIndex: 0, actions, automatic, active, cabin: null, take: null, rest: REST_SECONDS, next: 0, wave: false, blink, elapsed: 0, preview: null };
     return () => {
-      player.current?.take?.playback.stop();
+      player.current?.cabin?.stop();
       player.current = null;
       mixer.stopAllAction();
       mixer.uncacheRoot(root);
@@ -86,8 +84,50 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     const current = player.current;
     if (!current) return;
     const step = Math.min(delta, .1);
+    if (current.blink.length) {
+      current.elapsed += step;
+      const phase = current.elapsed % 8.2;
+      const age = phase - (phase < 4 ? 2.4 : 6.15);
+      const blink = MathUtils.smoothstep(age, 0, .066) * (1 - MathUtils.smoothstep(age, .075, .19));
+      setBlinkWeight(current.blink, blink);
+    }
     const view = useCharacterPreviewStore.getState();
-    const preview = view.emote;
+    const preview = previewPacks ? view.emote : null;
+    if (cockpit && previewPacks && view.cockpitAvailable && view.insideCar && !bag && !victory) {
+      if (!current.cabin) {
+        current.active?.stop();
+        current.active = null;
+        current.idle.stop();
+        current.wave = false;
+        current.preview = null;
+        current.cabin = cockpit(root);
+        if (!current.cabin) {
+          current.idle.reset().setEffectiveWeight(1).play();
+          useCharacterPreviewStore.setState({ insideCar: false, emote: null });
+          return;
+        }
+      }
+      if (preview !== current.preview) {
+        current.preview = preview;
+        const clip = COCKPIT_TAKES.find(take => take.id === preview?.id);
+        current.take = clip ? { clip, seconds: 0 } : null;
+      }
+      const take = current.take;
+      if (take) {
+        take.seconds += step;
+        if (take.seconds >= take.clip.duration) current.take = null;
+      }
+      current.cabin.sample(current.take?.clip.id ?? null, current.take ? current.take.seconds / current.take.clip.duration : 0);
+      return;
+    }
+    if (current.cabin) {
+      current.cabin.stop();
+      current.cabin = null;
+      current.take = null;
+      current.preview = null;
+      current.idle.reset().setEffectiveWeight(1).play();
+      current.rest = REST_SECONDS;
+    }
     const inspectingFace = previewPacks && view.camera === "Face" && !preview;
     if (inspectingFace) {
       current.active?.stop();
@@ -98,41 +138,12 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     }
     if (!victory && preview !== current.preview) {
       current.preview = preview;
-      if (current.take) {
-        current.take.playback.stop();
-        current.take = null;
-        current.idle.reset().setEffectiveWeight(1).play();
-        current.rest = REST_SECONDS;
-      }
-      const take = cockpit && previewPacks && !bag && COCKPIT_TAKES.find(take => take.id === preview?.id);
-      if (take) {
-        current.active?.stop();
-        current.active = null;
-        current.idle.stop();
-        current.wave = false;
-        const playback = cockpit(root, take);
-        if (playback) current.take = { playback, seconds: 0, duration: take.duration };
-        else current.idle.reset().setEffectiveWeight(1).play();
-      }
       const action = preview && current.actions.get(preview.id);
       if (action) {
         current.active?.stop();
         current.active = action.reset().setEffectiveWeight(0).play();
         current.idle.setEffectiveWeight(1);
       }
-    }
-    if (current.take) {
-      const { playback, duration } = current.take;
-      current.take.seconds += step;
-      if (current.take.seconds < duration) {
-        playback.sample(current.take.seconds / duration);
-        return;
-      }
-      playback.stop();
-      current.take = null;
-      nextHold(current);
-      current.idle.setEffectiveWeight(1).play();
-      current.rest = REST_SECONDS;
     }
     if (current.active) {
       const active = current.active;
@@ -161,17 +172,10 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
       }
     }
     current.mixer.update(step);
-    if (current.blink.length) {
-      current.elapsed += step;
-      const phase = current.elapsed % 8.2;
-      const age = phase - (phase < 4 ? 2.4 : 6.15);
-      const blink = MathUtils.smoothstep(age, 0, .066) * (1 - MathUtils.smoothstep(age, .075, .19));
-      setBlinkWeight(current.blink, blink);
-    }
   }, cockpit ? -.5 : 0);
 
   return <group onClick={event => {
-    if (victory || !player.current || player.current.take || event.delta > 5) return;
+    if (victory || !player.current || player.current.cabin || event.delta > 5) return;
     event.stopPropagation();
     player.current.wave = true;
   }}>

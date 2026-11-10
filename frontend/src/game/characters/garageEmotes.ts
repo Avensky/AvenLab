@@ -59,6 +59,9 @@ const wave: Arm = [[-1, -.55, .28], [-.24, 1, .28]];
 
 export const EMOTE_GROUPS = ["Garage", "Victory", "Playful", "Shy", "Tsundere", "Expressions", "Roadside", "Rivalry", "Pit Crew", "After Hours"] as const;
 export type EmoteGroup = typeof EMOTE_GROUPS[number];
+export const AUTOMATIC_GARAGE_EMOTE_IDS = ["035", "002", "003", "005", "009"];
+const BEST_EMOTE_IDS = ["035", "090", "072", "051", "018", "094", "095", "100"];
+const GARAGE_PICK_IDS = ["005", "010", "002", "003", "009", "035", "090", "092", "093"];
 
 export const GARAGE_EMOTES = [
   { id: "001", name: "Relaxed breathing", duration: 3.6, keys: [
@@ -94,8 +97,8 @@ export const GARAGE_EMOTES = [
   { id: "006", name: "Inspect the wheel", duration: 3.2, keys: [
     [.13, { ...startPivot, head: [.1, .15, 0] }],
     [.25, { ...finishPivot, head: [.15, .1, 0] }],
-    [.47, { ...faceCar, rise: -.092, sway: .052, torso: [.32, .19, 0], head: [.26, .13, -.045], left: claspLeft, right: claspRight, face: [0, -.55] }],
-    [.67, { ...faceCar, rise: -.079, sway: .043, torso: [.28, .14, 0], head: [.2, -.03, .03], left: claspLeft, right: claspRight, face: [.15, -.4] }],
+    [.47, { ...faceCar, rise: -.034, sway: .029, torso: [.2, .12, 0], head: [.26, .13, -.045], face: [0, -.55] }],
+    [.67, { ...faceCar, rise: -.032, sway: .024, torso: [.16, .08, 0], head: [.2, -.03, .03], face: [.15, -.4] }],
     [.8, { ...finishPivot, torso: [.07, 0, 0], head: [.08, 0, 0] }],
     [.91, startPivot],
   ] },
@@ -436,6 +439,13 @@ export function emoteCollection(group: EmoteGroup, bag: boolean, includeWalks = 
   if (group === "After Hours") return availableAfterHoursEmotes(bag);
   if (bag) return [...GARAGE_EMOTES.filter(item => compatibleGarageEmotes(item.id)), ...BAG_EMOTES];
   return includeWalks ? [...GARAGE_EMOTES, ...WALK_EMOTES] : GARAGE_EMOTES;
+}
+
+export function garagePreviewCollection(group: EmoteGroup | "Best", bag: boolean): readonly Emote[] {
+  if (group !== "Garage" && group !== "Best") return emoteCollection(group, bag);
+  const library = new Map(EMOTE_GROUPS.flatMap(pack => emoteCollection(pack, bag)).map(emote => [emote.id, emote]));
+  const picks = (group === "Best" ? BEST_EMOTE_IDS : GARAGE_PICK_IDS).flatMap(id => library.get(id) ?? []);
+  return group === "Best" ? picks : [...picks, ...emoteCollection("Garage", bag).filter(emote => !GARAGE_PICK_IDS.includes(emote.id))];
 }
 
 export function buildGarageEmotes(root: Object3D, bag = false, previewPacks = false, leanFit?: GarageLeanFit) {

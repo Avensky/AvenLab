@@ -10,4 +10,5 @@ export const useCharacterPreviewStore = create<{
   zoom: number;
   emote: { id: string } | null;
   cockpitAvailable: boolean;
-}>(() => ({ camera: "Full body", zoom: 1, emote: null, cockpitAvailable: false }));
+  insideCar: boolean;
+}>(() => ({ camera: "Full body", zoom: 1, emote: null, cockpitAvailable: false, insideCar: false }));

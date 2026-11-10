@@ -73,8 +73,12 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(find('[data-character-preview]').dataset.characterPreview, 'mara-vega');
     const vesperPortrait = find('[data-character-option="mara-vega"] .character-portrait');
     assert(vesperPortrait?.matches('span.character-portrait--unavailable'), 'Vesper keeps a neutral portrait when WebGL is unavailable');
-    await click('.character-emotes button:nth-child(4)');
-    assert.equal(preview.getState().emote.id, '004');
+    await click('.character-emotes button:first-child');
+    assert.equal(preview.getState().emote.id, '005');
+    await click('[aria-label="Emote preview"] button:first-child');
+    assert.equal(document.querySelectorAll('.character-emotes button').length, 8);
+    await click('.character-emotes button:first-child');
+    assert.equal(preview.getState().emote.id, '035');
     await click('[aria-label="Emote collection"] button:nth-child(3)');
     assert.equal(document.querySelectorAll('.character-emotes button').length, 11);
     await click('.character-emotes button:first-child');
@@ -96,24 +100,18 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('.character-emotes button:first-child');
     assert.equal(preview.getState().emote.id, '051');
     await click('[aria-label="Emote collection"] button:nth-child(7)');
-    assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
-    const reversePark = '.character-emotes button:last-child';
-    assert.equal(find(reversePark).textContent, 'Reverse park');
-    assert.equal(find(reversePark).disabled, true);
-    await act(async () => preview.setState({ cockpitAvailable: true }));
-    await click(reversePark);
-    assert.equal(preview.getState().emote.id, '070');
-    await act(async () => preview.setState({ cockpitAvailable: false }));
+    assert.equal(document.querySelectorAll('.character-emotes button').length, 7);
+    assert.equal(find('.character-emotes button:last-child').textContent, 'Wave them through');
     await click('[aria-label="Emote collection"] button:nth-child(8)');
     assert.equal(find('[aria-label="Emote collection"] button:nth-child(8)').textContent, 'Rivalry');
-    assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
+    assert.equal(document.querySelectorAll('.character-emotes button').length, 8);
     await click('.character-emotes button:first-child');
     assert.equal(preview.getState().emote.id, '071');
     await click('.character-emotes button:last-child');
     assert.equal(preview.getState().emote.id, '080');
     await click('[aria-label="Emote collection"] button:nth-child(9)');
     assert.equal(find('[aria-label="Emote collection"] button:nth-child(9)').textContent, 'Pit Crew');
-    assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
+    assert.equal(document.querySelectorAll('.character-emotes button').length, 9);
     await click('.character-emotes button:last-child');
     assert.equal(preview.getState().emote.id, '090');
     await click('[aria-label="Emote collection"] button:last-child');
@@ -140,8 +138,24 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await acknowledge(requests[0], choice);
     assert.equal(find('[data-character-option]'), null);
     assert.deepEqual([...document.querySelectorAll('[role=tab]')].map(node => node.textContent), ['Appearance', 'Face', 'Clothes', 'Props', 'Emotes']);
+    await click('#character-editor-tab-emotes');
+    const cockpitToggle = '[data-cockpit-toggle]';
+    assert.equal(find(cockpitToggle).disabled, true);
+    await act(async () => preview.setState({ cockpitAvailable: true }));
+    assert.equal(find('[aria-label="Driving emotes"]'), null);
+    await click(cockpitToggle);
+    assert.equal(preview.getState().insideCar, true);
+    assert.equal(find('[aria-label="Emote collection"]'), null);
+    assert.equal(find('[aria-label="Driving emotes"] button:last-child').textContent, 'Driver thumbs-up');
+    await click('[aria-label="Driving emotes"] button:last-child');
+    assert.equal(preview.getState().emote.id, '102');
+    await click(cockpitToggle);
+    assert.equal(preview.getState().insideCar, false);
+    assert.equal(preview.getState().emote, null);
+    await click(cockpitToggle);
     await click('#character-editor-tab-face');
     assert.equal(preview.getState().camera, 'Face');
+    assert.equal(preview.getState().insideCar, false);
     assert.equal(preview.getState().emote, null);
     assert.equal(find('select[aria-label="Eye color"]').value, 'original');
     await select('Eye color', 'blue');
@@ -170,6 +184,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('.character-outfits[aria-label="Props"] button:last-child');
     assert.equal(drafts.at(-1).prop, 'shop-bag');
     await click('#character-editor-tab-emotes');
+    assert.equal(find(cockpitToggle).disabled, true, 'empty hands are required for the cockpit');
     assert([...document.querySelectorAll('.character-emotes button')].some(button => button.textContent === 'Lift the bag'));
     assert(![...document.querySelectorAll('.character-emotes button')].some(button => button.textContent === 'Hands behind back'));
     assert.equal(find('input[aria-label="Preview zoom"]').max, '1.25');
@@ -193,7 +208,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
       ['Grid countdown', 'Two-finger salute', 'Photo finish', 'Call the line', 'Good race']);
     await click('[aria-label="Emote collection"] button:nth-child(9)');
     assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
-      ['Radio check', 'Last lap', 'Box this lap', 'Check the mirrors', 'Crew fist bump']);
+      ['Radio check', 'Last lap', 'Box this lap', 'Crew fist bump']);
     await click('[aria-label="Emote collection"] button:last-child');
     assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
       ['Neck reset', 'Fix the fringe', 'Hang loose', 'Shade the lights', 'Rain check', 'Keys check']);
@@ -236,8 +251,8 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
 test('all emote batches return to rest and keep planted and lifted feet distinct', async () => {
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
   try {
-    const { buildGarageEmotes } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
-    const { COCKPIT_TAKES } = await vite.ssrLoadModule('/src/game/characters/roadsideEmotes.ts');
+    const { buildGarageEmotes, AUTOMATIC_GARAGE_EMOTE_IDS } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
+    const { COCKPIT_TAKES } = await vite.ssrLoadModule('/src/game/characters/cockpitEmotes.ts');
     const { sampleCockpitMotion } = await vite.ssrLoadModule('/src/game/preview/garageCockpit.ts');
     const { characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
     const { prepareStylizedDriver } = await vite.ssrLoadModule('/src/game/characters/stylizedDriverModel.ts');
@@ -255,7 +270,9 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     const mixer = new AnimationMixer(model.root);
     const ids = clips.map(clip => clip.name.split(' ')[0]);
     const numbered = [...ids.filter(id => /^\d+$/.test(id)), ...COCKPIT_TAKES.map(take => take.id)].sort();
-    assert.deepEqual(numbered, Array.from({length: 100}, (_, i) => String(i + 1).padStart(3, '0')));
+    assert.deepEqual(numbered, Array.from({length: 102}, (_, i) => String(i + 1).padStart(3, '0')));
+    assert(!AUTOMATIC_GARAGE_EMOTE_IDS.includes('006'));
+    assert(COCKPIT_TAKES.every(({ id }) => !ids.includes(id)));
     assert.deepEqual(ids.filter(id => id.startsWith('walk-')), ['walk-casual', 'walk-glance']);
     assert.deepEqual(buildGarageEmotes(model.root).map(clip => clip.name.split(' ')[0]), [...ids.slice(0, 10), '035']);
     assert(!buildGarageEmotes(model.root, true).some(clip => clip.name.startsWith('035 ')));
@@ -277,6 +294,13 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
       assert.equal(Math.abs(sampleCockpitMotion(take, 1).along), 0);
       assert.equal(Math.abs(sampleCockpitMotion(take, 1).steering), 0);
     }
+    for (const take of ['101', '102']) {
+      assert.equal(sampleCockpitMotion(take, .2).gesture, 0);
+      const wave = sampleCockpitMotion(take, .52);
+      assert(wave.travel > .85 && wave.gesture === 1 && wave.closeShot);
+      assert.equal(sampleCockpitMotion(take, .9).gesture, 0);
+    }
+    assert.equal(sampleCockpitMotion(null, 0).travel, 0);
     for (const clip of clips) {
       const action = mixer.clipAction(clip).setLoop(LoopOnce, 1);
       action.reset().play();
