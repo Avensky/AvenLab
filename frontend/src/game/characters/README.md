@@ -47,6 +47,8 @@ watery eyes. Select the Hands camera to see the touch or Face for the expression
 Roadside (061–070) adds driver and spotter gestures plus three scripted cockpit
 scenes. Choose the AE86 in Heroes and preview with empty hands. The last two
 scenes roll the car on the garage pad and return it to the mark.
+Rivalry (071–080) adds a starting countdown, racing gestures, a photo pose,
+and a post-race nod. Five are available while carrying the shop bag.
 
 Character → Face opens a close-up for iris color, eyebrow tint, and glasses.
 Both villagers use these settings in the live model and their rendered portrait.

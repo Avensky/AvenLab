@@ -95,7 +95,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
     await click('.character-emotes button:first-child');
     assert.equal(preview.getState().emote.id, '051');
-    await click('[aria-label="Emote collection"] button:last-child');
+    await click('[aria-label="Emote collection"] button:nth-child(7)');
     assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
     const reversePark = '.character-emotes button:last-child';
     assert.equal(find(reversePark).textContent, 'Reverse park');
@@ -104,6 +104,13 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click(reversePark);
     assert.equal(preview.getState().emote.id, '070');
     await act(async () => preview.setState({ cockpitAvailable: false }));
+    await click('[aria-label="Emote collection"] button:last-child');
+    assert.equal(find('[aria-label="Emote collection"] button:last-child').textContent, 'Rivalry');
+    assert.equal(document.querySelectorAll('.character-emotes button').length, 10);
+    await click('.character-emotes button:first-child');
+    assert.equal(preview.getState().emote.id, '071');
+    await click('.character-emotes button:last-child');
+    assert.equal(preview.getState().emote.id, '080');
     await click('[aria-label="Emote collection"] button:first-child');
     await click('[data-character-option="jules-okafor"]');
     assert.equal(find('[data-character-preview]').dataset.characterPreview, 'jules-okafor');
@@ -167,6 +174,9 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('[aria-label="Emote collection"] button:nth-child(6)');
     assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
       ['Little double take', 'Peek past the palm', 'Bashful heel twist']);
+    await click('[aria-label="Emote collection"] button:last-child');
+    assert.deepEqual([...document.querySelectorAll('.character-emotes button')].map(button => button.textContent),
+      ['Grid countdown', 'Two-finger salute', 'Photo finish', 'Call the line', 'Good race']);
     await click('[aria-label="Preview gender"] [data-character-option="mara-vega"]');
     assert.equal(drafts.at(-1).id, 'mara-vega');
     assert.equal(drafts.at(-1).prop, 'shop-bag');
@@ -207,6 +217,7 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
   try {
     const { buildGarageEmotes } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
+    const { COCKPIT_TAKES } = await vite.ssrLoadModule('/src/game/characters/roadsideEmotes.ts');
     const { sampleCockpitMotion } = await vite.ssrLoadModule('/src/game/preview/garageCockpit.ts');
     const { characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
     const { prepareStylizedDriver } = await vite.ssrLoadModule('/src/game/characters/stylizedDriverModel.ts');
@@ -223,7 +234,8 @@ test('all emote batches return to rest and keep planted and lifted feet distinct
     const clips = buildGarageEmotes(model.root, false, true);
     const mixer = new AnimationMixer(model.root);
     const ids = clips.map(clip => clip.name.split(' ')[0]);
-    assert.deepEqual(ids.filter(id => /^\d+$/.test(id)).sort(), Array.from({length: 67}, (_, i) => String(i + 1).padStart(3, '0')));
+    const numbered = [...ids.filter(id => /^\d+$/.test(id)), ...COCKPIT_TAKES.map(take => take.id)].sort();
+    assert.deepEqual(numbered, Array.from({length: 80}, (_, i) => String(i + 1).padStart(3, '0')));
     assert.deepEqual(ids.filter(id => id.startsWith('walk-')), ['walk-casual', 'walk-glance']);
     assert.deepEqual(buildGarageEmotes(model.root).map(clip => clip.name.split(' ')[0]), [...ids.slice(0, 10), '035']);
     assert(!buildGarageEmotes(model.root, true).some(clip => clip.name.startsWith('035 ')));
