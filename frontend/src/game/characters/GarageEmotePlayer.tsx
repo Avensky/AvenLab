@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { AnimationMixer, LoopOnce, MathUtils, type AnimationAction, type Object3D } from "three";
+import { AnimationMixer, LoopOnce, MathUtils, type AnimationAction, type Group, type Object3D } from "three";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 import { AUTOMATIC_GARAGE_EMOTE_IDS, buildEmoteClips, buildGarageEmotes, findGaragePreviewEmote, garageBreathing } from "./garageEmotes";
 import { driverFaceTargets } from "./villagerFace";
@@ -12,8 +12,10 @@ import { COCKPIT_TAKES, type CockpitTake } from "./cockpitEmotes";
 import { createEmoteProp, type EmoteProp, type EmotePropModel } from "./emoteProps";
 import { bindFlagPoleGrip } from "./flagPoleGrip";
 import type { CockpitPlayback, GarageCockpit } from "../preview/garageCockpit";
-import { DRIVE_OUT_DURATION, sampleDriveOut } from "../preview/garageDriveMotion";
+import { DRIVE_OUT_DURATION, GARAGE_ENTRY_DURATION, sampleDriveOut } from "../preview/garageDriveMotion";
 import { useGarageDrive } from "../preview/garageDriveStore";
+
+import { keepHeldProp } from "./emotePropNotes";
 
 const FADE_SECONDS = .52;
 
@@ -26,6 +28,7 @@ function setBlinkWeight(targets: ReturnType<typeof driverFaceTargets>, weight: n
 export function GarageEmotePlayer({ root, bag = false, previewPacks = false, leanFit, victory, cockpit }: {
   root: Object3D; bag?: boolean; previewPacks?: boolean; leanFit?: GarageLeanFit; victory?: VictoryPlayback; cockpit?: GarageCockpit;
 }) {
+  const heldProp = useRef<Group>(null);
   const reducedMotion = usePreferencesStore(state => state.reducedMotion);
   const restSeconds = previewPacks ? 4.5 : 2.35;
   const player = useRef<{
@@ -49,7 +52,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
   }>(null);
 
   useLayoutEffect(() => {
-    if (!cockpit || bag || reducedMotion) return;
+    if (!cockpit || reducedMotion) return;
     if (previewPacks) {
       useCharacterPreviewStore.setState({ cockpitAvailable: true });
       return () => useCharacterPreviewStore.setState({ cockpitAvailable: false });
@@ -74,8 +77,8 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     const idle = mixer.clipAction(breathing).play();
     const actions = new Map(clips.map(clip => [clip.name.split(" ")[0], mixer.clipAction(clip).setLoop(LoopOnce, 1)]));
     actions.set("001", mixer.clipAction(breathing.clone()).setLoop(LoopOnce, 1));
-    const automatic = bag ? [...actions].filter(([id]) => id.startsWith("bag-")).map(([, action]) => action)
-      : AUTOMATIC_GARAGE_EMOTE_IDS.flatMap(id => actions.get(id) ?? []);
+    const automatic = [...AUTOMATIC_GARAGE_EMOTE_IDS, ...(bag ? ["bag-lift", "bag-check"] : [])]
+      .flatMap(id => actions.get(id) ?? []);
     const blink = driverFaceTargets(root, "blink");
     const active = celebration ? actions.get(celebration.id)!.reset().setEffectiveWeight(0).play() : null;
     const props = new Map<EmoteProp, EmotePropModel>();
@@ -107,7 +110,10 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     const garageStation = !previewPacks && drive.stage !== "idle";
     const driveOut = garageStation && drive.stage !== "station";
     const preview = previewPacks ? view.emote : garageStation ? drive.steering : null;
-    if (cockpit && (garageStation || (previewPacks && view.cockpitAvailable && view.insideCar)) && !bag && !victory) {
+    const driving = garageStation || (previewPacks && view.insideCar);
+    if (heldProp.current) heldProp.current.visible = keepHeldProp(
+      current.active?.getClip().name.split(" ")[0] ?? (preview !== current.preview ? preview?.id : null), driving);
+    if (cockpit && (garageStation || (previewPacks && view.cockpitAvailable && view.insideCar)) && !victory) {
       if (!current.cabin) {
         current.active?.stop();
         current.active = null;
@@ -129,16 +135,21 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
         const clip = COCKPIT_TAKES.find(take => take.id === preview?.id);
         current.take = clip ? { clip, seconds: 0 } : null;
       }
+      const enteringCharacter = previewPacks && current.cabin.hasDoor && current.driveSeconds < GARAGE_ENTRY_DURATION;
       const take = current.take;
-      if (take) {
+      if (take && !enteringCharacter) {
         take.seconds += step;
         if (take.seconds >= take.clip.duration) current.take = null;
       }
-      const alreadyParked = current.driveSeconds >= DRIVE_OUT_DURATION && !take;
+      const duration = drive.sequence === "entry" || enteringCharacter ? GARAGE_ENTRY_DURATION : DRIVE_OUT_DURATION;
+      const alreadyParked = current.driveSeconds >= duration && !take;
       if (driveOut && alreadyParked) return;
-      const drivePose = driveOut ? sampleDriveOut(current.driveSeconds = Math.min(current.driveSeconds + step, DRIVE_OUT_DURATION)) : undefined;
-      if (drivePose && drivePose.stage !== drive.stage) useGarageDrive.setState({ stage: drivePose.stage });
-      current.cabin.sample(current.take?.clip.id ?? null, current.take ? current.take.seconds / current.take.clip.duration : 0, drivePose);
+      const drivePose = driveOut || enteringCharacter
+        ? sampleDriveOut(current.driveSeconds = Math.min(current.driveSeconds + step, duration)) : undefined;
+      const stage = drive.sequence === "entry" && current.driveSeconds >= GARAGE_ENTRY_DURATION ? "station" : drivePose?.stage;
+      if (!previewPacks && stage && stage !== drive.stage) useGarageDrive.setState({ stage });
+      current.cabin.sample(enteringCharacter ? null : current.take?.clip.id ?? null,
+        current.take ? current.take.seconds / current.take.clip.duration : 0, drivePose);
       return;
     }
     if (current.cabin) {
@@ -228,6 +239,6 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
         <meshBasicMaterial visible={false} />
       </mesh>}
     </primitive>
-    {bag && <DriverBag driver={root} />}
+    {bag && <group ref={heldProp}><DriverBag driver={root} /></group>}
   </group>;
 }

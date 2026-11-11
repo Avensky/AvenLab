@@ -8,6 +8,7 @@ import { CharacterPortrait } from "./CharacterPortrait";
 import { CHARACTER_CAMERAS, CHARACTER_ZOOM_MIN, CHARACTER_ZOOM_MAX, useCharacterPreviewStore } from "./characterPreviewStore";
 import { EMOTE_GROUPS, garagePreviewCollection, type EmoteGroup } from "./garageEmotes";
 import { COCKPIT_TAKES } from "./cockpitEmotes";
+import { unlockVehicleAudio } from "../../audio/sharedAudio";
 import { GARAGE_STATIONS } from "../preview/garageStations";
 import { GARAGE_LEAN_ID, GARAGE_LEAN_NAME } from "./garageLean";
 
@@ -163,7 +164,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
     </button>)}
   </div>;
   const bag = Boolean(previewChoice.prop);
-  const canEnterCar = !bag && !reducedMotion;
+  const canEnterCar = !reducedMotion;
   const cockpitPending = insideCar && !cockpitAvailable;
   const station = cockpitVehicle ? GARAGE_STATIONS[cockpitVehicle] : null;
   const road = station?.kind === "wheel";
@@ -195,15 +196,17 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
     {cockpitError && <p role="status">{cockpitError}</p>}
     {cockpitPending && <p role="status">Preparing the {stationName}…</p>}
     {insideCar && !locked && <button type="button" className="menu-control" data-cockpit-toggle onClick={toggleCockpit}>Exit {stationName}</button>}
-    {!insideCar && bag && <p>Equip Empty hands to preview the {stationName}.</p>}
-    {bag && pickedEmotes.length === 0 && <p>Equip Empty hands to use these emotes.</p>}
+    {insideCar && bag && <p>Handheld props are stowed while driving.</p>}
     <div className="character-emotes" aria-label={insideCar ? (road ? "Driving emotes" : "Station emotes") : `${emoteGroup} emotes`}>
       {!insideCar && emoteGroup === "Garage" && leanAvailable && <button type="button" className="menu-control" data-controller-row
         disabled={reducedMotion} aria-pressed={emote?.id === GARAGE_LEAN_ID}
         onClick={() => useCharacterPreviewStore.setState({ emote: { id: GARAGE_LEAN_ID } })}>{GARAGE_LEAN_NAME}</button>}
       {pickedEmotes.map(item => <button key={item.id} type="button" className="menu-control" data-controller-row
         disabled={reducedMotion || cockpitPending}
-        aria-pressed={emote?.id === item.id} onClick={() => useCharacterPreviewStore.setState({ emote: { id: item.id } })}>{item.name}</button>)}
+        aria-pressed={emote?.id === item.id} onClick={() => {
+          if (item.id === "drive-honk") unlockVehicleAudio();
+          useCharacterPreviewStore.setState({ emote: { id: item.id } });
+        }}>{item.name}</button>)}
     </div>
   </>;
 
