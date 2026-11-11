@@ -5,7 +5,7 @@ import {DoubleSide,BufferGeometry,Float32BufferAttribute,type LineSegments,type 
 import {useVehiclePhysicsInterpolator} from '../hooks/usePhysicsInterpolator';
 import {snapshotEntity, useNetworkStore} from '../store/session/networkStore';
 import {readGuardBoost,guardActionKind} from './guardBoostState';
-import {GUARD_ARC_HALF_ANGLE,guardShieldTransform,sampleGuardBreak,type GuardBreakState} from './guardShieldVisual';
+import {GUARD_ARC_HALF_ANGLE,TANK_BARRIER_GLASS,guardShieldTransform,sampleGuardBreak,type GuardBreakState} from './guardShieldVisual';
 
 // All blinks reuse one small radial spray. No dynamic lights or postprocessing.
 const blastGeometry = new BufferGeometry();
@@ -20,6 +20,7 @@ blastGeometry.setAttribute('position',new Float32BufferAttribute(spokes,3));
 function GuardShield({player}:{player:string}){
  const root=useRef<Group>(null),sheet=useRef<Mesh>(null),material=useRef<MeshBasicMaterial>(null);
  const panel=useMotionView(s=>snapshotEntity(s.snapshot, player)?.guard?.panel?.length===4);
+ const tankBarrier=useMotionView(s=>guardActionKind(snapshotEntity(s.snapshot,player))==='tank_barrier');
  const bubble=useRef<Mesh>(null),burst=useRef<LineSegments>(null),flare=useRef<LineBasicMaterial>(null);
  const broken=useRef<GuardBreakState>({sequence:null,at:-Infinity});
  const {getInterpolated}=useVehiclePhysicsInterpolator(player);
@@ -64,13 +65,17 @@ function GuardShield({player}:{player:string}){
   const expansion=1+flash*.15;
   mesh.scale.set(shape.widthRadius*expansion,shape.height*expansion,shape.depthRadius*expansion);
   }
-  paint.opacity=active ? .12+.15*Math.min(1,guard.shield_hp/guard.shield_max_hp) : flash*.45;
-  paint.color.set(active?(guardActionKind(entity,guard)==='tank_barrier'?'#67c3ff':'#8ccaff'):'#e7f5ff');
+  const strength=Math.min(1,guard.shield_hp/guard.shield_max_hp);
+  paint.opacity=active ? (tankBarrier ? .26+.23*strength : .12+.15*strength) : flash*.45;
+  paint.color.set(active?(tankBarrier?'#a6dcff':'#8ccaff'):'#e7f5ff');
  });
  return <group ref={root} name={`guard-shield-${player}`} visible={false}>
   <lineSegments ref={burst} visible={false}><primitive object={blastGeometry} attach="geometry"/><lineBasicMaterial ref={flare} color="#fff" transparent opacity={0} depthWrite={false} toneMapped={false}/></lineSegments>
   <mesh ref={bubble} visible={false}><sphereGeometry args={[1,20,12]}/><meshBasicMaterial color="#63f1d4" transparent opacity={.21} depthWrite={false} side={DoubleSide} toneMapped={false}/></mesh>
-  <mesh ref={sheet}>{panel?<planeGeometry args={[1,1]}/>:<cylinderGeometry args={[1,1,1,16,1,true,-GUARD_ARC_HALF_ANGLE,2*GUARD_ARC_HALF_ANGLE]}/>}<meshBasicMaterial ref={material} color="#8ccaff" transparent opacity={.2} side={DoubleSide} depthWrite={false} toneMapped={false}/></mesh>
+  <mesh ref={sheet} name={tankBarrier?'tank-glass-shield':'guard-shield-sheet'}>
+   {panel?<planeGeometry args={[1,1]}/>:<cylinderGeometry args={[1,1,1,16,1,true,-GUARD_ARC_HALF_ANGLE,2*GUARD_ARC_HALF_ANGLE]}/>}
+   <meshBasicMaterial ref={material} map={tankBarrier?TANK_BARRIER_GLASS:null} color="#8ccaff" transparent opacity={.2} side={DoubleSide} depthWrite={false} toneMapped={false}/>
+  </mesh>
  </group>;
 }
 

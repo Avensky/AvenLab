@@ -10,6 +10,7 @@ import {openHeroGuide} from "../store/hud/heroGuideStore";
 import { CombatHUD } from "../combat/CombatHUD";
 import { HeroWorkshop, HeroLoadoutSync } from "./heroes/HeroWorkshop";
 import type { CharacterChoice } from "./characters/characterCatalog";
+import type { CharacterTab } from "./characters/CharacterPage";
 import { useAlphaFlow } from "./alpha/useAlphaFlow";
 import { useAppTheme } from "../theme";
 import "../theme/theme.css";
@@ -96,7 +97,7 @@ export function GameUI() {
     screen === "signal_recon_setup" ||
     screen === "world_builder";
   const heroOwner = useSocialStore(s=>s.view?.profile.id??s.profileOwner??"guest");
-  const [characterOpen, setCharacterOpen] = useState(false);
+  const [characterTab, setCharacterTab] = useState<CharacterTab | null>(null);
   const [characterDraft, setCharacterDraft] = useState<CharacterChoice | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [reconSidebarHidden, setReconSidebarHidden] = useState(false);
@@ -107,7 +108,7 @@ export function GameUI() {
       <HeroLoadoutSync />
       <MinimapSessionLifecycle />
       <CtfMissionLifecycle />
-      {screen === "heroes" && <HeroWorkshop key={heroOwner} onCharacterViewChange={setCharacterOpen} onCharacterPreviewChange={setCharacterDraft} />}
+      {screen === "heroes" && <HeroWorkshop key={heroOwner} onCharacterViewChange={setCharacterTab} onCharacterPreviewChange={setCharacterDraft} />}
       {/* Requires Canvas */}
       {needsCanvas && (
         <FullCanvas
@@ -130,7 +131,8 @@ export function GameUI() {
               heroLayout={screen !== "sandbox_setup"}
               awaitingHero={screen === "hero_select" || screen === "heroes"}
               characterDraft={screen === "heroes" ? characterDraft : null}
-              wardrobeOpen={screen === "heroes" && characterOpen}
+              wardrobeOpen={screen === "heroes" && characterTab !== null}
+              characterOnly={screen === "heroes" && characterTab !== null && characterTab !== "emotes"}
               stationary={previewPaused}
             />
           )}

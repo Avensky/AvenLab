@@ -25,7 +25,7 @@ export function withClothingColors(choice: CharacterChoice, piece: ClothingPiece
 export function wornClothing(choice: CharacterChoice): ClothingPiece[] {
   const female = choice.id === "mara-vega";
   const pieces: ClothingPiece[] = female ? choice.wardrobe
-    ? ["corset", ...(choice.wardrobe.shirt !== "none" ? ["shirt" as const] : []), "skirt", "shorts", "shoes", "hat"]
+    ? ["corset", "skirt", "shoes", "hat"]
     : ["corset", "skirt", "sleeves", "underskirt", "shoes", "hat", "belt", ...((choice.appearance?.accent || choice.outfit === "shop-crew") ? ["bow" as const] : [])]
     : ["coat", "pants", "shoes", "gloves", "collar", "belt", "pouches"];
   if (!female && choice.appearance?.headwear === "hat") pieces.push("hat");

@@ -235,6 +235,8 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert(find('[aria-label="Preview camera"]').closest('[hidden]'), 'camera controls start collapsed');
     await click('button[aria-label="Camera tools"]');
     assert.equal(find('[aria-label="Preview camera"]').closest('[hidden]'), null);
+    assert.equal([...find('[aria-label="Preview camera"]').options].some(option => option.value === 'Whole car'), false);
+    assert.equal(find('.dressing-toolbar [data-rotation=vehicle]'), null);
     await select('Preview camera', 'Full body');
     assert.equal(preview.getState().camera, 'Full body');
     await select('Preview camera', 'piece:glasses');
@@ -319,7 +321,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(social.getState().view.profile.progression.level, 7, 'unrelated progression still updates');
     await move('back');
     assert.equal(title(), 'HEROES');
-    assert.equal(characterViews.at(-1), false);
+    assert.equal(characterViews.at(-1), null);
     assert.equal(drafts.at(-1), null);
     assert.match(find('[data-open-character]').textContent, /Rook Okafor/);
     await click('[data-hero=camaro]');

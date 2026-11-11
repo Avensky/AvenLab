@@ -107,11 +107,13 @@ export function GarageFloorReflection({
   depth,
   turntable,
   perimeter,
+  active = true,
 }: {
   width: number;
   depth: number;
   turntable: Group | null;
   perimeter: Box3 | null;
+  active?: boolean;
 }) {
   const settings = usePreferencesStore((s) => s.garageEffects);
   const getScene = useThree(s => s.get);
@@ -160,6 +162,7 @@ export function GarageFloorReflection({
     configureGarageFloor(floor, settings);
   }, [floor, settings]);
   useFrame(() => {
+    if (!active) return;
     const material = floorRef.current?.material as ShaderMaterial | undefined;
     if (material)
       material.uniforms.platformAngle.value = turntable?.rotation.y ?? 0;
@@ -171,5 +174,5 @@ export function GarageFloorReflection({
     },
     [floor],
   );
-  return <primitive ref={floorRef} object={floor} dispose={null} />;
+  return <primitive ref={floorRef} object={floor} visible={active} dispose={null} />;
 }

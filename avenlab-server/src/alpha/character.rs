@@ -20,6 +20,7 @@ pub struct CharacterChoice {
 #[serde(deny_unknown_fields)]
 pub struct WardrobeChoice {
     pub set: String,
+    #[serde(deserialize_with = "ShirtLayer::deserialize_legacy")]
     pub shirt: ShirtLayer,
     pub waist: WaistLayer,
 }
@@ -28,13 +29,18 @@ pub struct WardrobeChoice {
 #[serde(rename_all = "lowercase")]
 pub enum ShirtLayer { None, Under, Over }
 
+impl ShirtLayer {
+    fn deserialize_legacy<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Self::deserialize(deserializer).map(|_| Self::None)
+    }
+}
+
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum WaistLayer { Tucked, Over }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct WardrobeSet { id: String, requires_shirt: bool }
+struct WardrobeSet { id: String }
 
 static WARDROBE: LazyLock<Vec<WardrobeSet>> = LazyLock::new(|| {
     serde_json::from_str(include_str!("../assets/character-wardrobe.json"))
@@ -128,9 +134,7 @@ impl CharacterChoice {
                     .iter()
                     .any(|outfit| outfit.id == self.outfit)
         }) && self.wardrobe.as_ref().is_none_or(|wardrobe| {
-            self.id == "mara-vega" && WARDROBE.iter().any(|set| {
-                set.id == wardrobe.set && (!set.requires_shirt || wardrobe.shirt != ShirtLayer::None)
-            })
+            self.id == "mara-vega" && WARDROBE.iter().any(|set| set.id == wardrobe.set)
         }) && self.appearance.as_ref().is_none_or(|appearance| {
             if !appearance.personality.as_deref().is_none_or(|value| ["friendly", "playful", "shy", "tsundere", "stoic", "elegant", "racer", "scientist"].contains(&value))
                 || !appearance.animation_fit.as_deref().is_none_or(|value| ["auto", "full", "fitted"].contains(&value)) {
@@ -186,8 +190,10 @@ mod wardrobe_tests {
             for shirt in ["none", "under", "over"] {
                 for waist in ["tucked", "over"] {
                     let c = choice(json!({"set":set.id,"shirt":shirt,"waist":waist}));
-                    assert_eq!(c.is_available(), !(set.requires_shirt && shirt == "none"));
-                    assert_eq!(serde_json::from_value::<CharacterChoice>(serde_json::to_value(&c).unwrap()).unwrap(), c);
+                    assert!(c.is_available());
+                    let saved = serde_json::to_value(&c).unwrap();
+                    assert_eq!(saved["wardrobe"], json!({"set":set.id,"shirt":"none","waist":waist}));
+                    assert_eq!(serde_json::from_value::<CharacterChoice>(saved).unwrap(), c);
                 }
             }
         }

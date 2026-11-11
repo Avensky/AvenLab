@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { CharacterChoice } from "./characterCatalog";
 import { resolveWardrobe } from "./wardrobe";
-export const FIT_REVISION = "wardrobe-5";
+export const FIT_REVISION = "wardrobe-6";
 export const FIT_CHECKS = ["front", "back", "movement"] as const;
 export type FitCheck = typeof FIT_CHECKS[number];
 type Review = { checks: Partial<Record<FitCheck, boolean>>; issue: string; updated: string };

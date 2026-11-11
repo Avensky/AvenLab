@@ -37,7 +37,8 @@ test('piece colors persist independently across garments, outfits, and actor ins
     const gothic = withClothingColors({ ...choice, wardrobe: { set: 'gothic-01', shirt: 'under', waist: 'tucked' } }, 'skirt', { color: '#0011ff' });
     assert.equal(clothingColors(characterLook(gothic), 'skirt').color, '#0011ff');
     assert.equal(clothingColors(characterLook({ ...gothic, wardrobe: undefined }), 'skirt').color, '#ff0000');
-    assert(wornClothing(gothic).includes('shirt')); assert(wornClothing(gothic).includes('shorts'));
+    assert(!wornClothing(gothic).includes('shirt'));
+    assert(!wornClothing(gothic).includes('shorts'));
     let sharedDisposed = false; original.addEventListener('dispose', () => sharedDisposed = true);
     a.dispose(); b.dispose(); assert.equal(sharedDisposed, false);
     original.dispose(); geometry.dispose();
@@ -106,6 +107,59 @@ test('every personality has playable varied emotes; fitted and full poses keep c
         assert(hand(model).distanceTo(resting) < 1e-6, 'releasing an emote restores the outfit-specific rest pose');
         model.dispose();
       }
+    }
+  } finally { await vite.close(); }
+});
+
+test('fitted low gestures tuck the elbows without moving the wrist or changing contact poses', async () => {
+  const vite = await server();
+  try {
+    const { prepareVillager } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
+    const { buildEmoteClips, findGaragePreviewEmote } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
+    const { fittedHandTarget } = await vite.ssrLoadModule('/src/game/characters/animationFit.ts');
+    const low = { id: 'test-low', name: 'Relaxed arms', duration: 1, keys: [[.5, {
+      leftHand: [1.38, -.79, .31], rightHand: [-1.38, -.79, .31],
+    }]] };
+    const lowPose = low.keys[0][1];
+    const reference = { ...low, keys: [[.5, {
+      leftHand: fittedHandTarget(lowPose.leftHand), rightHand: fittedHandTarget(lowPose.rightHand),
+    }]] };
+    const clap = findGaragePreviewEmote('013', false);
+    const wave = findGaragePreviewEmote('010', false);
+    for (const gender of ['female', 'male']) {
+      const { scene } = await new GLTFLoader().parseAsync(await readFile(`tests/fixtures/villager-${gender}-rig.json`, 'utf8'), '');
+      const model = prepareVillager(scene, { female: gender === 'female', fitted: true });
+      const sample = (emote, phase, fitted) => {
+        model.root.userData.fittedClothing = fitted;
+        const clip = buildEmoteClips(model.root, [emote])[0];
+        const mixer = new AnimationMixer(model.root);
+        const action = mixer.clipAction(clip).play();
+        mixer.setTime(clip.duration * phase);
+        const joints = ['l', 'r'].map(side => ['upperarm', 'lowerarm', 'hand'].map(name =>
+          model.root.getObjectByName(`${name}_${side}`).getWorldPosition(new Vector3())));
+        action.stop();
+        return joints;
+      };
+      const relaxed = sample(low, .5, true);
+      const wide = sample(reference, .5, false);
+      for (const [side, [shoulder, elbow, wrist]] of relaxed.entries()) {
+        assert(Math.abs(wide[side][1].x) - Math.abs(elbow.x) > .045, `${gender}: elbow tucks by at least 4.5 cm`);
+        assert(Math.abs(elbow.x) > Math.abs(shoulder.x), `${gender}: elbow remains outside the shoulder line`);
+        assert(wide[side][2].distanceTo(wrist) < .00001, `${gender}: wrist target stays fixed`);
+      }
+      for (const [emote, referenceEmote, phase] of [
+        [clap, clap, .26], [wave, wave, .35],
+        [{ ...low, prop: 'map' }, { ...reference, prop: 'map' }, .5],
+      ]) {
+        const fitted = sample(emote, phase, true);
+        const original = sample(referenceEmote, phase, false);
+        const sides = emote === wave ? [1] : [0, 1];
+        for (const side of sides) for (const joint of [1, 2]) {
+          assert(fitted[side][joint].distanceTo(original[side][joint]) < .00001,
+            `${gender}: ${emote.name} preserves the elbow and wrist`);
+        }
+      }
+      model.dispose();
     }
   } finally { await vite.close(); }
 });

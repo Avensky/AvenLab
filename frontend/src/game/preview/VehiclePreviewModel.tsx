@@ -60,7 +60,7 @@ function setLampEmission(material: MeshStandardMaterial, color: number | Color, 
 // Selection is always the complete GLB, independent of in-game debug modes.
 // Shared material preparation retains the TSX fixes without runtime network poses.
 export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettled,onDriverFit,motion,
-  allowDriver = true,garageOpen = false,garageCameraAnchors = garageOpen,summon = false,reducedMotion = false}:{
+  allowDriver = true,garageOpen = false,garageCameraAnchors = garageOpen,summon = false,reducedMotion = false,active = true,diagnostics = garageOpen}:{
   platform: readonly [number, number];
   model: VehicleModelId;
   driver?: CharacterChoice | null;
@@ -73,6 +73,8 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
   garageCameraAnchors?: boolean;
   summon?: boolean;
   reducedMotion?: boolean;
+  active?: boolean;
+  diagnostics?: boolean;
 }) {
   const path=VEHICLE_MODEL_PATHS[model];
   const station = GARAGE_STATIONS[model];
@@ -104,10 +106,10 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
     if (vehiclePainted) onSettled?.(model);
   }, [vehiclePainted, model, onSettled]);
   useLayoutEffect(() => {
-    if (materializing) invalidate();
-  }, [materializing, reducedMotion, invalidate]);
+    if (active && materializing) invalidate();
+  }, [active, materializing, reducedMotion, invalidate]);
   useFrame((_, delta) => {
-    if (!materializing || !revealRoot.current) return;
+    if (!active || !materializing || !revealRoot.current) return;
     const progress = reducedMotion ? 1 : Math.min(1, revealProgress.current + Math.min(.075, delta) / .8);
     revealProgress.current = progress;
     revealRoot.current.scale.setScalar(Math.max(.001, MathUtils.smoothstep(progress, .14, .82)));
@@ -122,13 +124,13 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
   const driverDoor = station.kind === "wheel" ? partRig.find(part => part.part === (station.rim[0] < 0 ? "door-right" : "door-left")) : undefined;
   const popup = partRig.find(part => part.part === "headlights");
   const cockpitSetup = useRef<{ source: Object3D; prepare: ReturnType<typeof prepareGarageCockpit> }>(null);
-  const playCockpit = useCallback<GarageCockpit>(driverRoot => {
+  const playCockpit = useCallback<GarageCockpit>((driverRoot, characterPreview) => {
     const motionGroup = motion.current;
     if (!motionGroup) return null;
     if (cockpitSetup.current?.source !== prepared.root) {
       cockpitSetup.current = { source: prepared.root, prepare: prepareGarageCockpit(prepared.root, prepared.glassMaterials, driverDoor, station) };
     }
-    return cockpitSetup.current.prepare?.(driverRoot, motionGroup) ?? null;
+    return cockpitSetup.current.prepare?.(driverRoot, motionGroup, characterPreview) ?? null;
   }, [prepared, driverDoor, station, motion]);
   const cockpit = !revealActive && (previewPacks || garageOpen) ? playCockpit : undefined;
   const marine=vehicleSystems(model)==="marine";
@@ -179,6 +181,7 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
     applyShowroomHighlights(prepared.root, .45, appearance.finish, appearance.metallic, model);
   }, [prepared, model, savedAppearance]);
   useFrame((_,delta)=>{
+    if (!active) return;
     const studio=useVehicleStudioStore.getState();
     const drive = useGarageDrive.getState();
     const stage = drive.stage;
@@ -288,14 +291,14 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
   }, [hasDriver, driverReady, onDriverFit, model, driverAcross, driverAlong, driverScale, staging.side, lean, mirrorFit, cockpit]);
   return (
     <>
-      <group ref={revealRoot} scale={revealActive ? .001 : 1}>
+      <group ref={revealRoot} scale={revealActive ? .001 : 1} visible={active}>
         <PreviewContactShadow footprint={display.footprint} offset={display.shadowOffset} />
         <group position={display.position} scale={display.scale} name="selection-vehicle-glb">
           <primitive object={prepared.root} dispose={null} />
-          {garageOpen && vehicleSystems(model) === "road" && <GarageVehicleDiagnosticsScene vehicle={model} popup={popup} />}
+          {active && diagnostics && garageOpen && vehicleSystems(model) === "road" && <GarageVehicleDiagnosticsScene vehicle={model} popup={popup} />}
         </group>
       </group>
-      {revealActive && <VehicleMaterialization progress={revealProgress}
+      {active && revealActive && <VehicleMaterialization progress={revealProgress}
         footprint={display.footprint} offset={display.shadowOffset} />}
       {garageCameraAnchors && <group position={display.position} scale={display.scale}>
         {cameraRig.map(shot => <group key={shot.name} name={`garage-view-${shot.name}`}

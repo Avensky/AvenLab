@@ -225,14 +225,17 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
   </>;
   const fitting = tab === "appearance";
   const rotationDisabled = insideCar || emote?.id === MIRROR_CHECK_ID;
-  const cameraSelect = <FittingCameraSelect choice={choice} views={CHARACTER_CAMERAS} view={camera} compact={fitting}
+  const vehiclePreview = tab === "emotes" && Boolean(cockpitVehicle);
+  const cameraViews = vehiclePreview ? CHARACTER_CAMERAS : CHARACTER_CAMERAS.filter(view => view !== "Whole car");
+  const cameraSelect = <FittingCameraSelect choice={choice} views={cameraViews}
+    view={!vehiclePreview && camera === "Whole car" ? "Full body" : camera} compact={fitting}
     onViewChange={view => useCharacterPreviewStore.setState({ camera: view, zoom: 1 })} />;
   const zoomRange = <input type="range" aria-label="Preview zoom" min={CHARACTER_ZOOM_MIN} max={CHARACTER_ZOOM_MAX} step=".05" value={zoom}
     onChange={event => useCharacterPreviewStore.setState({ zoom: Number(event.target.value) })} />;
   const zoomBy = (step: number) => useCharacterPreviewStore.setState({ zoom: Math.min(CHARACTER_ZOOM_MAX, Math.max(CHARACTER_ZOOM_MIN, +(zoom + step).toFixed(2))) });
   const togglePose = () => useCharacterPreviewStore.setState({ playbackPaused: !playbackPaused });
   const fittingCamera = inspection ? cameraControls : <FittingCameraToolbar camera={cameraSelect} zoomRange={zoomRange}
-    visibility={<PreviewVisibilityToggle />} paused={playbackPaused} onPause={togglePose} vehicle={Boolean(cockpitVehicle)}
+    visibility={<PreviewVisibilityToggle />} paused={playbackPaused} onPause={togglePose}
     rotationDisabled={rotationDisabled} zoomOutDisabled={zoom <= CHARACTER_ZOOM_MIN} zoomInDisabled={zoom >= CHARACTER_ZOOM_MAX}
     onZoomOut={() => zoomBy(-.05)} onZoomIn={() => zoomBy(.05)} />;
 
@@ -290,7 +293,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
       {tab === "emotes" && <section className="character-controls menu-panel-frame character-controls--right" aria-label="Emote results"><h2>Emotes</h2>{emoteResults}</section>}
       <section className="character-controls menu-panel-frame character-controls--bottom" aria-label="Camera and save status">
         {!fitting && cameraControls}
-        {!fitting && !inspection && <FittingRotationControls vehicle={Boolean(cockpitVehicle)} disabled={rotationDisabled} />}
+        {!fitting && !inspection && <FittingRotationControls vehicle={vehiclePreview} disabled={rotationDisabled} />}
         {!fitting && !inspection && (insideCar ? <div className="character-camera" data-controller-row>
           <label>Camera<select className="menu-control" aria-label="Preview camera" value={camera === "Whole car" ? "Whole car" : "Full body"}
             onChange={event => useCharacterPreviewStore.setState({ camera: event.target.value as typeof camera, zoom: 1 })}>

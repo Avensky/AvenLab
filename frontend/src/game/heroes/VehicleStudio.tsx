@@ -1,6 +1,6 @@
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { MenuPanelHeading } from "../../components/menus/CollapsibleMenuPanel";
-import { useVehicleStudioStore, type VehicleStudioTab } from "./vehicleStudioStore";
+import type { VehicleStudioTab } from "./vehicleStudioStore";
 import { getPerformanceReadouts, getVehicleStockPerformance, getVehicleTuningLimits, type VehiclePerformanceSummary } from "./vehiclePerformance";
 
 import { VehicleGarageIcon } from "./VehicleGarageIcon";
@@ -70,16 +70,11 @@ export function VehicleStudio({
   footer?: ReactNode;
   children: ReactNode;
 }) {
-  const setActiveTab = useVehicleStudioStore((state) => state.setActiveTab);
   type Panel = VehicleStudioTab | "stats" | "drivetrain";
   const [collapsedPanels, setCollapsedPanels] = useState<Partial<Record<Panel, boolean>>>({});
   const collapsed = Boolean(collapsedPanels[tab]);
   const toggle = (panel: Panel) => setCollapsedPanels(previous => ({ ...previous, [panel]: !previous[panel] }));
   const contentId = useId();
-  useEffect(() => {
-    setActiveTab(tab);
-  }, [setActiveTab, tab]);
-  useEffect(() => () => setActiveTab(null), [setActiveTab]);
 
   if (tab === "abilities") {
     return <div className="vehicle-studio vehicle-studio--abilities" id="vehicle-studio-tab-panel" role="tabpanel"

@@ -9,6 +9,9 @@ import { prepareVillagerFaceAccessories } from "./villagerFaceAccessories";
 import { cockpitWardrobe } from "./cockpitWardrobe";
 import { clothingColors, clothingPieceFor, type ClothingPiece } from "./clothingPieces";
 import { prepareWardrobe, wardrobeModelUrl } from "./wardrobe";
+import { prepareWardrobeLining } from "./wardrobeLining";
+import { prepareWardrobeSkirt } from "./wardrobeSkirt";
+import { prepareVillageShoes } from "./wardrobeShoes";
 
 export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait" = "garage") {
   if (look.character.id === ROOK_ID) return kind === "portrait" ? __ROOK_PORTRAIT_URL__ : __ROOK_MODEL_URL__;
@@ -21,6 +24,9 @@ export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait
 export function prepareVillager(scene: Object3D, { female = true, animateFace = false, bag = false, wetEyes = false, fitted = false } = {}) {
   const root = clone(scene);
   root.name = female ? "garage-villager-female" : "garage-villager-male";
+  const disposeLining = prepareWardrobeLining(root);
+  const disposeSkirt = prepareWardrobeSkirt(root);
+  const disposeShoes = female ? prepareVillageShoes(root) : undefined;
   const materials = new Map<MeshStandardMaterial, MeshStandardMaterial>();
   const pieceMaterials = new Map<ClothingPiece, Map<MeshStandardMaterial, MeshStandardMaterial>>();
   root.userData.fittedClothing = fitted;
@@ -51,9 +57,11 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
     if (!joints) continue;
     const { shoulder, elbow, hand } = joints;
     const sideSign = Math.sign(elbow.getWorldPosition(new Vector3()).x - shoulder.getWorldPosition(new Vector3()).x);
-    aimDriverJoint(shoulder, elbow, new Vector3(sideSign * (fitted ? .20 : .43), -1, -.06));
+    const fittedRest = fitted && !(side === "l" && bag);
+    const elbowSpread = fittedRest ? .12 : fitted ? .20 : .43;
+    aimDriverJoint(shoulder, elbow, new Vector3(sideSign * elbowSpread, -1, -.06));
     // The empty left hand rests closer to Vesper's skirt and lets the cuff brush the fabric.
-    const forearm = fitted && !(side === "l" && bag) ? new Vector3(sideSign * .035, -.96, .25) : side === "r" ? new Vector3(-sideSign * .62, .36, .72)
+    const forearm = fittedRest ? new Vector3(sideSign * .035, -.96, .25) : side === "r" ? new Vector3(-sideSign * .62, .36, .72)
       : female && !bag ? new Vector3(sideSign * .12, -.83, .56)
         : new Vector3(sideSign * .32, -.73, .64);
     aimDriverJoint(elbow, hand, forearm);
@@ -84,6 +92,9 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
     bow: root.getObjectByName("ACC_BOW"),
     dispose() {
       wardrobe.dispose();
+      disposeLining?.();
+      disposeSkirt?.();
+      disposeShoes?.();
       faceGeometry.forEach(geometry => geometry.dispose());
       faceAccessories.dispose();
       materials.forEach(material => material.dispose());

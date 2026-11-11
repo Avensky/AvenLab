@@ -34,9 +34,25 @@ try{
   const text=Buffer.from(JSON.stringify(json)),padded=Buffer.alloc(Math.ceil(text.length/4)*4,32);text.copy(padded);
   const bin=original.subarray(20+len),header=Buffer.alloc(20);header.write('glTF');header.writeUInt32LE(2,4);header.writeUInt32LE(20+padded.length+bin.length,8);header.writeUInt32LE(padded.length,12);header.writeUInt32LE(0x4e4f534a,16);
   const bytes=Buffer.concat([header,padded,bin]);const {scene}=await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
-  const model=prepareVillager(scene,{female:true});const counts=[];
+  const model=prepareVillager(scene,{female:true,fitted:true});const counts=[];
+  const facing=model.root.getObjectByName('CLOTH_CORSET_FACING');
+  const shorts=model.root.getObjectByName('CLOTH_UNDER_MODESTY_SHORTS');
+  const shoes=model.root.getObjectByName('CLOTH_FEET_SHOES');
+  for(const name of ['CLOTH_SHIRT_UNDER','CLOTH_SHIRT_OVER_TUCKED','CLOTH_SHIRT_OVER_OVER'])assert.equal(model.root.getObjectByName(name),undefined);
+  assert.equal(Boolean(facing),n!==4,'the raised Underbust Vest uses its authored shell');
+  if(facing){
+   assert(facing.isSkinnedMesh && facing.geometry.index.count>0);
+   assert.equal(facing.material.transparent,false,'the corset facing must remain opaque');
+   const weights=facing.geometry.getAttribute('skinWeight');
+   for(let i=0;i<weights.count;i++)assert(Math.abs(weights.getX(i)+weights.getY(i)+weights.getZ(i)+weights.getW(i)-1)<1e-4);
+  }
+  assert(shoes.isSkinnedMesh);
+  const shoeBounds=shoes.geometry.boundingBox;
+  const sourceSole=doc.getRoot().listNodes().find(node=>node.getName()==='CLOTH_FEET_SHOES').getMesh().listPrimitives()[0].getAttribute('POSITION').getMin([])[1];
+  assert(Math.abs(shoeBounds.min.y-sourceSole)<1e-6,'larger shoes keep the original sole height');
+  assert(shoeBounds.max.x>.197&&shoeBounds.min.x<-.197&&shoeBounds.min.z<-.098,'shoes cover both heels and outer feet');
   const {withClothingColors}=await vite.ssrLoadModule('/src/game/characters/clothingPieces.ts');
-  const dyed=withClothingColors({...DEFAULT_CHARACTER,wardrobe:{set,shirt:'over',waist:'tucked'}},'corset',{color:'#ff0066',accent:'#ff0066'});
+  const dyed=withClothingColors({...DEFAULT_CHARACTER,wardrobe:{set,shirt:'none',waist:'tucked'}},'corset',{color:'#ff0066',accent:'#ff0066'});
   applyVillagerLook(model,characterLook(dyed));
   let dyedMeshes=0;model.root.traverse(o=>{if(o.isMesh&&o.userData.clothingPiece==='corset'){for(const m of(Array.isArray(o.material)?o.material:[o.material]))assert.equal(m.color.getHexString(),'ff0066');dyedMeshes++;}});assert(dyedMeshes>2,'multi-material corsets all receive the piece dye');
   for(const node of doc.getRoot().listNodes().filter(n=>String(n.getExtras().wardrobeRole).startsWith('corset')&&n.getExtras().fit_version===5))for(const p of node.getMesh().listPrimitives()){
@@ -44,10 +60,10 @@ try{
    for(let i=0;i<joints.length;i++)if(weights[i]>1e-5)assert(joints[i]<=5,'v5 corset straps never follow arm or twist joints');
   }
 
-  for(const shirt of ['none','under','over'])for(const waist of ['tucked','over']){
-   const look=characterLook({...DEFAULT_CHARACTER,wardrobe:{set,shirt,waist}});applyVillagerLook(model,look);
-   assert(model.root.getObjectByName('CLOTH_UNDER_MODESTY_SHORTS').visible);
-   if(n===4&&shirt==='none')assert(model.root.getObjectByName('CLOTH_SHIRT_UNDER').visible);
+  for(const waist of ['tucked','over']){
+   const look=characterLook({...DEFAULT_CHARACTER,wardrobe:{set,shirt:'none',waist}});applyVillagerLook(model,look);
+   assert.equal(shorts.visible,false,'complete Gothic outfits hide the standalone shorts');
+   if(facing)assert(facing.visible);
    let triangles=0,draws=0;
    model.root.traverse(o=>{if(!o.isMesh)return;for(let a=o;a;a=a.parent)if(!a.visible)return;const g=o.geometry;triangles+=Math.min(g.drawRange.count,g.index?.count??g.attributes.position.count)/3;draws+=Array.isArray(o.material)?g.groups.length:1;});
    counts.push({shirt:look.wardrobe.shirt,waist,triangles,draws});

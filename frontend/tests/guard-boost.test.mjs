@@ -14,7 +14,7 @@ test('BRZ guarded boost uses confirmed hero, resources, cooldown and shield stat
  const vite=await createServer({server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error',optimizeDeps:{noDiscovery:true,include:[]}}),load=path=>vite.ssrLoadModule('/src/'+path),root=createRoot(document.getElementById('root'));let client;
  try{
   const {useNetworkStore:network}=await load('store/session/networkStore.ts'),{useSocialStore:social}=await load('store/social/socialStore.ts'),{useUIStore:ui}=await load('store/menus/uiStore.ts'),{useChatStore:chat}=await load('store/chat/chatStore.ts');
-  const actions=await load('combat/guardBoost.ts'),{GuardBoostAction}=await load('combat/GuardBoostAction.tsx'),{TankBarrierAction}=await load('combat/TankBarrierAction.tsx'),{readEffectSignals:read,activeVehicleEffects:effects}=await load('combat/activeEffects.ts'),{sampleGuardBreak:flash,guardShieldTransform,GUARD_ARC_HALF_ANGLE}=await load('combat/guardShieldVisual.ts');
+  const actions=await load('combat/guardBoost.ts'),{GuardBoostAction}=await load('combat/GuardBoostAction.tsx'),{TankBarrierAction}=await load('combat/TankBarrierAction.tsx'),{readEffectSignals:read,activeVehicleEffects:effects}=await load('combat/activeEffects.ts'),{sampleGuardBreak:flash,guardShieldTransform,GUARD_ARC_HALF_ANGLE,TANK_BARRIER_GLASS}=await load('combat/guardShieldVisual.ts');
   client=await load('net/socialClient.ts');const sent=[];client.setSocialConnection({readyState:WebSocket.OPEN,send:body=>sent.push(JSON.parse(body))});
   const guard={remaining_s:0,cooldown_s:0,shield_hp:0,shield_max_hp:200,break_seq:0};
   const me={id:'me',kind:'vehicle',vehicle_id:'brz',team:'blue',room_id:3,position:[0,1,0],rotation:[0,0,0,1],speed:0,gear:1,fuel:20,vehicle_mask:1,player_mask:0,guard,health:{hp:500,max_hp:500,defeated:false},wheels:[{grounded:true},{grounded:true},{grounded:true},{grounded:true}]};
@@ -65,6 +65,14 @@ test('BRZ guarded boost uses confirmed hero, resources, cooldown and shield stat
   await t.test('confirmed breaks pulse once and initial/reconnected snapshots do not replay an old break',()=>{
    const state={sequence:null,at:-Infinity};assert.equal(flash(state,4,10),0);assert.equal(flash(state,5,11),1);assert(flash(state,5,11.1)>0);assert.equal(flash(state,5,11.4),0);assert.equal(flash({sequence:null,at:-Infinity},5,12),0);assert.equal(flash(state,NaN,12),0);
    assert.equal(flash(state,6,13),1);assert.equal(flash(state,0,13.1),0,'a round reset clears an old break');assert.equal(flash(state,1,14),1);assert.equal(flash(state,1,0),0,'clock reset cannot replay the old pulse');
+  });
+  await t.test('tank barrier glass has a clear face, mirrored rim lighting, and a faint base tint',()=>{
+   const {data,width,height}=TANK_BARRIER_GLASS.image;
+   const alpha=(x,y)=>data[(y*width+x)*4+3]/255;
+   const center=alpha(width/2,height/2);
+   assert(center>.10&&center<.30,'the middle remains see-through');
+   assert(alpha(0,height/2)>.8&&alpha(width-1,height/2)>.8,'side lights define both edges');
+   assert(alpha(width/2,7)>center,'the panel tint is stronger along the bottom');
   });
   await t.test('the complete BRZ and Tank shield arcs clear their front bumpers and cover collider height and width',()=>{
    for(const half of [[1,.5,2],[1.8,.8,3.2]])for(const offset of [[0,0,0],[.3,-.2,.7]]){

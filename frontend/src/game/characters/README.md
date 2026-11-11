@@ -147,22 +147,22 @@ validates and persists them.
 
 The dressing room supports five Gothic skirt/corset sets on the existing Village
 Woman rig. `character-wardrobe.json` is shared with server validation. Saved
-choices contain `wardrobe: { set, shirt, waist }`; legacy profiles still use
-their original outfit. Gothic-04 requires a shirt, and modesty shorts are always
-visible. Identity, bag, face, hair, and color choices stay on the same character.
+choices contain `wardrobe: { set, shirt, waist }`. Older profiles with a saved
+shirt layer keep their set and waist fit and now load with `shirt: "none"`.
+Complete Gothic outfits hide the original black shorts and use the skirt with
+a lower-body coverage mask. Identity, bag, face, hair, and color choices stay
+on the same character.
 
 Each set has a `garage.glb` and `mobile.glb` in
 `public/models/characters/wardrobe/`. Both must be installed before the set can be equipped. Portraits and compact garage/victory views use the mobile model. A
 missing pack falls back to the original clothed character model.
 
 Garment nodes carry `wardrobeRole` extras. Fitted variants provide tucked and
-long hems, with shirts under or over the corset. The `_AVEN_COVERAGE` vertex
-attribute stores six bit masks in this order: none/tucked, none/over,
-under/tucked, under/over, over/tucked, over/over. Hidden body and inner-garment
-triangles are removed from a private index buffer when the selection changes;
-the source model stays shared. Disposal restores source geometry. This adds no
-per-frame clothing simulation. New imported clothes still need fitting,
-weights, and masks; changing draw order alone cannot resolve intersections.
+long hems. The runtime uses the first two `_AVEN_COVERAGE` bits in older GLBs
+for the tucked and over-skirt fits. Hidden body triangles are removed from a
+private index buffer when the selection changes. The source model stays shared
+and disposal restores source geometry. New imported clothes still need fitting,
+weights, and masks.
 
 Asset checks (run from `frontend`):
 
@@ -175,7 +175,7 @@ node --test tests/wardrobe.test.mjs
 
 Keep face/body coordinates unquantized: existing face shaders use bind-space
 positions. The asset checker loads compressed GLBs through Three.js and tests
-all layer modes, weights, role tags, and coverage flags. It strips textures for
+both waist fits, weights, role tags, and coverage flags. It strips textures for
 Node loading, so it does not certify browser image decoding or GPU rendering.
 
 ## Dressing room
@@ -190,8 +190,8 @@ paired palettes, and custom fabric/accent pickers.
 The 13 categories cover outfits, tops/corsets, skirts/pants, dresses, outerwear,
 shoes/socks, headwear, accessories, handheld props, hair, face, skin, and colors.
 Accessories contains glasses, bow ties, and harnesses. Gothic corsets and skirts
-still equip as fitted matched sets; Tops & corsets controls their shirt and
-waist layers. Pants and shoes bundled into a complete outfit are not separate
+still equip as fitted matched sets. Tops & corsets controls their waist fit.
+Pants and shoes bundled into a complete outfit are not separate
 swaps. The bonnet remains part of Vesper's model to cover the open scalp.
 
 `dressingRoomImports.json` inventories the 36 separate female garments added in
@@ -251,8 +251,8 @@ The fitting-room label sits at top left and the selected piece at top right.
 Both sidebars extend beside the center color and camera toolbars to the footer.
 Choose an equipped piece in the center toolbar, or click its catalog card, to
 inspect it. Selected item measures the visible garment or accessory, including
-glasses and the bag; hidden shirt variants do not enlarge the view. Camera
-presets ease between angles; manual editor orbit/pan cancels the transition.
+glasses and the bag. Camera presets ease between angles. Manual editor
+orbit/pan cancels the transition.
 Hold pose freezes animation. Clicking the character resumes a personality gesture.
 
 Fabric and trim overrides are stored under `appearance.item_colors` by outfit
@@ -288,9 +288,10 @@ fields; restart both the server and frontend when installing.
 
 Fit revision 5 shortens and contours the underbust shoulder straps against the
 bare-body mesh, replaces arm/twist weights on corsets with torso weights, and
-shares waist weights across touching garments. Tucked hems sit inside the skirt;
-outer shirts mask the covered corset surface. Shirt fabric and multi-material
-corset children accept per-piece colors. Modesty shorts and required shirts stay.
+shares waist weights across touching garments. Tucked hems sit inside the skirt.
+Fit revision 6 reshapes the laced straps and vest shell, extends the high-collar
+back, refits Vesper’s shoes, and adds clearance to the Ruffled Corset overskirt.
+The runtime adjusts instance-owned geometry after loading the shipped GLBs.
 
 Emotes uses a left filter rail and a right searchable results list. All searches
 the whole library, My personality shows the equipped personality's reactions,
@@ -298,9 +299,9 @@ and pack filters narrow the list. The center remains the existing live scene.
 
 Fit checks are manual: front, back and animation must all be checked, with no
 outstanding issue note, before a combination shows a checkmark. Records are
-local to this browser, namespaced by profile, fit revision, garment, set, shirt,
-waist, animation fit, glasses, prop and pose. A new asset revision starts
-untested; passing one combination never certifies other shirt layers or emotes.
+local to this browser, namespaced by profile, fit revision, garment, set, waist,
+animation fit, glasses, prop and pose. A new asset revision starts untested.
+Each waist fit and emote has its own check.
 The original Wearing indicator is a dot, distinct from the fit checkmark.
 
 Side mirror · lipstick check appears in Garage and All for supported road-car

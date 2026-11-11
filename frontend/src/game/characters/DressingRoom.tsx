@@ -58,11 +58,11 @@ const OUTFIT_DESCRIPTIONS: Record<string, string> = {
   "race-crew": "Rook’s race-crew outfit uses warm brown fabric and gold trim on his coat and accessories.",
 };
 const GOTHIC_DESCRIPTIONS: Record<string, string> = {
-  "gothic-01": "A lace-up bodice with a matching skirt and modesty shorts. Add a shirt or wear the bodice on its own.",
-  "gothic-02": "A sweetheart-neckline corset with a matching skirt and modesty shorts.",
-  "gothic-03": "A ruffled corset with a matching skirt and modesty shorts. The shirt layer is optional.",
-  "gothic-04": "An open underbust vest with a matching skirt and modesty shorts. This set requires a shirt layer.",
-  "gothic-05": "A high-collar corset with a matching skirt and modesty shorts. It supports tucked and over-skirt fits.",
+  "gothic-01": "A lace-up bodice with fitted shoulder straps and a matching skirt.",
+  "gothic-02": "A sweetheart-neckline corset with a layered, scalloped skirt.",
+  "gothic-03": "A ruffled corset with a matching skirt cut to clear its inner ruffles.",
+  "gothic-04": "A fitted vest with a raised front, an oval back opening and a matching skirt.",
+  "gothic-05": "A high-collar corset with a fitted upper back and a matching skirt. It supports tucked and over-skirt fits.",
 };
 
 function focusView(camera: "Face" | "Hands" | "Full body") {
@@ -93,7 +93,6 @@ export function DressingRoom({ choice, onChange, modelControls, cameraTools }: {
   const pieces = wornClothing(choice);
   const piece = pieces.includes(selectedPiece) ? selectedPiece : pieces[0];
   const female = choice.id === VILLAGER_ID;
-  const selectedSet = WARDROBE_SETS.find(item => item.id === wardrobe?.set);
   const currentCategory = CATEGORIES.find(item => item.id === category)!;
   const hasAuthoredMale = choice.id === ROOK_ID && Boolean(__ROOK_MODEL_URL__);
   const upperPiece = female ? "corset" : "coat";
@@ -122,8 +121,8 @@ export function DressingRoom({ choice, onChange, modelControls, cameraTools }: {
   function edit(field: CharacterStyleField, value: string) {
     onChange({ ...choice, appearance: { ...appearance, [field]: value } });
   }
-  function wearSet(set: string, change: Partial<WardrobeChoice> = {}) {
-    onChange({ ...choice, wardrobe: resolveWardrobe({ set, shirt: wardrobe?.shirt ?? "none", waist: wardrobe?.waist ?? "tucked", ...change }) });
+  function wearSet(set: string, waist: WardrobeChoice["waist"] = wardrobe?.waist ?? "tucked") {
+    onChange({ ...choice, wardrobe: resolveWardrobe({ set, shirt: "none", waist }) });
   }
   function options(field: CharacterStyleField, section: string, icon: Icon): Item[] {
     return CHARACTER_APPEARANCE_OPTIONS[field].map(option => ({
@@ -142,7 +141,7 @@ export function DressingRoom({ choice, onChange, modelControls, cameraTools }: {
     const installed = __WARDROBE_SET_IDS__.includes(set.id);
     return {
       id: set.id, label: set.name, section, icon, selected: wardrobe?.set === set.id, set: set.id,
-      description: GOTHIC_DESCRIPTIONS[set.id] ?? "A matching corset and skirt with modesty shorts.", pieces: "outfit",
+      description: GOTHIC_DESCRIPTIONS[set.id] ?? "A matching corset and skirt.", pieces: "outfit",
       detail: "Matched corset + skirt", unavailable: installed ? undefined : "Pack not installed",
       choose: installed ? () => wearSet(set.id) : undefined,
     };
@@ -247,7 +246,7 @@ export function DressingRoom({ choice, onChange, modelControls, cameraTools }: {
                 <WardrobeIcon name={item.icon} />{item.color && <i className="dressing-swatch" />}
               </span>
               <span className="dressing-item-name">{item.label}</span>
-              {item.set && !item.unavailable && <FitBadge choice={{ ...choice, wardrobe: resolveWardrobe({ set: item.set, shirt: wardrobe?.shirt ?? "none", waist: wardrobe?.waist ?? "tucked" }) }} piece={category === "bottoms" ? "skirt" : "corset"} />}
+              {item.set && !item.unavailable && <FitBadge choice={{ ...choice, wardrobe: resolveWardrobe({ set: item.set, shirt: "none", waist: wardrobe?.waist ?? "tucked" }) }} piece={category === "bottoms" ? "skirt" : "corset"} />}
               <small>{item.unavailable ?? (item.selected ? "Wearing" : item.detail ?? "Ready to wear")}</small>
             </button>)}
           </div>
@@ -263,13 +262,9 @@ export function DressingRoom({ choice, onChange, modelControls, cameraTools }: {
         {inspected.unavailable && <p className="dressing-note">{inspected.unavailable}</p>}
         {itemPieces.length > 0 && controls(itemPieces.length > 1 ? "Outfit pieces" : "Piece", itemPieces.map(item => <button key={item} type="button" className="menu-control"
           data-dressing-piece={item} aria-pressed={camera === "Selected item" && piece === item} onClick={() => focusClothingPiece(item)}>{clothingPieceLabel(item)}</button>), 2)}
-        {wardrobe && inspected.set === wardrobe.set && !inspected.unavailable && <>
-          {controls("Shirt layer", (["none", "under", "over"] as const).map(shirt => <button key={shirt} type="button" className="menu-control"
-            aria-pressed={wardrobe.shirt === shirt} disabled={shirt === "none" && selectedSet?.requiresShirt}
-            onClick={() => { wearSet(wardrobe.set, { shirt }); focusClothingPiece(shirt === "none" ? "corset" : "shirt"); }}>{shirt === "none" ? "Corset only" : shirt === "under" ? "Under corset" : "Over corset"}</button>))}
-          {controls("Waist layering", (["tucked", "over"] as const).map(waist => <button key={waist} type="button" className="menu-control" aria-pressed={wardrobe.waist === waist}
-            onClick={() => { wearSet(wardrobe.set, { waist }); focusClothingPiece("skirt"); }}>{waist === "tucked" ? "Tucked into skirt" : "Over skirt"}</button>))}
-        </>}
+        {wardrobe && inspected.set === wardrobe.set && !inspected.unavailable &&
+          controls("Waist layering", (["tucked", "over"] as const).map(waist => <button key={waist} type="button" className="menu-control" aria-pressed={wardrobe.waist === waist}
+            onClick={() => { wearSet(wardrobe.set, waist); focusClothingPiece("skirt"); }}>{waist === "tucked" ? "Tucked into skirt" : "Over skirt"}</button>))}
         {itemPieces.length > 0 && <FitReview choice={choice} piece={itemPieces.includes(piece) ? piece : itemPieces[0]} />}
       </>}
     </aside>

@@ -617,16 +617,15 @@ async fn character_equip_validates_the_choice_and_persists_it_on_the_profile() {
         assert_eq!(s.handle(&player, json!({"action": "character_equip", "character": styled})).await.unwrap()["character"], styled);
     }
     assert_eq!(s.handle(&player, json!({"action": "character_equip", "character": legacy_style})).await.unwrap()["character"], styled);
-    styled["wardrobe"] = json!({"set": "gothic-04", "shirt": "under", "waist": "over"});
-    assert_eq!(s.handle(&player, json!({"action": "character_equip", "character": styled})).await.unwrap()["character"], styled);
-    for wardrobe in [
-        json!({"set": "gothic-04", "shirt": "none", "waist": "over"}),
-        json!({"set": "missing", "shirt": "under", "waist": "tucked"}),
-    ] {
-        let mut invalid_wardrobe = styled.clone();
-        invalid_wardrobe["wardrobe"] = wardrobe;
-        assert!(s.handle(&player, json!({"action": "character_equip", "character": invalid_wardrobe})).await.is_err());
+    styled["wardrobe"] = json!({"set": "gothic-04", "shirt": "none", "waist": "over"});
+    for shirt in ["under", "over", "none"] {
+        let mut incoming = styled.clone();
+        incoming["wardrobe"]["shirt"] = json!(shirt);
+        assert_eq!(s.handle(&player, json!({"action": "character_equip", "character": incoming})).await.unwrap()["character"], styled);
     }
+    let mut invalid_wardrobe = styled.clone();
+    invalid_wardrobe["wardrobe"] = json!({"set": "missing", "shirt": "under", "waist": "tucked"});
+    assert!(s.handle(&player, json!({"action": "character_equip", "character": invalid_wardrobe})).await.is_err());
     let reloaded: SocialData = serde_json::from_slice(&tokio::fs::read(&s.path).await.unwrap()).unwrap();
     let progression = &reloaded.profiles[profile].progression;
     assert_eq!(progression.view()["character"], styled);
