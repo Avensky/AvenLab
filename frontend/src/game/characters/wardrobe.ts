@@ -2,6 +2,7 @@ import { Mesh, type BufferGeometry, type Object3D } from "three";
 import catalog from "../../../../avenlab-server/src/assets/character-wardrobe.json";
 
 export const WARDROBE_SETS = catalog.filter(set => !set.retired);
+export const WARDROBE_CORSETS = catalog;
 export const UNDERBUST_WARDROBE_SET = "gothic-04";
 export const UNDERBUST_SHIRT_COLORS = { color: "#e6d8be", accent: "#a18a70" } as const;
 export type WardrobeChoice = { set: string; shirt: "none" | "under" | "over"; waist: "tucked" | "over" };
@@ -15,22 +16,30 @@ export function resolveWardrobe(choice?: WardrobeChoice, { includeRetired = fals
 }
 
 export function resolveCharacterWardrobe(choice: WardrobeSelection | null | undefined) {
-  if (choice?.wardrobeTrial?.set === UNDERBUST_WARDROBE_SET) return resolveWardrobe(choice.wardrobeTrial, { includeRetired: true });
-  return resolveWardrobe(choice?.wardrobe);
+  return resolveWardrobe(choice?.wardrobeTrial, { includeRetired: true }) ?? resolveWardrobe(choice?.wardrobe);
 }
 
 export function withWardrobeWaist<T extends WardrobeSelection>(choice: T, waist: WardrobeChoice["waist"]): T {
   const selected = resolveCharacterWardrobe(choice);
   if (!selected) return choice;
-  return selected.set === UNDERBUST_WARDROBE_SET
+  return choice.wardrobeTrial?.set === selected.set
     ? { ...choice, wardrobeTrial: { ...selected, waist } }
     : { ...choice, wardrobe: { ...selected, waist } };
 }
 
-export function wardrobeModelUrl(choice: WardrobeChoice | undefined, kind: "garage" | "portrait", { includeRetired = false } = {}) {
-  const resolved = resolveWardrobe(choice, { includeRetired });
+export function wardrobeModelUrl(choice: WardrobeChoice | undefined, kind: "garage" | "portrait") {
+  const resolved = resolveWardrobe(choice);
   return resolved && __WARDROBE_SET_IDS__.includes(resolved.set)
     ? `/models/characters/wardrobe/${resolved.set}.${kind === "portrait" ? "mobile" : "garage"}.glb` : null;
+}
+
+export function corsetModelUrl(choice: WardrobeChoice | undefined, kind: "garage" | "portrait") {
+  const resolved = resolveWardrobe(choice, { includeRetired: true });
+  if (!resolved) return null;
+  const available = __STANDALONE_CORSET_LODS__[resolved.set];
+  if (!available?.garage && !available?.mobile) return null;
+  const tier = available.mobile && (kind === "portrait" || !available.garage) ? "mobile" : "garage";
+  return `/models/characters/female/wardrobe/corsets/${resolved.set}.${tier}.glb`;
 }
 
 /** A garment swap changes visibility and indices once, never vertex positions per frame. */

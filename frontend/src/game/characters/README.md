@@ -197,9 +197,19 @@ Sweetheart and Ruffled equip in Over skirt, and High Collar equips in Tucked.
 An outfit's details open close-ups for its individual pieces, with waist
 layering controls for the selected Gothic set.
 
-Tops → Fit trials includes Underbust Vest + Blouse. It starts in Over skirt
-and keeps the blouse on for both waist fits. The vest and blouse take separate
+Corsets includes all five Gothic designs as individual try-ons. Choose any
+skirt independently and use the corset's waist controls to compare fits. Tops
+and corsets use the same garment slot. Underbust Vest + Blouse starts in Over
+skirt and includes its blouse for both fits. The vest and blouse take separate
 colors. Try-ons carry into Emotes for the session.
+
+The dev and production builds extract separate garage and mobile corset GLBs
+from the installed Gothic assets. Each file contains the two corset fits and
+their rig. The picker uses either tier when only one is available. The fitting
+room binds the selected garments to Vesper's animated
+rig and uses a shared full-skin donor for areas that the original outfit cuts
+away. Run `node frontend/scripts/build-wardrobe-pieces.mjs` from the repo root
+to generate the files in `frontend/public/models/characters/female/wardrobe/`.
 
 `dressingRoomImports.json` inventories 41 separate female garments under
 `frontend/public/models/characters/female/wardrobe/`. It includes 14 bows,

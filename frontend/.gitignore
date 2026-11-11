@@ -12,6 +12,13 @@ dist
 dist-ssr
 *.local
 
+# Standalone wardrobe pieces derived from the tracked Gothic GLBs.
+/public/models/characters/female/wardrobe/corsets/gothic-*.garage.glb
+/public/models/characters/female/wardrobe/corsets/gothic-*.mobile.glb
+/public/models/characters/female/wardrobe/corsets/*.tmp.glb
+/public/models/characters/female/wardrobe/vesper-body.glb
+/public/models/characters/female/wardrobe/vesper-body.glb.*.tmp.glb
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

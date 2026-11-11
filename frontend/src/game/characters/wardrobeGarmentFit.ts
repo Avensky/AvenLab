@@ -2,7 +2,9 @@ import { BufferAttribute, BufferGeometry, Color, DoubleSide, Group, MathUtils, R
 import { MeshBVH } from "three-mesh-bvh";
 import type { CharacterLook } from "./characterCatalog";
 import { clothingColors, clothingPieceFor, type ClothingPiece } from "./clothingPieces";
+import type { StandaloneCorset } from "./standaloneCorset";
 import { wardrobeGarmentReplacements, type getWardrobeGarment, type WardrobeGarmentSlot } from "./wardrobeGarments";
+import { prepareWardrobeTopFit } from "./wardrobeTopFit";
 
 export type WardrobeGarmentSource = { item: NonNullable<ReturnType<typeof getWardrobeGarment>>; scene: Object3D };
 
@@ -36,13 +38,19 @@ function bodySurface(geometry: BufferGeometry) {
   return new MeshBVH(surface);
 }
 
-function fitBodyMask(body: SkinnedMesh, original: SkinnedMesh, full: BufferGeometry, top: boolean, skirt: boolean, clothes: MeshBVH[]) {
+function fitBodyMask(body: SkinnedMesh, original: SkinnedMesh, full: BufferGeometry, top: boolean, skirt: boolean, clothes: MeshBVH[], checkTopEdges: boolean) {
   const position = full.getAttribute("position"), index = full.getIndex()!;
   const baseline = bodySurface(original.geometry);
   const fittedIndex = body.geometry.getIndex()!;
   const a = new Vector3(), b = new Vector3(), c = new Vector3(), point = new Vector3(), normal = new Vector3();
-  const ray = new Ray();
+  const ray = new Ray(), edge = new Vector3();
   const hit = { point: new Vector3(), distance: 0, faceIndex: 0 };
+  const underCloth = (corner?: Vector3) => {
+    ray.origin.copy(point);
+    if (corner) ray.origin.lerp(corner, .8);
+    ray.origin.addScaledVector(normal, -.012);
+    return clothes.some(surface => surface.raycastFirst(ray, DoubleSide, 0, .052));
+  };
   let visible = 0;
   for (let i = 0; i < index.count; i += 3) {
     const ai = index.getX(i), bi = index.getX(i + 1), ci = index.getX(i + 2);
@@ -54,11 +62,12 @@ function fitBodyMask(body: SkinnedMesh, original: SkinnedMesh, full: BufferGeome
     const replaced = upperBody ? top : skirt && point.y > .075;
     if (!replaced && !baseline?.closestPointToPoint(point, hit, 0, .0016)) continue;
     if (replaced) {
-      normal.crossVectors(b.sub(a), c.sub(a)).normalize();
-      // Only cut skin close behind opaque cloth, preserving openings and bare limbs.
-      ray.origin.copy(point).addScaledVector(normal, -.012);
+      normal.copy(b).sub(a).cross(edge.copy(c).sub(a)).normalize();
       ray.direction.copy(normal);
-      if (clothes.some(surface => surface.raycastFirst(ray, DoubleSide, 0, .052))) continue;
+      // A shirt edge can cross the middle of a skin triangle. Keep those
+      // triangles so the neckline and armholes never cut a hole in the skin.
+      if (underCloth() && (!(upperBody && checkTopEdges)
+        || (underCloth(a) && underCloth(b) && underCloth(c)))) continue;
     }
     fittedIndex.array[visible++] = ai;
     fittedIndex.array[visible++] = bi;
@@ -69,9 +78,9 @@ function fitBodyMask(body: SkinnedMesh, original: SkinnedMesh, full: BufferGeome
   baseline?.geometry.dispose();
 }
 
-export function prepareWardrobeGarments(root: Object3D, sources: readonly WardrobeGarmentSource[], fullBody?: Object3D) {
+export function prepareWardrobeGarments(root: Object3D, sources: readonly WardrobeGarmentSource[], fullBody?: Object3D, corset?: StandaloneCorset) {
   const original = root.getObjectByName("BODY_WARDROBE") ?? root.getObjectByName("BODY_OUTFIT_CUT");
-  if (!sources.length || !(original instanceof SkinnedMesh)) return;
+  if ((!sources.length && !corset) || !(original instanceof SkinnedMesh)) return;
   const full = fullBody instanceof SkinnedMesh ? fullBody.geometry : undefined;
   const replacements = new Set<ClothingPiece>();
   const stock: { part: Object3D; piece: ClothingPiece }[] = [];
@@ -83,11 +92,28 @@ export function prepareWardrobeGarments(root: Object3D, sources: readonly Wardro
   group.name = "fitting-room-garments";
   const materials: { piece: ClothingPiece; base: Color; color: Color; accent: boolean }[] = [];
   const ownedMaterials = new Set<Material>();
+  const fittedTops: BufferGeometry[] = [];
+  let checkTopEdges = false;
   const shapes: MeshBVH[] = [];
-  let top = false, skirt = false;
+  const corsetShapes = { tucked: [] as MeshBVH[], over: [] as MeshBVH[] };
+  if (corset) {
+    group.add(corset.group);
+    for (const piece of wardrobeGarmentReplacements.top) replacements.add(piece);
+    for (const waist of ["tucked", "over"] as const) {
+      corset.apply(waist);
+      corset.group.traverseVisible(part => {
+        if (!(part instanceof SkinnedMesh) || Array.isArray(part.material)
+          || part.material.transparent || part.material.userData.color_slot === "hardware") return;
+        const surface = bodySurface(part.geometry);
+        if (surface) corsetShapes[waist].push(surface);
+      });
+    }
+  }
+  let top = Boolean(corset), skirt = false;
   let skirtRadius: number | undefined;
   for (const { item, scene } of sources) {
     if (replacesVillagerBody(item.slot) && !full?.getIndex()) continue;
+    const fitTop = item.slot === "top" && full ? prepareWardrobeTopFit(full, item.id) : undefined;
     const garment = new Group();
     garment.name = `wardrobe-${item.id}`;
     garment.userData.clothingPiece = item.piece;
@@ -102,6 +128,11 @@ export function prepareWardrobeGarments(root: Object3D, sources: readonly Wardro
       if (lining && item.id !== "skirt-01" && item.id !== "skirt-02") return;
       const mesh = bindWardrobeGarmentMesh(part, original.skeleton);
       if (!mesh) return;
+      const fittedTop = fitTop?.(mesh.geometry);
+      if (fittedTop) {
+        mesh.geometry = fittedTop;
+        fittedTops.push(fittedTop);
+      }
       mesh.userData.clothingPiece = item.piece;
       const cloneMaterial = (source: Material) => {
         const material = source.clone();
@@ -135,6 +166,7 @@ export function prepareWardrobeGarments(root: Object3D, sources: readonly Wardro
       garment.add(mesh);
     });
     if (!garment.children.length) continue;
+    checkTopEdges ||= item.slot === "top";
     if (fabricColor) for (const color of liningColors) color.copy(fabricColor);
     group.add(garment);
     for (const piece of wardrobeGarmentReplacements[item.slot]) replacements.add(piece);
@@ -154,9 +186,11 @@ export function prepareWardrobeGarments(root: Object3D, sources: readonly Wardro
   let maskedWaist: string | undefined;
   return {
     apply(look: CharacterLook) {
-      const waist = look.wardrobe?.waist ?? "original";
+      const corsetWaist = look.corset?.waist ?? "tucked";
+      const waist = corset ? corsetWaist : look.wardrobe?.waist ?? "original";
+      corset?.apply(corsetWaist);
       if (body && full && maskedWaist !== waist) {
-        fitBodyMask(body, original, full, top, skirt, shapes);
+        fitBodyMask(body, original, full, top, skirt, corset ? [...shapes, ...corsetShapes[corsetWaist]] : shapes, checkTopEdges);
         maskedWaist = waist;
       }
       if (body) original.visible = false;
@@ -171,7 +205,9 @@ export function prepareWardrobeGarments(root: Object3D, sources: readonly Wardro
     dispose() {
       group.removeFromParent();
       body?.geometry.dispose();
+      for (const geometry of fittedTops) geometry.dispose();
       for (const { geometry } of shapes) geometry.dispose();
+      for (const { geometry } of [...corsetShapes.tucked, ...corsetShapes.over]) geometry.dispose();
       for (const material of ownedMaterials) material.dispose();
     },
   };

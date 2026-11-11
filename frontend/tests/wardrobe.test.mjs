@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 import { createServer } from 'vite';
 import { BufferGeometry, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial } from 'three';
 
-test('saved Underbust presets fall back and the fitted vest can load as a trial', async () => {
- const vite=await createServer({define:{__WARDROBE_SET_IDS__:JSON.stringify(['gothic-04','gothic-05'])},server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});
+test('saved Underbust presets fall back and standalone corsets select an available model tier', async () => {
+ const vite=await createServer({define:{__WARDROBE_SET_IDS__:JSON.stringify(['gothic-04','gothic-05']),
+  __STANDALONE_CORSET_LODS__:JSON.stringify({'gothic-02':{garage:true,mobile:false},'gothic-04':{garage:true,mobile:true},'gothic-05':{garage:false,mobile:true}})},
+  server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});
  try {
-  const {resolveWardrobe,wardrobeModelUrl}=await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
+  const {corsetModelUrl,resolveWardrobe,wardrobeModelUrl}=await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
   const {DEFAULT_CHARACTER,characterLook}=await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
   const {villagerModelUrl}=await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
   const {wornClothing}=await vite.ssrLoadModule('/src/game/characters/clothingPieces.ts');
@@ -22,10 +24,14 @@ test('saved Underbust presets fall back and the fitted vest can load as a trial'
   for(const view of ['garage','portrait']){
    assert.equal(wardrobeModelUrl(archived,view),null);
    assert.equal(villagerModelUrl(look,view),villagerModelUrl(stock,view));
-   assert.match(villagerModelUrl(trialLook,view),/gothic-04\.(garage|mobile)\.glb$/);
+   assert.equal(villagerModelUrl(trialLook,view),villagerModelUrl(stock,view));
+   assert.equal(corsetModelUrl(trialLook.corset,view),`/models/characters/female/wardrobe/corsets/gothic-04.${view==='garage'?'garage':'mobile'}.glb`);
   }
   assert(wornClothing(trial).includes('shirt'));
   assert(!wornClothing(saved).includes('shirt'));
+  assert.match(corsetModelUrl({...archived,set:'gothic-02'},'portrait'),/gothic-02\.garage\.glb$/);
+  assert.match(corsetModelUrl({...archived,set:'gothic-05'},'garage'),/gothic-05\.mobile\.glb$/);
+  assert.equal(corsetModelUrl({...archived,set:'gothic-03'},'garage'),null);
   assert.deepEqual(saved.wardrobe,{set:'gothic-04',shirt:'under',waist:'over'},'loading a retired preset preserves the saved selection');
  }finally{await vite.close();}
 });
@@ -86,7 +92,9 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
  for(const[k,v]of Object.entries(globals)){original.set(k,Object.getOwnPropertyDescriptor(globalThis,k));Object.defineProperty(globalThis,k,{configurable:true,writable:true,value:v});}
  HTMLElement.prototype.scrollIntoView=()=>{};
  try{
-  vite=await createServer({define:{__WARDROBE_SET_IDS__:JSON.stringify(['gothic-01','gothic-02','gothic-03','gothic-04','gothic-05'])},server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});
+  vite=await createServer({define:{__WARDROBE_SET_IDS__:JSON.stringify(['gothic-01','gothic-02','gothic-03','gothic-04','gothic-05']),
+   __STANDALONE_CORSET_LODS__:JSON.stringify({'gothic-02':{garage:true,mobile:false},'gothic-04':{garage:true,mobile:true}}),
+   __DRESSING_ROOM_IMPORTED_IDS__:JSON.stringify(['gothic-skirt-04'])},server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});
   const {CharacterPage}=await vite.ssrLoadModule('/src/game/characters/CharacterPage.tsx');
   const {DEFAULT_CHARACTER}=await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
   const {useSocialStore:social}=await vite.ssrLoadModule('/src/store/social/socialStore.ts');
@@ -106,22 +114,31 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
   assert.deepEqual(previews.at(-1).wardrobe,character.wardrobe,'opening the editor preserves the retired preset');
   assert.equal(requests.length,0,'browsing categories does not save');
   await click('[data-wardrobe-back]');
-  await click('[data-category=tops]');
-  await click('[aria-label="Fit trials"] [data-wardrobe-item="gothic-04"]');
+  await click('[data-category=corsets]');
+  assert.equal(document.querySelectorAll('[aria-label="Gothic corsets"] [data-wardrobe-item]').length,5);
+  await click('[aria-label="Gothic corsets"] [data-wardrobe-item="gothic-02"]');
+  assert.equal(previews.at(-1).wardrobeTrial.set,'gothic-02','Sweetheart is selectable with one installed model tier');
+  await click('[aria-label="Gothic corsets"] [data-wardrobe-item="gothic-04"]');
   assert.deepEqual(previews.at(-1).wardrobeTrial,{set:'gothic-04',shirt:'none',waist:'over'});
   assert.equal(document.querySelector('[data-dressing-piece="shirt"]').textContent.trim(),'Blouse');
   await layer('Tucked into skirt');
   assert.equal(previews.at(-1).wardrobeTrial.waist,'tucked');
   assert.deepEqual(previews.at(-1).wardrobe,character.wardrobe);
+  await click('[data-wardrobe-back]');
+  await click('[data-category=bottoms]');
+  await click('[data-wardrobe-item="gothic-skirt-04"]');
+  assert.equal(previews.at(-1).garments.skirt,'gothic-skirt-04');
+  assert.equal(previews.at(-1).wardrobeTrial.set,'gothic-04','changing skirts keeps the selected corset');
   await showTab('emotes');
   assert.equal(previews.at(-1).wardrobeTrial.set,'gothic-04','the try-on carries into Emotes');
   assert(await beforeClose.current());
   assert.equal(requests.length,0,'trying the layered vest does not send a profile save');
   await showTab('appearance');
-  await click('[data-category=tops]');
+  await click('[data-category=corsets]');
   await click('[data-wardrobe-item="gothic-04"]');
   await click('[data-remove-try-on]');
   assert.equal(previews.at(-1).wardrobeTrial,undefined);
+  assert.equal(previews.at(-1).garments.skirt,'gothic-skirt-04','removing the corset keeps the separate skirt');
   await click('[data-wardrobe-back]');
   await click('[data-category=outfits]');
   await click('[data-wardrobe-item=gothic-03]');

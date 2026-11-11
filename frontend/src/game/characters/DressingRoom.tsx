@@ -2,7 +2,7 @@ import { FitBadge, FitReview } from "./FitReview";
 import { useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { CHARACTER_APPEARANCE_OPTIONS, ROOK_ID, VILLAGER_ID, characterLook, type CharacterChoice, type CharacterStyleField } from "./characterCatalog";
 import { focusClothingPiece, useCharacterPreviewStore } from "./characterPreviewStore";
-import { UNDERBUST_WARDROBE_SET, WARDROBE_SETS, resolveWardrobe, withWardrobeWaist, type WardrobeChoice } from "./wardrobe";
+import { UNDERBUST_WARDROBE_SET, WARDROBE_CORSETS, WARDROBE_SETS, corsetModelUrl, resolveWardrobe, withWardrobeWaist, type WardrobeChoice } from "./wardrobe";
 import { ClothingColorToolbar } from "./ClothingColorToolbar";
 import { clothingPieceLabel, wornClothing, type ClothingPiece } from "./clothingPieces";
 import { importedWardrobeItems, setWardrobeGarment, type WardrobeGarmentSlot } from "./wardrobeGarments";
@@ -10,6 +10,7 @@ import "./dressingRoom.css";
 
 const CATEGORIES = [
   { id: "outfits", label: "Outfits", group: "Wardrobe", icon: "outfits" },
+  { id: "corsets", label: "Corsets", group: "Wardrobe", icon: "corsets", femaleOnly: true },
   { id: "tops", label: "Tops", group: "Wardrobe", icon: "tops", femaleOnly: true },
   { id: "bottoms", label: "Skirts", group: "Wardrobe", icon: "skirts", femaleOnly: true },
   { id: "dresses", label: "Dresses", group: "Wardrobe", icon: "outfits", femaleOnly: true },
@@ -27,6 +28,7 @@ type Category = typeof CATEGORIES[number]["id"];
 type Icon = typeof CATEGORIES[number]["icon"];
 const ICON_PATHS: Record<Icon, string> = {
   outfits: "M9 4h6l2 5-3 2 3 9H7l3-9-3-2z M9 4l3 3 3-3 M9 14h6",
+  corsets: "M5 5l3 2 4 1 4-1 3-2-2 9 1 5-6 2-6-2 1-5zm4 4 6 7m0-7-6 7",
   tops: "m8 4-5 3 2 5 3-1v9h8v-9l3 1 2-5-5-3 M8 4l4 4 4-4",
   skirts: "M8 5h8l5 15H3z M7 8h10 M10 8l-1 12 M14 8l1 12",
   coats: "M8 4 3 7l1 10h4v4h8v-4h4l1-10-5-3z M8 4l4 7 4-7 M12 11v10",
@@ -97,7 +99,8 @@ export function DressingRoom({ choice, onChange, onTryOn, cameraTools }: {
   const catalogRef = useRef<HTMLElement>(null);
   const categoryRef = useRef<HTMLElement>(null);
   const focusLayer = useRef(false);
-  const { character, outfit, appearance, wardrobe, garments } = characterLook(choice)!;
+  const { character, outfit, appearance, wardrobe, corset, garments } = characterLook(choice)!;
+  const waistSelection = corset ?? wardrobe;
   const selectedPiece = useCharacterPreviewStore(s => s.selectedPiece);
   const camera = useCharacterPreviewStore(s => s.camera);
   const pieces = wornClothing(choice);
@@ -108,7 +111,7 @@ export function DressingRoom({ choice, onChange, onTryOn, cameraTools }: {
   const hasAuthoredMale = choice.id === ROOK_ID && Boolean(__ROOK_MODEL_URL__);
   const upperPiece = female ? "corset" : "coat";
   const categoryFocus: Record<Category, WardrobeFocus> = {
-    outfits: upperPiece, tops: "shirt", bottoms: "skirt", dresses: "dress", outerwear: "coat", bows: "bow",
+    outfits: upperPiece, corsets: "corset", tops: "shirt", bottoms: "skirt", dresses: "dress", outerwear: "coat", bows: "bow",
     footwear: "shoes", headwear: pieces.includes("hat") ? "hat" : "Face", accessories: pieces.includes("glasses") ? "glasses" : "Face",
     props: pieces.includes("bag") ? "bag" : "Hands", hair: "Face", face: "Face", skin: "Face",
   };
@@ -138,12 +141,12 @@ export function DressingRoom({ choice, onChange, onTryOn, cameraTools }: {
   function wearSet(set: string) {
     onChange({ ...choice, wardrobe: resolveWardrobe({ set, shirt: "none", waist: waistForSet(set) }), garments: undefined, wardrobeTrial: undefined });
   }
-  function tryUnderbust() {
+  function tryCorset(set: string) {
     const compatible = { ...garments };
     delete compatible.top;
     delete compatible.dress;
-    const waist = wardrobe?.set === UNDERBUST_WARDROBE_SET ? wardrobe.waist : "over";
-    onTryOn({ ...choice, wardrobeTrial: { set: UNDERBUST_WARDROBE_SET, shirt: "none", waist },
+    const waist = corset?.set === set ? corset.waist : FITTED_PRESETS[set]?.waist ?? "over";
+    onTryOn({ ...choice, wardrobeTrial: { set, shirt: "none", waist },
       garments: Object.keys(compatible).length ? compatible : undefined });
   }
   function options(field: CharacterStyleField, section: string, icon: Icon): Item[] {
@@ -164,7 +167,7 @@ export function DressingRoom({ choice, onChange, onTryOn, cameraTools }: {
     if (!preset) return [];
     const installed = __WARDROBE_SET_IDS__.includes(set.id);
     return [{
-      id: set.id, label: set.name, section: "Gothic collection", icon: "outfits", selected: !garments && wardrobe?.set === set.id, set: set.id,
+      id: set.id, label: set.name, section: "Gothic collection", icon: "outfits", selected: !garments && !corset && wardrobe?.set === set.id, set: set.id,
       description: preset.description, pieces: "outfit",
       detail: "Matched corset + skirt", unavailable: installed ? undefined : "Pack not installed",
       choose: installed ? () => wearSet(set.id) : undefined,
@@ -174,10 +177,25 @@ export function DressingRoom({ choice, onChange, onTryOn, cameraTools }: {
     outfits: [
       ...character.outfits.map(item => ({ id: item.id, label: item.name, section: "Complete outfits", icon: "outfits" as const,
         description: OUTFIT_DESCRIPTIONS[item.id] ?? "A complete outfit for this character.", pieces: "outfit" as const,
-        selected: !wardrobe && !garments && outfit.id === item.id, color: item.jacket, accent: item.trim,
+        selected: !wardrobe && !corset && !garments && outfit.id === item.id, color: item.jacket, accent: item.trim,
         choose: () => onChange({ ...choice, outfit: item.id, wardrobe: undefined, garments: undefined, wardrobeTrial: undefined }) })),
       ...fittedSets,
     ],
+    corsets: female ? WARDROBE_CORSETS.map((set): Item => {
+      const installed = Boolean(corsetModelUrl({ set: set.id, shirt: "none", waist: "over" }, "garage"));
+      const selected = corset?.set === set.id;
+      const underbust = set.id === UNDERBUST_WARDROBE_SET;
+      return {
+        id: set.id, set: set.id, label: underbust ? "Underbust Vest + Blouse" : set.name, section: "Gothic corsets", icon: "corsets",
+        trial: true, selected, detail: "Try-on", focus: "corset", pieces: underbust ? ["corset", "shirt"] : ["corset"],
+        unavailable: installed ? undefined : "Pack not installed",
+        description: underbust
+          ? "A roomier Underbust Vest over a fitted blouse. Both waist fits include the blouse, with separate colors for each layer."
+          : "Try this corset with your current skirt or choose another skirt from the wardrobe.",
+        choose: installed ? () => tryCorset(set.id) : undefined,
+        remove: selected ? () => onTryOn({ ...choice, wardrobeTrial: undefined }) : undefined,
+      };
+    }) : [],
     tops: [],
     bottoms: [],
     dresses: [],
@@ -198,18 +216,6 @@ export function DressingRoom({ choice, onChange, onTryOn, cameraTools }: {
     face: [...options("eye_color", "Eye color", "face"), ...options("brow_color", "Eyebrow tint", "face")],
     skin: options("skin", "Skin tone", "skin"),
   };
-  if (female) {
-    const installed = __WARDROBE_SET_IDS__.includes(UNDERBUST_WARDROBE_SET);
-    const selected = wardrobe?.set === UNDERBUST_WARDROBE_SET;
-    allItems.tops.push({
-      id: UNDERBUST_WARDROBE_SET, set: UNDERBUST_WARDROBE_SET, label: "Underbust Vest + Blouse", section: "Fit trials", icon: "tops",
-      trial: true, selected, detail: "Try-on", focus: "corset", pieces: ["corset", "shirt", "skirt"],
-      unavailable: installed ? undefined : "Pack not installed",
-      description: "A roomier Underbust Vest over a fitted blouse. Both waist fits include the blouse, with separate colors for each layer.",
-      choose: installed ? tryUnderbust : undefined,
-      remove: selected ? () => onTryOn({ ...choice, wardrobeTrial: undefined }) : undefined,
-    });
-  }
   if (female) for (const item of importedWardrobeItems) {
     const category = CATEGORIES.find(category => category.id === item.category);
     if (!category) continue;
@@ -319,8 +325,8 @@ export function DressingRoom({ choice, onChange, onTryOn, cameraTools }: {
         {itemPieces.length > 0 && controls(itemPieces.length > 1 ? "Outfit pieces" : "Piece", itemPieces.map(item => <button key={item} type="button" className="menu-control"
           data-dressing-piece={item} aria-pressed={camera === "Selected item" && piece === item} onClick={() => focusClothingPiece(item)}>
           {inspected.set === UNDERBUST_WARDROBE_SET && item === "shirt" ? "Blouse" : clothingPieceLabel(item)}</button>), 2)}
-        {wardrobe && inspected.set === wardrobe.set && !inspected.unavailable &&
-          controls("Waist layering", (["tucked", "over"] as const).map(waist => <button key={waist} type="button" className="menu-control" aria-pressed={wardrobe.waist === waist}
+        {waistSelection && inspected.set === waistSelection.set && !inspected.unavailable &&
+          controls("Waist layering", (["tucked", "over"] as const).map(waist => <button key={waist} type="button" className="menu-control" aria-pressed={waistSelection.waist === waist}
             onClick={() => { onChange(withWardrobeWaist(choice, waist)); focusClothingPiece("skirt"); }}>{waist === "tucked" ? "Tucked into skirt" : "Over skirt"}</button>))}
         {itemPieces.length > 0 && <FitReview choice={choice} piece={itemPieces.includes(piece) ? piece : itemPieces[0]} />}
       </>}

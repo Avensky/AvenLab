@@ -67,7 +67,7 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     preview.setState({ camera: 'Hands', zoom: 1.2 });
     await act(async () => root.render(h(Harness, { initial: DEFAULT_CHARACTER })));
     assert.deepEqual([...document.querySelectorAll('[data-category]')].map(button => button.dataset.category),
-      ['outfits', 'tops', 'bottoms', 'dresses', 'outerwear', 'footwear', 'headwear', 'bows', 'accessories', 'props', 'hair', 'face', 'skin']);
+      ['outfits', 'corsets', 'tops', 'bottoms', 'dresses', 'outerwear', 'footwear', 'headwear', 'bows', 'accessories', 'props', 'hair', 'face', 'skin']);
     assert.equal(find('[data-category=colors]'), null, 'presets live in the color toolbar');
     assert.deepEqual([...find('.dressing-room-title').children].map(label => label.textContent), ['Fitting room', 'Vesper Vega']);
     assert.equal(find('.dressing-catalog').hidden, true);

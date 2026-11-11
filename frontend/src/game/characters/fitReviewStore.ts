@@ -12,7 +12,8 @@ export function fitReviewKey(owner: string | undefined, choice: CharacterChoice,
  const revision = w?.set === "gothic-02" && w.waist === "over" ? "wardrobe-12"
   : w?.set === "gothic-03" && w.waist === "tucked" ? FIT_REVISION : (w && setFitRevisions[w.set]) ?? "wardrobe-6";
  const garments = Object.entries(choice.garments ?? {}).sort(([a], [b]) => a.localeCompare(b));
- return JSON.stringify([revision, owner ?? "local", choice.id, w?.set ?? choice.outfit, w?.shirt ?? "original", w?.waist ?? "original", choice.appearance?.animation_fit ?? "auto", choice.appearance?.glasses ?? "none", choice.prop ?? "none", piece, pose, ...(garments.length ? [garments] : [])]);
+ const base = choice.wardrobeTrial ? ["separates", choice.wardrobe?.set ?? choice.outfit, choice.wardrobe?.waist ?? "original"] : [];
+ return JSON.stringify([revision, owner ?? "local", choice.id, w?.set ?? choice.outfit, w?.shirt ?? "original", w?.waist ?? "original", choice.appearance?.animation_fit ?? "auto", choice.appearance?.glasses ?? "none", choice.prop ?? "none", piece, pose, ...base, ...(garments.length ? [garments] : [])]);
 }
 export function fitReviewStatus(review?: Review) { return review?.issue.trim() ? "issue" : FIT_CHECKS.every(check => review?.checks[check]) ? "passed" : review ? "partial" : "untested"; }
 export const useFitReviewStore = create(persist<{

@@ -19,10 +19,11 @@ import { isCompactPreview } from "../preview/previewBudget";
 import { failCockpitPreview, useCharacterPreviewStore } from "./characterPreviewStore";
 import { replacesVillagerBody, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
 import { getWardrobeGarment, wardrobeGarmentModelUrl } from "./wardrobeGarments";
+import { corsetModelUrl } from "./wardrobe";
+import { FITTING_BODY_URL } from "./standaloneCorset";
 
 const DRIVER_TILT: [number, number, number] = [-.095, -.16, -.045];
-// The base Village outfit intentionally cuts away the skin under its clothes.
-const FULL_VILLAGER_BODY_URL = "/models/characters/wardrobe/gothic-02.mobile.glb";
+const LEGACY_FITTING_BODY_URL = "/models/characters/wardrobe/gothic-02.mobile.glb";
 type WardrobeAssetListener = (url: string, scene: Object3D | null) => void;
 
 function WardrobeAsset({ url, onReady }: { url: string; onReady: WardrobeAssetListener }) {
@@ -51,14 +52,22 @@ function VillagerDriver({ url, look, compact, bag, previewPacks, leanFit, mirror
   const [sources, setSources] = useState<Partial<Record<string, Object3D | null>>>({});
   const onReady = useCallback<WardrobeAssetListener>((asset, loaded) => setSources(current => current[asset] === loaded
     ? current : { ...current, [asset]: loaded }), []);
+  const corsetUrl = corsetModelUrl(look.corset, compact ? "portrait" : "garage");
   const requested = useMemo(() => Object.values(look.garments ?? {}).flatMap(id => {
     const item = getWardrobeGarment(id);
     const url = item && wardrobeGarmentModelUrl(item, compact ? "portrait" : "garage");
     return item && url ? [{ item, url }] : [];
   }), [look.garments, compact]);
-  const needsBody = !scene.getObjectByName("BODY_WARDROBE") && requested.some(({ item }) => replacesVillagerBody(item.slot));
-  const assetUrls = needsBody ? [FULL_VILLAGER_BODY_URL, ...requested.map(item => item.url)] : requested.map(item => item.url);
-  const garmentBody = needsBody ? sources[FULL_VILLAGER_BODY_URL]?.getObjectByName("BODY_WARDROBE") : undefined;
+  // The Village outfit cuts away skin under its clothes. Use the full skin only
+  // for replacements that expose a different part of the body.
+  const needsBody = !scene.getObjectByName("BODY_WARDROBE") && (Boolean(corsetUrl) || requested.some(({ item }) => replacesVillagerBody(item.slot)));
+  const bodyUrl = sources[FITTING_BODY_URL] === null ? LEGACY_FITTING_BODY_URL : FITTING_BODY_URL;
+  const assetUrls = requested.map(item => item.url);
+  if (needsBody) assetUrls.push(bodyUrl);
+  if (corsetUrl) assetUrls.push(corsetUrl);
+  const garmentBody = needsBody ? sources[bodyUrl]?.getObjectByName("BODY_WARDROBE") : undefined;
+  const corsetScene = corsetUrl && (!needsBody || garmentBody) ? sources[corsetUrl] : undefined;
+  const corsetSet = look.corset?.set;
   const garments = useMemo(() => requested.flatMap(({ item, url }): WardrobeGarmentSource[] => {
     const source = sources[url];
     if (!source || (needsBody && !garmentBody && replacesVillagerBody(item.slot))) return [];
@@ -67,8 +76,10 @@ function VillagerDriver({ url, look, compact, bag, previewPacks, leanFit, mirror
   const femaleWithBag = look.female && bag;
   const wetEyes = !victory;
   const fitted = usesFittedAnimation(look);
-  const model = useMemo(() => prepareVillager(scene, { female: look.female, animateFace: true, bag: femaleWithBag, wetEyes, fitted, garments, garmentBody }),
-    [scene, look.female, femaleWithBag, wetEyes, fitted, garments, garmentBody]);
+  const model = useMemo(() => prepareVillager(scene, {
+    female: look.female, animateFace: true, bag: femaleWithBag, wetEyes, fitted, garments, garmentBody,
+    corsetSource: corsetScene && corsetSet ? { set: corsetSet, scene: corsetScene } : undefined,
+  }), [scene, look.female, femaleWithBag, wetEyes, fitted, garments, garmentBody, corsetScene, corsetSet]);
   const invalidate = useThree(s => s.invalidate);
   useEffect(() => model.dispose, [model]);
   useLayoutEffect(() => {

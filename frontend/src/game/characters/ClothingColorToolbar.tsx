@@ -22,7 +22,7 @@ export function ClothingColorToolbar({ choice, piece, onChange }: {
   const focusPalette = useRef(false);
   const look = characterLook(choice)!;
   const colors = clothingColors(look, piece);
-  const blouse = piece === "shirt" && look.wardrobe?.set === UNDERBUST_WARDROBE_SET ? UNDERBUST_SHIRT_COLORS : undefined;
+  const blouse = piece === "shirt" && look.corset?.set === UNDERBUST_WARDROBE_SET ? UNDERBUST_SHIRT_COLORS : undefined;
   const fabric = colors?.color ?? blouse?.color ?? look.fabric;
   const trim = colors?.accent ?? colors?.color ?? blouse?.accent ?? look.trim;
   const pieceName = clothingPieceLabel(piece);

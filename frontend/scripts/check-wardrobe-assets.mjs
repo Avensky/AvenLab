@@ -71,7 +71,7 @@ try{
  const {buildEmoteClips,findGaragePreviewEmote}=await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
  const gothicPink=OUTFIT_THEMES.find(theme=>theme.name==='Gothic Pink');
  const appearance={...characterAppearance(DEFAULT_CHARACTER),color:gothicPink.color,accent:gothicPink.accent};
- const assetLook=choice=>({...characterLook(choice),wardrobe:resolveWardrobe(choice.wardrobe,{includeRetired:true})});
+ const assetLook=choice=>({...characterLook(choice),wardrobe:resolveWardrobe(choice.wardrobeTrial??choice.wardrobe,{includeRetired:true})});
  for(let n=1;n<=5;n++)for(const lod of ['garage','mobile']){
   const set=`gothic-${String(n).padStart(2,'0')}`,file=join(dir,`${set}.${lod}.glb`),doc=await io.read(file);
   assert.equal(doc.getRoot().listSkins().length,1);assert.equal(doc.getRoot().listSkins()[0].listJoints().length,88);
@@ -273,7 +273,7 @@ try{
   const dyeChoice=n===4?{...DEFAULT_CHARACTER,wardrobeTrial:tuckedChoice}:{...DEFAULT_CHARACTER,wardrobe:tuckedChoice};
   const dyed=withClothingColors(dyeChoice,'corset',{color:'#ff0066',accent:'#ff0066'});
   const colored=n===4?withClothingColors(dyed,'shirt',{color:'#dde6ea',accent:'#41576a'}):dyed;
-  applyVillagerLook(model,n===4?characterLook(colored):assetLook(colored));
+  applyVillagerLook(model,assetLook(colored));
   let dyedMeshes=0;model.root.traverse(o=>{if(o.isMesh&&o.userData.clothingPiece==='corset'){for(const m of(Array.isArray(o.material)?o.material:[o.material]))assert.equal(m.color.getHexString(),'ff0066');dyedMeshes++;}});assert(dyedMeshes>2,'multi-material corsets all receive the piece dye');
   if(n===4){
    assert.equal(blouse.material.color.getHexString(),'dde6ea','the blouse keeps its own fabric dye');
@@ -286,7 +286,7 @@ try{
 
   for(const waist of ['tucked','over']){
    const fitChoice={set,shirt:'none',waist};
-   const look=n===4?characterLook({...DEFAULT_CHARACTER,appearance,wardrobeTrial:fitChoice})
+   const look=n===4?assetLook({...DEFAULT_CHARACTER,appearance,wardrobeTrial:fitChoice})
     :assetLook({...DEFAULT_CHARACTER,appearance,wardrobe:fitChoice});
    applyVillagerLook(model,look);
    assert.equal(shorts.visible,false,'complete Gothic outfits hide the standalone shorts');
