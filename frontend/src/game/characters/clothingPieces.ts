@@ -1,6 +1,7 @@
 import { Box3, Mesh, type Object3D } from "three";
 import catalog from "../../../../avenlab-server/src/assets/character-clothing-pieces.json";
 import { characterAppearance, type CharacterChoice, type CharacterLook } from "./characterCatalog";
+import { resolveWardrobe } from "./wardrobe";
 
 export type ClothingPiece = "corset" | "shirt" | "skirt" | "sleeves" | "underskirt" | "shorts" | "shoes" | "hat" | "bow" | "belt" | "coat" | "pants" | "gloves" | "collar" | "pouches" | "glasses" | "bag";
 export type PieceColors = { color?: string; accent?: string };
@@ -9,7 +10,7 @@ export const clothingPieceLabel = (piece: ClothingPiece) => CLOTHING_PIECES.find
 
 export function clothingColorKey(choice: Pick<CharacterChoice, "outfit" | "wardrobe" | "appearance">, piece: ClothingPiece) {
   const variant = piece === "glasses" ? choice.appearance?.glasses ?? "none" : piece === "bag" ? "shop-bag"
-    : choice.wardrobe?.set ?? choice.outfit;
+    : resolveWardrobe(choice.wardrobe)?.set ?? choice.outfit;
   return `${variant}:${piece}`;
 }
 export function clothingColors(look: CharacterLook, piece: ClothingPiece) {
@@ -24,7 +25,7 @@ export function withClothingColors(choice: CharacterChoice, piece: ClothingPiece
 }
 export function wornClothing(choice: CharacterChoice): ClothingPiece[] {
   const female = choice.id === "mara-vega";
-  const pieces: ClothingPiece[] = female ? choice.wardrobe
+  const pieces: ClothingPiece[] = female ? resolveWardrobe(choice.wardrobe)
     ? ["corset", "skirt", "shoes", "hat"]
     : ["corset", "skirt", "sleeves", "underskirt", "shoes", "hat", "belt", ...((choice.appearance?.accent || choice.outfit === "shop-crew") ? ["bow" as const] : [])]
     : ["coat", "pants", "shoes", "gloves", "collar", "belt", "pouches"];

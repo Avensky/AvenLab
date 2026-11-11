@@ -1,4 +1,4 @@
-import { fittedArmTarget, fittedElbowPole, fittedHandTarget } from "./animationFit";
+import { fittedArmTarget, fittedElbowPole, fittedHandTarget, skirtHandTarget } from "./animationFit";
 import {
   AnimationClip, Bone, BooleanKeyframeTrack, Euler, NumberKeyframeTrack, Quaternion, QuaternionKeyframeTrack, Vector3, VectorKeyframeTrack,
   type Object3D,
@@ -256,6 +256,7 @@ export function driverHand(root: Object3D, side: "l" | "r") {
 
 export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?: ReadonlyMap<EmoteProp, EmotePropModel>) {
   const fitted = root.userData.fittedClothing === true;
+  const skirtRoom = typeof root.userData.skirtHandRoom === "number" ? root.userData.skirtHandRoom : undefined;
   const torso = root.getObjectByName("spine_02");
   const head = root.getObjectByName("head");
   const left = driverArm(root, "l");
@@ -364,10 +365,17 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
       tilt(head, pose.head);
       arms(left, fitted ? fittedArmTarget(pose.left) : pose.left);
       arms(right, fitted ? fittedArmTarget(pose.right) : pose.right);
+      const freeHands = skirtRoom !== undefined && !emote.prop && !pose.joinIndexTips && !pose.elbowsBack;
       const tuckPoseElbow = tuckElbow && !pose.joinIndexTips;
-      hands(left, right, fitted ? fittedHandTarget(pose.leftHand) : pose.leftHand, 1,
+      let leftHand = fitted ? fittedHandTarget(pose.leftHand) : pose.leftHand;
+      let rightHand = fitted ? fittedHandTarget(pose.rightHand) : pose.rightHand;
+      if (freeHands) {
+        if (!pose.leftPalm) leftHand = skirtHandTarget(leftHand, skirtRoom);
+        if (!pose.rightPalm && !pose.rightAtLips) rightHand = skirtHandTarget(rightHand, skirtRoom);
+      }
+      hands(left, right, leftHand, 1,
         { behindBack: pose.elbowsBack, articulated: !!pose.leftPalm, tuckElbow: tuckPoseElbow });
-      hands(right, left, fitted ? fittedHandTarget(pose.rightHand) : pose.rightHand, -1,
+      hands(right, left, rightHand, -1,
         { behindBack: pose.elbowsBack, articulated: !!pose.rightPalm, tuckElbow: tuckPoseElbow && !pose.rightAtLips });
       orientPalm(handRigs[0], pose.leftPalm);
       orientPalm(handRigs[1], pose.rightPalm);

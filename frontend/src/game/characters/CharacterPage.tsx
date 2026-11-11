@@ -244,6 +244,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
   const cameraTools = inspection ? cameraControls : <FittingCameraToolbar key={tab} camera={cameraSelect} zoomRange={insideCar ? undefined : zoomRange}
     visibility={<PreviewVisibilityToggle />} paused={playbackPaused} onPause={togglePose}
     vehicle={vehiclePreview} rotationDisabled={rotationDisabled} actions={exitCockpit}
+    onReframe={tab !== "emotes" ? () => useCharacterPreviewStore.setState(s => ({ zoom: 1, focusRevision: s.focusRevision + 1 })) : undefined}
     zoomOutDisabled={zoom <= CHARACTER_ZOOM_MIN} zoomInDisabled={zoom >= CHARACTER_ZOOM_MAX}
     onZoomOut={insideCar ? undefined : () => zoomBy(-.05)} onZoomIn={insideCar ? undefined : () => zoomBy(.05)} />;
 

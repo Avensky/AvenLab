@@ -18,7 +18,7 @@ function rightCupSurface(body: BufferGeometry) {
   return surface;
 }
 
-/** Refit the right neckline against the chest and keep the tucked waist outside the torso. */
+/** Clear the right cup, shape the over-skirt neckline, and fit the tucked waist. */
 export function fitSweetheartCorset(root: Object3D, body: BufferGeometry) {
   const surface = rightCupSurface(body);
   const ray = new Ray(new Vector3(), new Vector3(0, 0, -1));
@@ -43,16 +43,24 @@ export function fitSweetheartCorset(root: Object3D, body: BufferGeometry) {
           position.setXYZ(i, x * scale, y, .025 + (z - .025) * scale);
           continue;
         }
-        if (!fabric || x >= -.023 || x <= -.132 || z <= .025 || y <= 1.266) continue;
-        ray.origin.set(x, y, .25);
-        let depth = z - .009;
-        for (const { a, b, c } of surface) {
-          if (ray.intersectTriangle(a, b, c, false, intersection)) depth = Math.max(depth, intersection.z);
+        if (!fabric) continue;
+        let depth = z;
+        if (x > -.132 && x < -.023 && z > .025 && y > 1.266) {
+          ray.origin.set(x, y, .25);
+          let surfaceDepth = z - .009;
+          for (const { a, b, c } of surface) {
+            if (ray.intersectTriangle(a, b, c, false, intersection)) surfaceDepth = Math.max(surfaceDepth, intersection.z);
+          }
+          // Broad upper faces span the curved chest, so allow clearance between vertices as well.
+          const blend = MathUtils.smoothstep(-x, .023, .033) * (1 - MathUtils.smoothstep(-x, .112, .132))
+            * MathUtils.smoothstep(z, .025, .045) * MathUtils.smoothstep(y, 1.266, 1.292);
+          depth += (surfaceDepth + .009 - z) * blend;
         }
-        // The broad upper faces span the curved chest, so allow clearance between vertices as well.
-        const blend = MathUtils.smoothstep(-x, .023, .033) * (1 - MathUtils.smoothstep(-x, .112, .132))
-          * MathUtils.smoothstep(z, .025, .045) * MathUtils.smoothstep(y, 1.266, 1.292);
-        position.setZ(i, z + (depth + .009 - z) * blend);
+        // Lift the two over-skirt cup crests, tapering into the lacing and sides.
+        const side = Math.abs(x);
+        const lift = fit === "OVER" ? MathUtils.smoothstep(side, .038, .057) * (1 - MathUtils.smoothstep(side, .104, .132))
+          * MathUtils.smoothstep(y, 1.259, 1.305) * MathUtils.smoothstep(z, .036, .065) : 0;
+        if (depth !== z || lift > 0) position.setXYZ(i, x, y + .009 * lift, depth + .002 * lift);
       }
       fitted.computeBoundingBox();
       fitted.computeBoundingSphere();

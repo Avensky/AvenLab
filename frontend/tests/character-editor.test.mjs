@@ -78,6 +78,14 @@ test('character tools preserve builder drafts, frame close-ups, and wait for app
     assert(find('.fitting-camera-panel').hidden);
     await click('.dressing-toolbar [aria-label="Camera tools"]');
     assert.equal(find('.fitting-camera-panel').hidden, false);
+    assert.equal(find('.fitting-camera-panel').textContent.trim(), '', 'the character editor camera toolbar has no visible labels');
+    assert.equal(find(cameraChoice('Back')).getAttribute('aria-label'), 'Back');
+    const zoom = editor.getState().zoomSteps;
+    await click('.fitting-camera-panel [aria-label="Zoom in"]');
+    assert.equal(editor.getState().zoomSteps, zoom + 1);
+    const revision = editor.getState().revision;
+    await click('.fitting-camera-panel [aria-label="Reframe"]');
+    assert.equal(editor.getState().revision, revision + 1);
     await click(cameraChoice('Back'));
     assert.equal(editor.getState().shot, 'Back');
     await click(cameraChoice('piece:shoes'));

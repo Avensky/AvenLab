@@ -10,7 +10,7 @@ test('manual fit checks stay specific to the player, waist fit, piece and pose; 
  const data=new Map(),previous=globalThis.localStorage;globalThis.localStorage={getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)};
  const vite=await server();try{
   const {useFitReviewStore:store,fitReviewKey:key,fitReviewStatus:status,FIT_CHECKS}=await vite.ssrLoadModule('/src/game/characters/fitReviewStore.ts');
-  const c={id:'mara-vega',outfit:'dockwear',wardrobe:{set:'gothic-04',shirt:'under',waist:'tucked'}},a=key('p1',c,'corset','013');
+  const c={id:'mara-vega',outfit:'dockwear',wardrobe:{set:'gothic-05',shirt:'under',waist:'tucked'}},a=key('p1',c,'corset','013');
   assert.equal(status(store.getState().reviews[a]),'untested');
   FIT_CHECKS.forEach(check=>store.getState().check(a,check,true));assert.equal(status(store.getState().reviews[a]),'passed');
   assert.equal(key('p1',{...c,wardrobe:{...c.wardrobe,shirt:'over'}},'corset','013'),a);

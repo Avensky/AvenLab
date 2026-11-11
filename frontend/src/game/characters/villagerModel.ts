@@ -1,5 +1,5 @@
 import {
-  Box3, Mesh, MeshStandardMaterial, SkinnedMesh, SphereGeometry, Vector3, type Object3D, type Skeleton,
+  Box3, MathUtils, Mesh, MeshStandardMaterial, SkinnedMesh, SphereGeometry, Vector3, type Object3D, type Skeleton,
 } from "three";
 import { clone } from "three/addons/utils/SkeletonUtils.js";
 import { aimDriverJoint, driverArm } from "./garageEmotes";
@@ -30,12 +30,24 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
   const materials = new Map<MeshStandardMaterial, MeshStandardMaterial>();
   const pieceMaterials = new Map<ClothingPiece, Map<MeshStandardMaterial, MeshStandardMaterial>>();
   root.userData.fittedClothing = fitted;
+  root.updateMatrixWorld(true);
+  const vertex = new Vector3();
+  let skirtRadius: number | undefined;
   const skeletons = new Set<Skeleton>();
   root.traverse(object => {
     if (!(object instanceof Mesh)) return;
     if (object instanceof SkinnedMesh) skeletons.add(object.skeleton);
     const piece = clothingPieceFor(object);
     if (piece) { object.userData.clothingPiece = piece; if (!pieceMaterials.has(piece)) pieceMaterials.set(piece, new Map()); }
+    if (piece === "skirt" || piece === "underskirt") {
+      skirtRadius ??= 0;
+      // Measure at the relaxed hands, where the full hem width is irrelevant.
+      const position = object.geometry.getAttribute("position");
+      for (let i = 0; i < position.count; i++) {
+        vertex.fromBufferAttribute(position, i).applyMatrix4(object.matrixWorld);
+        if (vertex.y > .73 && vertex.y < 1.04) skirtRadius = Math.max(skirtRadius, Math.abs(vertex.x));
+      }
+    }
     const owned = (material: MeshStandardMaterial) => {
       const palette = piece && !/Skin|Hair|Lash|Cornea/.test(material.name) ? pieceMaterials.get(piece)! : materials;
       const existing = palette.get(material);
@@ -48,6 +60,8 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
     // The authored culling bounds describe the original rest pose.
     object.frustumCulled = false;
   });
+  const skirtRoom = skirtRadius === undefined ? undefined : MathUtils.clamp(skirtRadius - .23, 0, .12);
+  root.userData.skirtHandRoom = skirtRoom;
   const faceGeometry = animateFace ? addVillagerFaceShapes(root, female) : [];
   const wardrobe = prepareWardrobe(root);
   const applyFaceColors = prepareVillagerFaceColors(materials.values(), female);
@@ -58,10 +72,12 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
     const { shoulder, elbow, hand } = joints;
     const sideSign = Math.sign(elbow.getWorldPosition(new Vector3()).x - shoulder.getWorldPosition(new Vector3()).x);
     const fittedRest = fitted && !(side === "l" && bag);
+    const skirtRest = skirtRoom !== undefined && !(side === "l" && bag);
     const elbowSpread = fittedRest ? .12 : fitted ? .20 : .43;
     aimDriverJoint(shoulder, elbow, new Vector3(sideSign * elbowSpread, -1, -.06));
-    // The empty left hand rests closer to Vesper's skirt and lets the cuff brush the fabric.
-    const forearm = fittedRest ? new Vector3(sideSign * .035, -.96, .25) : side === "r" ? new Vector3(-sideSign * .62, .36, .72)
+    // Keep the shoulder pose and open the forearm just enough to clear the skirt.
+    const forearm = skirtRest ? new Vector3(sideSign * ((fittedRest ? .64 : .29) + 4 * skirtRoom), -.96, .32 + skirtRoom)
+      : fittedRest ? new Vector3(sideSign * .035, -.96, .25) : side === "r" ? new Vector3(-sideSign * .62, .36, .72)
       : female && !bag ? new Vector3(sideSign * .12, -.83, .56)
         : new Vector3(sideSign * .32, -.73, .64);
     aimDriverJoint(elbow, hand, forearm);

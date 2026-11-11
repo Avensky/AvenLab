@@ -13,6 +13,7 @@ export function prepareStylizedDriver(look: CharacterLook) {
   const root = new Group();
   root.name = female ? "garage-mara-stylized" : "garage-jules-stylized";
   root.userData.fittedClothing = usesFittedAnimation(look);
+  if (female) root.userData.skirtHandRoom = 0;
   const top: ClothingPiece = female ? "corset" : "coat";
   const sphere = new SphereGeometry(1, 16, 12);
   const geometries = new Set<BufferGeometry>([sphere]);

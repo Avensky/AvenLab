@@ -163,3 +163,40 @@ test('fitted low gestures tuck the elbows without moving the wrist or changing c
     }
   } finally { await vite.close(); }
 });
+
+test('relaxed hands clear a skirt while the same rig can keep its close trouser pose', async () => {
+  const vite = await server();
+  try {
+    const { prepareVillager } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
+    const { buildEmoteClips, garageBreathing } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
+    const { scene } = await new GLTFLoader().parseAsync(await readFile('tests/fixtures/villager-female-rig.json', 'utf8'), '');
+    const trousers = prepareVillager(scene, { fitted: true });
+    const skirt = new Mesh(new BoxGeometry(.56, .20, .21), new MeshStandardMaterial());
+    skirt.name = 'CLOTH_BOTTOM_SKIRT';
+    skirt.position.y = .86;
+    scene.add(skirt);
+    const fittedDress = prepareVillager(scene, { fitted: true });
+    const fullDress = prepareVillager(scene);
+    const sample = model => {
+      const { root } = model;
+      const mixer = new AnimationMixer(root);
+      const [clip] = buildEmoteClips(root, [garageBreathing()]);
+      mixer.clipAction(clip).play();
+      return [0, .05, .31, .48, .66, .95].map(phase => {
+        mixer.setTime(clip.duration * phase);
+        return ['l', 'r'].map(side => root.getObjectByName(`hand_${side}`).getWorldPosition(new Vector3()));
+      });
+    };
+    const reference = sample(trousers);
+    for (const model of [fittedDress, fullDress]) {
+      sample(model).forEach((hands, frame) => hands.forEach((hand, side) => {
+        assert(Math.abs(hand.x) > Math.abs(reference[frame][side].x) + .055, 'free wrist stays away from the skirt');
+        assert(hand.y < 1.11, 'relaxed hands stay below the bodice');
+      }));
+      model.dispose();
+    }
+    trousers.dispose();
+    skirt.geometry.dispose();
+    skirt.material.dispose();
+  } finally { await vite.close(); }
+});

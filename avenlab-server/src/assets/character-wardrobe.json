@@ -2,6 +2,6 @@
   { "id": "gothic-01", "name": "Laced bodice" },
   { "id": "gothic-02", "name": "Sweetheart corset" },
   { "id": "gothic-03", "name": "Ruffled corset" },
-  { "id": "gothic-04", "name": "Underbust vest" },
+  { "id": "gothic-04", "name": "Underbust vest", "retired": true },
   { "id": "gothic-05", "name": "High-collar corset" }
 ]

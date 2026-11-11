@@ -4,6 +4,28 @@ import { readFile } from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { createServer } from 'vite';
 import { act, createElement as h, useState } from 'react';
+import { Spherical, Vector3 } from 'three';
+
+test('the fitting camera orbits a close-up without changing its target or crossing the floor', async () => {
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  try {
+    const { orbitFittingCamera } = await vite.ssrLoadModule('/src/game/characters/clothingFraming.ts');
+    const sphere = new Spherical(), target = new Vector3(.2, .92, -.15);
+    const position = target.clone().add(new Vector3(0, 0, 3.6));
+    const distance = position.distanceTo(target);
+    orbitFittingCamera(position, target, Math.PI, 0, sphere);
+    assert(position.z < target.z, 'a horizontal drag can reach the back view');
+    assert(Math.abs(position.distanceTo(target) - distance) < 1e-8);
+    position.set(.2, .92, 3.45);
+    const applied = orbitFittingCamera(position, target, .7, 10, sphere);
+    assert(position.y >= .30 - 1e-8, 'a large vertical drag stops above the floor');
+    assert(Math.abs(position.distanceTo(target) - distance) < 1e-8);
+    position.set(.2, .92, 3.45);
+    orbitFittingCamera(position, target, .7, applied - .1, sphere);
+    assert(position.y > .30, 'a small reverse drag leaves the tilt limit immediately');
+    assert.deepEqual(target.toArray(), [.2, .92, -.15]);
+  } finally { await vite.close(); }
+});
 
 test('dressing room separates browsing from equipping, filters fitting work, and supports controller grids', async () => {
   const imports = JSON.parse(await readFile('src/game/characters/dressingRoomImports.json', 'utf8'));
@@ -19,7 +41,7 @@ test('dressing room separates browsing from equipping, filters fitting work, and
     const { createRoot } = await import('react-dom/client');
     vite = await createServer({ define: {
       __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(imports.map(item => item.id)),
-      __WARDROBE_SET_IDS__: JSON.stringify(['gothic-01', 'gothic-04']),
+      __WARDROBE_SET_IDS__: JSON.stringify(['gothic-01', 'gothic-04', 'gothic-05']),
     }, server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
     const { DressingRoom } = await vite.ssrLoadModule('/src/game/characters/DressingRoom.tsx');
     const { CHARACTERS, DEFAULT_CHARACTER, ROOK_ID } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
@@ -53,6 +75,7 @@ test('dressing room separates browsing from equipping, filters fitting work, and
     await open('outfits');
     assertPiece('corset');
     assert.equal(find('.dressing-categories').hidden, true);
+    assert.equal(find('[data-wardrobe-item=gothic-04]'), null, 'installed retired sets are hidden from outfits');
     assert.match(find('[data-wardrobe-item=gothic-02]').textContent, /Pack not installed/);
     await click('[data-wardrobe-item=gothic-02]');
     assert.equal(find('.dressing-details').hidden, false, 'unavailable cards can still be inspected');
@@ -98,11 +121,12 @@ test('dressing room separates browsing from equipping, filters fitting work, and
 
     await open('tops');
     assert.equal(document.activeElement.dataset.wardrobeItem, 'gothic-01', 'keyboard activation moves into the catalog');
-    await click('[data-wardrobe-item=gothic-04]');
+    assert.equal(find('[data-wardrobe-item=gothic-04]'), null, 'retired sets are hidden from tops');
+    await click('[data-wardrobe-item=gothic-05]');
     assert.equal(changes.at(-1).wardrobe.shirt, 'none');
     assertPiece('corset');
-    assert.equal(find('.dressing-details h2').textContent, 'Underbust vest');
-    assert.match(find('.dressing-details p').textContent, /oval back opening/);
+    assert.equal(find('.dressing-details h2').textContent, 'High-collar corset');
+    assert.match(find('.dressing-details p').textContent, /fitted upper back/);
     assert.equal(find('.dressing-details dd').textContent, '0 credits');
     assert.equal(find('[data-dressing-piece=shirt]'), null);
     assert.equal(find('[data-dressing-piece=shorts]'), null);
@@ -112,10 +136,11 @@ test('dressing room separates browsing from equipping, filters fitting work, and
     assertPiece('skirt');
     assert.equal(changes.length, changeCount, 'inspecting a piece does not equip a new outfit');
     await open('bottoms');
-    await click('[data-wardrobe-item=gothic-04]');
+    assert.equal(find('[data-wardrobe-item=gothic-04]'), null, 'retired sets are hidden from bottoms');
+    await click('[data-wardrobe-item=gothic-05]');
     assertPiece('skirt');
     await open('outfits');
-    await click('[data-wardrobe-item=gothic-04]');
+    await click('[data-wardrobe-item=gothic-05]');
     assertPiece('corset');
     const first = find('[aria-label="Complete outfits"] [data-wardrobe-item]');
     first.focus();
@@ -123,7 +148,7 @@ test('dressing room separates browsing from equipping, filters fitting work, and
     navigateFormRows(find('#root'), first, 'right', memory);
     assert.equal(document.activeElement.dataset.wardrobeItem, 'shop-crew');
     navigateFormRows(find('#root'), document.activeElement, 'down', memory);
-    assert.equal(document.activeElement.dataset.wardrobeItem, 'gothic-04', 'down enters the next section at its equipped item');
+    assert.equal(document.activeElement.dataset.wardrobeItem, 'gothic-05', 'down enters the next section at its equipped item');
     await click('[data-wardrobe-item=shop-crew]');
     assert.equal(changes.at(-1).wardrobe, undefined, 'complete outfit replaces the corset set');
     assertPiece('corset');

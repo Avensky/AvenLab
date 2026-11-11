@@ -65,7 +65,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     });
     const cameraTools = 'button[aria-label="Camera tools"]';
     const cameraView = label => [...find('[aria-label="Preview camera"]').querySelectorAll('button')]
-      .find(button => button.textContent.trim() === label);
+      .find(button => button.getAttribute('aria-label') === label);
     const chooseCameraView = label => act(async () => {
       const button = cameraView(label);
       assert(button && !button.closest('[hidden]'), `${label} is an available camera view`);
@@ -266,6 +266,12 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click(cameraTools);
     assert.equal(find('[aria-label="Preview camera"]').closest('[hidden]'), null);
     assert(find('[aria-label="Preview camera"]').contains(document.activeElement), 'keyboard activation focuses a camera choice');
+    assert.equal(find('.fitting-camera-panel').textContent.trim(), '', 'the camera popup uses icons and a zoom bar');
+    assert(cameraView('Glasses').querySelector('svg'), 'the clothing close-up has a labeled icon');
+    await click('.fitting-camera-panel [aria-label="Zoom in"]');
+    assert.equal(preview.getState().zoom, 1.05);
+    await click('.fitting-camera-panel [aria-label="Zoom out"]');
+    assert.equal(preview.getState().zoom, 1);
     await act(async () => document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown', {
       key: 'Escape', code: 'Escape', bubbles: true, cancelable: true,
     })));

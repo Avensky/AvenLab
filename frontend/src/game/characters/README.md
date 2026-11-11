@@ -155,7 +155,8 @@ on the same character.
 
 Each set has a `garage.glb` and `mobile.glb` in
 `public/models/characters/wardrobe/`. Both must be installed before the set can be equipped. Portraits and compact garage/victory views use the mobile model. A
-missing pack falls back to the original clothed character model.
+missing or retired set falls back to the original clothed character model.
+The Underbust Vest asset files and saved preset ID are retained for reuse.
 
 Garment nodes carry `wardrobeRole` extras. Fitted variants provide tucked and
 long hems. The runtime uses the first two `_AVEN_COVERAGE` bits in older GLBs
@@ -272,19 +273,22 @@ crossfades from the current gesture. Reduced Motion and seated driving disable
 click gestures. Character drag and pointer cancellation do not trigger an emote.
 
 Inner rotation arrows turn the character; outer arrows turn the vehicle display.
-Dragging directly on the character turns it independently of the display; the
-background continues to rotate the turntable. In the standalone editor it orbits
-the camera instead. Touch retains the editor's one-finger orbit and two-finger
-pan/zoom; the character arrows also work on touch screens.
+Dragging directly on the character with a mouse turns the model independently.
+In the Fitting Room and standalone editor, dragging the scene background orbits
+the camera around its current framing target. The garage vehicle display keeps
+its turntable drag. Touch supports one-finger orbit in both fitting views and
+two-finger pan/zoom in the standalone editor.
 
-Emotes includes Auto, Full skirt, and Fitted clothing fits. Auto keeps the original
-clearance for the village dress and uses the closer rest pose for fitted sets
-and Rook. Fitted reduces lateral clearance in low hand/arm targets when clips are
-built. Raised gestures, explicit prop grips, and face contact IK retain their
-contact goals. This is a pose modifier, not cloth collision or a replacement for
-visual review of every garment/gesture combination. No new GLBs are required for
-these controls. Server validation persists and validates all three new appearance
-fields; restart both the server and frontend when installing.
+The Camera tools icon opens view and garment close-up buttons, a zoom bar,
+rotation, and Reframe. The Heroes Fitting Room uses a studio with an angled
+wall mirror that reflects the live character. Ruffled Corset first equips in
+Over skirt.
+
+Emotes includes Auto, Full skirt, and Fitted clothing fits. Fitted uses closer
+arm targets while allowing more wrist clearance when the model wears a skirt.
+Raised gestures, explicit prop grips, and face contact IK retain their contact
+goals. Pose fit still requires visual review during motion. No new GLBs are
+required for these controls. Server validation persists the appearance fields.
 
 
 ## Fit review and mirror check

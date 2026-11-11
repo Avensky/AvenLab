@@ -72,21 +72,26 @@ export function FittingCameraToolbar({ camera, zoomRange, visibility, actions, p
   }, [open]);
 
   const pauseLabel = paused ? "Resume pose" : "Hold pose";
+  const zoomControls = (zoomRange || onZoomOut || onZoomIn) && <div className="fitting-camera-range" role="group" aria-label="Camera zoom" data-controller-row>
+    {onZoomOut && <button type="button" className="menu-control fitting-tool-icon" aria-label="Zoom out" title="Zoom out" disabled={zoomOutDisabled} onClick={onZoomOut}><ToolIcon icon="zoomOut" /></button>}
+    {zoomRange}
+    {onZoomIn && <button type="button" className="menu-control fitting-tool-icon" aria-label="Zoom in" title="Zoom in" disabled={zoomInDisabled} onClick={onZoomIn}><ToolIcon icon="zoomIn" /></button>}
+  </div>;
+  const showAdjustments = !rotationDisabled || onReframe || (!zoomRange && zoomControls);
   return <div ref={toolbar} className="fitting-camera-toolbar" role="group" aria-label="Character camera tools">
     <div className="fitting-camera-panel" id={panelId} hidden={!open} ref={panel}>
       {camera}
-      {zoomRange && <div className="fitting-camera-range" data-controller-row>{zoomRange}</div>}
-      <div className="fitting-camera-adjustments">
-        <FittingRotationControls compact vehicle={vehicle} disabled={rotationDisabled} />
+      {zoomRange && zoomControls}
+      {showAdjustments && <div className="fitting-camera-adjustments">
+        {!zoomRange && zoomControls}
+        {!rotationDisabled && <FittingRotationControls compact vehicle={vehicle} />}
         {onReframe && <div data-controller-row><button type="button" className="menu-control fitting-tool-icon" aria-label="Reframe" title="Reframe"
           onClick={onReframe}><ToolIcon icon="reframe" /></button></div>}
-      </div>
+      </div>}
     </div>
     <div className="fitting-camera-row" data-controller-row>
       <button ref={toggle} type="button" className="menu-control fitting-tool-icon" aria-label="Camera tools" aria-controls={panelId}
         aria-expanded={open} title="Camera views and rotation" onClick={event => { focusCamera.current = event.detail === 0; setOpen(!open); }}><ToolIcon icon="camera" /></button>
-      {onZoomOut && <button type="button" className="menu-control fitting-tool-icon" aria-label="Zoom out" title="Zoom out" disabled={zoomOutDisabled} onClick={onZoomOut}><ToolIcon icon="zoomOut" /></button>}
-      {onZoomIn && <button type="button" className="menu-control fitting-tool-icon" aria-label="Zoom in" title="Zoom in" disabled={zoomInDisabled} onClick={onZoomIn}><ToolIcon icon="zoomIn" /></button>}
       <button type="button" className="menu-control fitting-tool-icon" aria-label={pauseLabel} title={pauseLabel} aria-pressed={paused} onClick={onPause}><ToolIcon icon={paused ? "resume" : "hold"} /></button>
       {visibility}
       {actions}

@@ -121,7 +121,11 @@ export function DressingRoom({ choice, onChange, cameraTools }: {
   function edit(field: CharacterStyleField, value: string) {
     onChange({ ...choice, appearance: { ...appearance, [field]: value } });
   }
-  function wearSet(set: string, waist: WardrobeChoice["waist"] = wardrobe?.waist ?? "tucked") {
+  function waistForSet(set: string): WardrobeChoice["waist"] {
+    if (set === "gothic-03" && wardrobe?.set !== set) return "over";
+    return wardrobe?.waist ?? "tucked";
+  }
+  function wearSet(set: string, waist = waistForSet(set)) {
     onChange({ ...choice, wardrobe: resolveWardrobe({ set, shirt: "none", waist }) });
   }
   function options(field: CharacterStyleField, section: string, icon: Icon): Item[] {
@@ -245,7 +249,7 @@ export function DressingRoom({ choice, onChange, cameraTools }: {
                 <WardrobeIcon name={item.icon} />{item.color && <i className="dressing-swatch" />}
               </span>
               <span className="dressing-item-name">{item.label}</span>
-              {item.set && !item.unavailable && <FitBadge choice={{ ...choice, wardrobe: resolveWardrobe({ set: item.set, shirt: "none", waist: wardrobe?.waist ?? "tucked" }) }} piece={category === "bottoms" ? "skirt" : "corset"} />}
+              {item.set && !item.unavailable && <FitBadge choice={{ ...choice, wardrobe: resolveWardrobe({ set: item.set, shirt: "none", waist: waistForSet(item.set) }) }} piece={category === "bottoms" ? "skirt" : "corset"} />}
               <small>{item.unavailable ?? (item.selected ? "Wearing" : item.detail ?? "Ready to wear")}</small>
             </button>)}
           </div>

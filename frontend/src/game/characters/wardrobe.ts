@@ -1,12 +1,12 @@
 import { Mesh, type BufferAttribute, type BufferGeometry, type InterleavedBufferAttribute, type Object3D } from "three";
 import catalog from "../../../../avenlab-server/src/assets/character-wardrobe.json";
 
-export const WARDROBE_SETS = catalog;
+export const WARDROBE_SETS = catalog.filter(set => !set.retired);
 export type WardrobeChoice = { set: string; shirt: "none" | "under" | "over"; waist: "tucked" | "over" };
 
 /** Preserve the set and waist fit of older outfits that saved a separate shirt. */
-export function resolveWardrobe(choice?: WardrobeChoice): WardrobeChoice | undefined {
-  const set = catalog.find(item => item.id === choice?.set);
+export function resolveWardrobe(choice?: WardrobeChoice, { includeRetired = false } = {}): WardrobeChoice | undefined {
+  const set = (includeRetired ? catalog : WARDROBE_SETS).find(item => item.id === choice?.set);
   if (!set || !choice) return undefined;
   return { set: set.id, shirt: "none", waist: choice.waist === "over" ? "over" : "tucked" };
 }
@@ -64,7 +64,7 @@ export function prepareWardrobe(root: Object3D) {
   let lastMode = -1;
   return {
     apply(choice?: WardrobeChoice) {
-      const selected = resolveWardrobe(choice);
+      const selected = resolveWardrobe(choice, { includeRetired: true });
       if (!parts.length || !selected) return;
       const visible = new Set(["body", "bottom", "corset-facing", `corset-${selected.waist}`, `bottom-seam-${selected.waist}`, `bottom-trim-${selected.waist}`]);
       parts.forEach(part => { part.visible = visible.has(part.userData.wardrobeRole); });

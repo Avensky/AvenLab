@@ -133,6 +133,7 @@ export function GameUI() {
               characterDraft={screen === "heroes" ? characterDraft : null}
               wardrobeOpen={screen === "heroes" && characterTab !== null}
               characterOnly={screen === "heroes" && characterTab !== null && characterTab !== "emotes"}
+              fittingRoom={screen === "heroes" && characterTab === "appearance"}
               stationary={previewPaused}
             />
           )}

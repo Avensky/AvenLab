@@ -1,3 +1,4 @@
+import { MathUtils } from "three";
 import type { CharacterLook } from "./characterCatalog";
 import type { XYZ } from "./garageEmotes";
 
@@ -13,6 +14,15 @@ export function fittedHandTarget(target: XYZ | undefined): XYZ | undefined {
   const across = Math.abs(x) > 1.02 && Math.abs(x) < 1.85
     ? Math.sign(x) * (1.02 + (Math.abs(x) - 1.02) * (1 - .72 * low)) : x;
   return [across, y, z > .12 && z < .9 ? z * (1 - .23 * low) : z];
+}
+
+/** Give free, lowered hands room at the sides of a skirt without lifting the elbows. */
+export function skirtHandTarget(target: XYZ | undefined, skirtRoom: number): XYZ | undefined {
+  if (!target || Math.abs(target[0]) < 1.02 || target[2] < 0) return target;
+  const [x, y, z] = target;
+  const clearance = MathUtils.smoothstep(-y, .38, .76);
+  return [Math.sign(x) * MathUtils.lerp(Math.abs(x), Math.max(Math.abs(x), 2 + 4 * skirtRoom), clearance), y,
+    MathUtils.lerp(z, Math.max(z, .30 + 1.5 * skirtRoom), clearance)];
 }
 
 /** Steer the low elbow down and back while IK keeps the wrist on its target. */
