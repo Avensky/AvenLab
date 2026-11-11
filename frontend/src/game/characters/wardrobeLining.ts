@@ -1,6 +1,6 @@
 import { DoubleSide, MathUtils, Mesh, MeshStandardMaterial, SkinnedMesh, type BufferGeometry, type Object3D } from "three";
 import { fitHighCollarShoulders, fitHighCollarSurface } from "./highCollarFit";
-import { fitLacedBodiceStraps } from "./lacedStrapFit";
+import { fitLacedBodice } from "./lacedStrapFit";
 import { fitSweetheartCorset } from "./sweetheartTuck";
 import { prepareUnderbustColors } from "./underbustColors";
 import { fitUnderbustVest, UNDERBUST_FIT_VERSION } from "./underbustFit";
@@ -52,12 +52,14 @@ export function prepareWardrobeLining(root: Object3D) {
   const style = fabric?.name.match(/^MAT_CORSET_(0[1-5])_/u)?.[1] as CorsetStyle | undefined;
   if (!fabric || !style) return;
   let geometry: BufferGeometry | undefined;
+  let waistFacings: NonNullable<ReturnType<typeof fitLacedBodice>>["waistFacings"] | undefined;
   let disposeFit: (() => void) | undefined;
   switch (style) {
     case "01": {
-      const straps = fitLacedBodiceStraps(root, body.geometry);
-      geometry = straps?.geometry;
-      disposeFit = straps?.disposeShell;
+      const bodice = fitLacedBodice(root, body.geometry);
+      geometry = bodice?.straps;
+      waistFacings = bodice?.waistFacings;
+      disposeFit = bodice?.disposeShell;
       break;
     }
     case "02":
@@ -81,18 +83,29 @@ export function prepareWardrobeLining(root: Object3D) {
   if (!geometry) return disposeFit;
 
   const material = new MeshStandardMaterial({
-    name: "MAT_CORSET_FACING", color: fabric.color, roughness: style === "03" ? .91 : fabric.roughness, side: DoubleSide,
+    name: "MAT_CORSET_FACING", color: fabric.color, roughness: style === "01" ? .89 : style === "03" ? .91 : fabric.roughness,
+    envMapIntensity: style === "01" ? .30 : fabric.envMapIntensity, side: DoubleSide,
   });
   material.userData.color_slot = "fabric";
-  const facing = body.clone(false);
-  facing.name = "CLOTH_CORSET_FACING";
-  facing.userData = { wardrobeRole: "corset-facing", clothingPiece: "corset" };
-  facing.geometry = geometry;
-  facing.material = material;
-  body.parent.add(facing);
+  const facings: SkinnedMesh[] = [];
+  const addFacing = (name: string, role: string, surface?: BufferGeometry) => {
+    if (!surface) return;
+    const facing = body.clone(false);
+    facing.name = name;
+    facing.userData = { wardrobeRole: role, clothingPiece: "corset" };
+    facing.geometry = surface;
+    facing.material = material;
+    body.parent?.add(facing);
+    facings.push(facing);
+  };
+  addFacing("CLOTH_CORSET_FACING", "corset-facing", geometry);
+  addFacing("CLOTH_CORSET_WAIST_TUCKED", "corset-facing-tucked", waistFacings?.[0]);
+  addFacing("CLOTH_CORSET_WAIST_OVER", "corset-facing-over", waistFacings?.[1]);
   return () => {
-    facing.removeFromParent();
-    geometry.dispose();
+    for (const facing of facings) {
+      facing.removeFromParent();
+      facing.geometry.dispose();
+    }
     material.dispose();
     disposeFit?.();
   };

@@ -67,7 +67,8 @@ export function prepareWardrobe(root: Object3D) {
     if (typeof part.userData.wardrobeRole === "string") {
       parts.push(part);
       // Keep unconfigured or failed loads covered until apply() selects a complete outfit.
-      part.visible = ["bottom", "bottom-seam-tucked", "bottom-trim-tucked", "corset-tucked", "corset-facing"].includes(part.userData.wardrobeRole);
+      part.visible = ["bottom", "bottom-seam-tucked", "bottom-trim-tucked", "corset-tucked", "corset-facing", "corset-facing-tucked"]
+        .includes(part.userData.wardrobeRole);
     }
     if (!(part instanceof Mesh)) return;
     const coverage = part.geometry.getAttribute("_aven_coverage");
@@ -104,7 +105,8 @@ export function prepareWardrobe(root: Object3D) {
     apply(choice?: WardrobeChoice, ease: OverSkirtEase = 0) {
       const selected = resolveWardrobe(choice, { includeRetired: true });
       if (!parts.length || !selected) return;
-      const visible = new Set(["body", "bottom", "corset-facing", `corset-${selected.waist}`, `bottom-seam-${selected.waist}`, `bottom-trim-${selected.waist}`]);
+      const visible = new Set(["body", "bottom", "corset-facing", `corset-${selected.waist}`, `corset-facing-${selected.waist}`,
+        `bottom-seam-${selected.waist}`, `bottom-trim-${selected.waist}`]);
       parts.forEach(part => { part.visible = visible.has(part.userData.wardrobeRole); });
       const mode = selected.waist === "over" ? 1 : 0;
       if (mode !== lastMode) {
