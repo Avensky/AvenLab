@@ -59,6 +59,8 @@ test('character tools preserve builder drafts, frame close-ups, and wait for app
     const find = selector => document.querySelector(selector);
     const click = async selector => act(async () => { assert(find(selector), selector); find(selector).click(); });
     await act(async () => root.render(h(CharacterEditorPanel)));
+    assert(find('.menu-frame-header .character-header-portrait'));
+    assert.equal(find('.menu-frame-header [data-open-character]'), null, 'the editor cannot reopen itself');
     assert.equal(find('[aria-label="Preview camera"]'), null, 'the garage camera cannot fight the editor orbit controls');
     await click('[data-category=face]');
     assert.equal(editor.getState().shot, 'Face');
@@ -66,6 +68,13 @@ test('character tools preserve builder drafts, frame close-ups, and wait for app
       const select = find('[aria-label="Character close-up"]'); select.value = 'Back'; select.dispatchEvent(new Event('change', { bubbles: true }));
     });
     assert.equal(editor.getState().shot, 'Back');
+    await act(async () => {
+      const select = find('[aria-label="Character close-up"]');
+      select.value = 'piece:shoes';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    assert.equal(editor.getState().shot, 'Selected item');
+    assert.equal(preview.getState().selectedPiece, 'shoes');
     await click('[aria-label="Hide interface"]');
     assert.equal(editor.getState().panelsHidden, true);
     await act(async () => window.dispatchEvent(new Event('avenlab:character-editor-close')));
@@ -118,6 +127,30 @@ test('character tools preserve builder drafts, frame close-ups, and wait for app
     await act(async () => root.unmount()); root = null;
     leaveCharacterEditor();
 
+    const { MenuFrameHeader } = await load('components/menus/MenuFrame.tsx');
+    ui.setState({ screen: 'settings', overlay: null });
+    root = createRoot(document.getElementById('root'));
+    await act(async () => root.render(h(MenuFrameHeader, { title: 'Settings', showProgress: true })));
+    assert.equal(document.querySelectorAll('.character-header-portrait').length, 1);
+    assert(find('.menu-header-actions [aria-label="Driver progression"]'));
+    await click('.menu-header-actions [data-open-character]');
+    assert.equal(ui.getState().screen, 'world_builder');
+    leaveCharacterEditor();
+    assert.equal(ui.getState().screen, 'settings');
+    await act(async () => root.unmount()); root = null;
+
+    const { MainMenu } = await load('game/menus/MainMenu.tsx');
+    dom.window.HTMLMediaElement.prototype.play = async () => {};
+    dom.window.HTMLMediaElement.prototype.pause = () => {};
+    ui.setState({ screen: 'main', overlay: null });
+    root = createRoot(document.getElementById('root'));
+    await act(async () => root.render(h(MainMenu)));
+    await click('header [data-open-character]');
+    assert.equal(ui.getState().screen, 'world_builder', 'the main-menu portrait opens the same editor');
+    await act(async () => root.unmount()); root = null;
+    leaveCharacterEditor();
+    assert.equal(ui.getState().screen, 'main', 'returning restores the main menu');
+
     // Vehicle tuning stays mounted, but its controller listener is suspended.
     const { WorldBuilderPanel } = await load('worldBuilder/panels/WorldBuilderPanel.tsx');
     social.setState({ view: { ...social.getState().view, alpha: { active: { mode: 'editor', hero: 'brz' } } } });
@@ -130,7 +163,7 @@ test('character tools preserve builder drafts, frame close-ups, and wait for app
       data: { vehicle: 'brz', factory: { mass: 1350 }, current: { mass: 1500 } } }));
     const vehiclePanel = find('[aria-label="Vehicle editor"]');
     const vehicleRequestCount = requests.length;
-    await act(async () => [...vehiclePanel.querySelectorAll('button')].find(button => button.textContent === 'EDIT CHARACTER').click());
+    await act(async () => vehiclePanel.querySelector('header [data-open-character]').click());
     assert.equal(vehiclePanel, find('[aria-label="Vehicle editor"]'));
     assert.equal(vehiclePanel.parentElement.hidden, true);
     await act(async () => window.dispatchEvent(new CustomEvent('avenlab:panel-action', { detail: 'back' })));

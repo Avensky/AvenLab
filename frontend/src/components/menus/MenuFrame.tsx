@@ -2,6 +2,7 @@ import {forwardRef,type ComponentPropsWithoutRef,type ReactNode} from 'react';
 import {MenuShortcuts,type BackShortcutAction} from '../controller';
 import {useMenuInputDevice} from '../controller/useMenuInputDevice';
 import {ProgressBadge} from '../../game/alpha/ProgressBadge';
+import {CharacterHeaderProfile,type CharacterHeaderProfileProps} from '../../game/characters/CharacterHeaderProfile';
 import type {MatchTeam} from '../../theme/matchTeamTheme';
 import {APP_ALPHA_EYEBROW} from '../../theme/branding';
 import {MenuLogo} from './MenuLogo';
@@ -15,19 +16,21 @@ export const MenuFrame=forwardRef<HTMLElement,ComponentPropsWithoutRef<'section'
 });
 export function MenuFrameHeader({
  title,showProgress=false,titleId,compact=false,eyebrow=compact?'':APP_ALPHA_EYEBROW,
- className='',variant='panel',team,children,titleTeam,actions,
+ className='',variant='panel',team,children,titleTeam,actions,character,
 }:{
  title:string;showProgress?:boolean;titleId?:string;compact?:boolean;eyebrow?:string;
  className?:string;variant?:'panel'|'scene';team?:MatchTeam;children?:ReactNode;titleTeam?:MatchTeam;actions?:ReactNode;
+ character?:CharacterHeaderProfileProps;
 }){
  return <header className={`menu-frame-header alpha-header ${compact?'menu-frame-header--compact':''} ${className}`} data-menu-chrome={variant} data-team-heading={team?true:undefined}>
   <div className="menu-frame-title" data-title-team={titleTeam}><MenuLogo compact/>{eyebrow&&<small>{eyebrow}</small>}<h1 id={titleId}>{title}</h1></div>
   {children}
   {team&&<div className="menu-header-team" data-team={team}><strong>{team.toUpperCase()}</strong><span>TEAM</span></div>}
-  {(showProgress||actions)&&<div className="menu-header-actions">
+  <div className="menu-header-actions">
    {actions}
    {showProgress&&<ProgressBadge/>}
-  </div>}
+   <CharacterHeaderProfile compact={showProgress} {...character}/>
+  </div>
  </header>;
 }
 export function MenuFooter({className = '', ...props}: ComponentPropsWithoutRef<'footer'>) {

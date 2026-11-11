@@ -1,4 +1,5 @@
 import { MenuLogo } from "../../components/menus/MenuLogo";
+import { CharacterHeaderProfile } from "../characters/CharacterHeaderProfile";
 import { ControlGlyph, MenuShortcuts } from "../../components/controller";
 import { useMenuInputDevice } from "../../components/controller/useMenuInputDevice";
 import { trapMenuFocus } from "../../components/menus/menuFocus";
@@ -87,6 +88,7 @@ export function PauseMenu() {
         <header className="pause-menu-heading pause-menu-glass menu-panel-frame menu-title-with-logo">
           <MenuLogo compact/>
           <h2 id={headingId}>Game menu</h2>
+          <CharacterHeaderProfile compact />
         </header>
         <div className="pause-menu-rails">
           {PAUSE_MENU_RAILS.map(({ label, indices, controller, keyboard }) => (

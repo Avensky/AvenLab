@@ -31,7 +31,8 @@ export function navigateFormRows(
   const index = rows.findIndex((group) => group.items.includes(active!));
   if (index < 0) {
     if (active?.closest(".lobby-chat")) return false;
-    const first = rows[0]?.items[0];
+    const entry = rows.find(({ row }) => !row.hasAttribute("data-controller-header-action")) ?? rows[0];
+    const first = entry?.items[0];
     first?.focus({ preventScroll: true });
     if (
       first?.matches("[data-controller-selector]") &&

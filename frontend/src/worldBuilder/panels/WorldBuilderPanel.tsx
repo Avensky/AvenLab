@@ -1,4 +1,5 @@
 import { CharacterEditorPanel } from "../characterEditor/CharacterEditorPanel";
+import { CharacterHeaderProfile } from "../../game/characters/CharacterHeaderProfile";
 import { useCharacterEditorStore } from "../characterEditor/characterEditorStore";
 import { MenuLogo } from "../../components/menus/MenuLogo";
 import { kitAsset } from "../mapKit/catalog";
@@ -413,6 +414,7 @@ function LayoutPanel({
           </button>
           <button className="le-tool-toggle" aria-controls="world-tool-drawer" aria-expanded={toolsOpen} onClick={() => setToolsOpen(v => !v)}>TOOLS</button>
           <ControllerAction button="B" className="le-close" aria-label="Close world builder" onClick={closeWorldBuilder}> Exit</ControllerAction>
+          <CharacterHeaderProfile compact />
         </div>
       </header>
       {toolsOpen && <aside id="world-tool-drawer" className="le-tool-drawer" aria-label="World editor tools" inert={Boolean(confirm || preview)}>

@@ -1,4 +1,4 @@
-import { openCharacterEditor } from "../characterEditor/characterEditorStore";
+import { CharacterHeaderProfile } from "../../game/characters/CharacterHeaderProfile";
 import { WeaponEditor } from "../../combat/WeaponEditor";
 import type { MenuAction } from "../../controls/inputRouting";
 import { useEffect, useRef, useState } from 'react';
@@ -140,7 +140,7 @@ export function VehicleEditorPanel({ suspended = false }: { suspended?: boolean 
         }
     };
     return <section ref={root} className="ve-panel menu-surface" aria-label="Vehicle editor" onKeyDown={stopKeys}>
-    <header><button onClick={() => { editor.setView('chase'); useBuilderStore.setState({ workspace: 'layout' }); }}>← WORLD EDITOR</button><strong>EDIT VEHICLE</strong><button disabled={busy} onClick={openCharacterEditor}>EDIT CHARACTER</button><button disabled={!reply || busy} onClick={test}>TEST DRIVE</button></header>
+    <header><button onClick={() => { editor.setView('chase'); useBuilderStore.setState({ workspace: 'layout' }); }}>← WORLD EDITOR</button><strong>EDIT VEHICLE</strong><button disabled={!reply || busy} onClick={test}>TEST DRIVE</button><CharacterHeaderProfile compact readOnly={busy}/></header>
     {!live ? <p>Deploy a vehicle through World Editor to tune its physics.</p> : <>
       <label className="ve-vehicle">TEST VEHICLE<select disabled={busy} value={active?.hero ?? ''} onChange={e => {
                 const hero = e.target.value;

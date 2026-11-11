@@ -35,7 +35,10 @@ test('dressing room separates browsing from equipping, filters fitting work, and
     root = createRoot(find('#root'));
     preview.setState({ camera: 'Hands', zoom: 1.2 });
     await act(async () => root.render(h(Harness, { initial: DEFAULT_CHARACTER })));
-    assert.equal(document.querySelectorAll('[data-category]').length, 13);
+    assert.equal(document.querySelectorAll('[data-category]').length, 12);
+    assert.equal(find('[data-category=colors]'), null, 'presets live in the color toolbar');
+    assert.deepEqual([...find('.dressing-room-labels').firstElementChild.children].map(label => label.textContent), ['FITTING ROOM', 'Vesper Vega']);
+    assert.equal(find('.dressing-room-labels div:last-child small').textContent, 'Outfits');
     assert.equal(find('[data-wardrobe-item=gothic-02]').disabled, true, 'missing pack cannot be equipped');
     assert.match(find('[data-wardrobe-item=gothic-02]').textContent, /Pack not installed/);
 

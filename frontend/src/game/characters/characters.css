@@ -46,15 +46,26 @@
   text-transform: uppercase;
 }
 
-.menu-frame-header.angled-tab-header.menu-frame-header--compact > .menu-header-actions:has(.character-header-profile) {
+.menu-frame-header.angled-tab-header > .menu-header-actions:has(.character-header-profile) {
   grid-column: -2 / -1;
-  display: block;
+  grid-row: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
   height: var(--angled-header-height);
-  padding: 0;
+  padding: 0 0 0 5px;
   clip-path: none;
   background: transparent;
 }
-.menu-frame-header--compact > .menu-header-actions:has(.character-header-profile)::before { content: none; }
+.menu-frame-header.angled-tab-header > .menu-header-actions:has(.character-header-profile)::before { content: none; }
+.menu-frame-header:not(.angled-tab-header) > .menu-header-actions:has(.character-header-profile) {
+  height: auto;
+  padding: 0;
+  background: transparent;
+  clip-path: none;
+}
+.menu-frame-header:not(.angled-tab-header) > .menu-header-actions:has(.character-header-profile)::before { content: none; }
+.character-header-action { display: flex; flex: none; }
 .character-header-profile {
   --profile-cut: var(--angled-tab-cut, 11px);
   display: flex;
@@ -67,6 +78,8 @@
   font: inherit;
 }
 button.character-header-profile { cursor: pointer; }
+.character-header-profile[data-compact] .character-header-info { display: none; }
+.character-header-profile[data-compact] .character-header-portrait { margin-inline-start: 0; }
 .character-header-info, .character-header-portrait {
   display: flex;
   align-items: center;
@@ -98,6 +111,10 @@ button.character-header-profile { cursor: pointer; }
 .character-header-profile:is(:hover, :focus-visible) .character-header-info { background: var(--app-raised); }
 .character-header-profile:focus-visible { outline: 2px solid var(--app-accent); outline-offset: -2px; }
 .character-header-profile .alpha-progress { white-space: nowrap; }
+@media (max-width: 560px) {
+  .character-header-info:not(:has(.alpha-progress)) { display: none; }
+  .character-header-info:not(:has(.alpha-progress)) + .character-header-portrait { margin-inline-start: 0; }
+}
 
 .hero-selection.hero-workshop[data-character-page] { background: transparent; }
 .character-page {

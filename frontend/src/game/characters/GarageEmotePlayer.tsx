@@ -25,6 +25,26 @@ const FADE_SECONDS = .52;
 
 export type VictoryPlayback = { id: VictoryEmoteId; onFinish: () => void };
 
+type CabinState = {
+  cabin: CockpitPlayback | null;
+  driveSeconds: number;
+  take: { clip: CockpitTake; seconds: number } | null;
+  preview: ReturnType<typeof useCharacterPreviewStore.getState>["emote"];
+  idle: AnimationAction;
+  rest: number;
+};
+
+function leaveCabin(current: CabinState | null, restSeconds: number) {
+  if (!current?.cabin) return;
+  current.cabin.stop();
+  current.cabin = null;
+  current.driveSeconds = 0;
+  current.take = null;
+  current.preview = null;
+  current.idle.reset().setEffectiveWeight(1).play();
+  current.rest = restSeconds;
+}
+
 function setBlinkWeight(targets: ReturnType<typeof driverFaceTargets>, weight: number) {
   for (const { mesh, index } of targets) mesh.morphTargetInfluences![index] = weight;
 }
@@ -38,35 +58,35 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
   const heldProp = useRef<Group>(null);
   const reducedMotion = usePreferencesStore(state => state.reducedMotion);
   const restSeconds = previewPacks ? 4.5 : 2.35;
-  const player = useRef<{
+  const player = useRef<CabinState & {
     mixer: AnimationMixer;
-    idle: AnimationAction;
     actions: Map<string, AnimationAction>;
     props: Map<EmoteProp, EmotePropModel>;
     fitFlag?: () => void;
     automatic: AnimationAction[];
     active: AnimationAction | null;
     release: { elapsed: number; weight: number } | null;
-    cabin: CockpitPlayback | null;
-    driveSeconds: number;
-    take: { clip: CockpitTake; seconds: number } | null;
-    rest: number;
     next: number;
     clicked: { id: string } | null;
     blink: ReturnType<typeof driverFaceTargets>;
     elapsed: number;
-    preview: ReturnType<typeof useCharacterPreviewStore.getState>["emote"];
   }>(null);
 
   useLayoutEffect(() => {
     if (!cockpit || reducedMotion) return;
     if (previewPacks) {
       useCharacterPreviewStore.setState({ cockpitAvailable: true });
-      return () => useCharacterPreviewStore.setState({ cockpitAvailable: false });
+      return () => {
+        leaveCabin(player.current, restSeconds);
+        useCharacterPreviewStore.setState({ cockpitAvailable: false });
+      };
     }
     useGarageDrive.setState({ ready: true });
-    return () => useGarageDrive.setState({ ready: false, stage: "idle", steering: null });
-  }, [cockpit, bag, reducedMotion, previewPacks]);
+    return () => {
+      leaveCabin(player.current, restSeconds);
+      useGarageDrive.getState().leaveVehicle();
+    };
+  }, [cockpit, bag, reducedMotion, previewPacks, restSeconds]);
 
   useLayoutEffect(() => {
     if (!previewPacks || !leanFit || reducedMotion) return;
@@ -166,15 +186,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
         current.take ? current.take.seconds / current.take.clip.duration : 0, drivePose);
       return;
     }
-    if (current.cabin) {
-      current.cabin.stop();
-      current.cabin = null;
-      current.driveSeconds = 0;
-      current.take = null;
-      current.preview = null;
-      current.idle.reset().setEffectiveWeight(1).play();
-      current.rest = restSeconds;
-    }
+    leaveCabin(current, restSeconds);
     const inspectingFace = previewPacks && (view.camera === "Face" || view.camera === "Selected item") && !preview;
     if (inspectingFace) {
       current.active?.stop();
@@ -188,10 +200,12 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     }
     if (!victory && preview !== current.preview && !current.active) {
       current.preview = preview;
-      const nextFit = JSON.stringify(mirrorFit);
+      const nextFit = JSON.stringify([mirrorFit, leanFit]);
       if (nextFit !== contextFit.current) {
-        const previous = current.actions.get(MIRROR_CHECK_ID);
-        if (previous) { previous.stop(); current.mixer.uncacheAction(previous.getClip()); current.actions.delete(MIRROR_CHECK_ID); }
+        for (const id of [MIRROR_CHECK_ID, GARAGE_LEAN_ID]) {
+          const previous = current.actions.get(id);
+          if (previous) { previous.stop(); current.mixer.uncacheAction(previous.getClip()); current.actions.delete(id); }
+        }
         contextFit.current = nextFit;
       }
       let action = preview ? current.actions.get(preview.id) : undefined;

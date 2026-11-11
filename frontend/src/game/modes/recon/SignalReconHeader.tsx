@@ -114,6 +114,7 @@ export default function SignalReconHeader({
       theme={theme}
       eyebrow={title}
       title={subtitle}
+      characterReadOnly={controlsDisabled || exitDisabled}
       collapsed={collapsed}
       setCollapsed={setCollapsed}
       collapsible={collapsible}

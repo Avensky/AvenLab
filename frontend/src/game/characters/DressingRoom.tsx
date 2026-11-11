@@ -1,10 +1,10 @@
 import { FitBadge, FitReview } from "./FitReview";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { CHARACTER_APPEARANCE_OPTIONS, OUTFIT_THEMES, ROOK_ID, VILLAGER_ID, characterLook, type CharacterChoice, type CharacterStyleField } from "./characterCatalog";
+import { CHARACTER_APPEARANCE_OPTIONS, ROOK_ID, VILLAGER_ID, characterLook, type CharacterChoice, type CharacterStyleField } from "./characterCatalog";
 import { focusClothingPiece, useCharacterPreviewStore } from "./characterPreviewStore";
 import { WARDROBE_SETS, resolveWardrobe, type WardrobeChoice } from "./wardrobe";
 import { ClothingColorToolbar } from "./ClothingColorToolbar";
-import { clothingColors, clothingPieceLabel, wornClothing, withClothingColors, type ClothingPiece } from "./clothingPieces";
+import { clothingPieceLabel, wornClothing, type ClothingPiece } from "./clothingPieces";
 import importedItems from "./dressingRoomImports.json";
 import "./dressingRoom.css";
 
@@ -21,7 +21,6 @@ const CATEGORIES = [
   { id: "hair", label: "Hair", group: "Character", icon: "hair" },
   { id: "face", label: "Face", group: "Character", icon: "face" },
   { id: "skin", label: "Skin tone", group: "Character", icon: "skin" },
-  { id: "colors", label: "Colors", group: "Character", icon: "colors" },
 ] as const;
 type Category = typeof CATEGORIES[number]["id"];
 type Icon = typeof CATEGORIES[number]["icon"];
@@ -38,7 +37,6 @@ const ICON_PATHS: Record<Icon, string> = {
   hair: "M5 19V10a7 7 0 0 1 14 0v9l-4 2 M5 19l4 2 M6 10c5 0 7-5 7-5s1 5 5 6 M8 12v3a4 4 0 0 0 8 0v-3",
   face: "M6 9a6 6 0 0 1 12 0v6a6 6 0 0 1-12 0z M8 11h1 M15 11h1 M10 17h4",
   skin: "M12 3S5 11 5 15a7 7 0 0 0 14 0c0-4-7-12-7-12z M9 15c0 2 1 3 3 3",
-  colors: "M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 1-4c-2-1-1-3 1-3h3c4 0 3-11-6-11z M7 10h.01 M10 6h.01 M15 6h.01 M18 10h.01",
 };
 
 function WardrobeIcon({ name }: { name: Icon }) {
@@ -46,6 +44,10 @@ function WardrobeIcon({ name }: { name: Icon }) {
 }
 
 type Item = { id: string; label: string; section: string; icon: Icon; selected?: boolean; detail?: string; disabled?: boolean; color?: string; accent?: string; choose?: () => void };
+
+function focusView(camera: "Face" | "Full body") {
+  useCharacterPreviewStore.setState(s => ({ camera, zoom: 1, emote: null, focusRevision: s.focusRevision + 1 }));
+}
 
 /** One live scene; browsing the catalog never changes or saves the equipped look. */
 export function DressingRoom({ choice, onChange, modelControls }: { choice: CharacterChoice; onChange: (choice: CharacterChoice) => void; modelControls?: ReactNode }) {
@@ -56,9 +58,9 @@ export function DressingRoom({ choice, onChange, modelControls }: { choice: Char
   const focusCatalog = useRef(false);
   const { character, outfit, appearance, wardrobe } = characterLook(choice)!;
   const selectedPiece = useCharacterPreviewStore(s => s.selectedPiece);
+  const camera = useCharacterPreviewStore(s => s.camera);
   const pieces = wornClothing(choice);
   const piece = pieces.includes(selectedPiece) ? selectedPiece : pieces[0];
-  const colors = clothingColors(characterLook(choice)!, piece);
   const female = choice.id === VILLAGER_ID;
   const selectedSet = WARDROBE_SETS.find(item => item.id === wardrobe?.set);
   const currentCategory = CATEGORIES.find(item => item.id === category)!;
@@ -70,7 +72,7 @@ export function DressingRoom({ choice, onChange, modelControls }: { choice: Char
   }, []);
   useLayoutEffect(() => {
     const closeUp = ["hair", "face", "skin", "headwear"].includes(category);
-    useCharacterPreviewStore.setState({ camera: closeUp ? "Face" : "Full body", zoom: 1, emote: null });
+    focusView(closeUp ? "Face" : "Full body");
     catalogRef.current?.scrollTo?.({ top: 0 });
   }, [category]);
   useEffect(() => {
@@ -82,15 +84,11 @@ export function DressingRoom({ choice, onChange, modelControls }: { choice: Char
   function edit(field: CharacterStyleField, value: string) {
     onChange({ ...choice, appearance: { ...appearance, [field]: value } });
   }
-  function setColors(color: string, accent: string | undefined) {
-    onChange(withClothingColors(choice, piece, { color, accent }));
-  }
   function inspectCategory() {
-    const focus: Partial<Record<Category, ClothingPiece>> = { tops: "corset", bottoms: female ? "skirt" : "pants", footwear: "shoes", headwear: "hat", accessories: "glasses", props: "bag", colors: piece };
+    const focus: Partial<Record<Category, ClothingPiece>> = { tops: "corset", bottoms: female ? "skirt" : "pants", footwear: "shoes", headwear: "hat", accessories: "glasses", props: "bag" };
     const next = focus[category];
     if (next) focusClothingPiece(next);
-    else if (["hair", "face", "skin"].includes(category)) useCharacterPreviewStore.setState({ camera: "Face", zoom: 1 });
-    else useCharacterPreviewStore.setState({ camera: "Full body", zoom: 1 });
+    else focusView(["hair", "face", "skin"].includes(category) ? "Face" : "Full body");
   }
   function wearSet(set: string, change: Partial<WardrobeChoice> = {}) {
     onChange({ ...choice, wardrobe: resolveWardrobe({ set, shirt: wardrobe?.shirt ?? "none", waist: wardrobe?.waist ?? "tucked", ...change }) });
@@ -129,11 +127,6 @@ export function DressingRoom({ choice, onChange, modelControls }: { choice: Char
     hair: [...(hasAuthoredMale ? [] : options("hair", "Hairstyle", "hair")), ...options("hair_color", "Hair color", "hair")],
     face: [...options("eye_color", "Eye color", "face"), ...options("brow_color", "Eyebrow tint", "face")],
     skin: options("skin", "Skin tone", "skin"),
-    colors: [
-      ...OUTFIT_THEMES.map(theme => ({ id: theme.name, label: theme.name, section: "Color combinations", icon: "colors" as const, color: theme.color, accent: theme.accent,
-        selected: colors?.color === theme.color && colors?.accent === theme.accent, choose: () => setColors(theme.color, theme.accent) })),
-      ...CHARACTER_APPEARANCE_OPTIONS.color.filter(option => "color" in option).map(option => ({ id: `color:${option.id}`, label: option.label, section: "Fabric colors", icon: "colors" as const, color: "color" in option ? option.color : undefined, choose: () => setColors((option as { color: string }).color, colors?.accent) })),
-    ],
   };
   if (female) for (const item of importedItems) {
     if (!__DRESSING_ROOM_IMPORTED_IDS__.includes(item.id)) continue;
@@ -146,6 +139,8 @@ export function DressingRoom({ choice, onChange, modelControls }: { choice: Char
     && (!query || `${item.label} ${item.section}`.toLocaleLowerCase().includes(query)));
   const sections = [...new Set(items.map(item => item.section))];
   const pending = allItems[category].some(item => item.detail === "Fitting pending");
+  const displayedItem = camera === "Selected item" ? clothingPieceLabel(piece)
+    : allItems[category].find(item => item.selected)?.label ?? selectedSet?.name ?? outfit.name;
 
   function controls(title: string, children: ReactNode) {
     return <section className="dressing-layer-group" aria-label={title}><h3>{title}</h3><div className="dressing-layer-options" data-controller-row>{children}</div></section>;
@@ -154,11 +149,9 @@ export function DressingRoom({ choice, onChange, modelControls }: { choice: Char
   return <>
     <header className="dressing-room-labels">
       <div><small>FITTING ROOM</small><strong>{character.name}</strong></div>
-      <div><small>SELECTED ITEM</small><strong>{clothingPieceLabel(piece)}</strong></div>
+      <div><strong title={displayedItem}>{displayedItem}</strong><small>{currentCategory.label}</small></div>
     </header>
-    <ClothingColorToolbar choice={choice} onChange={onChange} />
     <nav className="dressing-categories" aria-label="Dressing room categories">
-      <header className="dressing-heading"><small>YOUR WARDROBE</small><h2>Dressing room</h2></header>
       {modelControls}
       {CATEGORIES.map((item, index) => <div key={item.id}>
         {(index === 0 || item.group !== CATEGORIES[index - 1].group) && <h3 className="dressing-group-label">{item.group}</h3>}
@@ -173,11 +166,8 @@ export function DressingRoom({ choice, onChange, modelControls }: { choice: Char
           }}><WardrobeIcon name={item.icon} /><span>{item.label}</span><small>{allItems[item.id].length}</small></button></div>
       </div>)}
     </nav>
-    <div className="dressing-mirror" aria-hidden="true">
-      <div className="dressing-outfit-label"><span>Wearing</span><strong>{selectedSet?.name ?? outfit.name}</strong><small>{wardrobe ? "Coverage layer included" : "Complete outfit"}</small></div>
-    </div>
+    <div className="dressing-mirror" aria-hidden="true" />
     <section ref={catalogRef} className="dressing-catalog" id="dressing-catalog" aria-label={currentCategory.label}>
-      <header className="dressing-catalog-heading"><div><small>COLLECTION</small><h2>{currentCategory.label}</h2></div><span className="dressing-item-count">{allItems[category].length} items</span></header>
       <div className="dressing-search" data-controller-row><label><input type="search" aria-label={`Search ${currentCategory.label}`} placeholder="Find an item…" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
       <div className="dressing-filter" role="group" aria-label="Item availability" data-controller-row>
         <button type="button" className="menu-control" aria-pressed={!readyOnly} onClick={() => setReadyOnly(false)}>All items</button>
@@ -196,13 +186,12 @@ export function DressingRoom({ choice, onChange, modelControls }: { choice: Char
         </>}
       </>}
       {category === "bottoms" && <p className="dressing-note">Gothic skirts equip with their matching corset. Pants belong to complete outfits.</p>}
-      {category === "colors" && <p className="dressing-note">Colors apply to {clothingPieceLabel(piece).toLowerCase()}. Choose another piece in the center toolbar.</p>}
       {pending && !readyOnly && <p className="dressing-note">New pieces marked “Fitting pending” can be browsed here. They cannot be worn yet.</p>}
       {sections.map(section => <section className="dressing-section" key={section} aria-label={section}>
         <h3>{section}</h3>
         <div className="dressing-items" data-controller-row data-controller-columns="2">
           {items.filter(item => item.section === section).map(item => <button key={item.id} type="button" data-wardrobe-item={item.id}
-            className="dressing-item menu-control" aria-pressed={item.selected ?? false} disabled={item.disabled} onClick={() => { item.choose?.(); if (item.id === "glasses:none" || item.id === "empty-hands") useCharacterPreviewStore.setState({ camera: item.id === "glasses:none" ? "Face" : "Full body", zoom: 1 }); else inspectCategory(); }}>
+            className="dressing-item menu-control" aria-pressed={item.selected ?? false} disabled={item.disabled} onClick={() => { item.choose?.(); if (item.id === "glasses:none" || item.id === "empty-hands") focusView(item.id === "glasses:none" ? "Face" : "Full body"); else inspectCategory(); }}>
             <span className="dressing-item-art" style={{ "--item-color": item.color ?? "var(--app-muted)", "--item-accent": item.accent ?? item.color ?? "var(--app-accent)" } as CSSProperties}>
               <WardrobeIcon name={item.icon} />{item.color && <i className="dressing-swatch" />}
               {item.selected && <span className="dressing-check" aria-hidden="true">●</span>}
@@ -215,5 +204,6 @@ export function DressingRoom({ choice, onChange, modelControls }: { choice: Char
       </section>)}
       {!items.length && <p className="dressing-empty" role="status">{query ? "No items match your search." : readyOnly ? "No separate pieces are ready in this category yet." : "No separate pieces for this character yet."}</p>}
     </section>
+    <ClothingColorToolbar choice={choice} piece={piece} onChange={onChange} />
   </>;
 }

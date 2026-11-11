@@ -14,13 +14,13 @@ const stageLabel: Record<DriveStage, string> = {
 };
 
 export function GaragePreviewControls({ vehicle }: { vehicle: VehicleModelId }) {
-  const { stage, ready, error, nextCamera, enterStation, start, reset } = useGarageDrive();
+  const { stage, ready, error, nextCamera, enterStation, start, reset, leaveVehicle } = useGarageDrive();
   const camera = useGarageDrive(garageCamera);
   const station = GARAGE_STATIONS[vehicle];
   const canSteer = station.kind === "wheel" && Boolean(station.steeringParts);
   const canDriveOut = vehicle === "ae86";
   const active = stage !== "idle";
-  useEffect(() => () => reset(), [reset, vehicle]);
+  useEffect(() => () => leaveVehicle(), [leaveVehicle]);
 
   function playGesture(id: CockpitTake["id"]) {
     if (id === "drive-honk") unlockVehicleAudio();

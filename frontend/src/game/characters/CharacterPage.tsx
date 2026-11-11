@@ -16,6 +16,7 @@ import { GARAGE_STATIONS } from "../preview/garageStations";
 import { GARAGE_LEAN_ID, GARAGE_LEAN_NAME } from "./garageLean";
 import { CHARACTER_PERSONALITIES, type AnimationFit, type CharacterPersonality } from "./characterPersonality";
 import { FittingRotationControls } from "./FittingRotationControls";
+import { FittingCameraSelect } from "./FittingCameraSelect";
 import { DressingRoom } from "./DressingRoom";
 import { PreviewVisibilityToggle } from "../preview/PreviewVisibilityToggle";
 
@@ -286,10 +287,8 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
             onClick={toggleCockpit}>Exit {stationName}</button>
           <PreviewVisibilityToggle />
         </div> : <div className="character-camera" data-controller-row>
-          <label>Camera<select className="menu-control" aria-label="Preview camera" value={camera}
-            onChange={event => useCharacterPreviewStore.setState({ camera: event.target.value as typeof camera, zoom: 1 })}>
-            {CHARACTER_CAMERAS.map(view => <option key={view}>{view}</option>)}
-          </select></label>
+          <FittingCameraSelect choice={choice} views={CHARACTER_CAMERAS} view={camera}
+            onViewChange={view => useCharacterPreviewStore.setState({ camera: view, zoom: 1 })} />
           <div className="character-zoom">
             <label>Zoom<input type="range" aria-label="Preview zoom" min={CHARACTER_ZOOM_MIN} max={CHARACTER_ZOOM_MAX} step=".05" value={zoom}
               onChange={event => useCharacterPreviewStore.setState({ zoom: Number(event.target.value) })} /></label>

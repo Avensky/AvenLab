@@ -669,6 +669,13 @@
 .layout-editor .le-header .le-project>span:last-child {overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .layout-editor .le-header-actions {display:flex;flex-wrap:nowrap;}
 .layout-editor .le-header-actions>button {display:inline-flex;min-height:32px;white-space:nowrap;}
+.layout-editor .le-header-actions .character-header-profile,
+.world-builder .wb-header .character-header-profile {
+ --angled-header-height:32px;
+ padding:0;
+ border:0;
+ background:transparent;
+}
 .layout-editor .le-tool-drawer {position:absolute;z-index:35;right:8px;top:52px;bottom:30px;width:min(340px,calc(100% - 16px));overflow:auto;padding:12px;background:var(--le-panel);color:var(--le-text);border:1px solid var(--le-line);box-shadow:0 8px 28px #0003;}
 .layout-editor .le-drawer-title {display:flex;justify-content:space-between;align-items:center;gap:8px;}
 .layout-editor .le-tool-drawer h3 {font-size:11px;margin:18px 0 8px;color:var(--le-muted);}

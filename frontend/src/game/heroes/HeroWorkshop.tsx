@@ -20,7 +20,6 @@ import {PreviewVisibilityToggle} from "../preview/PreviewVisibilityToggle";
 import {GaragePreviewControls} from "../preview/GaragePreviewControls";
 import {GarageVehicleDiagnostics} from "../preview/GarageVehicleDiagnostics";
 import {useGarageDrive} from "../preview/garageDriveStore";
-import {CharacterHeaderProfile} from "../characters/CharacterHeaderProfile";
 import type {CharacterChoice} from "../characters/characterCatalog";
 import {ControllerAction} from "../../components/controller";
 import {useMenuInputDevice} from "../../components/controller/useMenuInputDevice";
@@ -233,12 +232,13 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  const currentFooter=studioTab==="performance"?studioFooter:studioTab==="body"?bodyFooter:studioTab==="lighting"?lightingFooter:null;
  return <section ref={root} className={`game-ui menu-surface alpha-selection hero-selection hero-workshop${panelsHidden?" hero-workshop--hidden":""}${viewingConcepts?" hero-ability-guide":""}`} data-character-page={characterOpen||undefined} inert={overlay!==null} tabIndex={-1} aria-label={characterOpen?"Character":"Heroes garage"} data-controller-form data-controller-rows>
   {characterOpen?characterReady?<SceneTabHeader title="CHARACTER" compact tabs={CHARACTER_TABS} activeTab={characterTab}
+    character={{readOnly:true}}
     onTabChange={id=>setCharacterTab(id as CharacterTab)} idPrefix="character-editor" panelId="character-editor-panel"/>
-    :<SelectionHeader title="CHARACTER" compact/>:editing&&definition
+    :<SelectionHeader title="CHARACTER" compact character={{readOnly:true}}/>:editing&&definition
     ? <SceneTabHeader
         title="GARAGE"
         compact
-        actions={<CharacterHeaderProfile onOpen={openCharacter}/>}
+        character={{onOpen:openCharacter}}
         activeTab={studioTab}
         onTabChange={next=>setStudioTab(next as VehicleStudioTab)}
         tablistClassName="garage-studio-tabs"
@@ -252,7 +252,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
           separatorBefore:item.id==="studio",
         }))}
       />
-    : <SceneTabHeader title="HEROES" compact actions={<CharacterHeaderProfile onOpen={openCharacter}/>} tabs={WORKSHOP_TABS} activeTab={role}
+    : <SceneTabHeader title="HEROES" compact character={{onOpen:openCharacter}} tabs={WORKSHOP_TABS} activeTab={role}
         tablistClassName="hero-pick-tabs" onTabChange={next=>setRole(next as WorkshopFilter)}
         idPrefix="hero-workshop-role" panelId="hero-workshop-role-panel"/>}
   <div className="hero-selection-stage hero-workshop-body">

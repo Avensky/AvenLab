@@ -1,6 +1,6 @@
 import { nearestSideMirror, type MirrorCheckFit } from "../characters/mirrorCheck";
 import { FACTORY_APPEARANCE, useHeroLoadouts } from "../../vehicles/cosmetics/heroLoadouts";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useGLTF } from "@react-three/drei";
 import { prepareVehicleVisual } from "../../vehicles/tools/vehicleMaterials";
 import {
@@ -13,10 +13,9 @@ import { applyShowroomHighlights, applyShowroomPaint } from "./garageVehiclePain
 import { prepareGarageVehiclePaint } from "./garageVehiclePaint";
 import {createVehiclePartRig,advanceVehiclePartRig,availableVehicleParts,measureDriverDoor} from "./vehiclePartRig";
 import {useVehicleStudioStore} from "../heroes/vehicleStudioStore";
-import {Mesh,MeshStandardMaterial,Vector3,type Color,type Group,type Object3D} from "three";
-import { GarageDriver } from "../characters/GarageDriver";
+import {MathUtils,Mesh,MeshStandardMaterial,Vector3,type Color,type Group,type Object3D} from "three";
 import { ROOK_ID, type CharacterChoice } from "../characters/characterCatalog";
-import {useFrame} from "@react-three/fiber";
+import {useFrame,useThree} from "@react-three/fiber";
 import {applyWindowTone} from "./windowTones";
 import {vehicleSystems} from "../../vehicles/vehicleSystems";
 import { prepareGarageCockpit, type GarageCockpit } from "./garageCockpit";
@@ -31,6 +30,17 @@ import { prepareGarageDashboard } from "./garageDashboard";
 import { GarageVehicleDiagnosticsScene } from "./GarageVehicleDiagnosticsScene";
 import { garageMounts, useGarageDiagnostics } from "./garageDiagnosticsStore";
 import { prepareGarageHeadlightGlass } from "./garageHeadlightGlass";
+import { VehicleMaterialization } from "./VehicleMaterialization";
+
+export type VehiclePreviewDriverFit = {
+  model: VehicleModelId;
+  position: [number, number, number];
+  scale: number;
+  yaw: number;
+  lean?: ReturnType<typeof measureDriverLean>;
+  mirror?: MirrorCheckFit;
+  cockpit?: GarageCockpit;
+};
 
 type VehicleLayout = {
   model: VehicleModelId;
@@ -49,18 +59,28 @@ function setLampEmission(material: MeshStandardMaterial, color: number | Color, 
 
 // Selection is always the complete GLB, independent of in-game debug modes.
 // Shared material preparation retains the TSX fixes without runtime network poses.
-export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettled,allowDriver = true,garageOpen = false}:{
+export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettled,onDriverFit,motion,
+  allowDriver = true,garageOpen = false,garageCameraAnchors = garageOpen,summon = false,reducedMotion = false}:{
   platform: readonly [number, number];
   model: VehicleModelId;
   driver?: CharacterChoice | null;
   previewPacks?: boolean;
   onSettled?: (model: VehicleModelId) => void;
+  onDriverFit: (fit: VehiclePreviewDriverFit) => void;
+  motion: RefObject<Group | null>;
   allowDriver?: boolean;
   garageOpen?: boolean;
+  garageCameraAnchors?: boolean;
+  summon?: boolean;
+  reducedMotion?: boolean;
 }) {
   const path=VEHICLE_MODEL_PATHS[model];
   const station = GARAGE_STATIONS[model];
-  const motion = useRef<Group>(null);
+  const revealRoot = useRef<Group>(null);
+  const revealProgress = useRef(0);
+  const [materializing, setMaterializing] = useState(summon);
+  const revealActive = materializing && !reducedMotion;
+  const invalidate = useThree(state => state.invalidate);
   const savedAppearance = useHeroLoadouts(s => s.draft?.vehicle === model ? s.draft.appearance : s.loadouts[model]);
   const { scene } = useGLTF(path, "/draco/");
   const driverReady = usePreviewPaint(Boolean(driver && allowDriver));
@@ -83,6 +103,17 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
   useLayoutEffect(() => {
     if (vehiclePainted) onSettled?.(model);
   }, [vehiclePainted, model, onSettled]);
+  useLayoutEffect(() => {
+    if (materializing) invalidate();
+  }, [materializing, reducedMotion, invalidate]);
+  useFrame((_, delta) => {
+    if (!materializing || !revealRoot.current) return;
+    const progress = reducedMotion ? 1 : Math.min(1, revealProgress.current + Math.min(.075, delta) / .8);
+    revealProgress.current = progress;
+    revealRoot.current.scale.setScalar(Math.max(.001, MathUtils.smoothstep(progress, .14, .82)));
+    if (progress === 1) setMaterializing(false);
+    else invalidate();
+  }, -.8);
   const partRig=useMemo(() => {
     const parts = createVehiclePartRig(prepared.root, model);
     if (prepared.gullwing) parts.push(prepared.gullwing.hinge);
@@ -98,8 +129,8 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
       cockpitSetup.current = { source: prepared.root, prepare: prepareGarageCockpit(prepared.root, prepared.glassMaterials, driverDoor, station) };
     }
     return cockpitSetup.current.prepare?.(driverRoot, motionGroup) ?? null;
-  }, [prepared, driverDoor, station]);
-  const cockpit = previewPacks || garageOpen ? playCockpit : undefined;
+  }, [prepared, driverDoor, station, motion]);
+  const cockpit = !revealActive && (previewPacks || garageOpen) ? playCockpit : undefined;
   const marine=vehicleSystems(model)==="marine";
   const inspectBody=useVehicleStudioStore(s=>s.activeTab==="body"||s.parts["door-left"]||s.parts["door-right"]);
   const glassStyle=useVehicleStudioStore(s=>s.glassStyle);
@@ -250,30 +281,28 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
     }
     return shots;
   }, [doorBounds, measurements, staging.side, staging.along, station, model]);
+  useLayoutEffect(() => {
+    if (!hasDriver || !driverReady) return;
+    onDriverFit({ model, position: [driverAcross, .023, driverAlong], scale: driverScale,
+      yaw: staging.side * Math.PI / 2, lean, mirror: mirrorFit, cockpit });
+  }, [hasDriver, driverReady, onDriverFit, model, driverAcross, driverAlong, driverScale, staging.side, lean, mirrorFit, cockpit]);
   return (
-    <group ref={motion}>
-      {driver && <group position={[driverAcross, .023, driverAlong]} scale={driverScale} rotation={[0, staging.side * Math.PI / 2, 0]}>
-        {driverReady ? <>
-          <group name="garage-driver-shadow"><PreviewContactShadow footprint={[.55, .46]} offset={[0, 0]} /></group>
-          <GarageDriver choice={driver} previewPacks={previewPacks} leanFit={lean} mirrorFit={mirrorFit} cockpit={cockpit} />
-        </> : null}
-      </group>}
-      <PreviewContactShadow
-        footprint={display.footprint}
-        offset={display.shadowOffset}
-      />
-      <group
-        position={display.position}
-        scale={display.scale}
-        name="selection-vehicle-glb"
-      >
-        <primitive object={prepared.root} dispose={null} />
-        {garageOpen && vehicleSystems(model) === "road" && <GarageVehicleDiagnosticsScene vehicle={model} popup={popup} />}
-        {garageOpen && cameraRig.map(shot => <group key={shot.name} name={`garage-view-${shot.name}`}
+    <>
+      <group ref={revealRoot} scale={revealActive ? .001 : 1}>
+        <PreviewContactShadow footprint={display.footprint} offset={display.shadowOffset} />
+        <group position={display.position} scale={display.scale} name="selection-vehicle-glb">
+          <primitive object={prepared.root} dispose={null} />
+          {garageOpen && vehicleSystems(model) === "road" && <GarageVehicleDiagnosticsScene vehicle={model} popup={popup} />}
+        </group>
+      </group>
+      {revealActive && <VehicleMaterialization progress={revealProgress}
+        footprint={display.footprint} offset={display.shadowOffset} />}
+      {garageCameraAnchors && <group position={display.position} scale={display.scale}>
+        {cameraRig.map(shot => <group key={shot.name} name={`garage-view-${shot.name}`}
           position={shot.at as [number, number, number]}>
           <object3D position={shot.eye as [number, number, number]} />
         </group>)}
-      </group>
-    </group>
+      </group>}
+    </>
   );
 }

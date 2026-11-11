@@ -3,11 +3,12 @@ import { SceneTabHeader } from "../../components/menus/SceneTabHeader";
 import { CHARACTER_TABS, CharacterPage, type CharacterTab } from "../../game/characters/CharacterPage";
 import { useCharacterPreviewStore } from "../../game/characters/characterPreviewStore";
 import { FittingRotationControls } from "../../game/characters/FittingRotationControls";
+import { FittingCameraSelect } from "../../game/characters/FittingCameraSelect";
 import { PreviewVisibilityToggle } from "../../game/preview/PreviewVisibilityToggle";
 import { navigateFormRows } from "../../game/social/formRows";
 import { useSelectionNavigation } from "../../game/alpha/useSelectionNavigation";
 import { useSocialStore } from "../../store/social/socialStore";
-import { CHARACTER_SHOTS, leaveCharacterEditor, useCharacterEditorStore, type CharacterShot } from "./characterEditorStore";
+import { CHARACTER_SHOTS, leaveCharacterEditor, useCharacterEditorStore } from "./characterEditorStore";
 import "./characterEditor.css";
 
 export function CharacterEditorPanel() {
@@ -15,7 +16,7 @@ export function CharacterEditorPanel() {
   const remembered = useRef(new WeakMap<HTMLElement, number>()), leaving = useRef(false);
   const owner = useSocialStore(s => s.view?.profile.id ?? s.profileOwner ?? "guest");
   const [tab, setTab] = useState<CharacterTab>("appearance"), [ready, setReady] = useState(false), [busy, setBusy] = useState(false);
-  const { shot, frame, preview, panelsHidden } = useCharacterEditorStore();
+  const { choice, shot, frame, preview, panelsHidden } = useCharacterEditorStore();
   const paused = useCharacterPreviewStore(s => s.playbackPaused);
   const focusRevision = useCharacterPreviewStore(s => s.focusRevision);
   const automaticCamera = useCharacterPreviewStore(s => s.camera);
@@ -72,16 +73,14 @@ export function CharacterEditorPanel() {
     className={`game-ui menu-surface character-editor${panelsHidden ? " character-editor--hidden" : ""}`} aria-label="Character editor">
     <div className="character-editor-header">
       <SceneTabHeader title="CHARACTER" compact tabs={ready ? CHARACTER_TABS : []} activeTab={tab}
+        character={{readOnly: true, compact: true}}
         onTabChange={value => setTab(value as CharacterTab)} panelId="character-editor-panel" idPrefix="character-editor" busy={busy}
         actions={<div data-controller-row><button type="button" className="menu-control controller-shortcut-back" disabled={busy}
           onClick={() => void back()}>{busy ? "Saving…" : "Back"}</button></div>} />
     </div>
     <CharacterPage key={owner} inspection onPreview={preview} onReady={setReady} tab={tab} beforeClose={beforeClose} cameraControls={<footer className="character-editor-camera" aria-label="Character camera tools">
       <div data-controller-row>
-        <label>View<select className="menu-control" aria-label="Character close-up" value={shot}
-          onChange={event => frame(event.target.value as CharacterShot)}>
-          {CHARACTER_SHOTS.map(item => <option key={item}>{item}</option>)}
-        </select></label>
+        <FittingCameraSelect choice={choice} views={CHARACTER_SHOTS} view={shot} onViewChange={frame} label="Character close-up" />
         <button type="button" className="menu-control" aria-label="Zoom character out"
           onClick={() => useCharacterEditorStore.setState(s => ({ zoomSteps: s.zoomSteps - 1 }))}>−</button>
         <button type="button" className="menu-control" aria-label="Zoom character in"
