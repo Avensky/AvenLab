@@ -214,11 +214,20 @@ to generate the files in `frontend/public/models/characters/female/wardrobe/`.
 `dressingRoomImports.json` inventories 41 separate female garments under
 `frontend/public/models/characters/female/wardrobe/`. It includes 14 bows,
 nine skirts, five tops, five harnesses, four pairs of socks, two hats, a coat,
-and a dress. Each entry groups its available model detail levels. Browse the
+and a dress. Coat 01 and Dress 01 are archived, leaving 39 active imports.
+Layers groups the pieces by where they sit in an outfit, from underwear to
+overwear. Each entry groups its available model detail levels. Browse the
 catalog to see the pieces, then try them on Vesper and check combinations with
 the Emotes tab. Trial combinations are session-only and leave the saved outfit
 in place. Ready to wear filters out fitting trials, and search filters the
 current category.
+
+Gothic Skirts 02 and 03 can use optional authored revisions in
+`frontend/public/models/characters/female/wardrobe/corsettes/`. Use
+`gothic-skirt-02-update.glb` and `gothic-skirt-03-update.glb` with the same
+ordered Vesper skin joints as the originals. Restart Vite after adding them.
+The originals stay available and use the automatic waistband fit. An
+installed revision with the expected rig keeps its authored shape.
 
 Equipping a complete outfit uses the existing autosave. Keyboard and controller
 navigation work in the catalog and outfit details.

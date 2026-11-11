@@ -50,20 +50,8 @@ export function ClothingColorToolbar({ choice, piece, onChange }: {
     toggle.current?.focus();
   }}>
     <div id={panelId} className="dressing-color-panel menu-panel-frame" hidden={!open}>
-      {bars.map(({ label, value, apply }) => <div key={label} className="dressing-color-bar" role="group" aria-label={`${label} color`} data-controller-row>
-        <span aria-hidden="true">{label}</span>
-        <div className="dressing-color-chips">
-          {colorPresets.map(preset => <button key={preset.color} type="button" className="menu-control menu-panel-frame dressing-color-preset"
-            aria-label={`${label} color: ${preset.label}`} title={preset.label} aria-pressed={value === preset.color}
-            onClick={() => apply(preset.color)}>
-            <i className="dressing-color-swatch" style={swatch(preset.color)} aria-hidden="true" />
-          </button>)}
-          <input type="color" aria-label={`Custom ${label.toLowerCase()} color`} title={`Custom ${label.toLowerCase()} color`} value={value}
-            onChange={event => apply(event.currentTarget.value)} />
-        </div>
-      </div>)}
       <div className="dressing-color-bar" role="group" aria-label="Color combinations" data-controller-row>
-        <span aria-hidden="true">Pairs</span>
+        <span aria-hidden="true">Themes</span>
         <div className="dressing-color-chips">
           {OUTFIT_THEMES.map(theme => <button key={theme.name} type="button" className="menu-control menu-panel-frame dressing-color-preset"
             aria-label={theme.name} title={theme.name} aria-pressed={fabric === theme.color && trim === theme.accent}
@@ -78,6 +66,18 @@ export function ClothingColorToolbar({ choice, piece, onChange }: {
           </button>
         </div>
       </div>
+      {bars.map(({ label, value, apply }) => <div key={label} className="dressing-color-bar" role="group" aria-label={`${label} color`} data-controller-row>
+        <span aria-hidden="true">{label}</span>
+        <div className="dressing-color-chips">
+          {colorPresets.map(preset => <button key={preset.color} type="button" className="menu-control menu-panel-frame dressing-color-preset"
+            aria-label={`${label} color: ${preset.label}`} title={preset.label} aria-pressed={value === preset.color}
+            onClick={() => apply(preset.color)}>
+            <i className="dressing-color-swatch" style={swatch(preset.color)} aria-hidden="true" />
+          </button>)}
+          <input type="color" aria-label={`Custom ${label.toLowerCase()} color`} title={`Custom ${label.toLowerCase()} color`} value={value}
+            onChange={event => apply(event.currentTarget.value)} />
+        </div>
+      </div>)}
     </div>
     <div data-controller-row>
       <button ref={toggle} type="button" className="menu-control menu-panel-frame dressing-color-toggle" aria-expanded={open} aria-controls={panelId}

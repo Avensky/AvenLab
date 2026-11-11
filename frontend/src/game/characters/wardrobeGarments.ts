@@ -17,10 +17,10 @@ export type WardrobeGarmentSlot = keyof typeof wardrobeGarmentReplacements;
 export type WardrobeGarmentChoice = Partial<Record<WardrobeGarmentSlot, string>>;
 type WardrobeGarment = {
   id: string; label: string; section: string; category: string; slot: WardrobeGarmentSlot;
-  piece: ClothingPiece; url: string; mobileUrl?: string;
+  piece: ClothingPiece; url: string; mobileUrl?: string; revisionUrl?: string; retired?: boolean;
 };
 
-export const importedWardrobeItems = importedItems as WardrobeGarment[];
+export const importedWardrobeItems = (importedItems as WardrobeGarment[]).filter(item => !item.retired);
 
 export function getWardrobeGarment(id?: string) {
   return importedWardrobeItems.find(item => item.id === id);
@@ -28,6 +28,7 @@ export function getWardrobeGarment(id?: string) {
 
 export function wardrobeGarmentModelUrl(item: WardrobeGarment, kind: "garage" | "portrait") {
   if (!__DRESSING_ROOM_IMPORTED_IDS__.includes(item.id)) return undefined;
+  if (item.revisionUrl && __DRESSING_ROOM_REVISION_IDS__.includes(item.id)) return item.revisionUrl;
   if (kind === "portrait" && item.mobileUrl && __DRESSING_ROOM_MOBILE_IDS__.includes(item.id)) return item.mobileUrl;
   return item.url;
 }

@@ -2,7 +2,7 @@ import type { MirrorCheckFit } from "./mirrorCheck";
 import { CharacterTurntable } from "./CharacterTurntable";
 import { usesFittedAnimation } from "./animationFit";
 import { clothingColors } from "./clothingPieces";
-import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import { Html, useGLTF } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import type { Object3D } from "three";
@@ -25,6 +25,14 @@ import { FITTING_BODY_URL } from "./standaloneCorset";
 const DRIVER_TILT: [number, number, number] = [-.095, -.16, -.045];
 const LEGACY_FITTING_BODY_URL = "/models/characters/wardrobe/gothic-02.mobile.glb";
 type WardrobeAssetListener = (url: string, scene: Object3D | null) => void;
+type VillagerPlayback = {
+  bag: boolean; previewPacks?: boolean; leanFit?: GarageLeanFit; mirrorFit?: MirrorCheckFit;
+  victory?: VictoryPlayback; cockpit?: GarageCockpit; paused: boolean; upright: boolean;
+};
+type VillagerPreview = {
+  look: CharacterLook; scene: Object3D; garments: WardrobeGarmentSource[]; garmentBody?: Object3D;
+  corsetScene?: Object3D; corsetSet?: string;
+};
 
 function WardrobeAsset({ url, onReady }: { url: string; onReady: WardrobeAssetListener }) {
   const { scene } = useGLTF(url);
@@ -45,10 +53,10 @@ function MissingVillager({ cockpit }: { cockpit?: GarageCockpit }) {
   return null;
 }
 
-function VillagerDriver({ url, look, compact, bag, previewPacks, leanFit, mirrorFit, victory, cockpit, paused }: {
-  url: string; look: CharacterLook; compact: boolean; bag: boolean; previewPacks?: boolean; leanFit?: GarageLeanFit; mirrorFit?: MirrorCheckFit; victory?: VictoryPlayback; cockpit?: GarageCockpit; paused?: boolean;
+function VillagerDriver({ url, look, compact, fallback, ...playback }: VillagerPlayback & {
+  url: string; look: CharacterLook; compact: boolean; fallback: ReactNode;
 }) {
-  const { scene } = useGLTF(url);
+  const [active, setActive] = useState<VillagerPreview>();
   const [sources, setSources] = useState<Partial<Record<string, Object3D | null>>>({});
   const onReady = useCallback<WardrobeAssetListener>((asset, loaded) => setSources(current => current[asset] === loaded
     ? current : { ...current, [asset]: loaded }), []);
@@ -58,21 +66,61 @@ function VillagerDriver({ url, look, compact, bag, previewPacks, leanFit, mirror
     const url = item && wardrobeGarmentModelUrl(item, compact ? "portrait" : "garage");
     return item && url ? [{ item, url }] : [];
   }), [look.garments, compact]);
+  const scene = sources[url];
   // The Village outfit cuts away skin under its clothes. Use the full skin only
   // for replacements that expose a different part of the body.
-  const needsBody = !scene.getObjectByName("BODY_WARDROBE") && (Boolean(corsetUrl) || requested.some(({ item }) => replacesVillagerBody(item.slot)));
-  const bodyUrl = sources[FITTING_BODY_URL] === null ? LEGACY_FITTING_BODY_URL : FITTING_BODY_URL;
-  const assetUrls = requested.map(item => item.url);
-  if (needsBody) assetUrls.push(bodyUrl);
-  if (corsetUrl) assetUrls.push(corsetUrl);
+  const needsBody = Boolean(scene && !scene.getObjectByName("BODY_WARDROBE")
+    && (corsetUrl || requested.some(({ item }) => replacesVillagerBody(item.slot))));
+  const fittingBody = sources[FITTING_BODY_URL];
+  const bodyUrl = fittingBody !== undefined && !fittingBody?.getObjectByName("BODY_WARDROBE")
+    ? LEGACY_FITTING_BODY_URL : FITTING_BODY_URL;
+  const urls = new Set([url, ...requested.map(item => item.url)]);
+  if (needsBody) urls.add(bodyUrl);
+  if (corsetUrl) urls.add(corsetUrl);
+  const assetUrls = [...urls];
   const garmentBody = needsBody ? sources[bodyUrl]?.getObjectByName("BODY_WARDROBE") : undefined;
-  const corsetScene = corsetUrl && (!needsBody || garmentBody) ? sources[corsetUrl] : undefined;
-  const corsetSet = look.corset?.set;
-  const garments = useMemo(() => requested.flatMap(({ item, url }): WardrobeGarmentSource[] => {
-    const source = sources[url];
-    if (!source || (needsBody && !garmentBody && replacesVillagerBody(item.slot))) return [];
-    return [{ item, scene: source }];
-  }), [requested, sources, needsBody, garmentBody]);
+  const loading = assetUrls.some(asset => sources[asset] === undefined);
+  const unavailable = assetUrls.some(asset => sources[asset] === null)
+    || (needsBody && sources[bodyUrl] !== undefined && !garmentBody);
+
+  // Keep the visible outfit mounted until the latest selection can replace it as a unit.
+  // Resolutions for earlier selections can fill the cache without changing the preview.
+  if (scene && !loading && (!unavailable || !active)) {
+    const corsetScene = corsetUrl && (!needsBody || garmentBody) ? sources[corsetUrl] ?? undefined : undefined;
+    const corsetSet = corsetScene ? look.corset?.set : undefined;
+    const garments = requested.flatMap(({ item, url }): WardrobeGarmentSource[] => {
+      const source = sources[url];
+      if (!source || (needsBody && !garmentBody && replacesVillagerBody(item.slot))) return [];
+      return [{ item, scene: source, authoredFit: url === item.revisionUrl }];
+    });
+    const sameGarments = active?.garments.length === garments.length && garments.every((garment, index) => {
+      const previous = active.garments[index];
+      return previous.item === garment.item && previous.scene === garment.scene;
+    });
+    if (active?.look !== look || active.scene !== scene || active.garmentBody !== garmentBody
+      || active.corsetScene !== corsetScene || active.corsetSet !== corsetSet || !sameGarments) {
+      setActive({ look, scene, garments: sameGarments ? active.garments : garments, garmentBody, corsetScene, corsetSet });
+    }
+  }
+
+  const status = scene === null ? "Character model unavailable"
+    : loading ? "Loading garments" : unavailable ? "Garment unavailable" : undefined;
+  return <>
+    {assetUrls.map(asset => <AssetBoundary key={asset} fallback={<MissingWardrobeAsset url={asset} onReady={onReady} />}>
+      <Suspense fallback={null}><WardrobeAsset url={asset} onReady={onReady} /></Suspense>
+    </AssetBoundary>)}
+    {active ? <>
+      <AssetBoundary key={active.scene.uuid} fallback={fallback}>
+        <ReadyVillager preview={active} {...playback} />
+      </AssetBoundary>
+      {status && <PreviewLoadingStatus label={status} />}
+    </> : scene === null ? fallback : playback.victory ? <CharacterLoadingEffect />
+      : <PreviewLoadingStatus label={scene ? "Loading garments" : "Loading driver"} />}
+  </>;
+}
+
+function ReadyVillager({ preview, bag, previewPacks, leanFit, mirrorFit, victory, cockpit, paused, upright }: VillagerPlayback & { preview: VillagerPreview }) {
+  const { look, scene, garments, garmentBody, corsetScene, corsetSet } = preview;
   const femaleWithBag = look.female && bag;
   const wetEyes = !victory;
   const fitted = usesFittedAnimation(look);
@@ -92,15 +140,9 @@ function VillagerDriver({ url, look, compact, bag, previewPacks, leanFit, mirror
     }
   }, [model]);
 
-  const status = assetUrls.some(asset => sources[asset] === null) ? "Garment unavailable"
-    : assetUrls.some(asset => sources[asset] === undefined) ? "Loading garments" : undefined;
-  return <>
-    {assetUrls.map(asset => <AssetBoundary key={asset} fallback={<MissingWardrobeAsset url={asset} onReady={onReady} />}>
-      <Suspense fallback={null}><WardrobeAsset url={asset} onReady={onReady} /></Suspense>
-    </AssetBoundary>)}
+  return <group name="garage-driver" rotation={upright ? [0, 0, 0] : DRIVER_TILT}>
     <GarageEmotePlayer root={model.root} bag={bag} personality={look.appearance.personality} bagColors={clothingColors(look, "bag")} previewPacks={previewPacks} leanFit={leanFit} mirrorFit={mirrorFit} victory={victory} cockpit={cockpit} paused={paused} />
-    {status && <PreviewLoadingStatus label={status} />}
-  </>;
+  </group>;
 }
 
 export function GarageDriver({ choice, previewPacks, leanFit, mirrorFit, victory, cockpit, upright = false, paused = false }: {
@@ -119,14 +161,9 @@ export function GarageDriver({ choice, previewPacks, leanFit, mirrorFit, victory
   return (
     <CharacterTurntable enabled={Boolean(previewPacks)}>
       {url
-        ? <AssetBoundary key={url} fallback={fallback}>
-            <Suspense fallback={victory ? <CharacterLoadingEffect /> : <PreviewLoadingStatus label="Loading driver" />}>
-              <group name="garage-driver" rotation={upright ? [0, 0, 0] : DRIVER_TILT}>
-                <VillagerDriver url={url} look={look} compact={compact} bag={bag} previewPacks={previewPacks}
-                  leanFit={coatFitsLean ? leanFit : undefined} mirrorFit={mirrorFit} victory={victory} cockpit={cockpit} paused={paused} />
-              </group>
-            </Suspense>
-          </AssetBoundary>
+        ? <VillagerDriver key={choice.id} url={url} look={look} compact={compact} fallback={fallback} bag={bag}
+            previewPacks={previewPacks} leanFit={coatFitsLean ? leanFit : undefined} mirrorFit={mirrorFit}
+            victory={victory} cockpit={cockpit} paused={paused} upright={upright} />
         : fallback}
     </CharacterTurntable>
   );

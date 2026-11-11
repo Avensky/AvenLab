@@ -87,6 +87,7 @@
   {
     "id": "coat-01",
     "label": "Coat 01",
+    "retired": true,
     "category": "outerwear",
     "url": "/models/characters/female/wardrobe/coat/coat-01.garage.glb",
     "section": "Coats",
@@ -97,6 +98,7 @@
   {
     "id": "dress-01",
     "label": "Dress 01",
+    "retired": true,
     "category": "dresses",
     "url": "/models/characters/female/wardrobe/dress/dress-01.garage.glb",
     "section": "Dresses",
@@ -345,6 +347,7 @@
     "label": "Gothic Skirt 02",
     "category": "bottoms",
     "url": "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-02.glb",
+    "revisionUrl": "/models/characters/female/wardrobe/corsettes/gothic-skirt-02-update.glb",
     "section": "Gothic skirts",
     "slot": "skirt",
     "piece": "skirt"
@@ -354,6 +357,7 @@
     "label": "Gothic Skirt 03",
     "category": "bottoms",
     "url": "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-03.glb",
+    "revisionUrl": "/models/characters/female/wardrobe/corsettes/gothic-skirt-03-update.glb",
     "section": "Gothic skirts",
     "slot": "skirt",
     "piece": "skirt"

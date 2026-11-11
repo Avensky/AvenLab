@@ -2,11 +2,12 @@ import { BufferAttribute, BufferGeometry, Color, DoubleSide, Group, MathUtils, R
 import { MeshBVH } from "three-mesh-bvh";
 import type { CharacterLook } from "./characterCatalog";
 import { clothingColors, clothingPieceFor, type ClothingPiece } from "./clothingPieces";
+import { prepareGothicSkirtFit } from "./gothicSkirtFit";
 import type { StandaloneCorset } from "./standaloneCorset";
 import { wardrobeGarmentReplacements, type getWardrobeGarment, type WardrobeGarmentSlot } from "./wardrobeGarments";
 import { prepareWardrobeTopFit } from "./wardrobeTopFit";
 
-export type WardrobeGarmentSource = { item: NonNullable<ReturnType<typeof getWardrobeGarment>>; scene: Object3D };
+export type WardrobeGarmentSource = { item: NonNullable<ReturnType<typeof getWardrobeGarment>>; scene: Object3D; authoredFit?: boolean };
 
 export function replacesVillagerBody(slot: WardrobeGarmentSlot) {
   return slot === "top" || slot === "skirt" || slot === "dress";
@@ -92,7 +93,7 @@ export function prepareWardrobeGarments(root: Object3D, sources: readonly Wardro
   group.name = "fitting-room-garments";
   const materials: { piece: ClothingPiece; base: Color; color: Color; accent: boolean }[] = [];
   const ownedMaterials = new Set<Material>();
-  const fittedTops: BufferGeometry[] = [];
+  const fittedGarments: BufferGeometry[] = [];
   let checkTopEdges = false;
   const shapes: MeshBVH[] = [];
   const corsetShapes = { tucked: [] as MeshBVH[], over: [] as MeshBVH[] };
@@ -111,13 +112,14 @@ export function prepareWardrobeGarments(root: Object3D, sources: readonly Wardro
   }
   let top = Boolean(corset), skirt = false;
   let skirtRadius: number | undefined;
-  for (const { item, scene } of sources) {
+  for (const { item, scene, authoredFit } of sources) {
     if (replacesVillagerBody(item.slot) && !full?.getIndex()) continue;
     const fitTop = item.slot === "top" && full ? prepareWardrobeTopFit(full, item.id) : undefined;
     const garment = new Group();
     garment.name = `wardrobe-${item.id}`;
     garment.userData.clothingPiece = item.piece;
     const liningColors: Color[] = [];
+    const garmentMeshes: SkinnedMesh[] = [];
     let fabricColor: Color | undefined;
     scene.traverse(part => {
       if (!(part instanceof SkinnedMesh)) return;
@@ -128,11 +130,6 @@ export function prepareWardrobeGarments(root: Object3D, sources: readonly Wardro
       if (lining && item.id !== "skirt-01" && item.id !== "skirt-02") return;
       const mesh = bindWardrobeGarmentMesh(part, original.skeleton);
       if (!mesh) return;
-      const fittedTop = fitTop?.(mesh.geometry);
-      if (fittedTop) {
-        mesh.geometry = fittedTop;
-        fittedTops.push(fittedTop);
-      }
       mesh.userData.clothingPiece = item.piece;
       const cloneMaterial = (source: Material) => {
         const material = source.clone();
@@ -151,8 +148,23 @@ export function prepareWardrobeGarments(root: Object3D, sources: readonly Wardro
         const fit = mesh.morphTargetDictionary?.["mary-jane-v1-fit"];
         if (fit !== undefined && mesh.morphTargetInfluences) mesh.morphTargetInfluences[fit] = 1;
       }
-      if (replacesVillagerBody(item.slot) && !Array.isArray(part.material) && !part.material.transparent
-        && !/hardware|ornament|buttons|buckle/.test(tintChannel(part.material, mesh))) {
+      garmentMeshes.push(mesh);
+      garment.add(mesh);
+    });
+    if (!garmentMeshes.length) continue;
+    const isFabric = (mesh: SkinnedMesh) => !Array.isArray(mesh.material) && !mesh.material.transparent
+      && !/hardware|ornament|buttons|buckle/.test(tintChannel(mesh.material, mesh));
+    const skirtBody = full && !authoredFit && item.slot === "skirt" && item.id.startsWith("gothic-skirt-") ? bodySurface(full) : undefined;
+    const skirtSurfaces = skirtBody ? garmentMeshes.filter(isFabric).flatMap(mesh => bodySurface(mesh.geometry) ?? []) : [];
+    const fitSkirt = skirtBody && skirtSurfaces.length ? prepareGothicSkirtFit(skirtBody, skirtSurfaces, item.id) : undefined;
+    for (const { geometry } of skirtSurfaces) geometry.dispose();
+    for (const mesh of garmentMeshes) {
+      const fitted = (fitTop ?? fitSkirt)?.(mesh.geometry);
+      if (fitted) {
+        mesh.geometry = fitted;
+        fittedGarments.push(fitted);
+      }
+      if (replacesVillagerBody(item.slot) && isFabric(mesh)) {
         const surface = bodySurface(mesh.geometry);
         if (surface) shapes.push(surface);
       }
@@ -163,9 +175,8 @@ export function prepareWardrobeGarments(root: Object3D, sources: readonly Wardro
           if (point.y > .73 && point.y < 1.04) skirtRadius = Math.max(skirtRadius ?? 0, Math.abs(point.x));
         }
       }
-      garment.add(mesh);
-    });
-    if (!garment.children.length) continue;
+    }
+    skirtBody?.geometry.dispose();
     checkTopEdges ||= item.slot === "top";
     if (fabricColor) for (const color of liningColors) color.copy(fabricColor);
     group.add(garment);
@@ -205,7 +216,7 @@ export function prepareWardrobeGarments(root: Object3D, sources: readonly Wardro
     dispose() {
       group.removeFromParent();
       body?.geometry.dispose();
-      for (const geometry of fittedTops) geometry.dispose();
+      for (const geometry of fittedGarments) geometry.dispose();
       for (const { geometry } of shapes) geometry.dispose();
       for (const { geometry } of [...corsetShapes.tucked, ...corsetShapes.over]) geometry.dispose();
       for (const material of ownedMaterials) material.dispose();

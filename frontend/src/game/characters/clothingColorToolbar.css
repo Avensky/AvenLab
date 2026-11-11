@@ -25,7 +25,7 @@
   display: block;
   width: 15px;
   height: 15px;
-  background: linear-gradient(135deg, var(--swatch-color) 50%, var(--swatch-accent) 50%);
+  background: linear-gradient(135deg, var(--swatch-color) 62%, var(--swatch-accent) 62%);
   clip-path: var(--color-swatch-shape);
 }
 .dressing-color-toggle .dressing-color-swatch { width: 18px; height: 18px; }

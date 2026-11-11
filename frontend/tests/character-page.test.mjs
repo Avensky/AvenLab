@@ -303,6 +303,18 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('[data-wardrobe-item=race-crew]');
     assert.equal(cameraView('Coat').getAttribute('aria-pressed'), 'true');
     await click('[aria-label="Open clothing colors"]');
+    const themes = find('[aria-label="Color combinations"]');
+    for (const name of ['Pink', 'Pastels', 'Vibrant', 'White', 'Yellow', 'Blue', 'Red', 'Red + Black', 'Black + Red']) {
+      assert(themes.querySelector(`button[aria-label="${name}"]`), `${name} has a theme shortcut`);
+    }
+    const mainColor = () => find('input[aria-label="Custom main color"]').value;
+    const accentColor = () => find('input[aria-label="Custom accent color"]').value;
+    await click('button[aria-label="Red + Black"]');
+    assert.deepEqual([mainColor(), accentColor()], ['#b62235', '#101015']);
+    await click('button[aria-label="Black + Red"]');
+    assert.deepEqual([mainColor(), accentColor()], ['#101015', '#b62235']);
+    assert.equal(find('button[aria-label="Red + Black"]').getAttribute('aria-pressed'), 'false');
+    assert.equal(find('button[aria-label="Black + Red"]').getAttribute('aria-pressed'), 'true');
     await click('button[aria-label="Gothic Pink"]');
     assert.equal(find('[data-outfit-preview]').dataset.outfitPreview, 'race-crew');
     assert.equal(drafts.at(-1).appearance.item_colors['aviator:glasses'].color, '#293953');

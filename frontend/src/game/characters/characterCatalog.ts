@@ -14,6 +14,17 @@ export type CharacterAppearance = Record<Exclude<CharacterStyleField, FaceField>
 
 export const OUTFIT_THEMES = [
   { name: "Gothic Pink", color: "#101015", accent: "#ff2d95" },
+  { name: "Pink", color: "#ef88b6", accent: "#7d315a" },
+  { name: "Pastels", color: "#c7b8ec", accent: "#b5dece" },
+  { name: "Vibrant", color: "#6f38df", accent: "#ff9434" },
+  { name: "White", color: "#ffffff", accent: "#ffffff" },
+  { name: "Yellow", color: "#edbf44", accent: "#fff1ad" },
+  { name: "Blue", color: "#2566b3", accent: "#9ed6f1" },
+  { name: "Red", color: "#b62235", accent: "#f0736f" },
+  { name: "Red + Black", color: "#b62235", accent: "#101015" },
+  { name: "Black + Red", color: "#101015", accent: "#b62235" },
+  { name: "Ivory + Gold", color: "#f4e6cc", accent: "#b88636" },
+  { name: "Navy + Silver", color: "#26395e", accent: "#bcc9d6" },
   { name: "Midnight Circuit", color: "#171d36", accent: "#56e9ff" },
   { name: "Harbor Crew", color: "#263a35", accent: "#efaf6a" },
   { name: "Black Cherry", color: "#2d1d28", accent: "#a84a70" },

@@ -7,10 +7,11 @@ import { promisify } from 'node:util';
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
-import { AnimationMixer, BufferGeometry, DoubleSide, Float32BufferAttribute, Ray, Vector3 } from 'three';
+import { AnimationMixer, BufferGeometry, DoubleSide, Float32BufferAttribute, Matrix4, Ray, Vector3 } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshBVH } from 'three-mesh-bvh';
 import { createServer } from 'vite';
+import { hasCompatibleWardrobeRevision } from '../scripts/character-model-paths.mts';
 
 const publicDir = new URL('../public/', import.meta.url);
 const villagerDir = 'models/characters/villagers/villager-female/';
@@ -35,9 +36,36 @@ test('each loose female garment and its available model tiers are in the wardrob
   }
   const files = await readdir(new URL(garmentDir, publicDir), { recursive: true });
   const imports = files.map(file => file.replaceAll('\\', '/')).filter(file => file.endsWith('.glb')
-    && file !== 'vesper-body.glb' && !file.startsWith('corsets/'));
+    && file !== 'vesper-body.glb' && !file.startsWith('corsets/') && !file.startsWith('corsettes/'));
   assert.deepEqual(garmentFiles.toSorted(), imports.map(file => garmentDir + file).sort());
   assert.equal(new Set(garmentFiles).size, 49);
+});
+
+test('Gothic Skirts 02 and 03 prefer compatible revisions installed under corsettes', async t => {
+  const [second, third] = ['02', '03'].map(number => catalog.find(item => item.id === `gothic-skirt-${number}`));
+  assert.equal(second.revisionUrl, `/${garmentDir}corsettes/gothic-skirt-02-update.glb`);
+  assert.equal(third.revisionUrl, `/${garmentDir}corsettes/gothic-skirt-03-update.glb`);
+  const original = new URL(second.url.slice(1), publicDir);
+  const incompatible = new URL('models/characters/female/props/bag-black-gold/bag-black-gold-mobile.glb', publicDir);
+  assert.equal(hasCompatibleWardrobeRevision(incompatible, original), false);
+  if (isLfsPointer(await readFile(original))) return t.skip('Run git lfs pull to materialize the fitting-room models.');
+  assert.equal(hasCompatibleWardrobeRevision(original, original), true);
+  const vite = await createServer({
+    define: {
+      __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify([second.id, third.id]),
+      __DRESSING_ROOM_REVISION_IDS__: JSON.stringify([second.id]),
+    },
+    server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error',
+  });
+  try {
+    const { getWardrobeGarment, wardrobeGarmentModelUrl } = await vite.ssrLoadModule('/src/game/characters/wardrobeGarments.ts');
+    for (const tier of ['garage', 'portrait']) {
+      assert.equal(wardrobeGarmentModelUrl(getWardrobeGarment(second.id), tier), second.revisionUrl);
+      assert.equal(wardrobeGarmentModelUrl(getWardrobeGarment(third.id), tier), third.url);
+    }
+  } finally {
+    await vite.close();
+  }
 });
 
 test('standalone wardrobe exports preserve authored meshes and discard unrelated layers', async t => {
@@ -396,6 +424,129 @@ test('standalone corsets and a selected skirt share the live rig and switch wais
         } finally {
           model.dispose();
         }
+      }
+    }
+  } finally {
+    await vite.close();
+  }
+});
+
+test('each Gothic skirt closes its waistband gap and clears the animated torso', async t => {
+  const skirts = catalog.filter(item => /^gothic-skirt-0[1-5]$/.test(item.id))
+    .map(item => ({ ...item, url: `/${garmentDir}skirts/gothic-skirt/${item.id}.glb` }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  assert.equal(skirts.length, 5);
+  const paths = [garmentDir + 'vesper-body.glb', villagerDir + 'villager-female.garage.glb', ...skirts.map(item => item.url.slice(1))];
+  const bytes = await Promise.all(paths.map(path => readFile(new URL(path, publicDir))));
+  if (bytes.some(isLfsPointer)) return t.skip('Run git lfs pull to materialize the fitting-room models.');
+  const [donor, garage, ...skirtScenes] = await Promise.all(bytes.map(loadGeometry));
+  const garmentBody = donor.getObjectByName('BODY_WARDROBE');
+  const { position, skinIndex, skinWeight } = garmentBody.geometry.attributes;
+  const armJoints = garmentBody.skeleton.bones.map(bone => /arm|hand|finger|thumb|index|middle|ring|pinky/.test(bone.name));
+  const isTorso = index => position.getY(index) > .88 && position.getY(index) < 1.24 && Math.abs(position.getX(index)) < .22
+    && [0, 1, 2, 3].reduce((weight, channel) => weight
+      + (armJoints[skinIndex.getComponent(index, channel)] ? skinWeight.getComponent(index, channel) : 0), 0) < .5;
+  const torsoFaces = [];
+  const indices = garmentBody.geometry.index;
+  for (let i = 0; i < indices.count; i += 3) {
+    const triangle = [indices.getX(i), indices.getX(i + 1), indices.getX(i + 2)];
+    if (triangle.every(isTorso)) torsoFaces.push(...triangle);
+  }
+  const waistMaterial = ['Fabric_1', 'Trim_1', 'Trim_1', 'Fabric_0', 'Fabric_0'];
+  const identity = new Matrix4();
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  try {
+    const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
+    const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { buildEmoteClips, findGaragePreviewEmote } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
+    for (const [index, item] of skirts.entries()) {
+      const scene = skirtScenes[index];
+      const model = prepareVillager(garage, { fitted: true, garments: [{ item, scene }], garmentBody });
+      try {
+        applyVillagerLook(model, characterLook({ ...DEFAULT_CHARACTER, garments: { skirt: item.id } }));
+        const { root } = model;
+        const body = root.getObjectByName('fitting-room-body');
+        const { children } = root.getObjectByName(`wardrobe-${item.id}`);
+        for (const mesh of children) {
+          const source = scene.getObjectByName(mesh.name).geometry;
+          const { position: cloth, uv, skinWeight, skinIndex } = mesh.geometry.attributes;
+          const original = source.attributes.position;
+          assert.deepEqual(mesh.geometry.index.array, source.index.array, item.id);
+          assert.deepEqual(uv.array, source.attributes.uv.array, item.id);
+          assert.deepEqual(skinWeight.array, source.attributes.skinWeight.array, item.id);
+          assert.deepEqual(skinIndex.array, source.attributes.skinIndex.array, item.id);
+          for (let i = 0; i < original.count; i++) {
+            assert.equal(cloth.getY(i), original.getY(i), item.id);
+            if (original.getY(i) >= .965) continue;
+            assert.equal(cloth.getX(i), original.getX(i), item.id);
+            assert.equal(cloth.getZ(i), original.getZ(i), item.id);
+          }
+        }
+        const mesh = children.find(part => part.material.name.endsWith(waistMaterial[index]));
+        const cloth = mesh.geometry.attributes.position;
+        const original = scene.getObjectByName(mesh.name).geometry.attributes.position;
+        const front = Array.from({ length: cloth.count }, (_, i) => i)
+          .filter(i => cloth.getZ(i) - .042 > Math.abs(cloth.getX(i)));
+        const crest = Math.max(...front.map(i => cloth.getY(i)));
+        const waist = front.filter(i => cloth.getY(i) > crest - .026);
+        const median = list => list.sort((a, b) => a - b)[Math.floor(list.length / 2)];
+        assert(median(waist.map(i => original.getZ(i) - cloth.getZ(i))) > .009, `${item.id} brings the front band closer`);
+        const mixer = new AnimationMixer(root);
+        for (const [emote, phase] of [['001', .49], ['heart-overhead', .49], ['walk-casual', .39]]) {
+          const [clip] = buildEmoteClips(root, [findGaragePreviewEmote(emote, false)]);
+          mixer.clipAction(clip).play();
+          mixer.setTime(clip.duration * phase);
+          root.updateMatrixWorld(true);
+          const point = new Vector3();
+          const posed = new Float32BufferAttribute(new Float32Array(position.count * 3), 3);
+          for (let i = 0; i < position.count; i++) {
+            body.getVertexPosition(i, point).applyMatrix4(body.matrixWorld);
+            posed.setXYZ(i, point.x, point.y, point.z);
+          }
+          const torso = new BufferGeometry().setAttribute('position', posed).setIndex(torsoFaces);
+          try {
+            const surface = new MeshBVH(torso), triangles = torso.index;
+            const a = new Vector3(), b = new Vector3(), c = new Vector3(), normal = new Vector3();
+            const hit = { point: new Vector3(), distance: 0, faceIndex: 0 };
+            for (const part of children) {
+              const positions = part.geometry.attributes.position;
+              const posedCloth = new Float32BufferAttribute(new Float32Array(positions.count * 3), 3);
+              for (let i = 0; i < positions.count; i++) {
+                if (positions.getY(i) < .970) continue;
+                part.getVertexPosition(i, point).applyMatrix4(part.matrixWorld);
+                posedCloth.setXYZ(i, point.x, point.y, point.z);
+                surface.closestPointToPoint(point, hit);
+                const offset = hit.faceIndex * 3;
+                a.fromBufferAttribute(posed, triangles.getX(offset));
+                b.fromBufferAttribute(posed, triangles.getX(offset + 1));
+                c.fromBufferAttribute(posed, triangles.getX(offset + 2));
+                normal.copy(b).sub(a).cross(c.sub(a)).normalize();
+                assert(point.sub(hit.point).dot(normal) > 0, `${item.id} keeps ${part.material.name} above the skin in ${emote}`);
+              }
+              const faces = [];
+              const index = part.geometry.index;
+              for (let i = 0; i < index.count; i += 3) {
+                const triangle = [index.getX(i), index.getX(i + 1), index.getX(i + 2)];
+                if (triangle.every(vertex => positions.getY(vertex) >= .970)) faces.push(...triangle);
+              }
+              if (!faces.length) continue;
+              const cloth = new BufferGeometry().setAttribute('position', posedCloth).setIndex(faces);
+              try {
+                const intersects = surface.bvhcast(new MeshBVH(cloth), identity, {
+                  intersectsTriangles: (skin, fabric) => skin.intersectsTriangle(fabric),
+                });
+                assert(!intersects, `${item.id} waistband faces clear the torso in ${emote}`);
+              } finally {
+                cloth.dispose();
+              }
+            }
+          } finally {
+            torso.dispose();
+            mixer.stopAllAction();
+          }
+        }
+      } finally {
+        model.dispose();
       }
     }
   } finally {
