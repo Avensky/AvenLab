@@ -25,6 +25,43 @@ function shoulderEyeletTriangles(geometry, authoredPositions) {
  }
  return lanes;
 }
+function triangleKeys(index) {
+ const triangles=[];
+ for(let i=0;i<index.count;i+=3)triangles.push(`${index.getX(i)},${index.getX(i+1)},${index.getX(i+2)}`);
+ return triangles;
+}
+function verifyWiderVestShell(source, target, splitLining) {
+ const original=source.geometry.attributes.position, fitted=target.geometry.attributes.position;
+ assert.equal(fitted.count,original.count,'Underbust keeps its authored vertex layout');
+ if(source.material.name==='MAT_CORSET_04_00.001'){
+  assert(splitLining?.isSkinnedMesh,'Underbust keeps the lining in its own color slot');
+  assert.deepEqual([...triangleKeys(target.geometry.index),...triangleKeys(splitLining.geometry.index)].sort(),
+   triangleKeys(source.geometry.index).sort(),'Underbust keeps every authored piping and lining triangle');
+ }else{
+  assert.deepEqual(Array.from(target.geometry.index.array),Array.from(source.geometry.index.array),
+   'Underbust keeps the original fabric, placket, and hardware cuts');
+ }
+ const ease=[0,0];
+ for(let i=0;i<original.count;i++){
+  const x=original.getX(i), y=original.getY(i), z=original.getZ(i);
+  assert(Math.hypot(fitted.getX(i)-x,fitted.getY(i)-y,fitted.getZ(i)-z)<.037,
+   'Underbust clearance remains a close fit over the blouse');
+  const weights=target.geometry.attributes.skinWeight;
+  assert(Math.abs(weights.getX(i)+weights.getY(i)+weights.getZ(i)+weights.getW(i)-1)<1e-4,
+   'Underbust vest weights remain normalized');
+  if(y<=1.30||Math.abs(x)<=.045)for(const attr of ['skinIndex','skinWeight']){
+   const before=source.geometry.attributes[attr], after=target.geometry.attributes[attr];
+   for(let c=0;c<before.itemSize;c++)assert.equal(after.getComponent(i,c),before.getComponent(i,c),
+    'Underbust weight edits stay at the upper straps and back');
+  }
+  if(y>1.14&&y<1.30&&Math.abs(x)>.075){
+   const side=x<0?0:1;
+   ease[side]=Math.max(ease[side],Math.abs(fitted.getX(i))-Math.abs(x));
+  }
+ }
+ if(source.material.name==='MAT_CORSET_04_05.001')assert(ease.every(width=>width>.007),
+  'Underbust fabric has room on both sides for the blouse');
+}
 const rows=[];
 try{
  const {prepareVillager,applyVillagerLook}=await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
@@ -57,10 +94,31 @@ try{
   const bytes=Buffer.concat([header,padded,bin]);const {scene}=await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
   const model=prepareVillager(scene,{female:true,fitted:true});const counts=[];
   const facing=model.root.getObjectByName('CLOTH_CORSET_FACING');
+  const blouse=model.root.getObjectByName('CLOTH_UNDERBUST_BLOUSE');
+  const blouseBinding=model.root.getObjectByName('CLOTH_UNDERBUST_BLOUSE_BINDING');
+  const blouseColors=blouse&&blouseBinding&&[blouse.material.color.getHexString(),blouseBinding.material.color.getHexString()];
   const shorts=model.root.getObjectByName('CLOTH_UNDER_MODESTY_SHORTS');
   const shoes=model.root.getObjectByName('CLOTH_FEET_SHOES');
   model.root.traverse(part=>assert(!['shirt-under','shirt-over-tucked','shirt-over-over'].includes(part.userData.wardrobeRole),'legacy shirts are removed by role'));
-  assert(facing?.isSkinnedMesh,'fitted corset coverage uses the body rig');
+  if(n===4){
+   const body=model.root.getObjectByName('BODY_WARDROBE');
+   assert.equal(facing,undefined,'the Underbust neckline stays open above the authored bodice');
+   for(const layer of [blouse,blouseBinding]){
+    assert(layer?.isSkinnedMesh&&layer.geometry.index.count>0,'Underbust has a dedicated rigged blouse');
+    assert.equal(layer.skeleton,body.skeleton,'the blouse and torso share their pose');
+    assert.equal(layer.userData.wardrobeRole,'underbust-shirt');
+    assert.equal(layer.userData.clothingPiece,'shirt');
+    assert.equal(layer.material.transparent,false,'the blouse stays opaque');
+    assert.equal(layer.material.opacity,1,'the blouse stays opaque');
+    assert.equal(layer.material.alphaTest,0,'the blouse has no transparency cutouts');
+    const weights=layer.geometry.attributes.skinWeight;
+    for(let i=0;i<weights.count;i++)assert(Math.abs(weights.getX(i)+weights.getY(i)+weights.getZ(i)+weights.getW(i)-1)<1e-4);
+   }
+   assert(blouse.material.color.r>.35,'the Underbust defaults to a light blouse');
+  }else{
+   assert(facing?.isSkinnedMesh,'fitted corset coverage uses the body rig');
+   assert(!blouse&&!blouseBinding,'only the Underbust has a separate blouse');
+  }
   if(n===2){
    const skirt=model.root.getObjectByName('CLOTH_BOTTOM_SKIRT');
    const materials=[];
@@ -90,6 +148,7 @@ try{
   for(const name of ['CLOTH_CORSET_TUCKED','CLOTH_CORSET_OVER']){
    const tuckRefit=(n===2||n===3)&&name==='CLOTH_CORSET_TUCKED';
    const authored=scene.getObjectByName(name), fitted=model.root.getObjectByName(name);
+   if(n===4)assert.equal(authored.userData.source,'z-h_Medieval Corset 04-THIN WELD.fbx');
    authored.traverse(source=>{
     if(!source.isSkinnedMesh)return;
     const target=fitted.getObjectByName(source.name);
@@ -98,9 +157,11 @@ try{
     const sweetheartOver=n===2&&!tuckRefit;
     for(const attribute of ['position','normal','uv','skinIndex','skinWeight']){
      if((tuckRefit||cupRefit||sweetheartOver)&&attribute==='position')continue;
+     if(n===4&&attribute!=='uv')continue;
      if(n===5&&['position','skinIndex','skinWeight'].includes(attribute))continue;
      assert.deepEqual(target.geometry.getAttribute(attribute)?.array,source.geometry.getAttribute(attribute)?.array,`${set} ${lod} ${source.name} ${attribute} stays authored`);
     }
+    if(n===4)verifyWiderVestShell(source,target,fitted.getObjectByName(`CLOTH_CORSET_04_LINING_${name.split('_').at(-1)}`));
     if(n===5){
      assert(target.geometry.index.count<=source.geometry.index.count,'High Collar keeps the authored lower shell triangles');
      collarRemovedIndices+=source.geometry.index.count-target.geometry.index.count;
@@ -208,16 +269,26 @@ try{
     if(part.isMesh)assert.equal(part.material.color.getHexString(),'335577','pink trim cannot color the Sweetheart waist seam');
    });
   }
-  const dyed=withClothingColors({...DEFAULT_CHARACTER,wardrobe:{set,shirt:'none',waist:'tucked'}},'corset',{color:'#ff0066',accent:'#ff0066'});
-  applyVillagerLook(model,assetLook(dyed));
+  const tuckedChoice={set,shirt:'none',waist:'tucked'};
+  const dyeChoice=n===4?{...DEFAULT_CHARACTER,wardrobeTrial:tuckedChoice}:{...DEFAULT_CHARACTER,wardrobe:tuckedChoice};
+  const dyed=withClothingColors(dyeChoice,'corset',{color:'#ff0066',accent:'#ff0066'});
+  const colored=n===4?withClothingColors(dyed,'shirt',{color:'#dde6ea',accent:'#41576a'}):dyed;
+  applyVillagerLook(model,n===4?characterLook(colored):assetLook(colored));
   let dyedMeshes=0;model.root.traverse(o=>{if(o.isMesh&&o.userData.clothingPiece==='corset'){for(const m of(Array.isArray(o.material)?o.material:[o.material]))assert.equal(m.color.getHexString(),'ff0066');dyedMeshes++;}});assert(dyedMeshes>2,'multi-material corsets all receive the piece dye');
+  if(n===4){
+   assert.equal(blouse.material.color.getHexString(),'dde6ea','the blouse keeps its own fabric dye');
+   assert.equal(blouseBinding.material.color.getHexString(),'41576a','the blouse keeps its own binding dye');
+  }
   for(const node of doc.getRoot().listNodes().filter(n=>String(n.getExtras().wardrobeRole).startsWith('corset')&&n.getExtras().fit_version===5))for(const p of node.getMesh().listPrimitives()){
    const joints=p.getAttribute('JOINTS_0').getArray(),weights=p.getAttribute('WEIGHTS_0').getArray();
    for(let i=0;i<joints.length;i++)if(weights[i]>1e-5)assert(joints[i]<=5,'v5 corset straps never follow arm or twist joints');
   }
 
   for(const waist of ['tucked','over']){
-   const look=assetLook({...DEFAULT_CHARACTER,appearance,wardrobe:{set,shirt:'none',waist}});applyVillagerLook(model,look);
+   const fitChoice={set,shirt:'none',waist};
+   const look=n===4?characterLook({...DEFAULT_CHARACTER,appearance,wardrobeTrial:fitChoice})
+    :assetLook({...DEFAULT_CHARACTER,appearance,wardrobe:fitChoice});
+   applyVillagerLook(model,look);
    assert.equal(shorts.visible,false,'complete Gothic outfits hide the standalone shorts');
    if(facing)assert(facing.visible);
    if(n===2)for(const fit of ['tucked','over'])assert.equal(model.root.getObjectByName(`CLOTH_GOTHIC_02_WAIST_SEAM_${fit.toUpperCase()}`).visible,fit===waist);
@@ -230,6 +301,9 @@ try{
     assert.equal(seam.material.color.getHexString(),gothicPink.color.slice(1),'the Ruffled waist seam takes the main dye');
    }
    if(n===4){
+    assert(blouse.visible&&blouseBinding.visible,'both Underbust waist fits keep the opaque shirt on');
+    assert.deepEqual([blouse.material.color.getHexString(),blouseBinding.material.color.getHexString()],blouseColors,
+     'outfit colors leave the blouse fabric and binding palette intact');
     const fit=waist.toUpperCase(),vest=model.root.getObjectByName(`CLOTH_CORSET_${fit}`);
     const lining=vest.getObjectByName(`CLOTH_CORSET_04_LINING_${fit}`);
     assert(lining?.isSkinnedMesh&&lining.geometry.index.count>0,'the Underbust lining has its own draw');

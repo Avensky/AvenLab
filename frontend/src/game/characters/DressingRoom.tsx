@@ -2,7 +2,7 @@ import { FitBadge, FitReview } from "./FitReview";
 import { useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { CHARACTER_APPEARANCE_OPTIONS, ROOK_ID, VILLAGER_ID, characterLook, type CharacterChoice, type CharacterStyleField } from "./characterCatalog";
 import { focusClothingPiece, useCharacterPreviewStore } from "./characterPreviewStore";
-import { WARDROBE_SETS, resolveWardrobe, type WardrobeChoice } from "./wardrobe";
+import { UNDERBUST_WARDROBE_SET, WARDROBE_SETS, resolveWardrobe, withWardrobeWaist, type WardrobeChoice } from "./wardrobe";
 import { ClothingColorToolbar } from "./ClothingColorToolbar";
 import { clothingPieceLabel, wornClothing, type ClothingPiece } from "./clothingPieces";
 import { importedWardrobeItems, setWardrobeGarment, type WardrobeGarmentSlot } from "./wardrobeGarments";
@@ -136,7 +136,15 @@ export function DressingRoom({ choice, onChange, onTryOn, cameraTools }: {
     return wardrobe?.set === set && !garments ? wardrobe.waist : FITTED_PRESETS[set]?.waist ?? "tucked";
   }
   function wearSet(set: string) {
-    onChange({ ...choice, wardrobe: resolveWardrobe({ set, shirt: "none", waist: waistForSet(set) }), garments: undefined });
+    onChange({ ...choice, wardrobe: resolveWardrobe({ set, shirt: "none", waist: waistForSet(set) }), garments: undefined, wardrobeTrial: undefined });
+  }
+  function tryUnderbust() {
+    const compatible = { ...garments };
+    delete compatible.top;
+    delete compatible.dress;
+    const waist = wardrobe?.set === UNDERBUST_WARDROBE_SET ? wardrobe.waist : "over";
+    onTryOn({ ...choice, wardrobeTrial: { set: UNDERBUST_WARDROBE_SET, shirt: "none", waist },
+      garments: Object.keys(compatible).length ? compatible : undefined });
   }
   function options(field: CharacterStyleField, section: string, icon: Icon): Item[] {
     return CHARACTER_APPEARANCE_OPTIONS[field].map(option => ({
@@ -167,7 +175,7 @@ export function DressingRoom({ choice, onChange, onTryOn, cameraTools }: {
       ...character.outfits.map(item => ({ id: item.id, label: item.name, section: "Complete outfits", icon: "outfits" as const,
         description: OUTFIT_DESCRIPTIONS[item.id] ?? "A complete outfit for this character.", pieces: "outfit" as const,
         selected: !wardrobe && !garments && outfit.id === item.id, color: item.jacket, accent: item.trim,
-        choose: () => onChange({ ...choice, outfit: item.id, wardrobe: undefined, garments: undefined }) })),
+        choose: () => onChange({ ...choice, outfit: item.id, wardrobe: undefined, garments: undefined, wardrobeTrial: undefined }) })),
       ...fittedSets,
     ],
     tops: [],
@@ -190,6 +198,18 @@ export function DressingRoom({ choice, onChange, onTryOn, cameraTools }: {
     face: [...options("eye_color", "Eye color", "face"), ...options("brow_color", "Eyebrow tint", "face")],
     skin: options("skin", "Skin tone", "skin"),
   };
+  if (female) {
+    const installed = __WARDROBE_SET_IDS__.includes(UNDERBUST_WARDROBE_SET);
+    const selected = wardrobe?.set === UNDERBUST_WARDROBE_SET;
+    allItems.tops.push({
+      id: UNDERBUST_WARDROBE_SET, set: UNDERBUST_WARDROBE_SET, label: "Underbust Vest + Blouse", section: "Fit trials", icon: "tops",
+      trial: true, selected, detail: "Try-on", focus: "corset", pieces: ["corset", "shirt", "skirt"],
+      unavailable: installed ? undefined : "Pack not installed",
+      description: "A roomier Underbust Vest over a fitted blouse. Both waist fits include the blouse, with separate colors for each layer.",
+      choose: installed ? tryUnderbust : undefined,
+      remove: selected ? () => onTryOn({ ...choice, wardrobeTrial: undefined }) : undefined,
+    });
+  }
   if (female) for (const item of importedWardrobeItems) {
     const category = CATEGORIES.find(category => category.id === item.category);
     if (!category) continue;
@@ -272,7 +292,9 @@ export function DressingRoom({ choice, onChange, onTryOn, cameraTools }: {
               </span>
               <span className="dressing-item-copy">
                 <span className="dressing-item-name">{item.label}</span>
-                {item.set && !item.unavailable && <FitBadge choice={{ ...choice, wardrobe: resolveWardrobe({ set: item.set, shirt: "none", waist: waistForSet(item.set) }), garments: undefined }} piece="corset" />}
+                {item.set && !item.unavailable && (!item.trial || item.selected) && <FitBadge choice={item.trial ? choice : {
+                  ...choice, wardrobe: resolveWardrobe({ set: item.set, shirt: "none", waist: waistForSet(item.set) }), garments: undefined, wardrobeTrial: undefined,
+                }} piece="corset" />}
                 <small>{item.unavailable ?? (item.selected ? (item.trial ? "Trying on" : "Wearing") : item.detail ?? "Ready to wear")}</small>
               </span>
             </button>)}
@@ -295,10 +317,11 @@ export function DressingRoom({ choice, onChange, onTryOn, cameraTools }: {
           }}>Remove {inspected.label}</button>
         </div>}
         {itemPieces.length > 0 && controls(itemPieces.length > 1 ? "Outfit pieces" : "Piece", itemPieces.map(item => <button key={item} type="button" className="menu-control"
-          data-dressing-piece={item} aria-pressed={camera === "Selected item" && piece === item} onClick={() => focusClothingPiece(item)}>{clothingPieceLabel(item)}</button>), 2)}
+          data-dressing-piece={item} aria-pressed={camera === "Selected item" && piece === item} onClick={() => focusClothingPiece(item)}>
+          {inspected.set === UNDERBUST_WARDROBE_SET && item === "shirt" ? "Blouse" : clothingPieceLabel(item)}</button>), 2)}
         {wardrobe && inspected.set === wardrobe.set && !inspected.unavailable &&
           controls("Waist layering", (["tucked", "over"] as const).map(waist => <button key={waist} type="button" className="menu-control" aria-pressed={wardrobe.waist === waist}
-            onClick={() => { onChange({ ...choice, wardrobe: { ...wardrobe, waist } }); focusClothingPiece("skirt"); }}>{waist === "tucked" ? "Tucked into skirt" : "Over skirt"}</button>))}
+            onClick={() => { onChange(withWardrobeWaist(choice, waist)); focusClothingPiece("skirt"); }}>{waist === "tucked" ? "Tucked into skirt" : "Over skirt"}</button>))}
         {itemPieces.length > 0 && <FitReview choice={choice} piece={itemPieces.includes(piece) ? piece : itemPieces[0]} />}
       </>}
     </aside>

@@ -42,5 +42,6 @@ export function setWardrobeGarment(choice: CharacterChoice, slot: WardrobeGarmen
       delete garments.skirt;
     } else if (slot === "top" || slot === "skirt") delete garments.dress;
   } else delete garments[slot];
-  return { ...choice, garments: Object.keys(garments).length ? garments : undefined };
+  const replacesBodice = id && (slot === "top" || slot === "dress");
+  return { ...choice, garments: Object.keys(garments).length ? garments : undefined, wardrobeTrial: replacesBodice ? undefined : choice.wardrobeTrial };
 }

@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { CHARACTER_APPEARANCE_OPTIONS, OUTFIT_THEMES, characterLook, type CharacterChoice } from "./characterCatalog";
 import { clothingColors, clothingPieceLabel, withClothingColors, type ClothingPiece, type PieceColors } from "./clothingPieces";
+import { UNDERBUST_SHIRT_COLORS, UNDERBUST_WARDROBE_SET } from "./wardrobe";
 import "./clothingColorToolbar.css";
 
 const colorPresets = CHARACTER_APPEARANCE_OPTIONS.color.map(({ id, label, color }) => ({ label: id === "original" ? "White" : label, color }));
@@ -21,8 +22,9 @@ export function ClothingColorToolbar({ choice, piece, onChange }: {
   const focusPalette = useRef(false);
   const look = characterLook(choice)!;
   const colors = clothingColors(look, piece);
-  const fabric = colors?.color ?? look.fabric;
-  const trim = colors?.accent ?? colors?.color ?? look.trim;
+  const blouse = piece === "shirt" && look.wardrobe?.set === UNDERBUST_WARDROBE_SET ? UNDERBUST_SHIRT_COLORS : undefined;
+  const fabric = colors?.color ?? blouse?.color ?? look.fabric;
+  const trim = colors?.accent ?? colors?.color ?? blouse?.accent ?? look.trim;
   const pieceName = clothingPieceLabel(piece);
   const dye = (value?: PieceColors) => onChange(withClothingColors(choice, piece, value));
   const bars = [

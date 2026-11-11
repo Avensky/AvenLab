@@ -1,7 +1,7 @@
 import type { CharacterChoice } from "./characterCatalog";
 import { useSocialStore } from "../../store/social/socialStore";
 import { FIT_CHECKS, fitReviewKey, fitReviewStatus, useFitReviewStore } from "./fitReviewStore";
-import { resolveWardrobe } from "./wardrobe";
+import { resolveCharacterWardrobe, withWardrobeWaist } from "./wardrobe";
 export function FitBadge({ choice, piece = "outfit", pose }: { choice: CharacterChoice; piece?: string; pose?: string }) {
  const owner = useSocialStore(s => s.view?.profile.id), key = fitReviewKey(owner, choice, piece, pose);
  const status = useFitReviewStore(s => fitReviewStatus(s.reviews[key]));
@@ -10,8 +10,8 @@ export function FitBadge({ choice, piece = "outfit", pose }: { choice: Character
 export function FitReview({ choice, piece = "outfit", pose = "standing", poseLabel = pose }: { choice: CharacterChoice; piece?: string; pose?: string; poseLabel?: string }) {
  const owner = useSocialStore(s => s.view?.profile.id), key = fitReviewKey(owner, choice, piece, pose);
  const { reviews, check, note, reset } = useFitReviewStore(), review = reviews[key];
- const w = resolveWardrobe(choice.wardrobe);
- const combinations = w ? (["tucked", "over"] as const).map(waist => fitReviewKey(owner, { ...choice, wardrobe: { ...w, waist } }, piece, pose)) : [key];
+ const w = resolveCharacterWardrobe(choice);
+ const combinations = w ? (["tucked", "over"] as const).map(waist => fitReviewKey(owner, withWardrobeWaist(choice, waist), piece, pose)) : [key];
  const count = combinations.filter(key => fitReviewStatus(reviews[key]) === "passed").length;
  return <section className="fit-review" aria-label="In-game fit checks">
   <h3>Fit checks <FitBadge choice={choice} piece={piece} pose={pose} /></h3>

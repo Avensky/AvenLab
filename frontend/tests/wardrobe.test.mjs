@@ -3,23 +3,29 @@ import assert from 'node:assert/strict';
 import { createServer } from 'vite';
 import { BufferGeometry, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial } from 'three';
 
-test('retired wardrobe presets fall back to the base model while remaining available for archival validation', async () => {
+test('saved Underbust presets fall back and the fitted vest can load as a trial', async () => {
  const vite=await createServer({define:{__WARDROBE_SET_IDS__:JSON.stringify(['gothic-04','gothic-05'])},server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});
  try {
   const {resolveWardrobe,wardrobeModelUrl}=await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
   const {DEFAULT_CHARACTER,characterLook}=await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
   const {villagerModelUrl}=await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
+  const {wornClothing}=await vite.ssrLoadModule('/src/game/characters/clothingPieces.ts');
   const archived={set:'gothic-04',shirt:'under',waist:'over'};
   assert.equal(resolveWardrobe(archived),undefined);
   assert.deepEqual(resolveWardrobe(archived,{includeRetired:true}),{set:'gothic-04',shirt:'none',waist:'over'});
   const saved={...DEFAULT_CHARACTER,wardrobe:archived};
   const look=characterLook(saved);
   const stock=characterLook(DEFAULT_CHARACTER);
+  const trial={...saved,wardrobeTrial:archived};
+  const trialLook=characterLook(trial);
   assert.equal(look.wardrobe,undefined);
   for(const view of ['garage','portrait']){
    assert.equal(wardrobeModelUrl(archived,view),null);
    assert.equal(villagerModelUrl(look,view),villagerModelUrl(stock,view));
+   assert.match(villagerModelUrl(trialLook,view),/gothic-04\.(garage|mobile)\.glb$/);
   }
+  assert(wornClothing(trial).includes('shirt'));
+  assert(!wornClothing(saved).includes('shirt'));
   assert.deepEqual(saved.wardrobe,{set:'gothic-04',shirt:'under',waist:'over'},'loading a retired preset preserves the saved selection');
  }finally{await vite.close();}
 });
@@ -73,7 +79,7 @@ test('wardrobe coverage stays on, mask buffers are isolated, and layer changes r
  }finally{await vite.close();}
 });
 
-test('Dressing room saves corset waist fits without separate shirts on the current character', async () => {
+test('Dressing room previews the layered vest and saves approved corset waist fits', async () => {
  const {JSDOM}=await import('jsdom');const {act,createElement:h}=await import('react');const {createRoot}=await import('react-dom/client');
  const dom=new JSDOM('<div id="root"></div>',{url:'http://localhost/',pretendToBeVisual:true}),original=new Map();let root,vite;
  const globals={window:dom.window,document:dom.window.document,navigator:dom.window.navigator,HTMLElement:dom.window.HTMLElement,Event:dom.window.Event,localStorage:dom.window.localStorage,IS_REACT_ACT_ENVIRONMENT:true};
@@ -89,7 +95,9 @@ test('Dressing room saves corset waist fits without separate shirts on the curre
   const character={...DEFAULT_CHARACTER,prop:'shop-bag',identity:'nonbinary',wardrobe:{set:'gothic-04',shirt:'under',waist:'tucked'}};
   social.setState({view:{profile:{id:'wardrobe-test',name:'Driver',progression:{character}}}});
   const beforeClose={current:null};root=createRoot(document.getElementById('root'));
-  await act(async()=>root.render(h(CharacterPage,{tab:'appearance',beforeClose,onReady:()=>{},onPreview:c=>previews.push(c)})));
+  const pageProps={beforeClose,onReady:()=>{},onPreview:c=>previews.push(c)};
+  const showTab=tab=>act(async()=>root.render(h(CharacterPage,{...pageProps,tab})));
+  await showTab('appearance');
   const click=async(selector)=>act(async()=>{const button=document.querySelector(selector);assert(button,selector);button.click();});
   const layer=async(label)=>act(async()=>{const button=[...document.querySelectorAll('.dressing-layer-options button')].find(e=>e.textContent===label);assert(button,label);button.click();});
   await click('[data-category=outfits]');
@@ -97,6 +105,25 @@ test('Dressing room saves corset waist fits without separate shirts on the curre
   assert.equal(document.querySelector('[data-wardrobe-item="gothic-04"]'),null);
   assert.deepEqual(previews.at(-1).wardrobe,character.wardrobe,'opening the editor preserves the retired preset');
   assert.equal(requests.length,0,'browsing categories does not save');
+  await click('[data-wardrobe-back]');
+  await click('[data-category=tops]');
+  await click('[aria-label="Fit trials"] [data-wardrobe-item="gothic-04"]');
+  assert.deepEqual(previews.at(-1).wardrobeTrial,{set:'gothic-04',shirt:'none',waist:'over'});
+  assert.equal(document.querySelector('[data-dressing-piece="shirt"]').textContent.trim(),'Blouse');
+  await layer('Tucked into skirt');
+  assert.equal(previews.at(-1).wardrobeTrial.waist,'tucked');
+  assert.deepEqual(previews.at(-1).wardrobe,character.wardrobe);
+  await showTab('emotes');
+  assert.equal(previews.at(-1).wardrobeTrial.set,'gothic-04','the try-on carries into Emotes');
+  assert(await beforeClose.current());
+  assert.equal(requests.length,0,'trying the layered vest does not send a profile save');
+  await showTab('appearance');
+  await click('[data-category=tops]');
+  await click('[data-wardrobe-item="gothic-04"]');
+  await click('[data-remove-try-on]');
+  assert.equal(previews.at(-1).wardrobeTrial,undefined);
+  await click('[data-wardrobe-back]');
+  await click('[data-category=outfits]');
   await click('[data-wardrobe-item=gothic-03]');
   assert.deepEqual(previews.at(-1).wardrobe,{set:'gothic-03',shirt:'none',waist:'over'},'Ruffled equips the reviewed over-skirt fit by default');
   await layer('Tucked into skirt');
@@ -113,6 +140,7 @@ test('Dressing room saves corset waist fits without separate shirts on the curre
   let pending;
   await act(async()=>{pending=beforeClose.current();});
   assert.equal(requests.length,1);assert.equal(requests[0].character.wardrobe.set,'gothic-05');
+  assert.equal(requests[0].character.wardrobeTrial,undefined);
   await act(async()=>{client.receiveSocialResult({request_id:requests[0].request_id,ok:true,data:{character:requests[0].character}});await pending;});
   assert.deepEqual(social.getState().view.profile.progression.character.wardrobe,{set:'gothic-05',shirt:'none',waist:'tucked'});
  }finally{

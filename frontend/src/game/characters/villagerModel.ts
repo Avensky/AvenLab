@@ -8,7 +8,7 @@ import { addVillagerFaceShapes, prepareVillagerFaceColors } from "./villagerFace
 import { prepareVillagerFaceAccessories } from "./villagerFaceAccessories";
 import { cockpitWardrobe } from "./cockpitWardrobe";
 import { clothingColors, clothingPieceFor, type ClothingPiece } from "./clothingPieces";
-import { prepareWardrobe, wardrobeModelUrl } from "./wardrobe";
+import { prepareWardrobe, UNDERBUST_WARDROBE_SET, wardrobeModelUrl } from "./wardrobe";
 import { prepareWardrobeLining } from "./wardrobeLining";
 import { prepareWardrobeSkirt } from "./wardrobeSkirt";
 import { prepareVillageShoes } from "./wardrobeShoes";
@@ -17,7 +17,7 @@ import { prepareWardrobeGarments, type WardrobeGarmentSource } from "./wardrobeG
 export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait" = "garage") {
   if (look.character.id === ROOK_ID) return kind === "portrait" ? __ROOK_PORTRAIT_URL__ : __ROOK_MODEL_URL__;
   if (look.character.id !== VILLAGER_ID) return null;
-  const wardrobeUrl = wardrobeModelUrl(look.wardrobe, kind);
+  const wardrobeUrl = wardrobeModelUrl(look.wardrobe, kind, { includeRetired: look.wardrobe?.set === UNDERBUST_WARDROBE_SET });
   if (wardrobeUrl) return wardrobeUrl;
   return kind === "portrait" ? __VILLAGER_PORTRAIT_URL__ : __VILLAGER_MODEL_URL__;
 }
@@ -138,8 +138,10 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
   for (const [source, material] of [...model.materials, ...[...model.pieceMaterials.values()].flatMap(palette => [...palette])]) {
     material.color.copy(source.color);
     const slot = source.userData.color_slot;
-    if (slot === "fabric" && look.appearance.color !== "original") material.color.set(look.fabric);
-    if (slot === "accent" && look.appearance.accent) material.color.set(look.trim);
+    if (source.userData.dye_with_outfit !== false) {
+      if (slot === "fabric" && look.appearance.color !== "original") material.color.set(look.fabric);
+      if (slot === "accent" && look.appearance.accent) material.color.set(look.trim);
+    }
     switch (material.name) {
       case "MAT_ClothUpper":
       case "MAT_ClothLower":

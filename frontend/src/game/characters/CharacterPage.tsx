@@ -148,11 +148,11 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
   }
 
   function tryOn(next: CharacterChoice) {
-    setTrial(next.garments ? next : undefined);
+    setTrial(next.garments || next.wardrobeTrial ? next : undefined);
   }
 
   function editPreviewAppearance(next: CharacterChoice) {
-    if (next.garments) tryOn(next);
+    if (next.garments || next.wardrobeTrial) tryOn(next);
     else update(activeTrial ? { ...choice, outfit: next.outfit, wardrobe: next.wardrobe } : next);
   }
 

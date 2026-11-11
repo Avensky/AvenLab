@@ -19,9 +19,17 @@ const zones = {
     && p.z < -.025 && n.z < -.16,
   rearStraps: (p, n) => p.z < -.04 && Math.abs(p.x) > .095 && Math.abs(p.x) < .132 && p.y > 1.345 && p.y < 1.398 && n.z < -.3,
   leftRearStrap: (p, n) => p.x > .099 && p.x < .117 && p.y > 1.352 && p.y < 1.382 && p.z < -.068 && n.z < -.35,
+  blouseChest: (p, n) => p.z > .042 && Math.abs(p.x) < .081 && p.y > 1.311 && p.y < 1.357 && n.z > .4,
+  blouseBack: (p, n) => p.z < -.043 && Math.abs(p.x) < .083 && p.y > 1.255 && p.y < 1.365 && n.z < -.4,
+  vestFrontOverlap: (p, n) => p.z > .066 && Math.abs(p.x) < .092 && p.y > 1.166 && p.y < 1.192 && n.z > .5,
+  vestBackOverlap: (p, n) => p.z < -.040 && Math.abs(p.x) < .092 && p.y > 1.166 && p.y < 1.192 && n.z < -.5,
+  vestSideOverlap: (p, n) => Math.abs(p.x) > .111 && Math.abs(p.x) < .165 && Math.abs(n.x) > .65
+    && p.y > 1.166 && p.y < 1.206 && p.z > -.032 && p.z < .055,
 };
 
 const highCollarShoulderZones = ['collarCrest', 'rearShoulderPanels'];
+const vestOverlapZones = ['vestFrontOverlap', 'vestBackOverlap', 'vestSideOverlap'];
+const blouseZones = ['bust', 'bustTips', 'blouseChest', 'blouseBack', ...vestOverlapZones];
 const shoulderViews = [
   [0, 0, 1], [0, 0, -1], [0, 1, 0],
   [.65, .45, .58], [.65, .45, -.58], [.65, .75, 0], [.85, .2, -.42],
@@ -63,6 +71,19 @@ function surfaceFromVertices(points, indices) {
 
 function posedSurface(mesh) {
   return surfaceFromVertices(posedVertices(mesh), visibleIndices(mesh));
+}
+
+function firstHit(ray, surfaces) {
+  return Math.min(...surfaces.map(surface => surface.raycastFirst(ray, DoubleSide)?.distance ?? Infinity));
+}
+
+function verifyBlouseLayer(label, ray, blouse, vest, checkVest, originOffset) {
+  const shirtDistance = firstHit(ray, blouse);
+  assert(shirtDistance < originOffset - .001, `${label} leaves body skin exposed through the blouse`);
+  if (checkVest) {
+    const vestDistance = firstHit(ray, vest);
+    assert(vestDistance < shirtDistance - .001, `${label} needs space between the vest and blouse`);
+  }
 }
 
 function verifyRaisedShoulder(label, ray, center, direction, skin, corsets) {
@@ -112,7 +133,6 @@ function tuckSamples(bindBody, triangle, center) {
 }
 
 function verifyTuckPose(label, samples, points, triangle, center, normal, ray, skirts, corsets) {
-  const firstHit = (surfaces) => Math.min(...surfaces.map(surface => surface.raycastFirst(ray, DoubleSide)?.distance ?? Infinity));
   for (const [zone, faces] of Object.entries(samples)) {
     assert(faces.length > 0, `${label} samples the tucked ${zone}`);
     for (const face of faces) {
@@ -120,7 +140,7 @@ function verifyTuckPose(label, samples, points, triangle, center, normal, ray, s
       if (Math.abs(normal.y) > .90) continue;
       ray.origin.copy(center).addScaledVector(normal, .08);
       ray.direction.copy(normal).negate();
-      const skirt = firstHit(skirts), corset = firstHit(corsets);
+      const skirt = firstHit(ray, skirts), corset = firstHit(ray, corsets);
       assert(Math.min(skirt, corset) < .0794, `${label} ${zone} sits outside the unmasked body`);
       if (zone === 'skirt' || (zone === 'hem' && skirt < .08 && corset < .08)) assert(skirt < corset, `${label} skirt covers the tucked hem`);
       if (zone === 'corset') assert(corset < skirt, `${label} shows the lower corset above the skirt`);
@@ -130,15 +150,17 @@ function verifyTuckPose(label, samples, points, triangle, center, normal, ray, s
 
 export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGaragePreviewEmote, bindBody, tucked) {
   const body = root.getObjectByName('BODY_WARDROBE');
-  const corset = [], skirt = [];
+  const corset = [], skirt = [], blouse = [];
   const verifyTuck = (style === 2 || style === 3) && tucked;
   root.traverse(mesh => {
     if (!mesh.isSkinnedMesh) return;
     const piece = mesh.userData.clothingPiece;
-    if (piece !== 'corset' && !(verifyTuck && piece === 'skirt')) return;
     for (let part = mesh; part; part = part.parent) if (!part.visible) return;
-    (piece === 'corset' ? corset : skirt).push(mesh);
+    if (piece === 'corset') corset.push(mesh);
+    if (verifyTuck && piece === 'skirt') skirt.push(mesh);
+    if (style === 4 && mesh.name === 'CLOTH_UNDERBUST_BLOUSE') blouse.push(mesh);
   });
+  if (style === 4) assert.equal(blouse.length, 1, `${label} has an independent visible blouse`);
   const a = new Vector3(), b = new Vector3(), c = new Vector3(), center = new Vector3(), normal = new Vector3();
   function triangle(points, [i, j, k]) {
     a.fromArray(points, i * 3); b.fromArray(points, j * 3); c.fromArray(points, k * 3);
@@ -148,8 +170,8 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
   root.updateMatrixWorld(true);
   const idle = posedVertices(body), indices = visibleIndices(body);
   const required = style === 5 ? ['bust', 'bustTips', 'back', 'shoulders', 'outerShoulders', 'rearStraps', ...highCollarShoulderZones]
-    : style === 4 ? ['bust'] : style === 3 ? [] : style === 2 ? ['chest', 'rightCup'] : ['chest', 'leftRearStrap'];
-  const unmaskedZones = ['bust', 'bustTips', 'outerShoulders', ...highCollarShoulderZones];
+    : style === 4 ? blouseZones : style === 3 ? [] : style === 2 ? ['chest', 'rightCup'] : ['chest', 'leftRearStrap'];
+  const unmaskedZones = ['outerShoulders', ...highCollarShoulderZones, ...blouseZones];
   const samples = Object.fromEntries(required.map(zone => [zone, []]));
   const edges = style === 2 && !tucked ? Object.entries(sweetheartEdges).map(([zone, { select, view }]) => ({ zone, select, view, faces: [] })) : [];
   const bindPoints = bindBody.getAttribute('position').array;
@@ -182,6 +204,7 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
   const mixer = new AnimationMixer(root), ray = new Ray(), direction = new Vector3();
   const poses = [['idle', 0], ['013', .45], ['008', .5], ['010', .5]];
   if (style !== 1) poses.push(['009', .5]);
+  if (style === 4) poses.push(['heart-overhead', .5]);
   if (style === 5) poses.push(['heart-overhead', .28], ['heart-overhead', .5], ['heart-overhead', .72]);
   for (const [pose, phase] of poses) {
     const emote = pose === 'idle' ? undefined : findGaragePreviewEmote(pose, false);
@@ -193,6 +216,7 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
     root.updateMatrixWorld(true);
     const points = posedVertices(body);
     const shapes = corset.map(posedSurface);
+    const blouseSurfaces = blouse.map(posedSurface);
     const highCollarSkin = style === 5 ? surfaceFromVertices(points, bindBody.index.array) : undefined;
     const raisedSkin = pose === 'heart-overhead' ? highCollarSkin : undefined;
     if (cupFabric) {
@@ -226,9 +250,16 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
           verifyRaisedShoulder(`${label} ${pose}`, ray, center, direction, raisedSkin, shapes);
           continue;
         }
-        ray.origin.copy(center).addScaledVector(normal, .1);
+        // Use a short ray at the waist sides so a sleeve crossing the camera
+        // line during the stretch does not count as the blouse at the waist.
+        const originOffset = zone === 'vestSideOverlap' ? .04 : .1;
+        ray.origin.copy(center).addScaledVector(normal, originOffset);
         ray.direction.copy(normal).negate();
-        const distance = Math.min(...shapes.map(surface => surface.raycastFirst(ray, DoubleSide)?.distance ?? Infinity));
+        if (style === 4) {
+          verifyBlouseLayer(`${label} ${pose} ${zone}`, ray, blouseSurfaces, shapes, vestOverlapZones.includes(zone), originOffset);
+          continue;
+        }
+        const distance = firstHit(ray, shapes);
         // At the dipped neckline some shoulder poses cast over the edge, through to the back.
         if (zone === 'rightCup' && distance > .145) continue;
         assert(distance < (zone === 'bustTips' ? .0975 : .100001), `${label} ${pose} leaves ${zone} exposed`);

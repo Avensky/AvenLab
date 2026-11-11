@@ -155,8 +155,9 @@ on the same character.
 
 Each set has a `garage.glb` and `mobile.glb` in
 `public/models/characters/wardrobe/`. Both must be installed before the set can be equipped. Portraits and compact garage/victory views use the mobile model. A
-missing or retired set falls back to the original clothed character model.
-The Underbust Vest asset files and saved preset ID are retained for reuse.
+missing or retired saved set falls back to the original clothed character model.
+The Underbust Vest uses its original Thin Weld mesh with extra room over a
+dedicated blouse in the fitting room.
 
 Garment nodes carry `wardrobeRole` extras. Fitted variants provide tucked and
 long hems. The runtime uses the first two `_AVEN_COVERAGE` bits in older GLBs
@@ -195,6 +196,10 @@ Outfits contains the complete village looks and three fitted Gothic sets.
 Sweetheart and Ruffled equip in Over skirt, and High Collar equips in Tucked.
 An outfit's details open close-ups for its individual pieces, with waist
 layering controls for the selected Gothic set.
+
+Tops → Fit trials includes Underbust Vest + Blouse. It starts in Over skirt
+and keeps the blouse on for both waist fits. The vest and blouse take separate
+colors. Try-ons carry into Emotes for the session.
 
 `dressingRoomImports.json` inventories 41 separate female garments under
 `frontend/public/models/characters/female/wardrobe/`. It includes 14 bows,

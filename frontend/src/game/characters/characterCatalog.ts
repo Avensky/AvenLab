@@ -2,7 +2,7 @@ import type { PieceColors } from "./clothingPieces";
 import type { AnimationFit, CharacterPersonality } from "./characterPersonality";
 import catalog from "../../../../avenlab-server/src/assets/characters.json";
 import appearanceOptions from "../../../../avenlab-server/src/assets/character-appearance.json";
-import { resolveWardrobe, type WardrobeChoice } from "./wardrobe";
+import { resolveCharacterWardrobe, type WardrobeChoice } from "./wardrobe";
 import type { WardrobeGarmentChoice } from "./wardrobeGarments";
 
 export const CHARACTERS = catalog.filter(item => item.id !== "niko-park");
@@ -27,6 +27,7 @@ export type CharacterChoice = {
   id: string; outfit: string; identity?: CharacterIdentity; appearance?: CharacterAppearance; prop?: "shop-bag"; wardrobe?: WardrobeChoice;
   /** Session-only fitting room selections. */
   garments?: WardrobeGarmentChoice;
+  wardrobeTrial?: WardrobeChoice;
 };
 
 export const VILLAGER_ID = "mara-vega";
@@ -55,7 +56,7 @@ export function characterLook(choice: CharacterChoice | null | undefined) {
   const female = character.id !== ROOK_ID;
   return {
     character, outfit, appearance, female,
-    wardrobe: character.id === VILLAGER_ID ? resolveWardrobe(choice?.wardrobe) : undefined,
+    wardrobe: character.id === VILLAGER_ID ? resolveCharacterWardrobe(choice) : undefined,
     garments: character.id === VILLAGER_ID ? choice?.garments : undefined,
     fabric: /^#[\da-f]{6}$/i.test(appearance.color) ? appearance.color : color("color") ?? outfit.jacket,
     trim: appearance.accent ?? outfit.trim,

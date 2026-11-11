@@ -1,7 +1,7 @@
 import { Box3, Mesh, type Object3D } from "three";
 import catalog from "../../../../avenlab-server/src/assets/character-clothing-pieces.json";
 import { characterAppearance, type CharacterChoice, type CharacterLook } from "./characterCatalog";
-import { resolveWardrobe } from "./wardrobe";
+import { resolveCharacterWardrobe, UNDERBUST_WARDROBE_SET } from "./wardrobe";
 import { getWardrobeGarment, wardrobeGarmentReplacements } from "./wardrobeGarments";
 
 export type ClothingPiece = "corset" | "shirt" | "skirt" | "sleeves" | "underskirt" | "shorts" | "shoes" | "hat" | "bow" | "belt" | "coat" | "pants" | "gloves" | "collar" | "pouches" | "glasses" | "bag" | "dress" | "socks" | "harness";
@@ -9,14 +9,17 @@ export type PieceColors = { color?: string; accent?: string };
 export const CLOTHING_PIECES = catalog as { id: ClothingPiece; label: string; center: number; span: number }[];
 export const clothingPieceLabel = (piece: ClothingPiece) => CLOTHING_PIECES.find(item => item.id === piece)!.label;
 
-export function clothingColorKey(choice: Pick<CharacterChoice, "outfit" | "wardrobe" | "appearance" | "garments">, piece: ClothingPiece) {
+export function clothingColorKey(choice: Pick<CharacterChoice, "outfit" | "wardrobe" | "wardrobeTrial" | "appearance" | "garments">, piece: ClothingPiece) {
   const garment = Object.values(choice.garments ?? {}).map(getWardrobeGarment).find(item => item?.piece === piece);
   const variant = garment?.id ?? (piece === "glasses" ? choice.appearance?.glasses ?? "none" : piece === "bag" ? "shop-bag"
-    : resolveWardrobe(choice.wardrobe)?.set ?? choice.outfit);
+    : resolveCharacterWardrobe(choice)?.set ?? choice.outfit);
   return `${variant}:${piece}`;
 }
 export function clothingColors(look: CharacterLook, piece: ClothingPiece) {
-  return look.appearance.item_colors?.[clothingColorKey({ outfit: look.outfit.id, wardrobe: look.wardrobe, appearance: look.appearance, garments: look.garments }, piece)];
+  return look.appearance.item_colors?.[clothingColorKey({
+    outfit: look.outfit.id, wardrobe: look.wardrobe, appearance: look.appearance, garments: look.garments,
+    wardrobeTrial: look.wardrobe?.set === UNDERBUST_WARDROBE_SET ? look.wardrobe : undefined,
+  }, piece)];
 }
 export function withClothingColors(choice: CharacterChoice, piece: ClothingPiece, colors?: PieceColors): CharacterChoice {
   const item_colors = { ...choice.appearance?.item_colors };
@@ -27,10 +30,12 @@ export function withClothingColors(choice: CharacterChoice, piece: ClothingPiece
 }
 export function wornClothing(choice: CharacterChoice): ClothingPiece[] {
   const female = choice.id === "mara-vega";
-  let pieces: ClothingPiece[] = female ? resolveWardrobe(choice.wardrobe)
+  const wardrobe = female ? resolveCharacterWardrobe(choice) : undefined;
+  let pieces: ClothingPiece[] = female ? wardrobe
     ? ["corset", "skirt", "shoes", "hat"]
     : ["corset", "skirt", "sleeves", "underskirt", "shoes", "hat", "belt", ...((choice.appearance?.accent || choice.outfit === "shop-crew") ? ["bow" as const] : [])]
     : ["coat", "pants", "shoes", "gloves", "collar", "belt", "pouches"];
+  if (wardrobe?.set === UNDERBUST_WARDROBE_SET) pieces.splice(1, 0, "shirt");
   if (female && choice.garments) {
     const garments = Object.values(choice.garments).map(getWardrobeGarment).filter(item => item !== undefined);
     const replaced = new Set<ClothingPiece>(garments.flatMap(item => wardrobeGarmentReplacements[item.slot]));
