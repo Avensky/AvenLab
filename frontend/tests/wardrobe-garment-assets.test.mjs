@@ -43,6 +43,79 @@ test('each loose female garment and its available model tiers are in the wardrob
   assert.equal(new Set(garmentFiles).size, 49);
 });
 
+test('both glasses sit close to the nose and eyes on the authored character heads', async t => {
+  const paths = [
+    villagerDir + 'villager-female.garage.glb',
+    bundledDir + 'gothic-05.mobile.glb',
+    'models/characters/villagers/villager-male/villager-male.glb',
+  ];
+  const bytes = await Promise.all(paths.map(path => readFile(new URL(path, publicDir))));
+  if (bytes.some(isLfsPointer)) return t.skip('Run git lfs pull to materialize the character models.');
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  try {
+    const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
+    const { CHARACTERS, DEFAULT_CHARACTER, ROOK_ID, characterAppearance, characterLook } =
+      await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { VILLAGER_EYES } = await vite.ssrLoadModule('/src/game/characters/villagerFace.ts');
+    const rook = CHARACTERS.find(item => item.id === ROOK_ID);
+    const ray = new Ray(new Vector3(), new Vector3(0, 0, -1));
+    const vertex = new Vector3();
+    const surfaceOf = mesh => {
+      const position = mesh.geometry.getAttribute('position');
+      const world = new Float32BufferAttribute(new Float32Array(position.count * 3), 3);
+      for (let i = 0; i < position.count; i++) {
+        mesh.getVertexPosition(i, vertex).applyMatrix4(mesh.matrixWorld);
+        world.setXYZ(i, vertex.x, vertex.y, vertex.z);
+      }
+      const geometry = new BufferGeometry().setAttribute('position', world);
+      if (mesh.geometry.index) geometry.setIndex(mesh.geometry.index.clone());
+      return new MeshBVH(geometry);
+    };
+    const depthAt = (surfaces, x, y) => {
+      ray.origin.set(x, y, .30);
+      const distance = Math.min(...surfaces.map(surface => surface.raycastFirst(ray, DoubleSide)?.distance ?? Infinity));
+      return .30 - distance;
+    };
+    for (const [index, file] of bytes.entries()) {
+      const female = index !== 2;
+      const eyes = VILLAGER_EYES[female ? 'female' : 'male'];
+      const base = female ? DEFAULT_CHARACTER : { id: rook.id, outfit: rook.outfits[0].id };
+      const choice = index === 1 ? { ...base, wardrobe: { set: 'gothic-05', shirt: 'none', waist: 'tucked' } } : base;
+      const model = prepareVillager(await loadGeometry(file), { female, fitted: index === 1 });
+      try {
+        const { root } = model;
+        root.updateMatrixWorld(true);
+        const surfaces = [];
+        root.getObjectByName(female ? 'HEAD_FACE4' : 'HEAD_WARRIOR').traverse(part => {
+          if (part.isMesh && ['MAT_SkinFace', 'MAT_Cornea', 'MAT_Eyes'].includes(part.material.name)) surfaces.push(surfaceOf(part));
+        });
+        try {
+          for (const style of ['round', 'aviator']) {
+            applyVillagerLook(model, characterLook({ ...choice, appearance: { ...characterAppearance(choice), glasses: style } }));
+            root.updateMatrixWorld(true);
+            const [rim, lens] = root.getObjectByName('villager-glasses').children.map(surfaceOf);
+            try {
+              const y = eyes.y + root.position.y + .002;
+              const bridgeGap = depthAt([rim], 0, y + .011) - depthAt(surfaces, 0, y + .011);
+              assert(bridgeGap > .001 && bridgeGap < .008, `${paths[index]} ${style} bridge gap ${bridgeGap}`);
+              for (const x of [-eyes.x, eyes.x]) {
+                const lensGap = depthAt([lens], x, y) - depthAt(surfaces, x, y);
+                assert(lensGap > .003 && lensGap < .022, `${paths[index]} ${style} lens gap ${lensGap}`);
+              }
+              assert(depthAt([lens], .046, y) < depthAt([lens], eyes.x, y) - .006, 'outer rims curve back toward the ears');
+            } finally {
+              rim.geometry.dispose();
+              lens.geometry.dispose();
+            }
+          }
+        } finally {
+          for (const { geometry } of surfaces) geometry.dispose();
+        }
+      } finally { model.dispose(); }
+    }
+  } finally { await vite.close(); }
+});
+
 test('the Village bonnet can keep its crown without its chin bow', async t => {
   const paths = [villagerDir + 'villager-female.garage.glb', villagerDir + 'villager-female.portrait.glb',
     bundledDir + 'gothic-05.garage.glb', bundledDir + 'gothic-05.mobile.glb'];
@@ -676,6 +749,112 @@ test('Laced Bodice keeps skin where a new strap crosses the edge of a body trian
           }
         } finally {
           model.dispose();
+        }
+      }
+    }
+  } finally {
+    await vite.close();
+  }
+});
+
+test('all four socks cover the instep with Mary Janes on and the foot top with shoes off', async t => {
+  const socks = catalog.filter(item => /^socks-0[1-4]$/.test(item.id));
+  const paths = [
+    garmentDir + 'vesper-body.glb',
+    villagerDir + 'villager-female.garage.glb',
+    villagerDir + 'villager-female.portrait.glb',
+    ...socks.map(item => item.url.slice(1)),
+  ];
+  const bytes = await Promise.all(paths.map(path => readFile(new URL(path, publicDir))));
+  if (bytes.some(isLfsPointer)) return t.skip('Run git lfs pull to materialize the fitting-room models.');
+  const [donor, garage, portrait, ...sockScenes] = await Promise.all(bytes.map(loadGeometry));
+  const garmentBody = donor.getObjectByName('BODY_WARDROBE');
+  const point = new Vector3();
+  const footSurface = mesh => {
+    const { position } = mesh.geometry.attributes, index = mesh.geometry.index;
+    const posed = new Float32BufferAttribute(new Float32Array(position.count * 3), 3);
+    const faces = [];
+    for (let i = 0; i < index.count; i += 3) {
+      const face = [index.getX(i), index.getX(i + 1), index.getX(i + 2)];
+      if (face.every(vertex => position.getY(vertex) < .20)) faces.push(...face);
+    }
+    for (const vertex of new Set(faces)) {
+      mesh.getVertexPosition(vertex, point).applyMatrix4(mesh.matrixWorld);
+      posed.setXYZ(vertex, point.x, point.y, point.z);
+    }
+    return new MeshBVH(new BufferGeometry().setAttribute('position', posed).setIndex(faces));
+  };
+  const a = new Vector3(), b = new Vector3(), c = new Vector3(), normal = new Vector3(), edge = new Vector3();
+  const center = () => point.copy(a).add(b).add(c).multiplyScalar(1 / 3);
+  const surfaceNormal = () => normal.copy(b).sub(a).cross(edge.copy(c).sub(a)).normalize();
+  const ray = new Ray();
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  try {
+    const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
+    const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { buildEmoteClips, findGaragePreviewEmote } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
+    for (const [tier, base] of [['garage', garage], ['compact', portrait]]) {
+      for (const [index, item] of socks.entries()) {
+        for (const shoesOn of [true, false]) {
+          const removedClothing = shoesOn ? [] : ['shoes'];
+          const model = prepareVillager(base, { garmentBody, removedClothing, garments: [{ item, scene: sockScenes[index] }] });
+          try {
+            const { root } = model;
+            applyVillagerLook(model, characterLook({ ...DEFAULT_CHARACTER, garments: { socks: item.id }, removedClothing }));
+            const sock = root.getObjectByName(`wardrobe-${item.id}`).children[0];
+            const shoes = shoesOn ? root.getObjectByName('CLOTH_FEET_SHOES') : undefined;
+            const skin = root.getObjectByName(shoesOn ? 'BODY_OUTFIT_CUT' : 'fitting-room-body');
+            const authored = shoesOn ? skin.geometry : garmentBody.geometry;
+            const faces = [];
+            for (let i = 0; i < authored.index.count; i += 3) {
+              const face = [authored.index.getX(i), authored.index.getX(i + 1), authored.index.getX(i + 2)];
+              a.fromBufferAttribute(authored.attributes.position, face[0]);
+              b.fromBufferAttribute(authored.attributes.position, face[1]);
+              c.fromBufferAttribute(authored.attributes.position, face[2]);
+              center();
+              if (point.y > .020 && point.y < .120 && point.z > .006 && surfaceNormal().y > .35) faces.push(face);
+            }
+            const [walk] = buildEmoteClips(root, [findGaragePreviewEmote('walk-casual', false)]);
+            const mixer = new AnimationMixer(root);
+            for (const phase of [0, .25]) {
+              if (phase) {
+                mixer.clipAction(walk).play();
+                mixer.setTime(walk.duration * phase);
+              }
+              root.updateMatrixWorld(true);
+              const sockSurface = footSurface(sock), shoeSurface = shoes && footSurface(shoes);
+              let visible = 0, covered = 0;
+              try {
+                for (const [fa, fb, fc] of faces) {
+                  skin.getVertexPosition(fa, a).applyMatrix4(skin.matrixWorld);
+                  skin.getVertexPosition(fb, b).applyMatrix4(skin.matrixWorld);
+                  skin.getVertexPosition(fc, c).applyMatrix4(skin.matrixWorld);
+                  center();
+                  if (shoesOn) surfaceNormal();
+                  else normal.set(0, 1, 0);
+                  ray.origin.copy(point).addScaledVector(normal, .045);
+                  ray.direction.copy(normal).negate();
+                  const shoe = shoeSurface?.raycastFirst(ray, DoubleSide, 0, .07)?.distance ?? Infinity;
+                  const cloth = sockSurface.raycastFirst(ray, DoubleSide, 0, .07)?.distance ?? Infinity;
+                  if (shoe < .0444) {
+                    assert(cloth >= shoe - .0006, `${item.id} ${tier} keeps fabric behind the shoe`);
+                    covered++;
+                  } else {
+                    assert(cloth <= .0448, `${item.id} ${tier} covers the visible foot at phase ${phase}`);
+                    visible++;
+                  }
+                }
+                assert(visible > (shoesOn ? 30 : 600));
+                if (shoesOn) assert(covered > 150);
+              } finally {
+                sockSurface.geometry.dispose();
+                shoeSurface?.geometry.dispose();
+                mixer.stopAllAction();
+              }
+            }
+          } finally {
+            model.dispose();
+          }
         }
       }
     }

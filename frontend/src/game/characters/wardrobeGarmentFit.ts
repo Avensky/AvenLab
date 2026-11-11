@@ -4,6 +4,7 @@ import type { CharacterLook } from "./characterCatalog";
 import { clothingColors, clothingPieceFor, type ClothingPiece } from "./clothingPieces";
 import { prepareGothicSkirtFit } from "./gothicSkirtFit";
 import { prepareSockSkirtFit } from "./sockSkirtFit";
+import { prepareShoelessSockFit } from "./wardrobeSocksFit";
 import type { StandaloneCorset } from "./standaloneCorset";
 import { wardrobeGarmentReplacements, wardrobeRemovalPieces, type getWardrobeGarment, type WardrobeGarmentSlot, type WardrobeRemoval } from "./wardrobeGarments";
 import { prepareWardrobeTopFit } from "./wardrobeTopFit";
@@ -150,10 +151,6 @@ export function prepareWardrobeGarments(
         return material;
       };
       mesh.material = Array.isArray(part.material) ? part.material.map(cloneMaterial) : cloneMaterial(part.material);
-      if (item.slot === "socks" && !restored.feet) {
-        const fit = mesh.morphTargetDictionary?.["mary-jane-v1-fit"];
-        if (fit !== undefined && mesh.morphTargetInfluences) mesh.morphTargetInfluences[fit] = 1;
-      }
       garmentMeshes.push(mesh);
       garment.add(mesh);
     });
@@ -162,9 +159,11 @@ export function prepareWardrobeGarments(
     const skirtBody = full && !authoredFit && item.slot === "skirt" && item.id.startsWith("gothic-skirt-") ? bodySurface(full) : undefined;
     const skirtSurfaces = skirtBody ? garmentMeshes.filter(isFabric).flatMap(mesh => bodySurface(mesh.geometry) ?? []) : [];
     const fitSkirt = skirtBody && skirtSurfaces.length ? prepareGothicSkirtFit(skirtBody, skirtSurfaces, item.id) : undefined;
+    const sockBody = item.slot === "socks" && restored.feet && full ? bodySurface(full) : undefined;
+    const fitSocks = sockBody && prepareShoelessSockFit(sockBody);
     for (const { geometry } of skirtSurfaces) geometry.dispose();
     for (const mesh of garmentMeshes) {
-      const fitted = (fitTop ?? fitSkirt)?.(mesh.geometry);
+      const fitted = (fitTop ?? fitSkirt ?? fitSocks)?.(mesh.geometry);
       if (fitted) {
         mesh.geometry = fitted;
         fittedGarments.push(fitted);
@@ -182,6 +181,7 @@ export function prepareWardrobeGarments(
       }
     }
     skirtBody?.geometry.dispose();
+    sockBody?.geometry.dispose();
     checkTopEdges ||= item.slot === "top";
     if (fabricColor) for (const color of liningColors) color.copy(fabricColor);
     group.add(garment);
