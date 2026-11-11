@@ -1,75 +1,9 @@
-import { BufferAttribute, MathUtils, Matrix3, SkinnedMesh, Triangle, Vector3, type BufferGeometry, type Object3D } from "three";
+import { BufferAttribute, DoubleSide, MathUtils, Ray, SkinnedMesh, Triangle, Vector3, type BufferGeometry, type Object3D } from "three";
 import { MeshBVH, type HitPointInfo } from "three-mesh-bvh";
+
 import { fitWardrobeSurface } from "./wardrobeSurface.ts";
 
-export const UNDERBUST_FIT_VERSION = 1;
-const TORSO_DEPTH = .018;
-
-function vestProfile(x: number, y: number, z: number, tucked: boolean) {
-  const hem = tucked ? MathUtils.lerp(.72, 1, MathUtils.smoothstep(y, 1.097, 1.162))
-    : MathUtils.lerp(.65, 1, MathUtils.smoothstep(y, 1.027, 1.146));
-  const shoulder = MathUtils.smoothstep(y, 1.309, 1.384);
-  const cupEdge = MathUtils.smoothstep(y, 1.155, 1.200) * (1 - MathUtils.smoothstep(y, 1.262, 1.297))
-    * MathUtils.smoothstep(z, .059, .109) * (1 - MathUtils.smoothstep(Math.abs(x), .080, .112));
-  const armhole = MathUtils.smoothstep(y, 1.222, 1.264) * (1 - MathUtils.smoothstep(y, 1.278, 1.316))
-    * MathUtils.smoothstep(Math.abs(x), .103, .135);
-  // Narrow the shoulder in a smooth, monotonic sweep. Moving isolated
-  // vertices by their closest body normal can fold the sewn trim over itself.
-  const across = Math.abs(x), side = Math.sign(x);
-  const crest = MathUtils.smoothstep(y, 1.338, 1.383);
-  const shoulderSide = MathUtils.smoothstep(across, .068, .105);
-  const upper = MathUtils.smoothstep(y, 1.301, 1.369) * shoulderSide;
-  const front = MathUtils.smoothstep(z, -.008, .048);
-  const rear = 1 - MathUtils.smoothstep(z, -.057, -.006);
-  const strapWidth = Math.max(0, across - .081) * .56 * crest;
-  const strapLift = crest * shoulderSide * (.004 + .205 * Math.max(0, across - .082));
-  return {
-    x: x * (1 + .113 * hem * (1 - shoulder)) + side * (.006 * armhole - strapWidth),
-    y: y + strapLift,
-    z: TORSO_DEPTH + (z - TORSO_DEPTH) * (1 + .131 * hem * (1 - shoulder))
-      + .018 * cupEdge - .003 * armhole * (1 - MathUtils.smoothstep(z, -.073, -.030))
-      + upper * (.016 * front - .010 * rear),
-  };
-}
-
-function fitShoulders(body: BufferGeometry) {
-  const index = body.getIndex(), position = body.getAttribute("position");
-  const skinIndex = body.getAttribute("skinIndex"), skinWeight = body.getAttribute("skinWeight");
-  if (!index || !position || !skinIndex || !skinWeight) return;
-  // Keep the shared body index intact while searching bind-pose triangles.
-  const options = { indirect: true, setBoundingBox: false };
-  const surface = new MeshBVH(body, options);
-  const hit: HitPointInfo = { point: new Vector3(), distance: 0, faceIndex: 0 };
-  const triangle = new Triangle(), barycentric = new Vector3(), across = new Vector3();
-  return (geometry: BufferGeometry, vertex: number, authored: Vector3, fitted: Vector3) => {
-    const shoulder = MathUtils.smoothstep(authored.y, 1.294, 1.351) * MathUtils.smoothstep(Math.abs(authored.x), .047, .102);
-    if (!shoulder) return;
-    // Follow the joints beneath the revised strap, while keeping the
-    // garment's own torso and waist weights intact.
-    across.set(fitted.x, authored.y, authored.z);
-    if (!surface.closestPointToPoint(across, hit, 0, .048)) return;
-
-    const a = index.getX(hit.faceIndex * 3), b = index.getX(hit.faceIndex * 3 + 1), c = index.getX(hit.faceIndex * 3 + 2);
-    triangle.setFromAttributeAndIndices(position, a, b, c);
-    if (!triangle.getBarycoord(hit.point, barycentric)) return;
-
-    const joints = geometry.getAttribute("skinIndex"), weights = geometry.getAttribute("skinWeight");
-    const influences = new Map<number, number>();
-    const add = (joint: number, weight: number) => influences.set(joint, (influences.get(joint) ?? 0) + weight);
-    for (let channel = 0; channel < 4; channel++) {
-      add(joints.getComponent(vertex, channel), (1 - shoulder) * weights.getComponent(vertex, channel));
-      add(skinIndex.getComponent(a, channel), shoulder * barycentric.x * skinWeight.getComponent(a, channel));
-      add(skinIndex.getComponent(b, channel), shoulder * barycentric.y * skinWeight.getComponent(b, channel));
-      add(skinIndex.getComponent(c, channel), shoulder * barycentric.z * skinWeight.getComponent(c, channel));
-    }
-    const strongest = [...influences].sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, 4);
-    const sum = strongest.reduce((total, [, weight]) => total + weight, 0);
-    for (let channel = 0; channel < 4; channel++) {
-      joints.setComponent(vertex, channel, strongest[channel]?.[0] ?? 0);
-      weights.setComponent(vertex, channel, (strongest[channel]?.[1] ?? 0) / sum);
-    }
-  };
-}
+export const UNDERBUST_FIT_VERSION = 2;
 
 function strapCut(z: number) {
   return MathUtils.lerp(1.367, 1.339, MathUtils.smoothstep(z, -.053, .042));
@@ -79,7 +13,8 @@ function fitStrapCrowns(body: BufferGeometry, trim = false) {
   const edge = (point: Vector3) => {
     const front = MathUtils.smoothstep(point.z, -.036, .052);
     const center = MathUtils.lerp(.102, .115, front);
-    const width = .017 + .004 * (1 - MathUtils.smoothstep(point.y, 1.354, 1.383));
+    const join = MathUtils.smoothstep(point.y - strapCut(point.z), -.022, .006);
+    const width = (.017 + .004 * (1 - MathUtils.smoothstep(point.y, 1.354, 1.383))) * MathUtils.lerp(.63, 1, join);
     return width - Math.abs(Math.abs(point.x) - center);
   };
   const boundaries = [
@@ -92,7 +27,7 @@ function fitStrapCrowns(body: BufferGeometry, trim = false) {
     const crest = MathUtils.smoothstep(point.y, 1.344, 1.392);
     const front = MathUtils.smoothstep(point.z, -.030, .040);
     const join = MathUtils.smoothstep(point.y - strapCut(point.z), -.019, .010);
-    return .009 + .004 * join + .003 * crest + .002 * front + (trim ? .0012 : 0);
+    return .006 + .004 * join + .003 * crest + .002 * front + (trim ? .0012 : 0);
   });
 }
 
@@ -143,62 +78,154 @@ function replaceStrapCrowns(source: BufferGeometry, fitted: BufferGeometry, crow
   fitted.setDrawRange(0, retained.length);
 }
 
-/** Refit the original shell and straps while preserving its material cuts and UVs. */
-export function prepareUnderbustVestFit(body: BufferGeometry) {
-  const followShoulders = fitShoulders(body);
+/** Refit every source panel, seam and clasp against the Vesper bind surface. */
+export function prepareUnderbustVestFit(body: BufferGeometry, fabric: readonly BufferGeometry[]) {
+  const skin = body.getAttribute("position"), normals = body.getAttribute("normal"), index = body.getIndex();
+  const skinJoints = body.getAttribute("skinIndex"), skinWeights = body.getAttribute("skinWeight");
+  const bvhOptions = { indirect: true, setBoundingBox: false };
+  const surface = new MeshBVH(body, bvhOptions);
+  const panels = fabric.map(geometry => new MeshBVH(geometry, bvhOptions));
   const crowns = fitStrapCrowns(body), crownTrim = fitStrapCrowns(body, true);
-  const direction = new Vector3(), authored = new Vector3(), point = new Vector3(), jacobian = new Matrix3();
-  const step = .0002;
+  const hit: HitPointInfo = { point: new Vector3(), distance: 0, faceIndex: 0 };
+  const clothHit: HitPointInfo = { point: new Vector3(), distance: 0, faceIndex: 0 };
+  const anchor = new Vector3(), point = new Vector3(), normal = new Vector3(), scratch = new Vector3(), barycentric = new Vector3();
+  const triangle = new Triangle();
+  const influences = new Map<number, number>();
+  const addInfluence = (joint: number, weight: number) => influences.set(joint, (influences.get(joint) ?? 0) + weight);
   return (source: BufferGeometry, tucked: boolean, material: string) => {
     const fitted = source.clone();
-    const position = fitted.getAttribute("position"), normal = fitted.getAttribute("normal");
-    if (!position) return fitted;
-    const follow = fitted.hasAttribute("skinIndex") && fitted.hasAttribute("skinWeight") ? followShoulders : undefined;
-    for (let i = 0; i < position.count; i++) {
-      authored.fromBufferAttribute(position, i);
-      const { x, y, z } = authored;
-      const profile = vestProfile(x, y, z, tucked);
-      point.set(profile.x, profile.y, profile.z);
-      follow?.(fitted, i, authored, point);
-      position.setXYZ(i, point.x, point.y, point.z);
-      if (!normal) continue;
-      // Transform the authored normal through the same fabric shaping so
-      // the normal map and the seams still follow the garment.
-      const left = vestProfile(x - step, y, z, tucked), right = vestProfile(x + step, y, z, tucked);
-      const above = vestProfile(x, y + step, z, tucked), below = vestProfile(x, y - step, z, tucked);
-      const front = vestProfile(x, y, z + step, tucked), back = vestProfile(x, y, z - step, tucked);
-      jacobian.set(
-        right.x - left.x, above.x - below.x, front.x - back.x,
-        right.y - left.y, above.y - below.y, front.y - back.y,
-        right.z - left.z, above.z - below.z, front.z - back.z,
-      ).invert().transpose();
-      direction.fromBufferAttribute(normal, i).applyMatrix3(jacobian).normalize();
-      normal.setXYZ(i, direction.x, direction.y, direction.z);
+    const positions = fitted.getAttribute("position"), joints = fitted.getAttribute("skinIndex"), weights = fitted.getAttribute("skinWeight");
+    if (!index || !skin || !normals || !skinJoints || !skinWeights || !positions || !joints || !weights) return fitted;
+    for (let vertex = 0; vertex < positions.count; vertex++) {
+      point.fromBufferAttribute(positions, vertex);
+      anchor.copy(point);
+      let panelDistance = .019;
+      if (!fabric.includes(source)) for (const panel of panels) {
+        if (!panel.closestPointToPoint(point, clothHit, 0, panelDistance)) continue;
+        anchor.copy(clothHit.point);
+        panelDistance = clothHit.distance;
+      }
+      const shoulder = MathUtils.smoothstep(anchor.y, 1.315, 1.382);
+      // Draw the sewn panel inward before joining it to the body-traced crown.
+      const medial = Math.sign(anchor.x) * .55 * shoulder * Math.max(0, Math.abs(anchor.x) - .088);
+      anchor.x -= medial;
+      point.x -= medial;
+      if (!surface.closestPointToPoint(anchor, hit, 0, .085)) continue;
+      const a = index.getX(hit.faceIndex * 3), b = index.getX(hit.faceIndex * 3 + 1), c = index.getX(hit.faceIndex * 3 + 2);
+      triangle.setFromAttributeAndIndices(skin, a, b, c);
+      if (!triangle.getBarycoord(hit.point, barycentric)) continue;
+      normal.copy(scratch.fromBufferAttribute(normals, a)).multiplyScalar(barycentric.x)
+        .addScaledVector(scratch.fromBufferAttribute(normals, b), barycentric.y)
+        .addScaledVector(scratch.fromBufferAttribute(normals, c), barycentric.z).normalize();
+      const gap = scratch.copy(anchor).sub(hit.point).dot(normal);
+      const hem = tucked ? 0 : .004 * (1 - MathUtils.smoothstep(point.y, 1.015, 1.105));
+      // Compress the old excess ease while preserving the relative depth of
+      // seams, folds and hardware from the same source surface.
+      const relief = MathUtils.clamp(gap - .007, -.003, .021);
+      const clearance = .005 + .004 * shoulder + hem + .23 * relief;
+      point.addScaledVector(normal, clearance - gap);
+      positions.setXYZ(vertex, point.x, point.y, point.z);
+
+      // Re-skin the fitted panels on the same surface they follow. All
+      // materials get the same interpolation, keeping the trim on its seam.
+      const follow = .8 + .20 * shoulder;
+      influences.clear();
+      for (let channel = 0; channel < 4; channel++) {
+        addInfluence(joints.getComponent(vertex, channel), (1 - follow) * weights.getComponent(vertex, channel));
+        addInfluence(skinJoints.getComponent(a, channel), follow * barycentric.x * skinWeights.getComponent(a, channel));
+        addInfluence(skinJoints.getComponent(b, channel), follow * barycentric.y * skinWeights.getComponent(b, channel));
+        addInfluence(skinJoints.getComponent(c, channel), follow * barycentric.z * skinWeights.getComponent(c, channel));
+      }
+      const strongest = [...influences].sort((left, right) => right[1] - left[1] || left[0] - right[0]).slice(0, 4);
+      const total = strongest.reduce((sum, [, weight]) => sum + weight, 0);
+      for (let channel = 0; channel < 4; channel++) {
+        joints.setComponent(vertex, channel, strongest[channel]?.[0] ?? 0);
+        weights.setComponent(vertex, channel, (strongest[channel]?.[1] ?? 0) / total);
+      }
     }
-    if (crowns) {
-      const additions = material === "MAT_CORSET_04_05.001" ? crowns : material === "MAT_CORSET_04_00.001" ? crownTrim : undefined;
-      replaceStrapCrowns(source, fitted, additions);
-    }
+    fitted.computeVertexNormals();
+    const additions = material === "MAT_CORSET_04_05.001" ? crowns : material === "MAT_CORSET_04_00.001" ? crownTrim : undefined;
+    replaceStrapCrowns(source, fitted, additions);
     fitted.computeBoundingBox();
     fitted.computeBoundingSphere();
     return fitted;
   };
 }
 
+export function isUnderbustOuterFabric(material: string) {
+  return material === "MAT_CORSET_04_05.001" || material === "MAT_CORSET_04_04.001";
+}
+
 export function fitUnderbustVest(root: Object3D, body: BufferGeometry) {
-  const fit = prepareUnderbustVestFit(body);
   const adjusted: { mesh: SkinnedMesh; source: BufferGeometry; fitted: BufferGeometry }[] = [];
   for (const waist of ["TUCKED", "OVER"]) {
+    const meshes: { mesh: SkinnedMesh; material: string }[] = [];
     root.getObjectByName(`CLOTH_CORSET_${waist}`)?.traverse(mesh => {
-      if (!(mesh instanceof SkinnedMesh) || Array.isArray(mesh.material)) return;
+      if (mesh instanceof SkinnedMesh && !Array.isArray(mesh.material)) meshes.push({ mesh, material: mesh.material.name });
+    });
+    if (!meshes.length) continue;
+    const fit = prepareUnderbustVestFit(body, meshes.filter(({ material }) => isUnderbustOuterFabric(material)).map(({ mesh }) => mesh.geometry));
+    for (const { mesh, material } of meshes) {
       const source = mesh.geometry;
-      const fitted = fit(source, waist === "TUCKED", mesh.material.name);
+      const fitted = fit(source, waist === "TUCKED", material);
       mesh.geometry = fitted;
       adjusted.push({ mesh, source, fitted });
-    });
+    }
   }
   return () => {
     for (const { mesh, source, fitted } of adjusted) {
+      mesh.geometry = source;
+      fitted.dispose();
+    }
+  };
+}
+
+/** Add only the room needed by the separately selected top at each point. */
+export function fitUnderbustOverTop(root: Object3D, body: BufferGeometry, tops: readonly MeshBVH[]) {
+  const bvhOptions = { indirect: true, setBoundingBox: false };
+  const surface = new MeshBVH(body, bvhOptions);
+  const skin = body.getAttribute("position"), index = body.getIndex()!;
+  const point = new Vector3(), normal = new Vector3(), tangent = new Vector3(), across = new Vector3();
+  const vertical = new Vector3(0, 1, 0), forward = new Vector3(0, 0, 1);
+  const hit: HitPointInfo = { point: new Vector3(), distance: 0, faceIndex: 0 };
+  const ray = new Ray(), triangle = new Triangle();
+  const probe = .045;
+  const moved: { mesh: SkinnedMesh; source: BufferGeometry; fitted: BufferGeometry }[] = [];
+  function clearance(axis: Vector3, offset: number) {
+    ray.origin.copy(point).addScaledVector(normal, probe).addScaledVector(axis, offset);
+    let distance = probe + .0025;
+    for (const top of tops) distance = top.raycastFirst(ray, DoubleSide, 0, distance)?.distance ?? distance;
+    return probe - distance + .0025;
+  }
+  for (const waist of ["TUCKED", "OVER"]) root.getObjectByName(`CLOTH_CORSET_${waist}`)?.traverse(mesh => {
+    if (!(mesh instanceof SkinnedMesh)) return;
+    const source: BufferGeometry = mesh.geometry;
+    const positions = source.getAttribute("position");
+    let fitted: BufferGeometry | undefined;
+    for (let vertex = 0; vertex < positions.count; vertex++) {
+      point.fromBufferAttribute(positions, vertex);
+      if (!surface.closestPointToPoint(point, hit, 0, .045)) continue;
+      const face = hit.faceIndex * 3;
+      triangle.setFromAttributeAndIndices(skin, index.getX(face), index.getX(face + 1), index.getX(face + 2)).getNormal(normal);
+      ray.direction.copy(normal).negate();
+      tangent.crossVectors(normal, Math.abs(normal.y) > .8 ? forward : vertical).normalize();
+      across.crossVectors(normal, tangent);
+      const delta = Math.max(clearance(tangent, 0), clearance(tangent, .004) - .003, clearance(tangent, -.004) - .003,
+        clearance(across, .004) - .003, clearance(across, -.004) - .003);
+      if (delta <= 0) continue;
+      fitted ??= source.clone();
+      point.addScaledVector(normal, delta);
+      fitted.getAttribute("position").setXYZ(vertex, point.x, point.y, point.z);
+    }
+    if (!fitted) return;
+    fitted.computeVertexNormals();
+    fitted.computeBoundingBox();
+    fitted.computeBoundingSphere();
+    mesh.geometry = fitted;
+    moved.push({ mesh, source, fitted });
+  });
+  return () => {
+    for (const { mesh, source, fitted } of moved) {
       mesh.geometry = source;
       fitted.dispose();
     }

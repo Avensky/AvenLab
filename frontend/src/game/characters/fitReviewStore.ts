@@ -4,7 +4,7 @@ import type { CharacterChoice } from "./characterCatalog";
 import { resolveCharacterWardrobe, wardrobeOverEase } from "./wardrobe";
 import { removedWardrobeLayers } from "./wardrobeGarments";
 export const FIT_REVISION = "wardrobe-10";
-const setFitRevisions: Record<string, string> = { "gothic-01": "wardrobe-15", "gothic-02": "wardrobe-15", "gothic-04": "wardrobe-15", "gothic-05": "wardrobe-15" };
+const setFitRevisions: Record<string, string> = { "gothic-01": "wardrobe-16", "gothic-02": "wardrobe-15", "gothic-04": "wardrobe-16", "gothic-05": "wardrobe-15" };
 export const FIT_CHECKS = ["front", "back", "movement"] as const;
 export type FitCheck = typeof FIT_CHECKS[number];
 type Review = { checks: Partial<Record<FitCheck, boolean>>; issue: string; updated: string };
