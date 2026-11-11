@@ -19,7 +19,7 @@ const zones = {
   rearShoulderPanels: (p, n) => Math.abs(p.x) > .072 && Math.abs(p.x) < .169 && p.y > 1.353 && p.y < 1.421
     && p.z < -.025 && n.z < -.16,
   rearStraps: (p, n) => p.z < -.04 && Math.abs(p.x) > .095 && Math.abs(p.x) < .132 && p.y > 1.345 && p.y < 1.398 && n.z < -.3,
-  leftRearStrap: (p, n) => p.x > .099 && p.x < .117 && p.y > 1.352 && p.y < 1.382 && p.z < -.068 && n.z < -.35,
+  leftRearStrap: (p, n) => p.x > .107 && p.x < .119 && p.y > 1.345 && p.y < 1.382 && p.z < -.055 && n.z < -.35,
   vestShoulder: (p, n) => Math.abs(p.x) > .078 && Math.abs(p.x) < .162 && p.y > 1.355 && p.y < 1.443
     && p.z > -.054 && p.z < .038 && n.y > .26,
   vestFrontStrap: (p, n) => Math.abs(p.x) > .075 && Math.abs(p.x) < .156 && p.y > 1.322 && p.y < 1.38
@@ -137,7 +137,7 @@ function verifyTuckPose(label, samples, points, triangle, center, normal, ray, s
       ray.origin.copy(center).addScaledVector(normal, .08);
       ray.direction.copy(normal).negate();
       const skirt = firstHit(ray, skirts), corset = firstHit(ray, corsets);
-      assert(Math.min(skirt, corset) < .0794, `${label} ${zone} sits outside the unmasked body`);
+      assert(Math.min(skirt, corset) < .0794, `${label} ${zone} sits outside the unmasked body at ${center.toArray().map(value => value.toFixed(4)).join(", ")} (skirt ${skirt}, corset ${corset})`);
       if (zone === 'skirt' || (zone === 'hem' && skirt < .08 && corset < .08)) assert(skirt < corset, `${label} skirt covers the tucked hem`);
       if (zone === 'corset') assert(corset < skirt, `${label} shows the lower corset above the skirt`);
     }
@@ -165,15 +165,19 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
   const idle = posedVertices(body), indices = visibleIndices(body);
   const required = style === 5 ? ['collarBust', 'collarKeyhole', 'bustTips', 'back', 'shoulders', 'outerShoulders', 'rearStraps', ...highCollarShoulderZones]
     : style === 4 ? ['bustTips', ...vestZones, ...vestStrapZones] : style === 3 ? [] : style === 2 ? ['chest', 'rightCup'] : ['chest', 'leftRearStrap'];
-  const unmaskedZones = ['outerShoulders', ...highCollarShoulderZones, ...vestZones, ...vestStrapZones, ...(style === 4 ? ['bustTips'] : [])];
+  const unmaskedZones = ['leftRearStrap', 'outerShoulders', ...highCollarShoulderZones, ...vestZones, ...vestStrapZones, ...(style === 4 ? ['bustTips'] : [])];
   const samples = Object.fromEntries(required.map(zone => [zone, []]));
-  const edges = style === 2 && !tucked ? Object.entries(sweetheartEdges).map(([zone, { select, view }]) => ({ zone, select, view, faces: [] })) : [];
+  const edges = style === 2 ? Object.entries(sweetheartEdges).map(([zone, { select, view }]) => ({ zone, select, view, faces: [] })) : [];
   const bindPoints = bindBody.getAttribute('position').array;
   for (let i = 0; i < indices.length; i += 3) {
     const face = indices.subarray(i, i + 3);
     triangle(idle, face);
     for (const [zone, faces] of Object.entries(samples)) if (!unmaskedZones.includes(zone) && zones[zone](center, normal)) faces.push(face);
-    if (edges.length) {
+  }
+  if (edges.length) {
+    const rawIndices = bindBody.index.array;
+    for (let i = 0; i < rawIndices.length; i += 3) {
+      const face = rawIndices.subarray(i, i + 3);
       triangle(bindPoints, face);
       for (const { select, faces } of edges) if (select(center, normal)) faces.push(face);
     }
@@ -208,7 +212,7 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
   }
   for (const [zone, faces] of Object.entries(samples)) assert(faces.length > 0, `${label} samples ${zone}`);
   for (const { zone, faces } of edges) assert(faces.length > 0, `${label} samples Sweetheart ${zone}`);
-  const cupFabric = edges.length && corset.find(mesh => mesh.name === 'CLOTH_CORSET_02_LONG_GEO_2');
+  const cupFabric = edges.length && corset.find(mesh => mesh.material.userData.color_slot === 'fabric');
   if (edges.length) assert(cupFabric, `${label} has visible Sweetheart cup fabric`);
   const tuck = verifyTuck && tuckSamples(bindBody, triangle, center);
 

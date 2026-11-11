@@ -193,7 +193,7 @@ face camera. Leaving restores the earlier camera. Colors contains preset dyes,
 paired palettes, and custom fabric/accent pickers.
 
 Outfits contains the complete village looks and three fitted Gothic sets.
-Sweetheart and Ruffled equip in Over skirt, and High Collar equips in Tucked.
+Sweetheart and High Collar equip in Tucked, and Ruffled equips in Over skirt.
 An outfit's details open close-ups for its individual pieces, with waist
 layering controls for the selected Gothic set.
 

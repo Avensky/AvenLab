@@ -1,23 +1,12 @@
 import { DoubleSide, MathUtils, Mesh, MeshStandardMaterial, SkinnedMesh, type BufferGeometry, type Object3D } from "three";
 import { fitHighCollarShoulders, fitHighCollarSurface } from "./highCollarFit";
 import { fitLacedBodice } from "./lacedStrapFit";
-import { fitSweetheartCorset } from "./sweetheartTuck";
+import { rebuildSweetheartCorset } from "./sweetheartCorset";
 import { prepareUnderbustColors } from "./underbustColors";
 import { fitUnderbustVest, UNDERBUST_FIT_VERSION } from "./underbustFit";
 import { fitWardrobeSurface } from "./wardrobeSurface";
 
 type CorsetStyle = "01" | "02" | "03" | "04" | "05";
-
-/** Back the two cups while leaving the lace opening, waist, and back clear. */
-function fitSweetheartCups(body: BufferGeometry) {
-  return fitWardrobeSurface(body, [
-    point => point.y - 1.255,
-    point => point.z - .065,
-    point => .111 - Math.abs(point.x),
-    point => Math.abs(point.x) - .023,
-    point => 1.270 + .028 * MathUtils.smoothstep(Math.abs(point.x), .022, .069) - point.y,
-  ], .0015);
-}
 
 function fitRuffledNeckline(body: BufferGeometry) {
   return fitWardrobeSurface(body, [
@@ -63,9 +52,7 @@ export function prepareWardrobeLining(root: Object3D) {
       break;
     }
     case "02":
-      geometry = fitSweetheartCups(body.geometry);
-      disposeFit = fitSweetheartCorset(root, body.geometry);
-      break;
+      return rebuildSweetheartCorset(root, body.geometry);
     case "04": {
       const baked = [corset, root.getObjectByName("CLOTH_CORSET_OVER")].every(part =>
         part?.userData.underbustFitVersion === UNDERBUST_FIT_VERSION);

@@ -107,6 +107,8 @@ try{
   assert.equal(model.root.getObjectByName('CLOTH_UNDERBUST_BLOUSE'),undefined,'bundled outfits have no default blouse');
   if(n===4){
    assert.equal(facing,undefined,'the Underbust neckline stays open above the authored bodice');
+  }else if(n===2){
+   assert.equal(facing,undefined,'the rebuilt Sweetheart shell provides its own coverage');
   }else{
    assert(facing?.isSkinnedMesh,'fitted corset coverage uses the body rig');
   }
@@ -120,9 +122,6 @@ try{
     seam.geometry.computeBoundingBox();
     assert(seam.geometry.boundingBox.max.y<1.12,'the waist seam cannot cover the corset midsection');
    }
-   facing.geometry.computeBoundingBox();
-   assert(facing.geometry.boundingBox.min.y>1.25,'Sweetheart cup backing stops above the waist');
-   assert(facing.geometry.boundingBox.min.z>.06,'Sweetheart cup backing stays in front');
   }
   const ruffledTrim=n===3&&model.root.getObjectByName('CLOTH_GOTHIC_03_TRIM_TUCKED');
   const ruffledOver=ruffledTrim?.parent?.children.find(part=>part.userData.wardrobeRole==='bottom-trim-over');
@@ -134,21 +133,34 @@ try{
    for(const vertex of ruffledTrim.geometry.index.array)assert(positions.getY(vertex)<=1.06,'Ruffled tucked trim stays below the waist');
   }
   // Keep authored UVs and limit each fit change to its affected panels.
-  let sweetheartOverRise=0;
   let collarRemovedIndices=0;
   const vestBody=n===4&&new MeshBVH(scene.getObjectByName('BODY_WARDROBE').geometry,{indirect:true,setBoundingBox:false});
   for(const name of ['CLOTH_CORSET_TUCKED','CLOTH_CORSET_OVER']){
-   const tuckRefit=(n===2||n===3)&&name==='CLOTH_CORSET_TUCKED';
+   const tuckRefit=n===3&&name==='CLOTH_CORSET_TUCKED';
    const authored=scene.getObjectByName(name), fitted=model.root.getObjectByName(name);
    if(n===4)assert.equal(authored.userData.source,'z-h_Medieval Corset 04-THIN WELD.fbx');
    authored.traverse(source=>{
     if(!source.isSkinnedMesh)return;
     const target=fitted.getObjectByName(source.name);
     assert(target?.isSkinnedMesh);
-    const cupRefit=n===2&&source.material.userData.color_slot==='fabric';
-    const sweetheartOver=n===2&&!tuckRefit;
+    if(n===2){
+     const {geometry,material}=target;
+     const slot=material.userData.color_slot;
+     const position=geometry.getAttribute('position'), weights=geometry.getAttribute('skinWeight');
+     assert(geometry.index.count>0,'Sweetheart keeps each visible material');
+     assert.equal(material.transparent,false,'Sweetheart layers are opaque');
+     for(let i=0;i<weights.count;i++)assert(Math.abs(weights.getX(i)+weights.getY(i)+weights.getZ(i)+weights.getW(i)-1)<1e-4);
+     if(slot==='fabric'){
+      assert.notDeepEqual(geometry.index.array,source.geometry.index.array,'Sweetheart has a rebuilt fabric shell');
+      assert(material.roughness>=.9&&material.metalness===0,'Sweetheart fabric stays matte');
+      assert(geometry.boundingBox.min.z<-.05&&geometry.boundingBox.max.y>1.325,'the shell covers the back and raised cup crests');
+     }else{
+      for(const vertex of geometry.index.array)assert(position.getZ(vertex)>.067,'Sweetheart accents stay at the front closure');
+     }
+     return;
+    }
     for(const attribute of ['position','normal','uv','skinIndex','skinWeight']){
-     if((tuckRefit||cupRefit||sweetheartOver)&&attribute==='position')continue;
+     if((n===1||tuckRefit)&&attribute==='position')continue;
      if(n===4){
       if(attribute==='uv'){
        const authored=source.geometry.getAttribute(attribute)?.array;
@@ -159,6 +171,19 @@ try{
      }
      if(n===5&&['position','skinIndex','skinWeight'].includes(attribute))continue;
      assert.deepEqual(target.geometry.getAttribute(attribute)?.array,source.geometry.getAttribute(attribute)?.array,`${set} ${lod} ${source.name} ${attribute} stays authored`);
+    }
+    if(n===1){
+     const before=source.geometry.getAttribute('position'),after=target.geometry.getAttribute('position');
+     assert.equal(after.count,before.count,'Laced Bodice keeps its authored shell vertices');
+     assert(target.geometry.index.count<=source.geometry.index.count,'Laced Bodice replaces the old strap faces');
+     for(let i=0;i<before.count;i++){
+      const y=before.getY(i);
+      assert.equal(after.getY(i),y,'Laced Bodice preserves authored waist height');
+      if(y>1.199||(name==='CLOTH_CORSET_OVER'&&y<1.014)){
+       assert.equal(after.getX(i),before.getX(i),'Laced Bodice only refits the waist');
+       assert.equal(after.getZ(i),before.getZ(i),'Laced Bodice only refits the waist');
+      }
+     }
     }
     if(n===4)verifyVestShell(source,target,fitted.getObjectByName(`CLOTH_CORSET_04_LINING_${name.split('_').at(-1)}`),vestBody);
     if(n===5){
@@ -186,37 +211,18 @@ try{
       }
      }
     }
-    if(tuckRefit||cupRefit||sweetheartOver){
+    if(tuckRefit){
      const before=source.geometry.getAttribute('position'),after=target.geometry.getAttribute('position');
      assert.equal(after.count,before.count);
-     const tuckTop=n===2?1.238:1.217,clearance=n===2?.011001:.007001;
      for(let i=0;i<after.count;i++){
-      const x=before.getX(i),y=before.getY(i),z=before.getZ(i),side=Math.abs(x);
-      const rise=after.getY(i)-y;
-      if(tuckRefit&&y<tuckTop){
-       assert.equal(rise,0,'the tucked fit preserves the authored waist height');
-       assert(Math.hypot(after.getX(i)-x,after.getZ(i)-z)<=clearance,'tucked waist refit is bounded');
-       continue;
-      }
-      const overCup=sweetheartOver&&cupRefit&&side>.038&&side<.132&&y>1.259&&z>.036;
-      const underarm=sweetheartOver&&cupRefit&&x>-.144&&x<-.084&&y>1.255&&z>.018;
-      const innerCup=sweetheartOver&&side>.010&&side<.060&&y>1.243&&z>.074;
-      const innerEase=n===2&&(cupRefit||sweetheartOver)&&x>-.068&&x<-.012&&y>1.247&&z>.072;
-      const crest=cupRefit&&!sweetheartOver&&side>.039&&side<.108&&y>1.279&&z>.049;
-      const rightCup=cupRefit&&x>-.132&&x<-.023&&z>.025&&y>1.266;
-      const height=(overCup?.009001:0)+(underarm?.005001:0)+(innerCup&&cupRefit?.004001:0)+(crest?.002501:0);
-      const depth=(rightCup?.045:0)+(overCup?.002001:0)+(underarm?.009001:0)+(innerCup?.006001:0)+(innerEase?.002501:0)+(crest?.009001:0);
-      const width=(after.getX(i)-x)*Math.sign(x);
-      assert(width>=(innerCup&&cupRefit?-.002001:0)&&width<=(underarm?.007001:0),'Sweetheart width changes stay local to the cup edges');
-      if(x===0)assert.equal(after.getX(i),0,'the refit preserves the centerline');
-      assert(rise>=0&&rise<=height,'the refit preserves other cup and hem heights');
-      assert(after.getZ(i)>=z&&after.getZ(i)-z<=depth,'only the fitted cup regions move outward');
-      if(overCup) sweetheartOverRise=Math.max(sweetheartOverRise,rise);
+      const x=before.getX(i),y=before.getY(i),z=before.getZ(i);
+      assert.equal(after.getY(i),y,'the tucked fit preserves the authored waist height');
+      const clearance=Math.hypot(after.getX(i)-x,after.getZ(i)-z);
+      assert(clearance<=(y<1.217?.007001:0),'the Ruffled tucked waist refit stays local');
      }
     }
    });
   }
-  if(n===2)assert(sweetheartOverRise>.006,'Sweetheart over-skirt cup has a visible coverage increase');
   if(n===5){
    assert(collarRemovedIndices>0,'High Collar removes the old shoulder fragments');
    const seams=model.root.getObjectByName('CLOTH_CORSET_HIGH_COLLAR_CAP_SEAMS');
@@ -265,7 +271,13 @@ try{
   assert(shoeBounds.max.x>.197&&shoeBounds.min.x<-.197&&shoeBounds.min.z<-.098,'shoes cover both heels and outer feet');
   if(n===2){
    const pinkAccent=withClothingColors({...DEFAULT_CHARACTER,wardrobe:{set,shirt:'none',waist:'tucked'}},'skirt',{color:'#335577',accent:'#ff2d95'});
-   applyVillagerLook(model,assetLook(pinkAccent));
+   const dyedCorset=withClothingColors(pinkAccent,'corset',{color:'#426640',accent:'#ff2d95'});
+   applyVillagerLook(model,assetLook(dyedCorset));
+   model.root.getObjectByName('CLOTH_CORSET_TUCKED').traverse(part=>{
+    if(!part.isMesh)return;
+    assert.equal(part.material.color.getHexString(),part.material.userData.color_slot==='fabric'?'426640':'ff2d95',
+     'Sweetheart back fabric uses the main dye while front lacing and eyelets take the accent');
+   });
    model.root.getObjectByName('CLOTH_BOTTOM_SKIRT').traverse(part=>{
     if(part.isMesh)assert.equal(part.material.color.getHexString(),'335577','pink trim cannot color the Sweetheart waist seam');
    });
