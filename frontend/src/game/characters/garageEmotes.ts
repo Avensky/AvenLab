@@ -549,23 +549,23 @@ export function emoteCollection(group: EmoteGroup, bag: boolean, includeWalks = 
 }
 
 export function garagePreviewCollection(group: EmoteGroup | "Best", bag: boolean): readonly Emote[] {
-  if (group !== "Garage" && group !== "Best") return emoteCollection(group, bag);
-  const library = new Map(EMOTE_GROUPS.flatMap(pack => emoteCollection(pack, bag)).map(emote => [emote.id, emote]));
+  if (group !== "Garage" && group !== "Best") return emoteCollection(group, false);
+  const library = new Map(EMOTE_GROUPS.flatMap(pack => emoteCollection(pack, false)).map(emote => [emote.id, emote]));
   const picks = (group === "Best" ? BEST_EMOTE_IDS : GARAGE_PICK_IDS).flatMap(id => library.get(id) ?? []);
-  return group === "Best" ? picks : [...picks, ...emoteCollection("Garage", bag).filter(emote => !GARAGE_PICK_IDS.includes(emote.id))];
+  return group === "Best" ? picks : [...picks, ...emoteCollection("Garage", false).filter(emote => !GARAGE_PICK_IDS.includes(emote.id)),
+    ...(bag ? BAG_EMOTES : [])];
 }
 
-export function findGaragePreviewEmote(id: string, bag: boolean) {
+export function findGaragePreviewEmote(id: string, bag: boolean): Emote | undefined {
+  if (bag && id.startsWith("bag-")) return BAG_EMOTES.find(emote => emote.id === id);
   for (const group of EMOTE_GROUPS) {
-    const emote = emoteCollection(group, bag).find(item => item.id === id);
+    const emote = emoteCollection(group, false).find(item => item.id === id);
     if (emote) return emote;
   }
 }
 
 export function buildGarageEmotes(root: Object3D, bag = false, previewPacks = false) {
   if (previewPacks) return buildEmoteClips(root, EMOTE_GROUPS.flatMap(group => emoteCollection(group, bag)));
-  const idle = emoteCollection("Garage", bag, false).filter(({ id }) => id === "001" || id === "010" ||
-    AUTOMATIC_GARAGE_EMOTE_IDS.includes(id) || id.startsWith("bag-"));
-  if (bag) return buildEmoteClips(root, idle);
-  return buildEmoteClips(root, [...idle, QUIET_THANK_YOU]);
+  const idle = GARAGE_EMOTES.filter(({ id }) => id !== "001" && (id === "010" || AUTOMATIC_GARAGE_EMOTE_IDS.includes(id)));
+  return buildEmoteClips(root, [garageBreathing(bag), ...idle, QUIET_THANK_YOU, ...(bag ? BAG_EMOTES : [])]);
 }

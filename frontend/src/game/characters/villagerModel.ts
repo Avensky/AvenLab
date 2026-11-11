@@ -6,6 +6,7 @@ import { aimDriverJoint, driverArm } from "./garageEmotes";
 import { ROOK_ID, VILLAGER_ID, type CharacterLook } from "./characterCatalog";
 import { addVillagerFaceShapes, prepareVillagerFaceColors } from "./villagerFace";
 import { prepareVillagerFaceAccessories } from "./villagerFaceAccessories";
+import { cockpitWardrobe } from "./cockpitWardrobe";
 
 export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait" = "garage") {
   if (look.character.id === ROOK_ID) return kind === "portrait" ? __ROOK_PORTRAIT_URL__ : __ROOK_MODEL_URL__;
@@ -18,11 +19,13 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
   root.name = female ? "garage-villager-female" : "garage-villager-male";
   const materials = new Map<MeshStandardMaterial, MeshStandardMaterial>();
   const accentMaterials = new Map<MeshStandardMaterial, MeshStandardMaterial>();
+  const sleeveMaterials = new Map<MeshStandardMaterial, MeshStandardMaterial>();
   const skeletons = new Set<Skeleton>();
   root.traverse(object => {
     if (!(object instanceof Mesh)) return;
     if (object instanceof SkinnedMesh) skeletons.add(object.skeleton);
-    const palette = /^(ACC_BOW|ACC_BELT)/.test(object.name) ? accentMaterials : materials;
+    const palette = /^(ACC_BOW|ACC_BELT)/.test(object.name) ? accentMaterials
+      : female && object.name === "CLOTH_ARMS_SLEEVES" ? sleeveMaterials : materials;
     const owned = (material: MeshStandardMaterial) => {
       const existing = palette.get(material);
       if (existing) return existing;
@@ -64,11 +67,12 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
     root.getObjectByName("head")?.attach(crop);
   }
 
+  cockpitWardrobe(root);
   root.updateMatrixWorld(true);
   const shoes = root.getObjectByName(female ? "CLOTH_FEET_SHOES" : "CLOTH_FEET_BOOTS");
   if (shoes) root.position.y = -new Box3().setFromObject(shoes, true).min.y;
   return {
-    root, materials, accentMaterials, crop, applyFaceColors, faceAccessories,
+    root, materials, accentMaterials, sleeveMaterials, crop, applyFaceColors, faceAccessories,
     hat: root.getObjectByName("ACC_HAT"),
     longHair: root.getObjectByName("HAIR_HAIR20"),
     bow: root.getObjectByName("ACC_BOW"),
@@ -77,6 +81,7 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
       faceAccessories.dispose();
       materials.forEach(material => material.dispose());
       accentMaterials.forEach(material => material.dispose());
+      sleeveMaterials.forEach(material => material.dispose());
       skeletons.forEach(skeleton => skeleton.dispose());
       crop?.geometry.dispose();
       crop?.material.dispose();
@@ -87,7 +92,7 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
 export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, look: CharacterLook) {
   model.applyFaceColors(look);
   model.faceAccessories.setGlasses(look.appearance.glasses);
-  for (const [source, material] of [...model.materials, ...model.accentMaterials]) {
+  for (const [source, material] of [...model.materials, ...model.accentMaterials, ...model.sleeveMaterials]) {
     material.color.copy(source.color);
     switch (material.name) {
       case "MAT_ClothUpper":

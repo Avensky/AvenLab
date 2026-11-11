@@ -16,13 +16,13 @@ const DOOR_PARTS = [
   ["Mirror.002", 1512, 0, [-.97598, .87461, .40743], [[0, 252]]],
 ] as const;
 
-function partition(mesh: Mesh, ranges: readonly (readonly [number, number])[]) {
+export function partitionVehicleMesh(mesh: Mesh, ranges: readonly (readonly [number, number])[]) {
   const original = mesh.geometry as BufferGeometry;
   const source = original.index!.array;
   const door = new BufferGeometry();
   const body = new BufferGeometry();
   const fixed = source.slice(0, source.length - ranges.reduce((count, [start, end]) => count + (end - start) * 3, 0));
-  const moving = new Uint16Array(source.length - fixed.length);
+  const moving = source instanceof Uint32Array ? new Uint32Array(source.length - fixed.length) : new Uint16Array(source.length - fixed.length);
   const remap = new Int32Array(original.attributes.position.count).fill(-1);
   const vertices: number[] = [];
   let fixedOffset = 0, movingOffset = 0, last = 0;
@@ -70,7 +70,7 @@ export function splitAe86DriverDoor(root: Object3D) {
   if (matches.some(mesh => !mesh?.parent)) return;
   const parts = matches.map((match, i) => {
     const mesh = match!;
-    const { body, door } = partition(mesh, DOOR_PARTS[i][4]);
+    const { body, door } = partitionVehicleMesh(mesh, DOOR_PARTS[i][4]);
     mesh.geometry = body;
     const panel = mesh.clone(false);
     panel.name = `door_right_driver_${i}`;

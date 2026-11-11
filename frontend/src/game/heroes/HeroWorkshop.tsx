@@ -110,6 +110,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  const [vehicleModStages,setVehicleModStages]=useState<Record<string,Record<string,number>>>({});
  const availableParts=useVehicleStudioStore(s=>s.availableVehicle===definition?.vehicle?s.availableParts:NO_VEHICLE_PARTS);
  const openedParts=useVehicleStudioStore(s=>s.parts);
+ const panelsHidden=useGarageDrive(s=>s.panelsHidden);
  const drivingOut=useGarageDrive(s=>s.stage!=="idle");
  const glassStyle=useVehicleStudioStore(s=>s.glassStyle);
  const setGlassStyle=useVehicleStudioStore(s=>s.setGlassStyle);
@@ -175,6 +176,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
   queue.enqueue({hero,vehicle:definition.vehicle,appearance:next,makeDefault:false});
  };
  const back=async()=>{
+  if(useGarageDrive.getState().panelsHidden){useGarageDrive.setState({panelsHidden:false});return;}
   if(page==="character"){
    if(await beforeCharacterClose.current?.()!==false)setPage(previousCharacterPage.current);
    return;
@@ -184,9 +186,11 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
   try{if(await queue.flush())useUIStore.getState().setScreen("main");}finally{leaving.current=false;}
  };
  useSelectionNavigation(root,{confirm:()=>{
+  if(useGarageDrive.getState().panelsHidden){useGarageDrive.setState({panelsHidden:false});return;}
   const active=document.activeElement as HTMLElement;
   if(active===root.current&&page==="heroes"&&!viewingReference)openHero();else if(root.current?.contains(active))active.click();
  },back:()=>void back(),direction:action=>{
+  if(useGarageDrive.getState().panelsHidden)return;
   const active=document.activeElement;
   if(viewingConcepts&&(action==="up"||action==="down")){
    root.current?.querySelector(".hero-guide-scroll")?.scrollBy({top:action==="up"?-180:180,behavior:"smooth"});
@@ -202,6 +206,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
    active.dispatchEvent(new Event("change",{bubbles:true}));
   }else if(root.current)navigateFormRows(root.current,active as HTMLElement,action,remembered.current);
  },tab:direction=>{
+  if(useGarageDrive.getState().panelsHidden)return;
   if(characterOpen){
    if(characterReady){
     const index=CHARACTER_TABS.findIndex(item=>item.id===characterTab);
@@ -235,7 +240,15 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
   <button type="button" aria-pressed={hasFlag(vehicleFlags,VehicleFlags.HAZARDS)} onClick={()=>useInputStore.getState().toggleVehicleFlag(VehicleFlags.HAZARDS)}>HAZARDS</button>
  </>;
  const currentFooter=studioTab==="performance"?studioFooter:studioTab==="body"?bodyFooter:studioTab==="lighting"?lightingFooter:null;
- return <section ref={root} className={`game-ui menu-surface alpha-selection hero-selection hero-workshop${viewingReference?" hero-ability-guide":""}`} data-character-page={characterOpen||undefined} inert={overlay!==null} tabIndex={-1} aria-label={characterOpen?"Character":"Heroes garage"} data-controller-form data-controller-rows>
+ return <section ref={root} className={`game-ui menu-surface alpha-selection hero-selection hero-workshop${panelsHidden?" hero-workshop--hidden":""}${viewingReference?" hero-ability-guide":""}`} data-character-page={characterOpen||undefined} inert={overlay!==null} tabIndex={-1} aria-label={characterOpen?"Character":"Heroes garage"} data-controller-form data-controller-rows>
+  <button type="button" className="menu-control garage-hide-toggle" aria-label={panelsHidden?"Show interface":"Hide interface"}
+    aria-pressed={panelsHidden} title={panelsHidden?"Show interface":"Hide interface"}
+    onClick={()=>useGarageDrive.setState({panelsHidden:!panelsHidden})}>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>
+      {panelsHidden&&<path d="m4 3 16 18"/>}
+    </svg>
+  </button>
   {characterOpen?characterReady?<SceneTabHeader title="CHARACTER" compact tabs={CHARACTER_TABS} activeTab={characterTab}
     onTabChange={id=>setCharacterTab(id as CharacterTab)} idPrefix="character-editor" panelId="character-editor-panel"/>
     :<SelectionHeader title="CHARACTER" compact/>:editing&&definition

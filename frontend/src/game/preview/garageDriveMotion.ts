@@ -2,6 +2,7 @@ import { MathUtils } from "three";
 import type { DriveStage } from "./garageDriveStore";
 
 export const DRIVE_OUT_DURATION = 6.7;
+export const GARAGE_ENTRY_DURATION = 4.14;
 
 export function sampleDriveOut(seconds: number) {
   const ease = (start: number, end: number) => MathUtils.smoothstep(seconds, start, end);
