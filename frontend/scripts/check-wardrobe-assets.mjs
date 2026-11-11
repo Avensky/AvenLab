@@ -14,8 +14,11 @@ const vite=await createServer({server:{middlewareMode:true,hmr:false,ws:false},a
 const rows=[];
 try{
  const {prepareVillager,applyVillagerLook}=await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
- const {DEFAULT_CHARACTER,characterLook}=await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+ const {DEFAULT_CHARACTER,OUTFIT_THEMES,characterAppearance,characterLook}=await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+ const {withClothingColors}=await vite.ssrLoadModule('/src/game/characters/clothingPieces.ts');
  const {buildEmoteClips,findGaragePreviewEmote}=await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
+ const gothicPink=OUTFIT_THEMES.find(theme=>theme.name==='Gothic Pink');
+ const appearance={...characterAppearance(DEFAULT_CHARACTER),color:gothicPink.color,accent:gothicPink.accent};
  for(let n=1;n<=5;n++)for(const lod of ['garage','mobile']){
   const set=`gothic-${String(n).padStart(2,'0')}`,file=join(dir,`${set}.${lod}.glb`),doc=await io.read(file);
   assert.equal(doc.getRoot().listSkins().length,1);assert.equal(doc.getRoot().listSkins()[0].listJoints().length,88);
@@ -56,25 +59,61 @@ try{
    assert(facing.geometry.boundingBox.min.y>1.25,'Sweetheart cup backing stops above the waist');
    assert(facing.geometry.boundingBox.min.z>.06,'Sweetheart cup backing stays in front');
   }
-  // Keep authored UVs and rigging. Sweetheart's tucked torso moves as a whole
-  // across materials, and its cups and over-skirt version retain the source fit.
+  const ruffledTrim=n===3&&model.root.getObjectByName('CLOTH_GOTHIC_03_TRIM_TUCKED');
+  const ruffledOver=ruffledTrim?.parent?.children.find(part=>part.userData.wardrobeRole==='bottom-trim-over');
+  if(n===3){
+   assert(ruffledTrim?.isSkinnedMesh&&ruffledOver?.isSkinnedMesh,'Ruffled skirt has trim for each fit');
+   assert.deepEqual(ruffledOver.geometry.index.array,scene.getObjectByName(ruffledOver.name).geometry.index.array,'Ruffled over-skirt trim keeps its authored triangles');
+   assert(ruffledTrim.geometry.index.count>0&&ruffledTrim.geometry.index.count<ruffledOver.geometry.index.count,'Ruffled tucked trim keeps its lower ruffles');
+   const positions=ruffledTrim.geometry.attributes.position;
+   for(const vertex of ruffledTrim.geometry.index.array)assert(positions.getY(vertex)<=1.06,'Ruffled tucked trim stays below the waist');
+  }
+  // Keep authored UVs and limit each fit change to its affected panels.
   for(const name of ['CLOTH_CORSET_TUCKED','CLOTH_CORSET_OVER']){
+   const tuckRefit=(n===2||n===3)&&name==='CLOTH_CORSET_TUCKED';
    const authored=scene.getObjectByName(name), fitted=model.root.getObjectByName(name);
    authored.traverse(source=>{
     if(!source.isSkinnedMesh)return;
     const target=fitted.getObjectByName(source.name);
     assert(target?.isSkinnedMesh);
+    const cupRefit=n===2&&source.material.userData.color_slot==='fabric';
     for(const attribute of ['position','normal','uv','skinIndex','skinWeight']){
-     if(n===2&&name==='CLOTH_CORSET_TUCKED'&&attribute==='position')continue;
+     if((tuckRefit||cupRefit)&&attribute==='position')continue;
+     if(n===5&&['position','skinIndex','skinWeight'].includes(attribute))continue;
      assert.deepEqual(target.geometry.getAttribute(attribute)?.array,source.geometry.getAttribute(attribute)?.array,`${set} ${lod} ${source.name} ${attribute} stays authored`);
     }
-    if(n===2&&name==='CLOTH_CORSET_TUCKED'){
+    if(n===5){
+     const positions=source.geometry.attributes.position;
+     for(let i=0;i<positions.count;i++){
+      const z=positions.getZ(i),y=positions.getY(i);
+      const inShoulder= y>(z<-.023?1.235:1.285)&&Math.abs(positions.getX(i))>.058&&z<.067;
+      const weight=target.geometry.attributes.skinWeight;
+      assert(Math.abs(weight.getX(i)+weight.getY(i)+weight.getZ(i)+weight.getW(i)-1)<1e-4,'High Collar strap weights remain normalized');
+      if(inShoulder){
+       const fittedPosition=target.geometry.attributes.position;
+       assert(Math.hypot(fittedPosition.getX(i)-positions.getX(i),fittedPosition.getY(i)-y,fittedPosition.getZ(i)-z)<=.014001,'High Collar strap clearance is bounded');
+       continue;
+      }
+      for(const attr of ['position','skinIndex','skinWeight']){
+       const before=source.geometry.attributes[attr],after=target.geometry.attributes[attr];
+       for(let c=0;c<before.itemSize;c++)assert.equal(after.getComponent(i,c),before.getComponent(i,c),'High Collar refit stays local to the shoulders');
+      }
+     }
+    }
+    if(tuckRefit||cupRefit){
      const before=source.geometry.getAttribute('position'),after=target.geometry.getAttribute('position');
      assert.equal(after.count,before.count);
+     const tuckTop=n===2?1.238:1.217,clearance=n===2?.011001:.007001;
      for(let i=0;i<after.count;i++){
-      assert.equal(after.getY(i),before.getY(i),'tucked refit preserves hem and cup height');
-      if(before.getY(i)>=1.238){assert.equal(after.getX(i),before.getX(i));assert.equal(after.getZ(i),before.getZ(i));}
-      else assert(Math.hypot(after.getX(i)-before.getX(i),after.getZ(i)-before.getZ(i))<=.011001,'tucked refit is bounded');
+      const x=before.getX(i),y=before.getY(i),z=before.getZ(i);
+      assert.equal(after.getY(i),y,'the refit preserves hem and cup height');
+      if(tuckRefit&&y<tuckTop){
+       assert(Math.hypot(after.getX(i)-x,after.getZ(i)-z)<=clearance,'tucked waist refit is bounded');
+      }else{
+       assert.equal(after.getX(i),x);
+       if(cupRefit&&x>-.132&&x<-.023&&z>.025&&y>1.266)assert(after.getZ(i)>=z&&after.getZ(i)-z<=.045,'right cup only moves outward');
+       else assert.equal(after.getZ(i),z,'other regions stay authored');
+      }
      }
     }
    });
@@ -90,7 +129,6 @@ try{
   const sourceSole=doc.getRoot().listNodes().find(node=>node.getName()==='CLOTH_FEET_SHOES').getMesh().listPrimitives()[0].getAttribute('POSITION').getMin([])[1];
   assert(Math.abs(shoeBounds.min.y-sourceSole)<1e-6,'larger shoes keep the original sole height');
   assert(shoeBounds.max.x>.197&&shoeBounds.min.x<-.197&&shoeBounds.min.z<-.098,'shoes cover both heels and outer feet');
-  const {withClothingColors}=await vite.ssrLoadModule('/src/game/characters/clothingPieces.ts');
   if(n===2){
    const pinkAccent=withClothingColors({...DEFAULT_CHARACTER,wardrobe:{set,shirt:'none',waist:'tucked'}},'skirt',{color:'#335577',accent:'#ff2d95'});
    applyVillagerLook(model,characterLook(pinkAccent));
@@ -107,12 +145,29 @@ try{
   }
 
   for(const waist of ['tucked','over']){
-   const look=characterLook({...DEFAULT_CHARACTER,wardrobe:{set,shirt:'none',waist}});applyVillagerLook(model,look);
+   const look=characterLook({...DEFAULT_CHARACTER,appearance,wardrobe:{set,shirt:'none',waist}});applyVillagerLook(model,look);
    assert.equal(shorts.visible,false,'complete Gothic outfits hide the standalone shorts');
    if(facing)assert(facing.visible);
    if(n===2)for(const fit of ['tucked','over'])assert.equal(model.root.getObjectByName(`CLOTH_GOTHIC_02_WAIST_SEAM_${fit.toUpperCase()}`).visible,fit===waist);
-   const tuckBindBody=n===2&&waist==='tucked'?scene.getObjectByName('BODY_WARDROBE').geometry:undefined;
-   if(n!==3)verifyCorsetCoverage(model.root,`${set} ${lod} ${waist}`,n,buildEmoteClips,findGaragePreviewEmote,tuckBindBody);
+   if(n===3){
+    assert.equal(ruffledTrim.visible,waist==='tucked');
+    assert.equal(ruffledOver.visible,waist==='over');
+    assert.equal(ruffledTrim.material.color.getHexString(),gothicPink.accent.slice(1),'lower ruffles still take the accent dye');
+    const seam=model.root.getObjectByName('CLOTH_GOTHIC_03_WAIST_SEAM_TUCKED');
+    assert.equal(seam.visible,waist==='tucked');
+    assert.equal(seam.material.color.getHexString(),gothicPink.color.slice(1),'the Ruffled waist seam takes the main dye');
+   }
+   if(n===4){
+    const fit=waist.toUpperCase(),vest=model.root.getObjectByName(`CLOTH_CORSET_${fit}`);
+    const lining=vest.getObjectByName(`CLOTH_CORSET_04_LINING_${fit}`);
+    assert(lining?.isSkinnedMesh&&lining.geometry.index.count>0,'the Underbust lining has its own draw');
+    assert.equal(lining.material.color.getHexString(),gothicPink.color.slice(1),'the Underbust lining takes the main dye');
+    const piping=vest.children.find(part=>part.isSkinnedMesh&&part.material.name==='MAT_CORSET_04_00.001');
+    assert(piping?.geometry.index.count>0,'the Underbust keeps its piping');
+    assert.equal(piping.material.color.getHexString(),gothicPink.accent.slice(1),'the Underbust piping takes the accent dye');
+   }
+   const bindBody=scene.getObjectByName('BODY_WARDROBE').geometry;
+   if(n!==3||waist==='tucked')verifyCorsetCoverage(model.root,`${set} ${lod} ${waist}`,n,buildEmoteClips,findGaragePreviewEmote,bindBody,waist==='tucked');
    let triangles=0,draws=0;
    model.root.traverse(o=>{if(!o.isMesh)return;for(let a=o;a;a=a.parent)if(!a.visible)return;const g=o.geometry;triangles+=Math.min(g.drawRange.count,g.index?.count??g.attributes.position.count)/3;draws+=Array.isArray(o.material)?g.groups.length:1;});
    counts.push({shirt:look.wardrobe.shirt,waist,triangles,draws});

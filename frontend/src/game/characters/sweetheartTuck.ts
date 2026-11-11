@@ -1,27 +1,65 @@
-import { MathUtils, SkinnedMesh, type BufferGeometry, type Object3D } from "three";
+import { MathUtils, Ray, SkinnedMesh, Triangle, Vector3, type BufferGeometry, type Object3D } from "three";
 
-/** Bring the tucked waist outside the body, with a gradual return to the authored cups. */
-export function fitSweetheartTuck(corset: Object3D) {
+function rightCupSurface(body: BufferGeometry) {
+  const positions = body.getAttribute("position");
+  const indices = body.getIndex();
+  const surface: Triangle[] = [];
+  const a = new Vector3(), b = new Vector3(), c = new Vector3();
+  if (!indices) return surface;
+  for (let i = 0; i < indices.count; i += 3) {
+    a.fromBufferAttribute(positions, indices.getX(i));
+    b.fromBufferAttribute(positions, indices.getX(i + 1));
+    c.fromBufferAttribute(positions, indices.getX(i + 2));
+    if (Math.min(a.x, b.x, c.x) > -.023 || Math.max(a.x, b.x, c.x) < -.132
+      || Math.max(a.y, b.y, c.y) < 1.266 || Math.min(a.y, b.y, c.y) > 1.318
+      || Math.max(a.z, b.z, c.z) < .025) continue;
+    surface.push(new Triangle(a.clone(), b.clone(), c.clone()));
+  }
+  return surface;
+}
+
+/** Refit the right neckline against the chest and keep the tucked waist outside the torso. */
+export function fitSweetheartCorset(root: Object3D, body: BufferGeometry) {
+  const surface = rightCupSurface(body);
+  const ray = new Ray(new Vector3(), new Vector3(0, 0, -1));
+  const intersection = new Vector3();
   const panels: { mesh: SkinnedMesh; source: BufferGeometry; fitted: BufferGeometry }[] = [];
-  corset.traverse(mesh => {
-    if (!(mesh instanceof SkinnedMesh)) return;
-    const source = mesh.geometry;
-    const fitted = source.clone();
-    const position = fitted.getAttribute("position");
-    for (let i = 0; i < position.count; i++) {
-      const x = position.getX(i), y = position.getY(i), z = position.getZ(i) - .025;
-      const radius = Math.hypot(x, z);
-      if (radius === 0 || y >= 1.238) continue;
-      const clearance = (.006 + .005 * MathUtils.smoothstep(y, 1.098, 1.122))
-        * (1 - MathUtils.smoothstep(y, 1.195, 1.238));
-      const scale = 1 + clearance / radius;
-      position.setXYZ(i, x * scale, y, .025 + z * scale);
-    }
-    fitted.computeBoundingBox();
-    fitted.computeBoundingSphere();
-    mesh.geometry = fitted;
-    panels.push({ mesh, source, fitted });
-  });
+  for (const fit of ["TUCKED", "OVER"]) {
+    root.getObjectByName(`CLOTH_CORSET_${fit}`)?.traverse(mesh => {
+      if (!(mesh instanceof SkinnedMesh) || Array.isArray(mesh.material)) return;
+      const fabric = mesh.material.userData.color_slot === "fabric";
+      if (fit === "OVER" && !fabric) return;
+      const source = mesh.geometry;
+      const fitted = source.clone();
+      const position = fitted.getAttribute("position");
+      for (let i = 0; i < position.count; i++) {
+        const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
+        if (fit === "TUCKED" && y < 1.238) {
+          const radius = Math.hypot(x, z - .025);
+          if (radius === 0) continue;
+          const clearance = (.006 + .005 * MathUtils.smoothstep(y, 1.098, 1.122))
+            * (1 - MathUtils.smoothstep(y, 1.195, 1.238));
+          const scale = 1 + clearance / radius;
+          position.setXYZ(i, x * scale, y, .025 + (z - .025) * scale);
+          continue;
+        }
+        if (!fabric || x >= -.023 || x <= -.132 || z <= .025 || y <= 1.266) continue;
+        ray.origin.set(x, y, .25);
+        let depth = z - .009;
+        for (const { a, b, c } of surface) {
+          if (ray.intersectTriangle(a, b, c, false, intersection)) depth = Math.max(depth, intersection.z);
+        }
+        // The broad upper faces span the curved chest, so allow clearance between vertices as well.
+        const blend = MathUtils.smoothstep(-x, .023, .033) * (1 - MathUtils.smoothstep(-x, .112, .132))
+          * MathUtils.smoothstep(z, .025, .045) * MathUtils.smoothstep(y, 1.266, 1.292);
+        position.setZ(i, z + (depth + .009 - z) * blend);
+      }
+      fitted.computeBoundingBox();
+      fitted.computeBoundingSphere();
+      mesh.geometry = fitted;
+      panels.push({ mesh, source, fitted });
+    });
+  }
   return () => {
     for (const { mesh, source, fitted } of panels) {
       mesh.geometry = source;

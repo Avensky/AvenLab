@@ -1,8 +1,9 @@
 import { DoubleSide, MathUtils, Mesh, MeshStandardMaterial, SkinnedMesh, type BufferGeometry, type Object3D } from "three";
-import { fitHighCollarSurface } from "./highCollarFit";
+import { fitHighCollarShoulders, fitHighCollarSurface } from "./highCollarFit";
 import { fitLacedBodiceStraps } from "./lacedStrapFit";
-import { fitSweetheartTuck } from "./sweetheartTuck";
-import { fitUnderbustChest } from "./underbustFit";
+import { fitSweetheartCorset } from "./sweetheartTuck";
+import { prepareUnderbustColors } from "./underbustColors";
+import { fitUnderbustVest } from "./underbustFit";
 import { fitWardrobeSurface } from "./wardrobeSurface";
 
 type CorsetStyle = "01" | "02" | "03" | "04" | "05";
@@ -50,14 +51,34 @@ export function prepareWardrobeLining(root: Object3D) {
   });
   const style = fabric?.name.match(/^MAT_CORSET_(0[1-5])_/u)?.[1] as CorsetStyle | undefined;
   if (!fabric || !style) return;
-  if (style === "04") body.userData.wardrobeBackOpening = true;
-  const straps = style === "01" ? fitLacedBodiceStraps(root, body.geometry) : undefined;
-  const disposeFit = style === "02" ? fitSweetheartTuck(corset) : straps?.disposeShell;
-  const geometry = style === "01" ? straps?.geometry
-    : style === "02" ? fitSweetheartCups(body.geometry)
-    : style === "04" ? fitUnderbustChest(body)
-    : style === "05" ? fitHighCollarSurface(body.geometry)
-    : fitRuffledNeckline(body.geometry);
+  let geometry: BufferGeometry | undefined;
+  let disposeFit: (() => void) | undefined;
+  switch (style) {
+    case "01": {
+      const straps = fitLacedBodiceStraps(root, body.geometry);
+      geometry = straps?.geometry;
+      disposeFit = straps?.disposeShell;
+      break;
+    }
+    case "02":
+      geometry = fitSweetheartCups(body.geometry);
+      disposeFit = fitSweetheartCorset(root, body.geometry);
+      break;
+    case "04": {
+      body.userData.wardrobeBackOpening = true;
+      const vest = fitUnderbustVest(root, body.geometry);
+      const disposeColors = prepareUnderbustColors(root);
+      geometry = vest?.geometry;
+      disposeFit = () => { disposeColors?.(); vest?.disposeShell(); };
+      break;
+    }
+    case "05":
+      geometry = fitHighCollarSurface(body.geometry);
+      disposeFit = fitHighCollarShoulders(root, body.geometry);
+      break;
+    default:
+      geometry = fitRuffledNeckline(body.geometry);
+  }
   if (!geometry) return disposeFit;
 
   const material = new MeshStandardMaterial({

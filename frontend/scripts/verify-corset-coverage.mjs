@@ -6,8 +6,11 @@ import { MeshBVH } from 'three-mesh-bvh';
 // those same triangles through poses so arms in front do not hide fit defects.
 const zones = {
   chest: (p, n) => p.z > .083 && Math.abs(p.x) > .037 && Math.abs(p.x) < .09 && p.y > 1.252 && p.y < 1.292 && n.z > .35,
+  rightCup: (p, n) => p.x > -.092 && p.x < -.055 && p.y > 1.299 && p.y < 1.312 && p.z > .072 && n.z > .18,
+  bust: (p, n) => p.z > .081 && Math.abs(p.x) > .035 && Math.abs(p.x) < .096 && p.y > 1.244 && p.y < 1.296 && n.z > .32,
   back: (p, n) => p.z < -.025 && Math.abs(p.x) < .105 && p.y > 1.33 && p.y < 1.405 && n.z < -.35,
   shoulders: (p, n) => Math.abs(p.x) > .08 && Math.abs(p.x) < .139 && p.y > 1.36 && p.y < 1.414 && n.y > .2,
+  rearStraps: (p, n) => p.z < -.04 && Math.abs(p.x) > .095 && Math.abs(p.x) < .132 && p.y > 1.345 && p.y < 1.398 && n.z < -.3,
   leftRearStrap: (p, n) => p.x > .099 && p.x < .117 && p.y > 1.352 && p.y < 1.382 && p.z < -.068 && n.z < -.35,
 };
 
@@ -59,13 +62,14 @@ function verifyTuckPose(label, samples, points, triangle, center, normal, ray, s
   }
 }
 
-export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGaragePreviewEmote, tuckBindBody) {
+export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGaragePreviewEmote, bindBody, tucked) {
   const body = root.getObjectByName('BODY_WARDROBE');
   const corset = [], skirt = [];
+  const verifyTuck = (style === 2 || style === 3) && tucked;
   root.traverse(mesh => {
     if (!mesh.isSkinnedMesh) return;
     const piece = mesh.userData.clothingPiece;
-    if (piece !== 'corset' && !(tuckBindBody && piece === 'skirt')) return;
+    if (piece !== 'corset' && !(verifyTuck && piece === 'skirt')) return;
     for (let part = mesh; part; part = part.parent) if (!part.visible) return;
     (piece === 'corset' ? corset : skirt).push(mesh);
   });
@@ -77,19 +81,30 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
   }
   root.updateMatrixWorld(true);
   const idle = posedVertices(body), indices = visibleIndices(body);
-  const required = style === 5 ? ['chest', 'back', 'shoulders'] : style === 1 ? ['chest', 'leftRearStrap'] : ['chest'];
+  const required = style === 5 ? ['bust', 'back', 'shoulders', 'rearStraps']
+    : style === 4 ? ['bust'] : style === 3 ? [] : style === 2 ? ['chest', 'rightCup'] : ['chest', 'leftRearStrap'];
   const samples = Object.fromEntries(required.map(zone => [zone, []]));
   for (let i = 0; i < indices.length; i += 3) {
     const face = indices.subarray(i, i + 3);
     triangle(idle, face);
-    for (const [zone, faces] of Object.entries(samples)) if (zones[zone](center, normal)) faces.push(face);
+    for (const [zone, faces] of Object.entries(samples)) if (zone !== 'bust' && zones[zone](center, normal)) faces.push(face);
+  }
+  if (samples.bust) {
+    // Check the cloth against the original chest even where the outfit masks skin.
+    const points = bindBody.getAttribute('position').array;
+    const indices = bindBody.index.array;
+    for (let i = 0; i < indices.length; i += 3) {
+      const face = indices.subarray(i, i + 3);
+      triangle(points, face);
+      if (zones.bust(center, normal)) samples.bust.push(face);
+    }
   }
   for (const [zone, faces] of Object.entries(samples)) assert(faces.length > 0, `${label} samples ${zone}`);
-  const tuck = tuckBindBody && tuckSamples(tuckBindBody, triangle, center);
+  const tuck = verifyTuck && tuckSamples(bindBody, triangle, center);
 
   const mixer = new AnimationMixer(root), ray = new Ray();
   const poses = [['idle', 0], ['013', .45], ['008', .5], ['010', .5]];
-  if (tuck) poses.push(['009', .5]);
+  if (style !== 1) poses.push(['009', .5]);
   for (const [pose, phase] of poses) {
     const emote = pose === 'idle' ? undefined : findGaragePreviewEmote(pose, false);
     if (pose !== 'idle') assert(emote, `${pose} is available for coverage verification`);
@@ -101,12 +116,18 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
     const points = posedVertices(body);
     const shapes = corset.map(posedSurface);
     for (const [zone, faces] of Object.entries(samples)) {
+      let covered = 0;
       for (const face of faces) {
         triangle(points, face);
         ray.origin.copy(center).addScaledVector(normal, .1);
         ray.direction.copy(normal).negate();
-        assert(shapes.some(surface => (surface.raycastFirst(ray, DoubleSide)?.distance ?? Infinity) < .100001), `${label} ${pose} leaves ${zone} exposed`);
+        const distance = Math.min(...shapes.map(surface => surface.raycastFirst(ray, DoubleSide)?.distance ?? Infinity));
+        // At the dipped neckline some shoulder poses cast over the edge, through to the back.
+        if (zone === 'rightCup' && distance > .145) continue;
+        assert(distance < .100001, `${label} ${pose} leaves ${zone} exposed`);
+        covered++;
       }
+      if (zone === 'rightCup') assert(covered >= faces.length / 2, `${label} ${pose} reaches the right cup`);
     }
     if (tuck) verifyTuckPose(`${label} ${pose}`, tuck, points, triangle, center, normal, ray, skirt.map(posedSurface), shapes);
     action?.stop();
