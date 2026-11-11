@@ -175,8 +175,11 @@ node --test tests/wardrobe.test.mjs
 
 Keep face/body coordinates unquantized: existing face shaders use bind-space
 positions. The asset checker loads compressed GLBs through Three.js and tests
-both waist fits, weights, role tags, and coverage flags. It strips textures for
-Node loading, so it does not certify browser image decoding or GPU rendering.
+both waist fits, weights, role tags, and coverage flags. It compares corset
+vertices, normals, UVs, and weights with the authored shell. For the revised
+sets it also tests coverage in idle, clap, shoulder stretch, and wave poses.
+It strips textures for Node loading, so live material rendering still needs
+visual review.
 
 ## Dressing room
 
@@ -291,7 +294,12 @@ bare-body mesh, replaces arm/twist weights on corsets with torso weights, and
 shares waist weights across touching garments. Tucked hems sit inside the skirt.
 Fit revision 6 reshapes the laced straps and vest shell, extends the high-collar
 back, refits Vesper’s shoes, and adds clearance to the Ruffled Corset overskirt.
-The runtime adjusts instance-owned geometry after loading the shipped GLBs.
+Fit revision 7 restores the earlier Thin Weld shells for the Laced Bodice and
+Underbust Vest. The laced shell gets a small left rear strap backing, and the
+vest uses a chest insert that follows the original skin weights. The High
+Collar uses fitted fabric across the chest, back, and shoulders. The original
+corset vertices, seams, and texture coordinates stay intact in both waist fits
+and model tiers.
 
 Emotes uses a left filter rail and a right searchable results list. All searches
 the whole library, My personality shows the equipped personality's reactions,

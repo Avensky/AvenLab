@@ -102,7 +102,7 @@ test('dressing room separates browsing from equipping, filters fitting work, and
     assert.equal(changes.at(-1).wardrobe.shirt, 'none');
     assertPiece('corset');
     assert.equal(find('.dressing-details h2').textContent, 'Underbust vest');
-    assert.match(find('.dressing-details p').textContent, /raised front, an oval back opening/);
+    assert.match(find('.dressing-details p').textContent, /oval back opening/);
     assert.equal(find('.dressing-details dd').textContent, '0 credits');
     assert.equal(find('[data-dressing-piece=shirt]'), null);
     assert.equal(find('[data-dressing-piece=shorts]'), null);

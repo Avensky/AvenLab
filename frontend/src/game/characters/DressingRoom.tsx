@@ -61,7 +61,7 @@ const GOTHIC_DESCRIPTIONS: Record<string, string> = {
   "gothic-01": "A lace-up bodice with fitted shoulder straps and a matching skirt.",
   "gothic-02": "A sweetheart-neckline corset with a layered, scalloped skirt.",
   "gothic-03": "A ruffled corset with a matching skirt cut to clear its inner ruffles.",
-  "gothic-04": "A fitted vest with a raised front, an oval back opening and a matching skirt.",
+  "gothic-04": "A fitted vest with an oval back opening and a matching skirt.",
   "gothic-05": "A high-collar corset with a fitted upper back and a matching skirt. It supports tucked and over-skirt fits.",
 };
 

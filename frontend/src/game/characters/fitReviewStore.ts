@@ -2,13 +2,15 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { CharacterChoice } from "./characterCatalog";
 import { resolveWardrobe } from "./wardrobe";
-export const FIT_REVISION = "wardrobe-6";
+export const FIT_REVISION = "wardrobe-7";
+const refittedSets = new Set(["gothic-01", "gothic-04", "gothic-05"]);
 export const FIT_CHECKS = ["front", "back", "movement"] as const;
 export type FitCheck = typeof FIT_CHECKS[number];
 type Review = { checks: Partial<Record<FitCheck, boolean>>; issue: string; updated: string };
 export function fitReviewKey(owner: string | undefined, choice: CharacterChoice, piece: string, pose = "standing") {
  const w = resolveWardrobe(choice.wardrobe);
- return JSON.stringify([FIT_REVISION, owner ?? "local", choice.id, w?.set ?? choice.outfit, w?.shirt ?? "original", w?.waist ?? "original", choice.appearance?.animation_fit ?? "auto", choice.appearance?.glasses ?? "none", choice.prop ?? "none", piece, pose]);
+ const revision = w && refittedSets.has(w.set) ? FIT_REVISION : "wardrobe-6";
+ return JSON.stringify([revision, owner ?? "local", choice.id, w?.set ?? choice.outfit, w?.shirt ?? "original", w?.waist ?? "original", choice.appearance?.animation_fit ?? "auto", choice.appearance?.glasses ?? "none", choice.prop ?? "none", piece, pose]);
 }
 export function fitReviewStatus(review?: Review) { return review?.issue.trim() ? "issue" : FIT_CHECKS.every(check => review?.checks[check]) ? "passed" : review ? "partial" : "untested"; }
 export const useFitReviewStore = create(persist<{

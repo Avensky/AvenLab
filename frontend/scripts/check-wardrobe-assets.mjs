@@ -6,6 +6,7 @@ import {ALL_EXTENSIONS} from '@gltf-transform/extensions';
 import {MeshoptDecoder} from 'meshoptimizer';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {createServer} from 'vite';
+import {verifyCorsetCoverage} from './verify-corset-coverage.mjs';
 const dir=process.argv[2];if(!dir)throw Error('Usage: check-wardrobe-assets.mjs directory');
 await MeshoptDecoder.ready;
 const io=new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({'meshopt.decoder':MeshoptDecoder});
@@ -14,6 +15,7 @@ const rows=[];
 try{
  const {prepareVillager,applyVillagerLook}=await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
  const {DEFAULT_CHARACTER,characterLook}=await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+ const {buildEmoteClips,findGaragePreviewEmote}=await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
  for(let n=1;n<=5;n++)for(const lod of ['garage','mobile']){
   const set=`gothic-${String(n).padStart(2,'0')}`,file=join(dir,`${set}.${lod}.glb`),doc=await io.read(file);
   assert.equal(doc.getRoot().listSkins().length,1);assert.equal(doc.getRoot().listSkins()[0].listJoints().length,88);
@@ -39,7 +41,20 @@ try{
   const shorts=model.root.getObjectByName('CLOTH_UNDER_MODESTY_SHORTS');
   const shoes=model.root.getObjectByName('CLOTH_FEET_SHOES');
   for(const name of ['CLOTH_SHIRT_UNDER','CLOTH_SHIRT_OVER_TUCKED','CLOTH_SHIRT_OVER_OVER'])assert.equal(model.root.getObjectByName(name),undefined);
-  assert.equal(Boolean(facing),n!==4,'the raised Underbust Vest uses its authored shell');
+  assert(facing?.isSkinnedMesh,'fitted corset coverage uses the body rig');
+  // Changing an individual panel pulled welded seams out of shape. The fitted
+  // coverage belongs to a separate primitive, with the authored shell intact.
+  for(const name of ['CLOTH_CORSET_TUCKED','CLOTH_CORSET_OVER']){
+   const authored=scene.getObjectByName(name), fitted=model.root.getObjectByName(name);
+   authored.traverse(source=>{
+    if(!source.isSkinnedMesh)return;
+    const target=fitted.getObjectByName(source.name);
+    assert(target?.isSkinnedMesh);
+    for(const attribute of ['position','normal','uv','skinIndex','skinWeight']){
+     assert.deepEqual(target.geometry.getAttribute(attribute)?.array,source.geometry.getAttribute(attribute)?.array,`${set} ${lod} ${source.name} ${attribute} stays authored`);
+    }
+   });
+  }
   if(facing){
    assert(facing.isSkinnedMesh && facing.geometry.index.count>0);
    assert.equal(facing.material.transparent,false,'the corset facing must remain opaque');
@@ -64,6 +79,7 @@ try{
    const look=characterLook({...DEFAULT_CHARACTER,wardrobe:{set,shirt:'none',waist}});applyVillagerLook(model,look);
    assert.equal(shorts.visible,false,'complete Gothic outfits hide the standalone shorts');
    if(facing)assert(facing.visible);
+   if(n===1||n===4||n===5)verifyCorsetCoverage(model.root,`${set} ${lod} ${waist}`,n,buildEmoteClips,findGaragePreviewEmote);
    let triangles=0,draws=0;
    model.root.traverse(o=>{if(!o.isMesh)return;for(let a=o;a;a=a.parent)if(!a.visible)return;const g=o.geometry;triangles+=Math.min(g.drawRange.count,g.index?.count??g.attributes.position.count)/3;draws+=Array.isArray(o.material)?g.groups.length:1;});
    counts.push({shirt:look.wardrobe.shirt,waist,triangles,draws});
