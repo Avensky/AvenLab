@@ -1,11 +1,11 @@
 import { ProgressBadge } from "../alpha/ProgressBadge";
-import { CharacterHeaderProfile } from "../characters/CharacterHeaderProfile";
 import { useUIStore } from "../../store";
 import { GameButton } from "../../components/GameButton";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { MenuLogo } from "../../components/menus/MenuLogo";
 import { MenuIcon } from "../../components/menus/MenuIcon";
 import { MenuVideoBackground } from "../../components/menus/MenuVideoBackground";
+import { MainMenuProfile } from "./MainMenuProfile";
 
 import { MAIN_MENU_ITEMS } from "./menuItems";
 
@@ -15,13 +15,14 @@ export function MainMenu() {
   const activate = useUIStore((s) => s.activateActiveMenuSelection);
 
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const focusSelection = useCallback(() => itemRefs.current[selectedIndex]?.focus({ preventScroll: true }), [selectedIndex]);
 
   useEffect(() => {
     const el = itemRefs.current[selectedIndex];
     if (!el) return;
 
     el.focus({ preventScroll: true });
-    el.scrollIntoView({
+    el.scrollIntoView?.({
       block: "nearest",
       inline: "nearest",
       behavior: "auto",
@@ -31,6 +32,7 @@ export function MainMenu() {
   return (
     <div className="game-ui menu-surface menu-home main-menu relative z-30">
       <MenuVideoBackground />
+      <MainMenuProfile focusMenu={focusSelection} />
       <div className="menu-home-content">
         <section className="main-menu-identity" aria-label="Redline Vector">
           <header className="menu-brand menu-brand-main">
@@ -44,7 +46,6 @@ export function MainMenu() {
 
               <p className="menu-brand-tagline">Land. Air. Sea. Signal.</p>
             </div>
-            <div className="main-menu-character"><CharacterHeaderProfile compact /></div>
           </header>
 
           <ProgressBadge />

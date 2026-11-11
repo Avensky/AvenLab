@@ -217,12 +217,14 @@ test("social requests, world transitions and assisted text have independent owne
           send: (text) => sent.push(JSON.parse(text)),
         });
         client.beginSocialSession("server-one");
+        assert.equal(sent.length, 0, "fresh connections wait for a profile choice");
+        const signingIn = client.signInDeviceProfile();
         client.receiveSocialResult({
           request_id: sent[0].request_id,
           ok: true,
           data: { profile_id: view.profile.id, token: "f".repeat(64) },
         });
-        await act(async () => Promise.resolve());
+        await act(async () => signingIn);
         assert.equal(
           JSON.parse(
             localStorage.getItem("avenlab-social-profile-v1:server-one"),

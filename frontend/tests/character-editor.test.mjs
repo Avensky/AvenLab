@@ -64,14 +64,19 @@ test('character tools preserve builder drafts, frame close-ups, and wait for app
     assert.equal(find('[aria-label="Preview camera"]'), null, 'the garage camera cannot fight the editor orbit controls');
     await click('[data-category=outfits]');
     assert.equal(find('[aria-label="Character close-up"]').value, 'piece:corset');
+    await click('[data-wardrobe-back]');
     await click('[data-category=props]');
     assert.equal(editor.getState().shot, 'Hands');
     await click('[data-wardrobe-item=shop-bag]');
     assert.equal(find('[aria-label="Character close-up"]').value, 'piece:bag');
     await click('[data-wardrobe-item=empty-hands]');
     assert.equal(editor.getState().shot, 'Hands');
+    await click('[data-wardrobe-back]');
     await click('[data-category=face]');
     assert.equal(editor.getState().shot, 'Face');
+    assert(find('.fitting-camera-panel').hidden);
+    await click('.dressing-toolbar [aria-label="Camera tools"]');
+    assert.equal(find('.fitting-camera-panel').hidden, false);
     await act(async () => {
       const select = find('[aria-label="Character close-up"]'); select.value = 'Back'; select.dispatchEvent(new Event('change', { bubbles: true }));
     });
@@ -153,6 +158,7 @@ test('character tools preserve builder drafts, frame close-ups, and wait for app
     ui.setState({ screen: 'main', overlay: null });
     root = createRoot(document.getElementById('root'));
     await act(async () => root.render(h(MainMenu)));
+    await click('header [data-main-profile-toggle]');
     await click('header [data-open-character]');
     assert.equal(ui.getState().screen, 'world_builder', 'the main-menu portrait opens the same editor');
     await act(async () => root.unmount()); root = null;

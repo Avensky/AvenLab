@@ -237,7 +237,6 @@
   user-select: none;
   filter: drop-shadow(0 0 22px rgb(34 211 238 / 0.35));
 }
-.main-menu-character { flex: none; }
 .menu-brand-copy {
   min-width: 0;
   max-width: 34rem;
@@ -297,10 +296,6 @@
     flex-direction: column;
     gap: 0.25rem;
     text-align: center;
-  }
-  .main-menu-character {
-    position: absolute;
-    inset: 0 0 auto auto;
   }
   .menu-brand-title {
     font-size: 1.75rem;

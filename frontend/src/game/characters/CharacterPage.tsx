@@ -17,6 +17,7 @@ import { GARAGE_LEAN_ID, GARAGE_LEAN_NAME } from "./garageLean";
 import { CHARACTER_PERSONALITIES, type AnimationFit, type CharacterPersonality } from "./characterPersonality";
 import { FittingRotationControls } from "./FittingRotationControls";
 import { FittingCameraSelect } from "./FittingCameraSelect";
+import { FittingCameraToolbar } from "./FittingCameraToolbar";
 import { DressingRoom } from "./DressingRoom";
 import { PreviewVisibilityToggle } from "../preview/PreviewVisibilityToggle";
 
@@ -222,6 +223,18 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
     {!visibleEmotes.length && <p role="status">No emotes match this filter.</p>}
     {locked && <FitReview choice={choice} pose={emote?.id ?? "standing"} />}
   </>;
+  const fitting = tab === "appearance";
+  const rotationDisabled = insideCar || emote?.id === MIRROR_CHECK_ID;
+  const cameraSelect = <FittingCameraSelect choice={choice} views={CHARACTER_CAMERAS} view={camera} compact={fitting}
+    onViewChange={view => useCharacterPreviewStore.setState({ camera: view, zoom: 1 })} />;
+  const zoomRange = <input type="range" aria-label="Preview zoom" min={CHARACTER_ZOOM_MIN} max={CHARACTER_ZOOM_MAX} step=".05" value={zoom}
+    onChange={event => useCharacterPreviewStore.setState({ zoom: Number(event.target.value) })} />;
+  const zoomBy = (step: number) => useCharacterPreviewStore.setState({ zoom: Math.min(CHARACTER_ZOOM_MAX, Math.max(CHARACTER_ZOOM_MIN, +(zoom + step).toFixed(2))) });
+  const togglePose = () => useCharacterPreviewStore.setState({ playbackPaused: !playbackPaused });
+  const fittingCamera = inspection ? cameraControls : <FittingCameraToolbar camera={cameraSelect} zoomRange={zoomRange}
+    visibility={<PreviewVisibilityToggle />} paused={playbackPaused} onPause={togglePose} vehicle={Boolean(cockpitVehicle)}
+    rotationDisabled={rotationDisabled} zoomOutDisabled={zoom <= CHARACTER_ZOOM_MIN} zoomInDisabled={zoom >= CHARACTER_ZOOM_MAX}
+    onZoomOut={() => zoomBy(-.05)} onZoomIn={() => zoomBy(.05)} />;
 
   if (!locked) return (
     <div ref={page} className="character-page character-page--setup" aria-label="Choose character gender" onFocus={revealCharacterControl}>
@@ -248,7 +261,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
       onFocus={revealCharacterControl}>
       <div className="character-stage" data-character-viewport data-character-preview={choice.id} data-outfit-preview={choice.outfit}
         aria-label={`Preview of ${character.name}`} />
-      {tab === "appearance" && <DressingRoom choice={choice} onChange={update} modelControls={genderPicker} />}
+      {fitting && <DressingRoom choice={choice} onChange={update} modelControls={genderPicker} cameraTools={fittingCamera} />}
       {tab !== "appearance" && <section className="character-controls menu-panel-frame character-controls--left" aria-label={tab}>
         {tab === "identity" && <>
           <header className="character-description"><h2>Identity</h2><p>Choose how your character identifies and which model they use.</p></header>
@@ -276,9 +289,9 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
       </section>}
       {tab === "emotes" && <section className="character-controls menu-panel-frame character-controls--right" aria-label="Emote results"><h2>Emotes</h2>{emoteResults}</section>}
       <section className="character-controls menu-panel-frame character-controls--bottom" aria-label="Camera and save status">
-        {cameraControls}
-        {!inspection && <FittingRotationControls vehicle={Boolean(cockpitVehicle)} disabled={insideCar || emote?.id === MIRROR_CHECK_ID} />}
-        {!inspection && (insideCar ? <div className="character-camera" data-controller-row>
+        {!fitting && cameraControls}
+        {!fitting && !inspection && <FittingRotationControls vehicle={Boolean(cockpitVehicle)} disabled={rotationDisabled} />}
+        {!fitting && !inspection && (insideCar ? <div className="character-camera" data-controller-row>
           <label>Camera<select className="menu-control" aria-label="Preview camera" value={camera === "Whole car" ? "Whole car" : "Full body"}
             onChange={event => useCharacterPreviewStore.setState({ camera: event.target.value as typeof camera, zoom: 1 })}>
             <option value="Full body">Driver</option><option value="Whole car">Whole vehicle</option>
@@ -287,22 +300,20 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
             onClick={toggleCockpit}>Exit {stationName}</button>
           <PreviewVisibilityToggle />
         </div> : <div className="character-camera" data-controller-row>
-          <FittingCameraSelect choice={choice} views={CHARACTER_CAMERAS} view={camera}
-            onViewChange={view => useCharacterPreviewStore.setState({ camera: view, zoom: 1 })} />
+          {cameraSelect}
           <div className="character-zoom">
-            <label>Zoom<input type="range" aria-label="Preview zoom" min={CHARACTER_ZOOM_MIN} max={CHARACTER_ZOOM_MAX} step=".05" value={zoom}
-              onChange={event => useCharacterPreviewStore.setState({ zoom: Number(event.target.value) })} /></label>
+            <label>Zoom{zoomRange}</label>
             <button type="button" className="menu-control" aria-label="Zoom out" disabled={zoom <= CHARACTER_ZOOM_MIN}
-              onClick={() => useCharacterPreviewStore.setState({ zoom: Math.max(CHARACTER_ZOOM_MIN, +(zoom - .05).toFixed(2)) })}>−</button>
+              onClick={() => zoomBy(-.05)}>−</button>
             <button type="button" className="menu-control" aria-label="Zoom in" disabled={zoom >= CHARACTER_ZOOM_MAX}
-              onClick={() => useCharacterPreviewStore.setState({ zoom: Math.min(CHARACTER_ZOOM_MAX, +(zoom + .05).toFixed(2)) })}>+</button>
+              onClick={() => zoomBy(.05)}>+</button>
           </div>
           <button type="button" className="menu-control" aria-pressed={playbackPaused}
-            onClick={() => useCharacterPreviewStore.setState({ playbackPaused: !playbackPaused })}>{playbackPaused ? "Resume pose" : "Hold pose"}</button>
+            onClick={togglePose}>{playbackPaused ? "Resume pose" : "Hold pose"}</button>
           <PreviewVisibilityToggle />
         </div>)}
         <div className="character-equip" data-controller-row>
-          <p role="status">{status === "error" ? message : status === "saving" || status === "pending" ? "Saving…" : status === "saved" ? "Saved to your profile." : "Changes save automatically."}</p>
+          <p role="status">{status === "error" ? message : status === "saving" || status === "pending" ? "Saving…" : status === "saved" ? "Saved to your profile." : fitting ? "" : "Changes save automatically."}</p>
           {status === "error" && <>
             <button type="button" className="menu-control" onClick={() => void flush()}>Retry</button>
             <button type="button" className="menu-control" onClick={() => {

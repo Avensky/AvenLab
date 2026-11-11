@@ -1,0 +1,54 @@
+.fitting-camera-toolbar {
+  --fitting-tool-size: clamp(26px, 3.2vw, 34px);
+  position: relative;
+  min-width: 0;
+  pointer-events: auto;
+}
+.fitting-camera-row, .fitting-camera-preset { display: flex; align-items: center; gap: 3px; }
+.fitting-camera-row { flex-wrap: wrap; justify-content: center; }
+.fitting-camera-toolbar .menu-control:is(.fitting-tool-icon, .garage-hide-toggle),
+.fitting-camera-toolbar .fitting-rotation-grid .menu-control {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--fitting-tool-size);
+  height: var(--fitting-tool-size);
+  min-height: var(--fitting-tool-size);
+  padding: 0;
+  border: 1px solid var(--app-line);
+  border-radius: 0;
+  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+  background: var(--app-panel);
+  color: var(--app-text);
+}
+.fitting-camera-toolbar .menu-control:is(:hover, :focus-visible, [aria-expanded="true"], [aria-pressed="true"]):not(:disabled) { border-color: var(--app-accent); color: var(--app-accent); }
+.fitting-camera-toolbar :is(.fitting-tool-icon, .fitting-rotation-grid, .garage-hide-toggle) svg { width: 17px; height: 17px; }
+.fitting-camera-panel {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  z-index: 4;
+  display: grid;
+  gap: 8px;
+  width: min(210px, calc(100vw - 20px));
+  box-sizing: border-box;
+  transform: translateX(-50%);
+  padding: 9px;
+  border: 1px solid var(--app-line);
+  clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+  background: var(--app-panel);
+}
+.fitting-camera-panel[hidden] { display: none; }
+.fitting-camera-preset .fitting-camera-select { flex: 1; min-width: 0; }
+.fitting-camera-preset .fitting-camera-select select {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  color: var(--app-text);
+  background: var(--app-raised);
+  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+}
+.fitting-camera-range input { box-sizing: border-box; width: 100%; margin: 0; accent-color: var(--app-accent); }
+.fitting-camera-panel .fitting-rotation-grid { display: flex; justify-content: center; }
+.fitting-camera-panel .fitting-rotation-grid [data-rotation="vehicle"] { color: var(--app-accent); }
+.fitting-camera-panel .fitting-rotation-grid [data-rotation="character"] { color: var(--app-text); }

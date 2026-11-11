@@ -96,6 +96,7 @@ function hasCosmeticsRevision(cosmetics: unknown): cosmetics is Cosmetics & { co
 export const useSocialStore = create<{
   available: boolean;
   profileStatus: "idle" | "restoring" | "ready" | "error";
+  profileScope: "device" | "tab" | null;
   /** Editor key retained through a transport reconnect. Actions still require the current view. */
   profileOwner: string | null;
   cachedCosmetics: Cosmetics | null;
@@ -109,6 +110,7 @@ export const useSocialStore = create<{
 }>((set) => ({
   available: false,
   profileStatus: "idle",
+  profileScope: null,
   profileOwner: null,
   cachedCosmetics: null,
   view: null,
@@ -119,6 +121,7 @@ export const useSocialStore = create<{
     set({
       available: false,
       profileStatus: "idle",
+      profileScope: null,
       view: null,
       message: "Connecting to the game server…",
     }),

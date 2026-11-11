@@ -6,6 +6,10 @@ import {act,createElement as h} from 'react';
 import {createRoot} from 'react-dom/client';
 
 test('tab players preserve main credentials and Quickplay waits for a confirmed profile',async t=>{
+ const fetchRequest=globalThis.fetch;
+ t.mock.method(globalThis,'fetch',(url,options)=>String(url).startsWith('/world-builder/catalog.json?')
+  ? Promise.resolve(Response.json({maps:[{map_id:'road_precision',name:'Road precision',file:'road_precision_colliders.json'}]}))
+  : fetchRequest(url,options));
  const dom=new JSDOM('<div id="root"></div>',{url:'http://localhost',pretendToBeVisual:true}),original=new Map();
  for(const[k,v]of Object.entries({window:dom.window,document:dom.window.document,navigator:dom.window.navigator,HTMLElement:dom.window.HTMLElement,HTMLSelectElement:dom.window.HTMLSelectElement,Event:dom.window.Event,CustomEvent:dom.window.CustomEvent,localStorage:dom.window.localStorage,IS_REACT_ACT_ENVIRONMENT:true})){
   original.set(k,Object.getOwnPropertyDescriptor(globalThis,k));Object.defineProperty(globalThis,k,{value:v,writable:true,configurable:true});
@@ -17,7 +21,7 @@ test('tab players preserve main credentials and Quickplay waits for a confirmed 
   const client=await load('net/socialClient.ts'),{useSocialStore:social}=await load('store/social/socialStore.ts'),{useNetworkStore:network}=await load('store/session/networkStore.ts'),{useUIStore:ui}=await load('store/menus/uiStore.ts'),{useAlphaStore:alpha}=await load('store/alpha/alphaStore.ts');
   // Compile the UI before beginning any fake server requests. The production
   // response deadline must not count cold SSR compilation during parallel tests.
-  const {ModeSelection}=await load('game/alpha/ModeSelection.tsx'),{routeMenuAction:route}=await load('controls/inputRouting.ts'),{joinSelectedMode}=await load('game/alpha/sessionActions.ts');
+  const {ModeSelection}=await load('game/alpha/ModeSelection.tsx'),{MainMenu}=await load('game/menus/MainMenu.tsx'),{routeMenuAction:route}=await load('controls/inputRouting.ts'),{joinSelectedMode}=await load('game/alpha/sessionActions.ts');
   const key='avenlab-social-profile-v1:server-one',main={id:'main',token:'a'.repeat(64),name:'Main'},tab={id:'tab',token:'b'.repeat(64),name:'DRIVER 2'};
   const sent=[],socket={readyState:WebSocket.OPEN,send:body=>sent.push(JSON.parse(body))};
   const flush=()=>act(async()=>Promise.resolve());
@@ -53,13 +57,69 @@ test('tab players preserve main credentials and Quickplay waits for a confirmed 
   await t.test('a newly opened tab keeps using the main player; server keys isolate tab credentials',async()=>{
    dom.window.sessionStorage.clear();client.setSocialConnection(socket);client.beginSocialSession('server-one');assert.equal(sent.at(-1).token,main.token);
    reply(sent.at(-1),{profile_id:main.id,token:null});await flush();
-   client.setSocialConnection(socket);client.beginSocialSession('other-server');assert.equal(sent.at(-1).token,undefined);
-   reply(sent.at(-1),{profile_id:'other',token:'d'.repeat(64)});await flush();assert.equal(JSON.parse(localStorage.getItem(key)).id,main.id);
+   const before=sent.length;
+   client.setSocialConnection(socket);client.beginSocialSession('other-server');
+   assert.equal(sent.length,before,'fresh servers leave the choice to the player');
+   const signingIn=client.signInDeviceProfile();assert.equal(sent.at(-1).token,undefined);
+   reply(sent.at(-1),{profile_id:'other',token:'d'.repeat(64)});await signingIn;assert.equal(JSON.parse(localStorage.getItem(key)).id,main.id);
   });
   await t.test('late old-connection acknowledgements cannot replace current profile credentials or errors',async()=>{
    client.setSocialConnection(socket);client.beginSocialSession('server-one');reply(sent.at(-1),{profile_id:main.id,token:null});await flush();
    const pending=client.createTabProfile();reply(sent.at(-1),{profile_id:'old',token:'e'.repeat(64)});client.setSocialConnection(null);
    await assert.rejects(pending,/connection changed/);assert.equal(dom.window.sessionStorage.getItem(key+':tab'),null);assert.equal(JSON.parse(localStorage.getItem(key)).token,main.token);assert.equal(social.getState().profileStatus,'idle');assert.equal(social.getState().message,'Connecting to the game server…');
+  });
+  await t.test('main portrait offers sign-in and a tab-only guest without replacing the saved device profile',async()=>{
+   const menuKey='avenlab-social-profile-v1:menu-server',before=sent.length;
+   await act(async()=>{
+    client.setSocialConnection(socket);client.beginSocialSession('menu-server');
+    ui.setState({screen:'main',overlay:null,isModeLoading:false});root.render(h(MainMenu));
+   });
+   assert.equal(sent.length,before);
+   const trigger=document.querySelector('.main-menu > header [data-main-profile-toggle]');assert(trigger);
+   const panel=document.querySelector('[aria-label="Player profile options"]');assert(panel.hidden);
+   await act(async()=>route('right'));assert.equal(document.activeElement,trigger);
+   await act(async()=>route('activate'));assert.equal(panel.hidden,false);
+   assert.match(document.activeElement.textContent,/Sign in on this device/);
+   await act(async()=>route('back'));assert(panel.hidden);assert.equal(document.activeElement,trigger);
+   await act(async()=>route('activate'));
+   await act(async()=>route('activate'));
+   const login=sent.at(-1);assert.equal(login.action,'identify');assert.equal(login.token,undefined);
+   await act(async()=>{reply(login,{profile_id:'device',token:'f'.repeat(64)});client.receiveSocialState(view('device','My driver'));});
+   assert.equal(JSON.parse(localStorage.getItem(menuKey)).id,'device');
+   assert.match(trigger.textContent,/My driver/);
+   await act(async()=>trigger.click());
+   await act(async()=>route('activate'));
+   const guest=sent.at(-1);assert.equal(guest.name,'GUEST');assert.equal(guest.token,undefined);
+   await act(async()=>{reply(guest,{profile_id:'guest',token:'e'.repeat(64)});client.receiveSocialState(view('guest','GUEST'));});
+   assert.equal(JSON.parse(localStorage.getItem(menuKey)).id,'device');
+   assert.equal(JSON.parse(dom.window.sessionStorage.getItem(menuKey+':tab')).id,'guest');
+   assert.match(trigger.textContent,/Guest/);
+   await act(async()=>trigger.click());
+   await act(async()=>route('activate'));
+   const restore=sent.at(-1);assert.equal(restore.token,'f'.repeat(64));
+   await act(async()=>{reply(restore,{profile_id:'device',token:null});client.receiveSocialState(view('device','My driver'));});
+   assert.equal(dom.window.sessionStorage.getItem(menuKey+':tab'),null);
+   assert.match(trigger.textContent,/My driver/);
+  });
+  await t.test('fresh users who skip the main portrait can enter Play as a guest',async()=>{
+   const guestKey='avenlab-social-profile-v1:fresh-play',before=sent.length;
+   await act(async()=>{
+    client.setSocialConnection(socket);client.beginSocialSession('fresh-play');
+    alpha.getState().chooseMode('quickplay');ui.setState({screen:'mode_select',overlay:null,isModeLoading:false});root.render(h(ModeSelection));
+   });
+   assert.equal(sent.length,before);
+   await act(async()=>route('activate'));
+   assert.match(document.activeElement.textContent,/CONTINUE AS GUEST/);
+   await act(async()=>route('activate'));
+   await act(async()=>reply(sent.at(-1),{},false,'Guest creation failed.'));
+   assert.match(document.querySelector('[data-profile-action]').textContent,/CONTINUE AS GUEST/);
+   await act(async()=>document.querySelector('[data-profile-action]').click());
+   const guest=sent.at(-1);assert.equal(guest.name,'GUEST');assert.equal(guest.token,undefined);
+   await act(async()=>{reply(guest,{profile_id:'fresh-guest',token:'d'.repeat(64)});client.receiveSocialState(view('fresh-guest','GUEST'));});
+   assert.equal(localStorage.getItem(guestKey),null);
+   await act(async()=>route('activate'));
+   const join=sent.at(-1);assert.equal(join.action,'mode_join');
+   await act(async()=>reply(join,{status:'joined',hero:''}));assert.equal(ui.getState().screen,'hero_select');
   });
  }finally{await act(async()=>root.unmount());await vite.close();dom.window.close();for(const[k,v]of original){if(v)Object.defineProperty(globalThis,k,v);else delete globalThis[k];}}
 });

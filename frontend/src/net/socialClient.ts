@@ -5,6 +5,7 @@ import { useNetworkStore } from "../store/session/networkStore";
 
 type Identity = { id: string; token: string; name: string };
 type IdentityScope = "device" | "tab";
+type IdentitySource = "saved" | "device" | "new-device" | "new-tab";
 type Response = {
   request_id?: string;
   ok?: boolean;
@@ -118,25 +119,29 @@ export function receiveSocialResult(value: Response) {
       new Error(value.message || "The server rejected the request."),
     );
 }
-async function identifyProfile(name:string|undefined,newProfile:boolean,tabOnly=false) {
+async function identifyProfile(name: string | undefined, source: IdentitySource) {
   if (identifying) throw new Error("Wait for player profile restoration to finish.");
   const generation=connectionGeneration;
-  const saved=readIdentity(),identity=pageIdentity??saved?.identity;
-  const scope:IdentityScope=tabOnly?"tab":newProfile?"device":pageIdentity?pageIdentityScope:saved?.scope??"device";
+  const saved = readIdentity();
+  const identity = source === "saved" ? pageIdentity ?? saved?.identity
+    : source === "device" ? readStoredIdentity(() => localStorage, identityKey) : null;
+  const scope: IdentityScope = source === "new-tab" ? "tab"
+    : source === "saved" ? (pageIdentity ? pageIdentityScope : saved?.scope ?? "device") : "device";
   identifying=true;
-  useSocialStore.setState({profileStatus:"restoring",message:tabOnly?"Creating a player for this tab…":"Restoring your player profile…"});
+  useSocialStore.setState({profileStatus:"restoring",message:source === "new-tab" ? "Creating a player for this tab…" : "Connecting your player profile…"});
   try {
     const result=await requestSocial("identify",{
-      ...(identity&&!newProfile?{token:identity.token}:{}),
+      ...(identity ? {token:identity.token} : {}),
       name:name??identity?.name??"DRIVER",
     });
     if(generation!==connectionGeneration) throw new Error("The game connection changed. Try again after reconnecting.");
-    const token=typeof result.token==="string"?result.token:!newProfile?identity?.token:undefined;
+    const token=typeof result.token==="string"?result.token:identity?.token;
     if(typeof result.profile_id!=="string"||!token||token.length!==64)
       throw new Error("The server did not confirm the player profile. Retry your saved profile.");
     pageIdentity={id:result.profile_id,token,name:name??identity?.name??"DRIVER"};
     pageIdentityScope=scope;
     saveIdentity(pageIdentity,scope);
+    useSocialStore.setState({profileScope:scope});
     // The confirmed social_state owns readiness; a reply alone is not a view.
   } catch(error) {
     if(generation===connectionGeneration)useSocialStore.setState({profileStatus:"error",message:error instanceof Error?error.message:"Player profile restoration failed."});
@@ -146,24 +151,32 @@ async function identifyProfile(name:string|undefined,newProfile:boolean,tabOnly=
   }
 }
 export function identifySocial(name?:string,newProfile=false) {
-  return identifyProfile(name,newProfile);
+  return identifyProfile(name,newProfile ? "new-device" : "saved");
+}
+export function signInDeviceProfile() {
+  return identifyProfile(undefined, "device");
+}
+export function createGuestProfile() {
+  return identifyProfile("GUEST", "new-tab");
 }
 /** Explicitly create another authenticated player without changing the saved
  * main profile. Duplicated tabs may inherit sessionStorage and can use this
  * action again if their copied profile is still connected elsewhere. */
 export function createTabProfile() {
-  return identifyProfile("DRIVER 2",true,true);
+  return identifyProfile("DRIVER 2", "new-tab");
 }
 export function beginSocialSession(serverId: unknown, onFailure?: () => void) {
   if (initialized || typeof serverId !== "string") return;
   initialized = true;
   identityKey = `avenlab-social-profile-v1:${serverId}`;
+  const saved = readIdentity();
   useSocialStore.setState({
     available: true,
-    profileStatus: "restoring",
-    message: "Restoring your player profile…",
+    profileScope: saved?.scope ?? null,
+    profileStatus: saved ? "restoring" : "idle",
+    message: saved ? "Restoring your player profile…" : "Sign in on this device or continue as a guest.",
   });
-  void identifySocial().catch(() => onFailure?.());
+  if (saved) void identifySocial().catch(() => onFailure?.());
 }
 export function receiveSocialState(value: unknown) {
   useSocialStore.getState().receive(value);
