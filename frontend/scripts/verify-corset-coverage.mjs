@@ -13,9 +13,19 @@ const zones = {
   shoulders: (p, n) => Math.abs(p.x) > .08 && Math.abs(p.x) < .139 && p.y > 1.36 && p.y < 1.414 && n.y > .2,
   outerShoulders: (p, n) => Math.abs(p.x) > .139 && Math.abs(p.x) < .155 && p.y > 1.359 && p.y < 1.424
     && p.z > -.064 && p.z < .05 && n.y > .1,
+  collarCrest: (p, n) => Math.abs(p.x) > .05 && Math.abs(p.x) < .166 && p.y > 1.364 && p.y < 1.444
+    && p.z > -.061 && p.z < .048 && n.y > .15,
+  rearShoulderPanels: (p, n) => Math.abs(p.x) > .072 && Math.abs(p.x) < .169 && p.y > 1.353 && p.y < 1.421
+    && p.z < -.025 && n.z < -.16,
   rearStraps: (p, n) => p.z < -.04 && Math.abs(p.x) > .095 && Math.abs(p.x) < .132 && p.y > 1.345 && p.y < 1.398 && n.z < -.3,
   leftRearStrap: (p, n) => p.x > .099 && p.x < .117 && p.y > 1.352 && p.y < 1.382 && p.z < -.068 && n.z < -.35,
 };
+
+const highCollarShoulderZones = ['collarCrest', 'rearShoulderPanels'];
+const shoulderViews = [
+  [0, 0, 1], [0, 0, -1], [0, 1, 0],
+  [.65, .45, .58], [.65, .45, -.58], [.65, .75, 0], [.85, .2, -.42],
+].map(view => new Vector3(...view).normalize());
 
 // The Sweetheart neckline needs clearance where the cup turns around the
 // underarm and on the inside edges of the center opening.
@@ -69,6 +79,25 @@ function verifyRaisedShoulder(label, ray, center, direction, skin, corsets) {
   }
 }
 
+function verifyShoulderViews(label, ray, center, normal, side, direction, skin, corsets) {
+  let visibleViews = 0;
+  for (const view of shoulderViews) {
+    direction.set(side * view.x, view.y, view.z);
+    if (normal.dot(direction) < .08) continue;
+    ray.origin.copy(center).addScaledVector(direction, .22);
+    ray.direction.copy(direction).negate();
+    const skinHit = skin.raycastFirst(ray, DoubleSide)?.distance ?? Infinity;
+    // A raised arm or fold can conceal the sampled face. Only require coverage
+    // where this point would be visible on the complete skin from this angle.
+    if (Math.abs(skinHit - .22) > .0002) continue;
+    visibleViews++;
+    if (!corsets.some(surface => (surface.raycastFirst(ray, DoubleSide)?.distance ?? Infinity) < skinHit - .0002)) {
+      assert.fail(`${label} leaves skin exposed from shoulder view ${direction.toArray().map(value => value.toFixed(2)).join(',')}`);
+    }
+  }
+  return visibleViews;
+}
+
 function tuckSamples(bindBody, triangle, center) {
   const regions = { skirt: [], hem: [], corset: [] };
   const points = bindBody.getAttribute('position').array;
@@ -118,9 +147,9 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
   }
   root.updateMatrixWorld(true);
   const idle = posedVertices(body), indices = visibleIndices(body);
-  const required = style === 5 ? ['bust', 'bustTips', 'back', 'shoulders', 'outerShoulders', 'rearStraps']
+  const required = style === 5 ? ['bust', 'bustTips', 'back', 'shoulders', 'outerShoulders', 'rearStraps', ...highCollarShoulderZones]
     : style === 4 ? ['bust'] : style === 3 ? [] : style === 2 ? ['chest', 'rightCup'] : ['chest', 'leftRearStrap'];
-  const unmaskedZones = ['bust', 'bustTips', 'outerShoulders'];
+  const unmaskedZones = ['bust', 'bustTips', 'outerShoulders', ...highCollarShoulderZones];
   const samples = Object.fromEntries(required.map(zone => [zone, []]));
   const edges = style === 2 && !tucked ? Object.entries(sweetheartEdges).map(([zone, { select, view }]) => ({ zone, select, view, faces: [] })) : [];
   const bindPoints = bindBody.getAttribute('position').array;
@@ -153,7 +182,7 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
   const mixer = new AnimationMixer(root), ray = new Ray(), direction = new Vector3();
   const poses = [['idle', 0], ['013', .45], ['008', .5], ['010', .5]];
   if (style !== 1) poses.push(['009', .5]);
-  if (style === 5) poses.push(['heart-overhead', .5]);
+  if (style === 5) poses.push(['heart-overhead', .28], ['heart-overhead', .5], ['heart-overhead', .72]);
   for (const [pose, phase] of poses) {
     const emote = pose === 'idle' ? undefined : findGaragePreviewEmote(pose, false);
     if (pose !== 'idle') assert(emote, `${pose} is available for coverage verification`);
@@ -164,7 +193,8 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
     root.updateMatrixWorld(true);
     const points = posedVertices(body);
     const shapes = corset.map(posedSurface);
-    const raisedSkin = pose === 'heart-overhead' ? surfaceFromVertices(points, bindBody.index.array) : undefined;
+    const highCollarSkin = style === 5 ? surfaceFromVertices(points, bindBody.index.array) : undefined;
+    const raisedSkin = pose === 'heart-overhead' ? highCollarSkin : undefined;
     if (cupFabric) {
       const surface = shapes[corset.indexOf(cupFabric)];
       for (const { zone, view, faces } of edges) for (const face of faces) {
@@ -175,6 +205,19 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
       }
     }
     for (const [zone, faces] of Object.entries(samples)) {
+      if (highCollarSkin && highCollarShoulderZones.includes(zone)) {
+        const visibleViews = { left: 0, right: 0 };
+        for (const face of faces) {
+          triangle(bindPoints, face);
+          const side = Math.sign(center.x);
+          const name = side < 0 ? 'left' : 'right';
+          triangle(points, face);
+          visibleViews[name] += verifyShoulderViews(`${label} ${pose}@${phase} ${zone} (${name})`,
+            ray, center, normal, side, direction, highCollarSkin, shapes);
+        }
+        assert(visibleViews.left > 0 && visibleViews.right > 0, `${label} ${pose}@${phase} samples both sides of ${zone}`);
+        continue;
+      }
       if (raisedSkin && zone !== 'bustTips' && zone !== 'outerShoulders') continue;
       let covered = 0;
       for (const face of faces) {

@@ -11,6 +11,20 @@ const dir=process.argv[2];if(!dir)throw Error('Usage: check-wardrobe-assets.mjs 
 await MeshoptDecoder.ready;
 const io=new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({'meshopt.decoder':MeshoptDecoder});
 const vite=await createServer({server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});
+function shoulderEyeletTriangles(geometry, authoredPositions) {
+ const lanes={frontLeft:[],frontRight:[],crestLeft:[],crestRight:[],rearLeft:[],rearRight:[]};
+ const indices=geometry.index.array;
+ for(let i=0;i<indices.length;i+=3){
+  const a=indices[i],b=indices[i+1],c=indices[i+2];
+  const x=(authoredPositions.getX(a)+authoredPositions.getX(b)+authoredPositions.getX(c))/3;
+  const y=(authoredPositions.getY(a)+authoredPositions.getY(b)+authoredPositions.getY(c))/3;
+  const z=(authoredPositions.getZ(a)+authoredPositions.getZ(b)+authoredPositions.getZ(c))/3;
+  if(y<=1.339||y>=1.435||Math.abs(x)<=.062||Math.abs(x)>=.135||z>=.063)continue;
+  const band=z>.015?'front':z<-.021?'rear':'crest';
+  lanes[band+(x<0?'Left':'Right')].push(a,b,c);
+ }
+ return lanes;
+}
 const rows=[];
 try{
  const {prepareVillager,applyVillagerLook}=await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
@@ -91,6 +105,11 @@ try{
      assert(target.geometry.index.count<=source.geometry.index.count,'High Collar keeps the authored lower shell triangles');
      collarRemovedIndices+=source.geometry.index.count-target.geometry.index.count;
      const positions=source.geometry.attributes.position;
+     if(source.material.userData.color_slot==='hardware'){
+      const authored=shoulderEyeletTriangles(source.geometry,positions);
+      assert(Object.values(authored).every(lane=>lane.length>0),'High Collar has authored eyelets on both shoulders');
+      assert.deepEqual(shoulderEyeletTriangles(target.geometry,positions),authored,'High Collar preserves the authored front, crest, and rear eyelets');
+     }
      for(let i=0;i<positions.count;i++){
       const z=positions.getZ(i),y=positions.getY(i);
       const inShoulder= y>(z<-.023?1.235:1.285)&&Math.abs(positions.getX(i))>.058&&z<.067;
@@ -139,9 +158,11 @@ try{
   if(n===5){
    assert(collarRemovedIndices>0,'High Collar removes the old shoulder fragments');
    const seams=model.root.getObjectByName('CLOTH_CORSET_HIGH_COLLAR_CAP_SEAMS');
-   assert(seams?.isSkinnedMesh&&seams.geometry.index.count>0,'High Collar has body-rigged shoulder seams');
+   assert(seams?.isSkinnedMesh&&seams.geometry.index.count>0,'High Collar has body-rigged shoulder insets');
    assert.equal(seams.material.userData.color_slot,'accent');
-   assert.equal(seams.material.normalMap,null,'generated High Collar seams use an untextured dye material');
+   assert.equal(seams.material.normalMap,null,'High Collar insets use an untextured dye material');
+   assert(seams.material.vertexColors && seams.geometry.attributes.color.array.every(channel=>channel>0&&channel<.5),
+    'High Collar shoulder insets keep a subdued version of the accent dye');
    const seamPosition=seams.geometry.attributes.position;
    for(const side of [-1,1]){
     let front=Infinity,rear=Infinity,crest=-Infinity;
@@ -152,7 +173,8 @@ try{
      if(z<-.040)rear=Math.min(rear,y);
      crest=Math.max(crest,y);
     }
-    assert(front<1.325&&rear<1.312&&crest>1.415,'each High Collar strap reaches the front bodice and rear lacing over the shoulder');
+    assert(front>1.33&&front<1.348&&rear<1.312&&crest>1.415,
+     'each High Collar inset finishes at the front shoulder and reaches the back lacing');
    }
    const waistbandName='CLOTH_GOTHIC_SKIRT_05_GEO_1',pleatsName='CLOTH_GOTHIC_SKIRT_05_GEO_2';
    const waistband=model.root.getObjectByName(waistbandName).geometry;

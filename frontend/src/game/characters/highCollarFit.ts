@@ -1,25 +1,48 @@
-import { Box3, DoubleSide, MathUtils, MeshStandardMaterial, SkinnedMesh, Triangle, Vector3, type BufferGeometry, type Object3D } from "three";
+import { Box3, DoubleSide, Float32BufferAttribute, MathUtils, MeshStandardMaterial, SkinnedMesh, Triangle, Vector3, type BufferGeometry, type Object3D } from "three";
 import { fitWardrobeSurface } from "./wardrobeSurface";
 
 const capHeight = (point: Vector3) => {
   const across = Math.abs(point.x);
   const front = 1.297 + .145 * MathUtils.smoothstep(across, .027, .069);
-  const back = 1.447 - .020 * MathUtils.smoothstep(across, .093, .182);
+  const back = 1.447 - .008 * MathUtils.smoothstep(across, .093, .182);
   return MathUtils.lerp(back, front, MathUtils.smoothstep(point.z, -.01, .061));
 };
+
+const capSide = (point: Vector3) => {
+  const cap = .139 + .043 * MathUtils.smoothstep(point.y, 1.302, 1.367);
+  const shoulder = .014 * MathUtils.smoothstep(point.y, 1.294, 1.351)
+    * (1 - MathUtils.smoothstep(Math.abs(point.z), .018, .055));
+  const rear = .012 * MathUtils.smoothstep(point.y, 1.317, 1.367)
+    * (1 - MathUtils.smoothstep(point.z, -.058, -.017));
+  return cap + shoulder + rear;
+};
+
+const capClearance = (point: Vector3) => {
+  const shoulder = MathUtils.smoothstep(point.y, 1.310, 1.372);
+  const rear = MathUtils.smoothstep(Math.abs(point.x), .091, .150)
+    * (1 - MathUtils.smoothstep(point.z, -.053, -.010));
+  const rearCrest = MathUtils.smoothstep(point.y, 1.320, 1.352)
+    * (1 - MathUtils.smoothstep(point.z, -.038, -.015));
+  // A close fold at the top tracks the arm motion. The panel below it has
+  // extra rear room and an extended edge around the arm opening.
+  return (.0045 + shoulder * (.0015 + .003 * rear)) * (1 - .75 * rearCrest);
+};
+
+function easeFrontFold(x: number, y: number, z: number) {
+  const across = Math.abs(x);
+  const fold = MathUtils.smoothstep(across, .075, .092) * (1 - MathUtils.smoothstep(across, .104, .126))
+    * MathUtils.smoothstep(y, 1.368, 1.379) * (1 - MathUtils.smoothstep(y, 1.392, 1.412))
+    * MathUtils.smoothstep(z, -.004, .012) * (1 - MathUtils.smoothstep(z, .026, .050));
+  return x + Math.sign(x) * .0015 * fold;
+}
 
 /** Fit the High Collar's inset to the skinned torso, including the shoulder caps. */
 export function fitHighCollarSurface(body: BufferGeometry) {
   const fabric = fitWardrobeSurface(body, [
     point => point.y - 1.174,
-    point => {
-      const cap = .139 + .043 * MathUtils.smoothstep(point.y, 1.302, 1.367);
-      const shoulder = .014 * MathUtils.smoothstep(point.y, 1.294, 1.351)
-        * (1 - MathUtils.smoothstep(Math.abs(point.z), .018, .055));
-      return cap + shoulder - Math.abs(point.x);
-    },
+    point => capSide(point) - Math.abs(point.x),
     point => capHeight(point) - point.y,
-  ], point => .0045 + .0015 * MathUtils.smoothstep(point.y, 1.310, 1.372));
+  ], capClearance);
   if (!fabric) return;
 
   // Span the bust with a shaped fabric panel. Its center follows the garment's
@@ -34,6 +57,7 @@ export function fitHighCollarSurface(body: BufferGeometry) {
   const step = .0002;
   for (let i = 0; i < position.count; i++) {
     const { x, y, z } = point.fromBufferAttribute(position, i);
+    position.setX(i, easeFrontFold(x, y, z));
     const shift = ease(x, y, z);
     if (!shift) continue;
     position.setZ(i, z + shift);
@@ -48,7 +72,7 @@ export function fitHighCollarSurface(body: BufferGeometry) {
   return fabric;
 }
 
-/** Trace a tapered front-to-back strap over each moving shoulder cap. */
+/** Fill the narrow shoulder lacing inset with dyed fabric. */
 function addHighCollarCapSeams(root: Object3D, body: BufferGeometry) {
   const torso = root.getObjectByName("BODY_WARDROBE");
   if (!(torso instanceof SkinnedMesh) || !torso.parent) return;
@@ -60,22 +84,26 @@ function addHighCollarCapSeams(root: Object3D, body: BufferGeometry) {
   if (!accent) return;
   const frontBlend = (point: Vector3) => MathUtils.smoothstep(point.z, -.032, .052);
   const strapEdge = (side: -1 | 1) => (point: Vector3) => {
-    const shoulder = MathUtils.smoothstep(point.y, 1.323, 1.405);
-    const center = MathUtils.lerp(.113, .109, shoulder);
-    const frontWidth = MathUtils.lerp(.0045, .006, MathUtils.smoothstep(point.y, 1.320, 1.356));
-    const backWidth = MathUtils.lerp(.0045, .006, MathUtils.smoothstep(point.y, 1.309, 1.341));
+    const shoulder = MathUtils.smoothstep(point.y, 1.340, 1.410);
+    const center = MathUtils.lerp(.107, .093, shoulder);
+    const frontWidth = MathUtils.lerp(.004, .015, MathUtils.smoothstep(point.y, 1.340, 1.383));
+    const backWidth = MathUtils.lerp(.008, .018, MathUtils.smoothstep(point.y, 1.309, 1.372));
     return MathUtils.lerp(backWidth, frontWidth, frontBlend(point)) - side * (Math.abs(point.x) - center);
   };
   const geometry = fitWardrobeSurface(body, [
-    point => point.y - MathUtils.lerp(1.309, 1.320, frontBlend(point)),
+    point => point.y - MathUtils.lerp(1.309, 1.340, frontBlend(point)),
     point => capHeight(point) - .003 - point.y,
     // Clip the two edges separately so a triangle can span the strap.
     strapEdge(1), strapEdge(-1),
-  ], .0105);
+  ], point => capClearance(point) + .001);
   if (!geometry) return;
 
+  const position = geometry.getAttribute("position");
+  for (let i = 0; i < position.count; i++) position.setX(i, easeFrontFold(position.getX(i), position.getY(i), position.getZ(i)));
+  const shades = new Float32Array(position.count * 3).fill(.075);
+  geometry.setAttribute("color", new Float32BufferAttribute(shades, 3));
   const material = new MeshStandardMaterial({
-    name: "MAT_CORSET_05_CapSeam", color: accent.color, roughness: accent.roughness, side: DoubleSide,
+    name: "MAT_CORSET_05_CapSeam", color: accent.color, roughness: accent.roughness, side: DoubleSide, vertexColors: true,
   });
   material.userData.color_slot = "accent";
   const seam = torso.clone(false);
@@ -85,6 +113,12 @@ function addHighCollarCapSeams(root: Object3D, body: BufferGeometry) {
   seam.material = material;
   torso.parent.add(seam);
   return () => { seam.removeFromParent(); geometry.dispose(); material.dispose(); };
+}
+
+function shoulderDetail(point: Vector3, slot: unknown) {
+  const across = Math.abs(point.x);
+  return (slot === "accent" || slot === "hardware") && point.y > 1.339 && point.y < 1.435
+    && across > .062 && across < .135 && point.z < .063;
 }
 
 /** Carry the lower rear lacing on the moving torso while the new caps supply the upper shoulder. */
@@ -144,17 +178,18 @@ export function fitHighCollarShoulders(root: Object3D, body: BufferGeometry) {
           const upperCap = center.y > cut && Math.abs(center.x) > .076;
           const strayFrontTrim = slot !== "fabric" && center.y > 1.304 && center.z > .003 && Math.abs(center.x) > .057;
           const strayRearTrim = slot === "accent" && center.y > 1.376 && center.z < -.025 && Math.abs(center.x) > .055;
-          if (upperCap || strayFrontTrim || strayRearTrim) continue;
+          if ((upperCap || strayFrontTrim || strayRearTrim) && !shoulderDetail(center, slot)) continue;
           visible.push(first, second, third);
         }
         geometry.setIndex(visible);
         geometry.setDrawRange(0, visible.length);
       }
-      const clearance = slot === "hardware" ? .009 : slot === "accent" ? .007 : .0055;
+      const authoredClearance = slot === "hardware" ? .009 : slot === "accent" ? .007 : .0055;
       for (let i = 0; i < position.count; i++) {
         point.fromBufferAttribute(position, i);
         const rear = 1 - MathUtils.smoothstep(point.z, -.054, -.023);
-        const blend = MathUtils.smoothstep(point.y, MathUtils.lerp(1.285, 1.235, rear), MathUtils.lerp(1.347, 1.294, rear))
+        const detail = shoulderDetail(point, slot);
+        const blend = detail ? 1 : MathUtils.smoothstep(point.y, MathUtils.lerp(1.285, 1.235, rear), MathUtils.lerp(1.347, 1.294, rear))
           * MathUtils.smoothstep(Math.abs(point.x), .058, .101)
           * (1 - MathUtils.smoothstep(point.z, .031, .067));
         if (!blend) continue;
@@ -178,6 +213,7 @@ export function fitHighCollarShoulders(root: Object3D, body: BufferGeometry) {
           .addScaledVector(b.fromBufferAttribute(bodyNormals, second), weights.y)
           .addScaledVector(c.fromBufferAttribute(bodyNormals, third), weights.z).normalize();
         const currentClearance = closest.copy(point).sub(target).dot(normal);
+        const clearance = detail ? capClearance(target) + (slot === "hardware" ? .003 : .002) : authoredClearance;
         point.addScaledVector(normal, blend * MathUtils.clamp(clearance - currentClearance, 0, .014));
         position.setXYZ(i, point.x, point.y, point.z);
 

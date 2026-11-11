@@ -304,6 +304,10 @@ Collar uses fitted fabric across the chest, back, and shoulders. The original
 corset vertices, seams, and texture coordinates stay intact in both waist fits
 and model tiers.
 
+Fit revision 13 follows the Corset 05 Thin Weld shoulder pattern. The upper
+back panels extend farther around both shoulders, and the shoulder lacing
+sits over a fabric inset that follows the rig.
+
 Emotes uses a left filter rail and a right searchable results list. All searches
 the whole library, My personality shows the equipped personality's reactions,
 and pack filters narrow the list. The center remains the existing live scene.
