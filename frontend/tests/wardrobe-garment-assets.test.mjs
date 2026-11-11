@@ -25,25 +25,32 @@ const garmentFiles = catalog.flatMap(item => [item.url, item.mobileUrl].filter(B
 const hoodIds = Array.from({ length: 7 }, (_, index) => `hood-0${index + 1}`);
 const hoodFiles = new Set(catalog.filter(item => hoodIds.includes(item.id))
   .flatMap(item => [item.url.slice(1), item.mobileUrl.slice(1)]));
+const supersededHoodFiles = new Set([
+  "models/characters/female/wardrobe/hoods/hood-01.garage.glb",
+  "models/characters/female/wardrobe/hoods/hood-01.mobile.glb",
+  "models/characters/female/wardrobe/hoods/hood-02.garage.glb",
+  "models/characters/female/wardrobe/hoods/hood-02.mobile.glb",
+]);
 const rigTolerance = 2e-5;
 const isLfsPointer = bytes => bytes.subarray(0, 64).toString().startsWith('version https://git-lfs.github.com/spec/v1');
 
 test('each loose female garment and its available model tiers are in the wardrobe catalog', async () => {
-  const families = { top: 5, skirt: 4, 'gothic-skirt': 5, coat: 1, dress: 1, hat: 2, socks: 4, bowtie: 14, harness: 5 };
+  const families = { top: 5, armor: 5, bracer: 1, skirt: 4, 'gothic-skirt': 5, coat: 1, dress: 1, medieval: 8, hat: 2, socks: 4, bowtie: 14, harness: 5, 'medieval-kaftan': 5 };
   const ids = Object.entries(families).flatMap(([family, count]) =>
     Array.from({ length: count }, (_, index) => `${family}-${String(index + 1).padStart(2, '0')}`));
-  ids.push(...hoodIds);
+  ids.push(...hoodIds, 'linen-nightgown');
   assert.deepEqual(catalog.map(item => item.id).sort(), ids.sort());
   for (const item of catalog) {
     assert(item.url.startsWith(`/${garmentDir}`), item.id);
-    const hasMobile = ['coat', 'dress', 'hat'].includes(item.slot) || /^skirt-/.test(item.id);
+    const hasMobile = ['coat', 'dress', 'hat'].includes(item.slot) || /^(skirt|armor|bracer)-/.test(item.id);
     assert.equal(Boolean(item.mobileUrl), hasMobile, item.id);
     if (hasMobile) assert.equal(item.mobileUrl, item.url.replace(/\.garage\.glb$/, '.mobile.glb'));
   }
   const files = await readdir(new URL(garmentDir, publicDir), { recursive: true });
   const imports = files.map(file => file.replaceAll('\\', '/')).filter(file => file.endsWith('.glb')
     && file !== 'vesper-body.glb' && !file.startsWith('corsets/') && !file.startsWith('corsettes/'));
-  const installed = new Set(imports.map(file => garmentDir + file));
+  const installed = new Set(imports.map(file => garmentDir + file)
+    .filter(file => !supersededHoodFiles.has(file)));
   assert.deepEqual(garmentFiles.filter(file => !hoodFiles.has(file) || installed.has(file)).sort(), [...installed].sort());
   assert.equal(new Set(garmentFiles).size, garmentFiles.length);
 });
@@ -420,7 +427,8 @@ test('materialized loose garments can share the live female skeleton and skin we
   const baseUrl = new URL(villagerDir + 'villager-female.garage.glb', publicDir);
   const base = await readFile(baseUrl);
   if (isLfsPointer(base)) return t.skip('Run git lfs pull to materialize the female villager GLB.');
-  const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
+  await MeshoptDecoder.ready;
+  const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.decoder': MeshoptDecoder });
   const [reference] = (await io.readBinary(base)).getRoot().listSkins();
   const baseJoints = reference.listJoints();
   const baseNames = baseJoints.map(joint => joint.getName());

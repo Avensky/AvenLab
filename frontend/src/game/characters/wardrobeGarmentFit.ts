@@ -123,7 +123,7 @@ export function prepareWardrobeGarments(
   let skirtRadius: number | undefined;
   for (const { item, scene, authoredFit } of sources) {
     if (replacesVillagerBody(item.slot) && !full?.getIndex()) continue;
-    const fitTop = item.slot === "top" && full ? prepareWardrobeTopFit(full, item.id) : undefined;
+    const fitTop = item.slot === "top" && item.piece !== "armor" && full ? prepareWardrobeTopFit(full, item.id) : undefined;
     const garment = new Group();
     garment.name = `wardrobe-${item.id}`;
     garment.userData.clothingPiece = item.piece;
@@ -136,7 +136,7 @@ export function prepareWardrobeGarments(
       if (!Array.isArray(part.material) && part.material.userData.runtimeExclude) return;
       // The first two wrap skirts open at the center during normal movement.
       const lining = data.wardrobeRole === "shorts";
-      if (lining && item.id !== "skirt-01" && item.id !== "skirt-02") return;
+      if (lining && !item.outfit && item.id !== "skirt-01" && item.id !== "skirt-02") return;
       const mesh = bindWardrobeGarmentMesh(part, original.skeleton);
       if (!mesh) return;
       mesh.userData.clothingPiece = item.piece;
@@ -188,7 +188,7 @@ export function prepareWardrobeGarments(
     }
     skirtBody?.geometry.dispose();
     sockBody?.geometry.dispose();
-    checkTopEdges ||= item.slot === "top";
+    checkTopEdges ||= item.slot === "top" || Boolean(item.outfit);
     if (fabricColor) for (const color of liningColors) color.copy(fabricColor);
     group.add(garment);
     for (const piece of wardrobeGarmentReplacements[item.slot]) replacements.add(piece);

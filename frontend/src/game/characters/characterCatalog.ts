@@ -4,7 +4,7 @@ import catalog from "../../../../avenlab-server/src/assets/characters.json";
 import appearanceOptions from "../../../../avenlab-server/src/assets/character-appearance.json";
 import { resolveWardrobe, wardrobeOverEase, type WardrobeChoice } from "./wardrobe";
 import type { OverSkirtEase } from "./overSkirtEase";
-import { removedWardrobeLayers, visibleWardrobeGarments, type WardrobeGarmentChoice, type WardrobeRemoval } from "./wardrobeGarments";
+import { getWardrobeGarment, removedWardrobeLayers, visibleWardrobeGarments, wardrobeGarmentModelUrl, type WardrobeGarmentChoice, type WardrobeRemoval } from "./wardrobeGarments";
 
 export const CHARACTERS = catalog.filter(item => item.id !== "niko-park");
 export const CHARACTER_APPEARANCE_OPTIONS = appearanceOptions;
@@ -48,6 +48,10 @@ export const VILLAGER_ID = "mara-vega";
 export const ROOK_ID = "jules-okafor";
 export const DEFAULT_CHARACTER: CharacterChoice = { id: VILLAGER_ID, outfit: CHARACTERS[0].outfits[0].id };
 
+const OUTFIT_REMOVALS = ["hat"] as const;
+const SLEEPWEAR_REMOVALS = ["hat", "shoes"] as const;
+const NO_OUTFIT_REMOVALS: readonly WardrobeRemoval[] = [];
+
 const DEFAULT_APPEARANCE: CharacterAppearance = {
   hair: "natural", hair_color: "original", skin: "original", headwear: "none", color: "original",
 };
@@ -68,14 +72,23 @@ export function characterLook(choice: CharacterChoice | null | undefined) {
     return option && "color" in option ? option.color : undefined;
   };
   const female = character.id !== ROOK_ID;
-  const removedClothing = removedWardrobeLayers(choice);
+  const wardrobe = character.id === VILLAGER_ID ? resolveWardrobe(choice?.wardrobe) : undefined;
+  const trials = character.id === VILLAGER_ID ? visibleWardrobeGarments(choice) : undefined;
+  const outfitGarment = character.id === VILLAGER_ID ? getWardrobeGarment(outfit.id) : undefined;
+  const wearsOutfitGarment = outfitGarment?.outfit && !wardrobe && !choice?.wardrobeTrial
+    && !trials?.top && !trials?.skirt && !trials?.dress && wardrobeGarmentModelUrl(outfitGarment, "garage");
+  const outfitRemovals: readonly WardrobeRemoval[] = !wearsOutfitGarment ? NO_OUTFIT_REMOVALS
+    : outfitGarment.outfit?.barefoot ? SLEEPWEAR_REMOVALS : OUTFIT_REMOVALS;
+  const removed = removedWardrobeLayers(choice);
+  const removedClothing = !outfitRemovals.length ? removed : !removed.length ? outfitRemovals
+    : [...new Set([...removed, ...outfitRemovals])];
   const showCorset = character.id === VILLAGER_ID && !removedClothing.includes("corset");
   return {
     character, outfit, appearance, female, removedClothing,
-    wardrobe: character.id === VILLAGER_ID ? resolveWardrobe(choice?.wardrobe) : undefined,
+    wardrobe, outfitRemovals,
     corset: showCorset ? resolveWardrobe(choice?.wardrobeTrial, { includeRetired: true }) : undefined,
     overEase: showCorset ? wardrobeOverEase(choice) : 0 as const,
-    garments: character.id === VILLAGER_ID ? visibleWardrobeGarments(choice) : undefined,
+    garments: wearsOutfitGarment ? { ...trials, dress: outfitGarment.id } : trials,
     fabric: /^#[\da-f]{6}$/i.test(appearance.color) ? appearance.color : color("color") ?? outfit.jacket,
     trim: appearance.accent ?? outfit.trim,
     hair: color("hair_color") ?? (female ? "#7c573c" : "#2b2127"),

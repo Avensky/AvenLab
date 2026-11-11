@@ -166,7 +166,12 @@ impl CharacterChoice {
         let top = self.garments.as_ref().is_some_and(|garments| garments.contains_key("top"));
         let dress = self.garments.as_ref().is_some_and(|garments| garments.contains_key("dress"));
         let skirt = self.garments.as_ref().is_some_and(|garments| garments.contains_key("skirt"));
-        if dress && (top || skirt || self.wardrobe_trial.is_some()) {
+        let armor = self.garments.as_ref().and_then(|garments| garments.get("top")).is_some_and(|id| {
+            GARMENTS.iter().any(|garment| &garment.id == id && garment.piece == "armor")
+        });
+        if (dress && (top || skirt || self.wardrobe_trial.is_some()))
+            || (armor && self.wardrobe_trial.is_some())
+        {
             return false;
         }
         if !self.garments.as_ref().is_none_or(|garments| {

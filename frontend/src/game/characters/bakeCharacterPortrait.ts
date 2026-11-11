@@ -3,6 +3,7 @@ import {
   Scene, Vector3, WebGLRenderer, type Object3D,
 } from "three";
 import type { CharacterLook } from "./characterCatalog";
+import type { WardrobeGarmentSource } from "./wardrobeGarmentFit";
 import { applyVillagerLook, prepareVillager } from "./villagerModel";
 import { prepareStylizedDriver } from "./stylizedDriverModel";
 
@@ -11,7 +12,9 @@ const CACHE_SIZE = 24;
 let renderer: WebGLRenderer | undefined;
 let release: number | undefined;
 
-export function bakeCharacterPortrait(look: CharacterLook, key: string, source?: Object3D) {
+export type PortraitOutfit = { garment: WardrobeGarmentSource; body?: Object3D };
+
+export function bakeCharacterPortrait(look: CharacterLook, key: string, source?: Object3D, outfit?: PortraitOutfit) {
   const cached = portraits.get(key);
   if (cached) return cached;
   if (!renderer) {
@@ -27,7 +30,12 @@ export function bakeCharacterPortrait(look: CharacterLook, key: string, source?:
     renderer = undefined;
   }, 3000);
 
-  const villager = source && prepareVillager(source, { female: look.female });
+  const villager = source && prepareVillager(source, {
+    female: look.female,
+    garments: outfit && [outfit.garment],
+    garmentBody: outfit?.body,
+    removedClothing: outfit && look.removedClothing,
+  });
   const model = villager ?? prepareStylizedDriver(look);
   try {
     if (villager) {

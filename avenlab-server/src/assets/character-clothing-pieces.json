@@ -18,5 +18,7 @@
   {"id":"bag","label":"Shop bag","center":0.4,"span":0.45},
   {"id":"dress","label":"Dress","center":0.52,"span":0.78},
   {"id":"socks","label":"Socks","center":0.16,"span":0.36},
-  {"id":"harness","label":"Harness","center":0.70,"span":0.46}
+  {"id":"harness","label":"Harness","center":0.70,"span":0.46},
+  {"id":"armor","label":"Torso armor","center":0.73,"span":0.43},
+  {"id":"bracer","label":"Bracer","center":0.58,"span":0.34}
 ]

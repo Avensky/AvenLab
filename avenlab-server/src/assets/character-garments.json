@@ -107,6 +107,124 @@
     "mobileUrl": "/models/characters/female/wardrobe/dress/dress-01.mobile.glb"
   },
   {
+    "id": "linen-nightgown",
+    "label": "Linen nightgown",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/dress/linen-nightgown.garage.glb",
+    "section": "Sleepwear",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/dress/linen-nightgown.mobile.glb",
+    "outfit": {
+      "description": "A soft, full-length linen gown with flared sleeves.",
+      "barefoot": true
+    }
+  },
+  {
+    "id": "medieval-01",
+    "label": "Laced linen dress",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/dress/medieval-01.garage.glb",
+    "section": "Medieval outfits",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/dress/medieval-01.mobile.glb",
+    "outfit": {
+      "description": "A laced overdress with a linen undergown and flared sleeves."
+    }
+  },
+  {
+    "id": "medieval-02",
+    "label": "Bell-sleeve gown",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/dress/medieval-02.garage.glb",
+    "section": "Medieval outfits",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/dress/medieval-02.mobile.glb",
+    "outfit": {
+      "description": "A square-neck gown with bell sleeves and a laced front."
+    }
+  },
+  {
+    "id": "medieval-03",
+    "label": "Ribbon-waist gown",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/dress/medieval-03.garage.glb",
+    "section": "Medieval outfits",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/dress/medieval-03.mobile.glb",
+    "outfit": {
+      "description": "A layered gown with gathered sleeves, a laced bodice, and a ribbon waist."
+    }
+  },
+  {
+    "id": "medieval-04",
+    "label": "Belted court dress",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/dress/medieval-04.garage.glb",
+    "section": "Medieval outfits",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/dress/medieval-04.mobile.glb",
+    "outfit": {
+      "description": "A belted floor-length gown with gathered cuffs and a laced neckline."
+    }
+  },
+  {
+    "id": "medieval-05",
+    "label": "Hooded gown",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/dress/medieval-05.garage.glb",
+    "section": "Medieval outfits",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/dress/medieval-05.mobile.glb",
+    "outfit": {
+      "description": "A hooded gown with pointed cuffs and a paneled skirt."
+    }
+  },
+  {
+    "id": "medieval-06",
+    "label": "Belted tunic",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/dress/medieval-06.garage.glb",
+    "section": "Medieval outfits",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/dress/medieval-06.mobile.glb",
+    "outfit": {
+      "description": "A short tunic with its matching belt and pouch."
+    }
+  },
+  {
+    "id": "medieval-07",
+    "label": "Quilted traveling dress",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/dress/medieval-07.garage.glb",
+    "section": "Medieval outfits",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/dress/medieval-07.mobile.glb",
+    "outfit": {
+      "description": "A quilted shoulder layer over a short dress with a belt and pouch."
+    }
+  },
+  {
+    "id": "medieval-08",
+    "label": "Quilted riding coat",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/dress/medieval-08.garage.glb",
+    "section": "Medieval outfits",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/dress/medieval-08.mobile.glb",
+    "outfit": {
+      "description": "A quilted coat with a high collar, clasp closures, and full sleeves."
+    }
+  },
+  {
     "id": "hat-01",
     "label": "Visor",
     "category": "headwear",
@@ -135,6 +253,8 @@
     "slot": "hat",
     "piece": "hat",
     "mobileUrl": "/models/characters/female/wardrobe/hats/hood-01.mobile.glb",
+    "description": "A simple hood with a short shoulder cape.",
+    "hideLongHair": true,
     "tucksHair": true
   },
   {
@@ -146,6 +266,8 @@
     "slot": "hat",
     "piece": "hat",
     "mobileUrl": "/models/characters/female/wardrobe/hats/hood-02.mobile.glb",
+    "description": "A layered hood with a ruffled capelet and front bow.",
+    "hideLongHair": true,
     "tucksHair": true
   },
   {
@@ -456,5 +578,121 @@
     "section": "Gothic skirts",
     "slot": "skirt",
     "piece": "skirt"
+  },
+  {
+    "id": "armor-01",
+    "label": "Riveted vest",
+    "category": "tops",
+    "url": "/models/characters/female/wardrobe/armor/armor-01.garage.glb",
+    "section": "Armor",
+    "slot": "top",
+    "piece": "armor",
+    "mobileUrl": "/models/characters/female/wardrobe/armor/armor-01.mobile.glb",
+    "description": "A fitted vest with rivets and two rings at the waist."
+  },
+  {
+    "id": "armor-02",
+    "label": "Laced guard vest",
+    "category": "tops",
+    "url": "/models/characters/female/wardrobe/armor/armor-02.garage.glb",
+    "section": "Armor",
+    "slot": "top",
+    "piece": "armor",
+    "mobileUrl": "/models/characters/female/wardrobe/armor/armor-02.mobile.glb",
+    "description": "A front-laced vest with side buckles and shoulder fittings."
+  },
+  {
+    "id": "armor-03",
+    "label": "Four-buckle vest",
+    "category": "tops",
+    "url": "/models/characters/female/wardrobe/armor/armor-03.garage.glb",
+    "section": "Armor",
+    "slot": "top",
+    "piece": "armor",
+    "mobileUrl": "/models/characters/female/wardrobe/armor/armor-03.mobile.glb",
+    "description": "A V-neck vest with four buckles and side lacing."
+  },
+  {
+    "id": "armor-04",
+    "label": "Stitched cuirass",
+    "category": "tops",
+    "url": "/models/characters/female/wardrobe/armor/armor-04.garage.glb",
+    "section": "Armor",
+    "slot": "top",
+    "piece": "armor",
+    "mobileUrl": "/models/characters/female/wardrobe/armor/armor-04.mobile.glb",
+    "description": "A stitched cuirass with a rounded neckline and side clasps."
+  },
+  {
+    "id": "armor-05",
+    "label": "Split-panel cuirass",
+    "category": "tops",
+    "url": "/models/characters/female/wardrobe/armor/armor-05.garage.glb",
+    "section": "Armor",
+    "slot": "top",
+    "piece": "armor",
+    "mobileUrl": "/models/characters/female/wardrobe/armor/armor-05.mobile.glb",
+    "description": "A pointed cuirass with side lacing and a split torso panel."
+  },
+  {
+    "id": "bracer-01",
+    "label": "Three-buckle bracer",
+    "category": "accessories",
+    "url": "/models/characters/female/wardrobe/bracers/bracer-01.garage.glb",
+    "section": "Bracers",
+    "slot": "bracer",
+    "piece": "bracer",
+    "mobileUrl": "/models/characters/female/wardrobe/bracers/bracer-01.mobile.glb",
+    "description": "A single left forearm bracer with three buckled straps."
+  },
+  {
+    "id": "medieval-kaftan-01",
+    "label": "Medieval Kaftan 01",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/kaftan/medieval-kaftan-01.garage.glb",
+    "section": "Medieval kaftans",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/kaftan/medieval-kaftan-01.mobile.glb"
+  },
+  {
+    "id": "medieval-kaftan-02",
+    "label": "Medieval Kaftan 02",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/kaftan/medieval-kaftan-02.garage.glb",
+    "section": "Medieval kaftans",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/kaftan/medieval-kaftan-02.mobile.glb"
+  },
+  {
+    "id": "medieval-kaftan-03",
+    "label": "Medieval Kaftan 03",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/kaftan/medieval-kaftan-03.garage.glb",
+    "section": "Medieval kaftans",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/kaftan/medieval-kaftan-03.mobile.glb"
+  },
+  {
+    "id": "medieval-kaftan-04",
+    "label": "Medieval Kaftan 04",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/kaftan/medieval-kaftan-04.garage.glb",
+    "section": "Medieval kaftans",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/kaftan/medieval-kaftan-04.mobile.glb"
+  },
+  {
+    "id": "medieval-kaftan-05",
+    "label": "Medieval Kaftan 05",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/kaftan/medieval-kaftan-05.garage.glb",
+    "section": "Medieval kaftans",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/kaftan/medieval-kaftan-05.mobile.glb"
   }
 ]

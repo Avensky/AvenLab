@@ -233,7 +233,9 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
       if (color) material.color.set(color);
     }
   }
-  const cropped = look.appearance.hair === "cropped";
+  const headwear = getWardrobeGarment(look.garments?.hat);
+  const tuckedHair = headwear?.hideLongHair && model.root.getObjectByName(`wardrobe-${headwear.id}`);
+  const cropped = look.appearance.hair === "cropped" || Boolean(tuckedHair);
   const tucksHair = model.trialGarments?.tucksHair;
   if (model.hat) model.hat.visible = true;
   model.bonnet?.setBowVisible(!look.removedClothing.includes("bonnet-bow"));

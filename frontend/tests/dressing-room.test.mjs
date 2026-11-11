@@ -29,8 +29,9 @@ test('the fitting camera orbits a close-up without changing its target or crossi
 
 test('dressing room keeps fitted presets and lets imported garments be tried on independently', async () => {
   const inventory = JSON.parse(await readFile(new URL('../../avenlab-server/src/assets/character-garments.json', import.meta.url), 'utf8'));
-  const imports = inventory.filter(item => !item.retired);
+  const imports = inventory.filter(item => !item.retired && !item.outfit);
   const missingImport = 'bowtie-13';
+  const missingOutfit = 'medieval-08';
   const revisedImport = 'gothic-skirt-02';
   const dom = new JSDOM('<div id="root" data-controller-rows></div>', { url: 'http://localhost/', pretendToBeVisual: true });
   const original = new Map();
@@ -43,12 +44,13 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
   try {
     const { createRoot } = await import('react-dom/client');
     vite = await createServer({ define: {
-      __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(inventory.filter(item => item.id !== missingImport).map(item => item.id)),
+      __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(inventory.filter(item => item.id !== missingImport && item.id !== missingOutfit).map(item => item.id)),
       __DRESSING_ROOM_REVISION_IDS__: JSON.stringify([revisedImport]),
+      __STANDALONE_CORSET_LODS__: JSON.stringify({ 'gothic-05': { garage: true, mobile: true } }),
       __WARDROBE_SET_IDS__: JSON.stringify(['gothic-01', 'gothic-03', 'gothic-04', 'gothic-05']),
     }, server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
     const { DressingRoom } = await vite.ssrLoadModule('/src/game/characters/DressingRoom.tsx');
-    const { CHARACTERS, DEFAULT_CHARACTER, ROOK_ID } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { CHARACTERS, DEFAULT_CHARACTER, ROOK_ID, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
     const { useCharacterPreviewStore: preview } = await vite.ssrLoadModule('/src/game/characters/characterPreviewStore.ts');
     const { navigateFormRows } = await vite.ssrLoadModule('/src/game/social/formRows.ts');
     const changes = [], trials = [];
@@ -205,6 +207,42 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     await click('[data-wardrobe-item=shop-crew]');
     assert.equal(changes.at(-1).wardrobe, undefined, 'complete outfit replaces the corset set');
     assertPiece('corset');
+
+    await click('[data-wardrobe-item=medieval-08]');
+    assert.equal(changes.at(-1).outfit, 'shop-crew', 'missing complete outfit cannot be equipped');
+    await click('[aria-label="Sleepwear"] [data-wardrobe-item=linen-nightgown]');
+    const sleepwear = changes.at(-1);
+    assert.equal(sleepwear.outfit, 'linen-nightgown');
+    assert.equal(sleepwear.garments, undefined, 'sleepwear uses the persisted complete-outfit selection');
+    assert.equal(sleepwear.removedClothing, undefined, 'bare feet are part of the outfit itself');
+    assert.deepEqual(characterLook(sleepwear).garments, { dress: 'linen-nightgown' });
+    assert.deepEqual(characterLook(sleepwear).removedClothing, ['hat', 'shoes']);
+    assert.equal(preview.getState().camera, 'Full body');
+    assert(find('[data-dressing-piece=dress]'));
+    assert.equal(find('[data-dressing-piece=shoes]'), null);
+    await click('[aria-label="Medieval outfits"] [data-wardrobe-item=medieval-07]');
+    assert.equal(changes.at(-1).outfit, 'medieval-07');
+    assert.deepEqual(characterLook(changes.at(-1)).removedClothing, ['hat']);
+
+    await open('bottoms');
+    await click('[data-wardrobe-item=gothic-skirt-04]');
+    await open('corsets');
+    await click('[data-wardrobe-item=gothic-05]');
+    assert.equal(trials.at(-1).wardrobeTrial.set, 'gothic-05');
+    await open('tops');
+    await click('[aria-label="Armor"] [data-wardrobe-item=armor-01]');
+    assert.equal(trials.at(-1).wardrobeTrial, undefined);
+    assert.deepEqual(trials.at(-1).garments, { skirt: 'gothic-skirt-04', top: 'armor-01' });
+    assertPiece('armor');
+    await open('headwear');
+    await click('[aria-label="Hoods"] [data-wardrobe-item=hood-02]');
+    await open('accessories');
+    await click('[aria-label="Bracers"] [data-wardrobe-item=bracer-01]');
+    assert.deepEqual(trials.at(-1).garments, { skirt: 'gothic-skirt-04', top: 'armor-01', hat: 'hood-02', bracer: 'bracer-01' });
+    await open('corsets');
+    await click('[data-wardrobe-item=gothic-05]');
+    assert.equal(trials.at(-1).garments.top, undefined);
+    assert.equal(trials.at(-1).garments.bracer, 'bracer-01');
 
     await open('face');
     assert.equal(preview.getState().camera, 'Face');

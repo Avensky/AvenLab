@@ -12,6 +12,7 @@ export const wardrobeGarmentReplacements = {
   socks: [],
   coat: [],
   harness: [],
+  bracer: [],
 } satisfies Record<string, ClothingPiece[]>;
 
 export type WardrobeGarmentSlot = keyof typeof wardrobeGarmentReplacements;
@@ -46,6 +47,8 @@ type WardrobeGarment = {
   piece: ClothingPiece; url: string; mobileUrl?: string; revisionUrl?: string; retired?: boolean;
   tucksHair?: boolean;
   scalpCap?: boolean;
+  description?: string; hideLongHair?: boolean;
+  outfit?: { description: string; barefoot?: boolean };
 };
 
 export const importedWardrobeItems = (importedItems as WardrobeGarment[]).filter(item => !item.retired);
@@ -76,7 +79,8 @@ export function hasWardrobeRevisionMesh(item: WardrobeGarment, scene: Object3D) 
 }
 
 export function setWardrobeGarment(choice: CharacterChoice, slot: WardrobeGarmentSlot, id?: string): CharacterChoice {
-  if (id && getWardrobeGarment(id)?.slot !== slot) return choice;
+  const item = getWardrobeGarment(id);
+  if (id && item?.slot !== slot) return choice;
   const garments = { ...choice.garments };
   if (id) {
     garments[slot] = id;
@@ -85,7 +89,7 @@ export function setWardrobeGarment(choice: CharacterChoice, slot: WardrobeGarmen
       delete garments.skirt;
     } else if (slot === "top" || slot === "skirt") delete garments.dress;
   } else delete garments[slot];
-  const replacesBodice = id && slot === "dress";
+  const replacesBodice = id && (slot === "dress" || item?.piece === "armor");
   const removed = choice.removedClothing?.filter(layer => !id || layer !== slot);
   return { ...choice, garments: Object.keys(garments).length ? garments : undefined,
     removedClothing: removed?.length ? removed : undefined, wardrobeTrial: replacesBodice ? undefined : choice.wardrobeTrial,
