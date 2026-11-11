@@ -3,6 +3,7 @@ import type { MeshBVH } from "three-mesh-bvh";
 import type { CharacterLook } from "./characterCatalog";
 import { clothingColors, clothingPieceFor, type ClothingPiece } from "./clothingPieces";
 import { prepareGothicSkirtFit } from "./gothicSkirtFit";
+import { prepareSockSkirtFit } from "./sockSkirtFit";
 import type { StandaloneCorset } from "./standaloneCorset";
 import { wardrobeGarmentReplacements, wardrobeRemovalPieces, type getWardrobeGarment, type WardrobeGarmentSlot, type WardrobeRemoval } from "./wardrobeGarments";
 import { prepareWardrobeTopFit } from "./wardrobeTopFit";
@@ -107,6 +108,7 @@ export function prepareWardrobeGarments(
   const materials: { piece: ClothingPiece; base: Color; color: Color; accent: boolean }[] = [];
   const ownedMaterials = new Set<Material>();
   const fittedGarments: BufferGeometry[] = [];
+  const tallSocks: SkinnedMesh[] = [];
   let checkTopEdges = Boolean(corset);
   const shapes: MeshBVH[] = [];
   const fittedShapes = new Map<string, MeshBVH[]>();
@@ -156,6 +158,7 @@ export function prepareWardrobeGarments(
       garment.add(mesh);
     });
     if (!garmentMeshes.length) continue;
+    if (item.id === "socks-04") tallSocks.push(...garmentMeshes);
     const skirtBody = full && !authoredFit && item.slot === "skirt" && item.id.startsWith("gothic-skirt-") ? bodySurface(full) : undefined;
     const skirtSurfaces = skirtBody ? garmentMeshes.filter(isFabric).flatMap(mesh => bodySurface(mesh.geometry) ?? []) : [];
     const fitSkirt = skirtBody && skirtSurfaces.length ? prepareGothicSkirtFit(skirtBody, skirtSurfaces, item.id) : undefined;
@@ -197,12 +200,31 @@ export function prepareWardrobeGarments(
   if (skirt) root.userData.skirtHandRoom = MathUtils.clamp((skirtRadius ?? .23) - .23, 0, .12);
   root.add(group);
   let maskedWaist: string | undefined;
+  let socksFitted = false;
   return {
     apply(look: CharacterLook) {
       const corsetWaist = look.corset?.waist ?? "tucked";
       const waist = `${corset ? corsetWaist : look.wardrobe?.waist ?? "original"}:${look.overEase}`;
       corset?.apply(corsetWaist, look.overEase);
       for (const { part, piece } of stock) if (replacements.has(piece)) part.visible = false;
+      if (tallSocks.length && !socksFitted) {
+        const skirt: MeshBVH[] = [];
+        root.traverseVisible(part => {
+          if (!(part instanceof SkinnedMesh) || clothingPieceFor(part) !== "skirt" || !isFabric(part)
+            || Array.isArray(part.material) || part.material.opacity < .99 || part.material.alphaTest > 0) return;
+          const surface = bodySurface(part.geometry);
+          if (surface) skirt.push(surface);
+        });
+        const fit = prepareSockSkirtFit(skirt);
+        for (const mesh of tallSocks) {
+          const geometry = fit?.(mesh.geometry);
+          if (!geometry) continue;
+          mesh.geometry = geometry;
+          fittedGarments.push(geometry);
+        }
+        for (const { geometry } of skirt) geometry.dispose();
+        socksFitted = true;
+      }
       if (body && full && maskedWaist !== waist) {
         let surfaces = fittedShapes.get(waist);
         if ((corset || restoresBody) && !surfaces) {

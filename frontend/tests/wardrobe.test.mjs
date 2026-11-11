@@ -104,6 +104,7 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
    __DRESSING_ROOM_IMPORTED_IDS__:JSON.stringify(['gothic-skirt-04','top-02'])},server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});
   const {CharacterPage}=await vite.ssrLoadModule('/src/game/characters/CharacterPage.tsx');
   const {DEFAULT_CHARACTER,characterLook}=await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+  const {useCharacterPreviewStore:camera}=await vite.ssrLoadModule('/src/game/characters/characterPreviewStore.ts');
   const {useSocialStore:social}=await vite.ssrLoadModule('/src/store/social/socialStore.ts');
   const client=await vite.ssrLoadModule('/src/net/socialClient.ts');const requests=[],previews=[];
   client.setSocialConnection({readyState:WebSocket.OPEN,send:value=>requests.push(JSON.parse(value))});
@@ -154,6 +155,13 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
   await click('[data-wardrobe-item="remove-corset"]');
   assert.equal(characterLook(previews.at(-1)).corset,undefined);
   assert.equal(characterLook(previews.at(-1)).garments.top,'top-02');
+  assert.equal(camera.getState().selectedPiece,'corset','the close-up stays at the corset area even when the corset is off');
+  await click('[data-wardrobe-back]');
+  await click('[data-category=footwear]');
+  assert.equal(camera.getState().selectedPiece,'shoes');
+  await click('[data-wardrobe-back]');
+  await click('[data-category=corsets]');
+  assert.equal(camera.getState().selectedPiece,'corset','opening Corsets replaces the previous shoe camera');
   await click('[data-wardrobe-item="gothic-04"]');
   assert.equal(previews.at(-1).removedClothing,undefined,'selecting a corset restores that layer');
   assert.equal(previews.at(-1).garments.top,'top-02','reselecting the vest keeps the top');

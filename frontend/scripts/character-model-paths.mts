@@ -39,7 +39,7 @@ function wardrobeRevisionSignature(path: URL) {
     });
     const joints = garments[0]?.joints;
     if (joints?.length && joints.every(Boolean) && garments.every(garment => garment?.joints.length === joints.length
-      && garment.joints.every((joint, i) => joint === joints[i]))) return { garments, joints };
+      && garment.joints.every((joint, i) => joint === joints[i]))) return { garments, joints, bytes };
   } catch {
     // A revision can be missing its rig or be an incomplete export.
   }
@@ -51,6 +51,8 @@ export function hasCompatibleWardrobeRevision(revision: URL, original: URL) {
   const expected = wardrobeRevisionSignature(original);
   if (!expected || expected.joints.length !== updated.joints.length
     || !updated.joints.every((joint, i) => joint === expected.joints[i])) return false;
+  // A copied original still needs the automatic waistband fit.
+  if (revision.href !== original.href && updated.bytes.equals(expected.bytes)) return false;
 
   // A corset or a full outfit can use the same rig as a skirt. Validate the
   // garment nodes and their bind-space coverage before selecting the override.

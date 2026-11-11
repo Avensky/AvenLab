@@ -370,7 +370,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
           }}>Clear try-on</button>
         </div>}
         {itemPieces.length > 0 && controls(itemPieces.length > 1 ? "Outfit pieces" : "Piece", itemPieces.map(item => <button key={item} type="button" className="menu-control"
-          data-dressing-piece={item} aria-pressed={camera === "Selected item" && piece === item} onClick={() => focusClothingPiece(item)}>
+          data-dressing-piece={item} aria-pressed={camera === "Selected item" && selectedPiece === item} onClick={() => focusClothingPiece(item)}>
           {clothingPieceLabel(item)}</button>), 2)}
         {waistSelection && inspected.set === waistSelection.set && !inspected.unavailable &&
           controls("Waist layering", WARDROBE_WAIST_OPTIONS.map(({ waist, ease, label }) => <button key={label} type="button" className="menu-control"
@@ -379,7 +379,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
               const next = withWardrobeWaist(choice, waist, ease);
               if (ease) onTryOn(next);
               else onChange(next);
-              focusClothingPiece("skirt");
+              focusClothingPiece("corset");
             }}>{label}</button>), 2)}
         {itemPieces.length > 0 && <FitReview choice={choice} piece={itemPieces.includes(piece) ? piece : itemPieces[0]} />}
       </>}

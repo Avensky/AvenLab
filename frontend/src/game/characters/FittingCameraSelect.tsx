@@ -1,4 +1,3 @@
-import { useLayoutEffect } from "react";
 import { MenuIcon } from "../../components/menus/MenuIcon";
 import type { CharacterChoice } from "./characterCatalog";
 import { focusClothingPiece, useCharacterPreviewStore } from "./characterPreviewStore";
@@ -56,11 +55,6 @@ export function FittingCameraSelect<View extends string>({ choice, views, view, 
 }) {
   const selected = useCharacterPreviewStore(state => state.selectedPiece);
   const pieces = choice ? wornClothing(choice) : [];
-  const piece = pieces.includes(selected) ? selected : pieces[0];
-
-  useLayoutEffect(() => {
-    if (view === "Selected item" && piece && selected !== piece) focusClothingPiece(piece);
-  }, [piece, selected, view]);
 
   return <div className="fitting-camera-select" role="group" aria-label={label}>
     <div className="fitting-camera-choices" role="group" aria-label="Views" data-controller-row data-controller-columns="7">
@@ -77,8 +71,8 @@ export function FittingCameraSelect<View extends string>({ choice, views, view, 
       {pieces.map(item => {
         const name = clothingPieceLabel(item);
         return <button key={item} type="button" className="menu-control fitting-tool-icon" data-camera-choice={`piece:${item}`}
-          aria-label={name} title={name} aria-pressed={view === "Selected item" && item === piece}
-          onClick={() => { if (view !== "Selected item" || item !== piece) focusClothingPiece(item); }}><CameraChoiceIcon path={PIECE_ICONS[item]} /></button>;
+          aria-label={name} title={name} aria-pressed={view === "Selected item" && item === selected}
+          onClick={() => { if (view !== "Selected item" || item !== selected) focusClothingPiece(item); }}><CameraChoiceIcon path={PIECE_ICONS[item]} /></button>;
       })}
     </div>}
   </div>;

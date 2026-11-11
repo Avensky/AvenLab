@@ -1,4 +1,4 @@
-import { DoubleSide, MathUtils, Ray, type BufferGeometry } from "three";
+import { DoubleSide, MathUtils, Ray, Vector3, type BufferGeometry } from "three";
 import type { MeshBVH } from "three-mesh-bvh";
 
 const waistStart = .965;
@@ -7,6 +7,42 @@ const waistClearance = .009;
 const centerDepth = .025;
 const slices = 17;
 const directions = 32;
+
+function roundFrontPanel(source: BufferGeometry) {
+  const cloth = source.getAttribute("position");
+  const xTangent = new Vector3(), yTangent = new Vector3(), zTangent = new Vector3();
+  const point = new Vector3(), scratch = new Vector3(), normal = new Vector3();
+  const step = .0002;
+  let fitted: BufferGeometry | undefined;
+  const shape = (x: number, y: number, z: number, target: Vector3) => {
+    const front = MathUtils.smoothstep(z, .035, .118);
+    const outside = MathUtils.smoothstep(Math.abs(x), .06, .22);
+    const hem = 1 - MathUtils.smoothstep(y, .48, .66);
+    const round = front * outside * hem;
+    const panel = front * (1 - outside) * (1 - MathUtils.smoothstep(y, .61, .76));
+    return target.set(x - Math.sign(x) * .012 * round, y + .024 * round, z + .008 * panel);
+  };
+  for (let i = 0; i < cloth.count; i++) {
+    const x = cloth.getX(i), y = cloth.getY(i), z = cloth.getZ(i);
+    if (z <= .035 || y >= .76) continue;
+    shape(x, y, z, point);
+    if (point.x === x && point.y === y && point.z === z) continue;
+    fitted ??= source.clone();
+    fitted.getAttribute("position").setXYZ(i, point.x, point.y, point.z);
+    const normals = fitted.getAttribute("normal");
+    if (!normals) continue;
+    // Transform the authored normals with the same warp. The side and back
+    // panels keep their original normals, including the UV seam.
+    shape(x + step, y, z, xTangent).sub(shape(x - step, y, z, scratch));
+    shape(x, y + step, z, yTangent).sub(shape(x, y - step, z, scratch));
+    shape(x, y, z + step, zTangent).sub(shape(x, y, z - step, scratch));
+    normal.set(0, 0, 0).addScaledVector(scratch.crossVectors(yTangent, zTangent), normals.getX(i))
+      .addScaledVector(scratch.crossVectors(zTangent, xTangent), normals.getY(i))
+      .addScaledVector(scratch.crossVectors(xTangent, yTangent), normals.getZ(i)).normalize();
+    normals.setXYZ(i, normal.x, normal.y, normal.z);
+  }
+  return fitted;
+}
 
 /** Use one waist adjustment for the fabric, trim, and fasteners. */
 export function prepareGothicSkirtFit(body: MeshBVH, skirt: readonly MeshBVH[], id: string) {
@@ -44,7 +80,7 @@ export function prepareGothicSkirtFit(body: MeshBVH, skirt: readonly MeshBVH[], 
 
   return (source: BufferGeometry) => {
     const cloth = source.getAttribute("position");
-    let fitted: BufferGeometry | undefined;
+    let fitted = id === "gothic-skirt-04" ? roundFrontPanel(source) : undefined;
     for (let vertex = 0; vertex < cloth.count; vertex++) {
       const y = cloth.getY(vertex);
       if (y <= waistStart || y > waistEnd) continue;
