@@ -82,7 +82,7 @@ const OUTFIT_DESCRIPTIONS: Record<string, string> = {
   "race-crew": "Rook’s race-crew outfit uses warm brown fabric and gold trim on his coat and accessories.",
 };
 const FITTED_PRESETS: Partial<Record<string, { waist: WardrobeChoice["waist"]; description: string }>> = {
-  "gothic-02": { waist: "over", description: "A sweetheart-neckline corset with a layered, scalloped skirt." },
+  "gothic-02": { waist: "tucked", description: "A sweetheart-neckline corset with a layered, scalloped skirt." },
   "gothic-03": { waist: "over", description: "A ruffled corset with a matching skirt cut to clear its inner ruffles." },
   "gothic-05": { waist: "tucked", description: "A high-collar corset with a fitted upper back and a matching skirt. It supports tucked and over-skirt fits." },
 };
