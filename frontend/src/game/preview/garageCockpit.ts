@@ -151,6 +151,7 @@ export function prepareGarageCockpit(
     const localScale = bridge?.units ?? levers?.units ?? 1;
     const modelScale = localScale * scale / driverScale;
     const driverRest = localRest(driver);
+    const forwardEntry = driver.name === "garage-villager-male" || driver.name === "garage-jules-stylized";
     const restScale = driver.scale.clone();
     const arms = (["l", "r"] as const).flatMap(side => {
       const arm = driverArm(driver, side), hand = driverHand(driver, side);
@@ -304,8 +305,15 @@ export function prepareGarageCockpit(
         if (drive && enter < 1) {
           entryRotation.setFromAxisAngle(UP, -steeringSide * Math.PI / 2);
           entryRotation.premultiply(seatRotation);
-          driver.quaternion.copy(driverRest.rotation).slerp(entryRotation, drive.turnToDoor)
-            .slerp(seatRotation, MathUtils.smoothstep(enter, .13, .76));
+          if (forwardEntry) {
+            // These headings are almost a half-turn apart. The shortest slerp
+            // sends Rook through a rear-facing turn, making entry look reversed.
+            // Pass through the car's forward heading before facing the door.
+            const turn = drive.turnToDoor * 2;
+            if (turn <= 1) driver.quaternion.copy(driverRest.rotation).slerp(seatRotation, turn);
+            else driver.quaternion.copy(seatRotation).slerp(entryRotation, turn - 1);
+          } else driver.quaternion.copy(driverRest.rotation).slerp(entryRotation, drive.turnToDoor);
+          driver.quaternion.slerp(seatRotation, MathUtils.smoothstep(enter, .13, .76));
           const acrossSill = MathUtils.smoothstep(enter, .27, .96);
           const lowerToSeat = MathUtils.smoothstep(enter, .12, .73);
           entryHip.copy(standingHip).lerp(seat, acrossSill);

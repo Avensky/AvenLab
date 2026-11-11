@@ -56,7 +56,7 @@ function schedulePortraitWork(work: () => void, delay: number) {
 }
 
 function ModelPortrait({ source, look, fallback, pending = fallback, label }: PortraitProps & { source?: Object3D }) {
-  const key = JSON.stringify([Boolean(source), look.character.id, look.outfit.id, look.appearance]);
+  const key = JSON.stringify([Boolean(source), look.character.id, look.outfit.id, look.appearance, look.wardrobe]);
   const [portrait, setPortrait] = useState<{ key: string; image: string | null; characterId: string }>();
   useEffect(() => {
     return schedulePortraitWork(() => {
@@ -84,8 +84,8 @@ export function CharacterPortrait({ choice, compact = false, label }: {
   compact?: boolean;
   label?: string;
 }) {
-  const { id, outfit, appearance } = choice ?? {};
-  const look = useMemo(() => characterLook(id && outfit ? { id, outfit, appearance } : null), [id, outfit, appearance]);
+  const { id, outfit, appearance, wardrobe } = choice ?? {};
+  const look = useMemo(() => characterLook(id && outfit ? { id, outfit, appearance, wardrobe } : null), [id, outfit, appearance, wardrobe]);
   const canBake = typeof WebGL2RenderingContext !== "undefined";
   const url = canBake && look ? villagerModelUrl(look, "portrait") : null;
   const [requestedUrl, setRequestedUrl] = useState<string | null>(null);

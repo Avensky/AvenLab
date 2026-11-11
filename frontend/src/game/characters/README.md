@@ -131,8 +131,9 @@ Heroes cycles shorter gestures with a breathing idle between them.
 - Rest or extend an arm through the left or right open window, using the window
   ledge and seat position as anchors.
 
-The Props tab loads the black-and-gold bag from
-`frontend/public/models/characters/props/bag-black-gold/`. The mobile GLB is
+Appearance → Handheld props loads the black-and-gold bag from
+`frontend/public/models/characters/female/props/bag-black-gold/`.
+The earlier `characters/props/bag-black-gold/` location remains supported. The mobile GLB is
 preferred, with the garage GLB and the legacy `shop-bag.glb` as fallbacks.
 The supplied `Grip_Handle` locates the bag in the driver's hand. The app uses
 a built-in bag when no textured GLB is installed. The Emotes tab previews
@@ -144,3 +145,83 @@ Character choices and palettes shared by the game client and server are in
 `avenlab-server/src/assets/characters.json` and `character-appearance.json`.
 The garage renderer consumes those choices, while the profile endpoint
 validates and persists them.
+# Fitted wardrobe sets
+
+The dressing room supports five Gothic skirt/corset sets on the existing Village
+Woman rig. `character-wardrobe.json` is shared with server validation. Saved
+choices contain `wardrobe: { set, shirt, waist }`; legacy profiles still use
+their original outfit. Gothic-04 requires a shirt, and modesty shorts are always
+visible. Identity, bag, face, hair, and color choices stay on the same character.
+
+Each set has a `garage.glb` and `mobile.glb` in
+`public/models/characters/wardrobe/`. Both must be installed before the set can be equipped. Portraits and compact garage/victory views use the mobile model. A
+missing pack falls back to the original clothed character model.
+
+Garment nodes carry `wardrobeRole` extras. Fitted variants provide tucked and
+long hems, with shirts under or over the corset. The `_AVEN_COVERAGE` vertex
+attribute stores six bit masks in this order: none/tucked, none/over,
+under/tucked, under/over, over/tucked, over/over. Hidden body and inner-garment
+triangles are removed from a private index buffer when the selection changes;
+the source model stays shared. Disposal restores source geometry. This adds no
+per-frame clothing simulation. New imported clothes still need fitting,
+weights, and masks; changing draw order alone cannot resolve intersections.
+
+Asset checks (run from `frontend`):
+
+```sh
+node scripts/build-wardrobe-lods.mjs /path/to/raw /path/to/output
+node scripts/check-wardrobe-assets.mjs /path/to/output
+node scripts/sample-wardrobe-emotes.mjs /path/to/raw/gothic-01.glb /path/to/poses.json
+node --test tests/wardrobe.test.mjs
+```
+
+Keep face/body coordinates unquantized: existing face shaders use bind-space
+positions. The asset checker loads compressed GLBs through Three.js and tests
+all layer modes, weights, role tags, and coverage flags. It strips textures for
+Node loading, so it does not certify browser image decoding or GPU rendering.
+
+## Dressing room
+
+Character tabs are Identity, Appearance, and Emotes. Appearance keeps the live
+character in the center, with a scrollable category rail and a two-column item
+catalog. It reuses the existing scene; cards are light SVG illustrations, not
+additional WebGL previews. Face, hair, skin, and headwear categories focus the
+face camera. Leaving restores the earlier camera. Colors contains preset dyes,
+paired palettes, and custom fabric/accent pickers.
+
+The 13 categories cover outfits, tops/corsets, skirts/pants, dresses, outerwear,
+shoes/socks, headwear, accessories, handheld props, hair, face, skin, and colors.
+Accessories contains glasses, bow ties, and harnesses. Gothic corsets and skirts
+still equip as fitted matched sets; Tops & corsets controls their shirt and
+waist layers. Pants and shoes bundled into a complete outfit are not separate
+swaps. The bonnet remains part of Vesper's model to cover the open scalp.
+
+`dressingRoomImports.json` inventories the 36 separate female garments added in
+9bd8f49. Vite exposes only IDs whose GLBs are materialized, excluding LFS
+pointers. These pieces are explicitly marked Fitting pending until fitting,
+coverage, and a runtime equip path are ready. LOD alternatives are one item,
+and the five raw Gothic skirts are represented by their fitted wardrobe sets.
+No raw asset is loaded just by browsing its category. The Ready to wear filter
+hides fitting work. Search filters the current category.
+
+Category/search/filter changes never alter saved character state. Equipping a
+card feeds the existing coalesced autosave; keyboard/controller row navigation
+and the pending-save-on-close behavior remain intact.
+
+```sh
+node --test tests/dressing-room.test.mjs tests/character-page.test.mjs tests/wardrobe.test.mjs
+```
+
+## Garage presentation fixes
+
+The eye toggle is part of the bottom camera toolbar, including the character
+camera controls, and remains available after hiding the interface. The circular
+reflective platform and its turntable portal are restored from 8e0b729, retaining
+the newer camera envelope and reflection budgets. Reduced Motion still pauses
+automatic rotation.
+
+Male cockpit entry passes through the vehicle's forward heading before turning
+in through the door. It keeps the final seated pose and female entry unchanged.
+The stripped rig fixtures in tests/fixtures preserve the shipped joint transforms
+without including visual meshes; garage-entry.test.mjs checks both door sides
+and compares the female poses with the accepted 9bd8f49 sequence.

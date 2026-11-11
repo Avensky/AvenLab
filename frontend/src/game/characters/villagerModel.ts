@@ -7,10 +7,13 @@ import { ROOK_ID, VILLAGER_ID, type CharacterLook } from "./characterCatalog";
 import { addVillagerFaceShapes, prepareVillagerFaceColors } from "./villagerFace";
 import { prepareVillagerFaceAccessories } from "./villagerFaceAccessories";
 import { cockpitWardrobe } from "./cockpitWardrobe";
+import { prepareWardrobe, wardrobeModelUrl } from "./wardrobe";
 
 export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait" = "garage") {
   if (look.character.id === ROOK_ID) return kind === "portrait" ? __ROOK_PORTRAIT_URL__ : __ROOK_MODEL_URL__;
   if (look.character.id !== VILLAGER_ID) return null;
+  const wardrobeUrl = wardrobeModelUrl(look.wardrobe, kind);
+  if (wardrobeUrl) return wardrobeUrl;
   return kind === "portrait" ? __VILLAGER_PORTRAIT_URL__ : __VILLAGER_MODEL_URL__;
 }
 
@@ -38,6 +41,7 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
     object.frustumCulled = false;
   });
   const faceGeometry = animateFace ? addVillagerFaceShapes(root, female) : [];
+  const wardrobe = prepareWardrobe(root);
   const applyFaceColors = prepareVillagerFaceColors(materials.values(), female);
   const faceAccessories = prepareVillagerFaceAccessories(root, female, wetEyes);
   for (const side of ["l", "r"] as const) {
@@ -72,11 +76,12 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
   const shoes = root.getObjectByName(female ? "CLOTH_FEET_SHOES" : "CLOTH_FEET_BOOTS");
   if (shoes) root.position.y = -new Box3().setFromObject(shoes, true).min.y;
   return {
-    root, materials, accentMaterials, sleeveMaterials, crop, applyFaceColors, faceAccessories,
+    root, materials, accentMaterials, sleeveMaterials, crop, applyFaceColors, faceAccessories, wardrobe,
     hat: root.getObjectByName("ACC_HAT"),
     longHair: root.getObjectByName("HAIR_HAIR20"),
     bow: root.getObjectByName("ACC_BOW"),
     dispose() {
+      wardrobe.dispose();
       faceGeometry.forEach(geometry => geometry.dispose());
       faceAccessories.dispose();
       materials.forEach(material => material.dispose());
@@ -90,10 +95,14 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
 }
 
 export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, look: CharacterLook) {
+  model.wardrobe.apply(look.wardrobe);
   model.applyFaceColors(look);
   model.faceAccessories.setGlasses(look.appearance.glasses);
   for (const [source, material] of [...model.materials, ...model.accentMaterials, ...model.sleeveMaterials]) {
     material.color.copy(source.color);
+    const slot = source.userData.color_slot;
+    if (slot === "fabric" && look.appearance.color !== "original") material.color.set(look.fabric);
+    if (slot === "accent" && look.appearance.accent) material.color.set(look.trim);
     switch (material.name) {
       case "MAT_ClothUpper":
       case "MAT_ClothLower":

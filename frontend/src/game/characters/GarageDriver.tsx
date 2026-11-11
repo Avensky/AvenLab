@@ -51,7 +51,7 @@ export function GarageDriver({ choice, previewPacks, leanFit, victory, cockpit }
   const coatFitsLean = choice.id === ROOK_ID && (choice.outfit === "night-run" || choice.outfit === "race-crew");
   const fallback = choice.id === VILLAGER_ID ? <MissingVillager cockpit={cockpit} /> :
     <group name="garage-driver" rotation={DRIVER_TILT}><StylizedDriver look={look} bag={bag} previewPacks={previewPacks} victory={victory} cockpit={cockpit} /></group>;
-  const url = villagerModelUrl(look, compact && choice.id === VILLAGER_ID && !victory ? "portrait" : "garage");
+  const url = villagerModelUrl(look, compact && choice.id === VILLAGER_ID ? "portrait" : "garage");
   return (
     <>
       {url
