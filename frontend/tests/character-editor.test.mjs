@@ -20,7 +20,7 @@ test('character tools preserve builder drafts, frame close-ups, and wait for app
   let vite, root;
   try {
     const { createRoot } = await import('react-dom/client');
-    vite = await createServer({ define: { __WARDROBE_SET_IDS__: JSON.stringify(['gothic-01']) },
+    vite = await createServer({ define: { __WARDROBE_SET_IDS__: JSON.stringify(['gothic-03']) },
       server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
     const load = path => vite.ssrLoadModule('/src/' + path);
     const { CharacterEditorPanel } = await load('worldBuilder/characterEditor/CharacterEditorPanel.tsx');
@@ -116,8 +116,8 @@ test('character tools preserve builder drafts, frame close-ups, and wait for app
     assert.equal(preview.getState().playbackPaused, true);
     await click('#character-editor-tab-appearance');
     await click('[data-category=outfits]');
-    await click('[data-wardrobe-item=gothic-01]');
-    assert.equal(editor.getState().choice.wardrobe.set, 'gothic-01');
+    await click('[data-wardrobe-item=gothic-03]');
+    assert.equal(editor.getState().choice.wardrobe.set, 'gothic-03');
     await click('.controller-shortcut-back');
     assert.equal(requests.length, 1);
     assert.equal(builder.getState().workspace, 'character', 'closing waits for the acknowledged save');
@@ -140,7 +140,7 @@ test('character tools preserve builder drafts, frame close-ups, and wait for app
     ui.setState({ screen: 'mode_select', overlay: null });
     openCharacterEditor();
     assert.equal(ui.getState().screen, 'world_builder');
-    assert.equal(editor.getState().choice.wardrobe.set, 'gothic-01');
+    assert.equal(editor.getState().choice.wardrobe.set, 'gothic-03');
     leaveCharacterEditor();
     assert.equal(ui.getState().screen, 'mode_select');
     assert.equal(ui.getState().overlay, null);

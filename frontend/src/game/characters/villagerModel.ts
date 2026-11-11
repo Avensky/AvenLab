@@ -12,6 +12,7 @@ import { prepareWardrobe, wardrobeModelUrl } from "./wardrobe";
 import { prepareWardrobeLining } from "./wardrobeLining";
 import { prepareWardrobeSkirt } from "./wardrobeSkirt";
 import { prepareVillageShoes } from "./wardrobeShoes";
+import { prepareWardrobeGarments, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
 
 export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait" = "garage") {
   if (look.character.id === ROOK_ID) return kind === "portrait" ? __ROOK_PORTRAIT_URL__ : __ROOK_MODEL_URL__;
@@ -21,7 +22,11 @@ export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait
   return kind === "portrait" ? __VILLAGER_PORTRAIT_URL__ : __VILLAGER_MODEL_URL__;
 }
 
-export function prepareVillager(scene: Object3D, { female = true, animateFace = false, bag = false, wetEyes = false, fitted = false } = {}) {
+export function prepareVillager(scene: Object3D, { female = true, animateFace = false, bag = false, wetEyes = false, fitted = false,
+  garments = [], garmentBody,
+}: { female?: boolean; animateFace?: boolean; bag?: boolean; wetEyes?: boolean; fitted?: boolean;
+  garments?: WardrobeGarmentSource[]; garmentBody?: Object3D;
+} = {}) {
   const root = clone(scene);
   root.name = female ? "garage-villager-female" : "garage-villager-male";
   const disposeLining = prepareWardrobeLining(root);
@@ -64,6 +69,7 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
   root.userData.skirtHandRoom = skirtRoom;
   const faceGeometry = animateFace ? addVillagerFaceShapes(root, female) : [];
   const wardrobe = prepareWardrobe(root);
+  const trialGarments = female ? prepareWardrobeGarments(root, garments, scene.getObjectByName("BODY_WARDROBE") ?? garmentBody) : undefined;
   const applyFaceColors = prepareVillagerFaceColors(materials.values(), female);
   const faceAccessories = prepareVillagerFaceAccessories(root, female, wetEyes);
   for (const side of ["l", "r"] as const) {
@@ -72,11 +78,12 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
     const { shoulder, elbow, hand } = joints;
     const sideSign = Math.sign(elbow.getWorldPosition(new Vector3()).x - shoulder.getWorldPosition(new Vector3()).x);
     const fittedRest = fitted && !(side === "l" && bag);
-    const skirtRest = skirtRoom !== undefined && !(side === "l" && bag);
+    const handRoom: number | undefined = root.userData.skirtHandRoom;
+    const skirtRest = handRoom !== undefined && !(side === "l" && bag);
     const elbowSpread = fittedRest ? .12 : fitted ? .20 : .43;
     aimDriverJoint(shoulder, elbow, new Vector3(sideSign * elbowSpread, -1, -.06));
     // Keep the shoulder pose and open the forearm just enough to clear the skirt.
-    const forearm = skirtRest ? new Vector3(sideSign * ((fittedRest ? .64 : .29) + 4 * skirtRoom), -.96, .32 + skirtRoom)
+    const forearm = skirtRest ? new Vector3(sideSign * ((fittedRest ? .64 : .29) + 4 * handRoom), -.96, .32 + handRoom)
       : fittedRest ? new Vector3(sideSign * .035, -.96, .25) : side === "r" ? new Vector3(-sideSign * .62, .36, .72)
       : female && !bag ? new Vector3(sideSign * .12, -.83, .56)
         : new Vector3(sideSign * .32, -.73, .64);
@@ -102,11 +109,12 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
   const shoes = root.getObjectByName(female ? "CLOTH_FEET_SHOES" : "CLOTH_FEET_BOOTS");
   if (shoes) root.position.y = -new Box3().setFromObject(shoes, true).min.y;
   return {
-    root, materials, pieceMaterials, crop, applyFaceColors, faceAccessories, wardrobe,
+    root, materials, pieceMaterials, crop, applyFaceColors, faceAccessories, wardrobe, trialGarments,
     hat: root.getObjectByName("ACC_HAT"),
     longHair: root.getObjectByName("HAIR_HAIR20"),
     bow: root.getObjectByName("ACC_BOW"),
     dispose() {
+      trialGarments?.dispose();
       wardrobe.dispose();
       disposeLining?.();
       disposeSkirt?.();
@@ -183,4 +191,5 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
     model.crop.visible = cropped;
     model.crop.material.color.set(look.hair);
   }
+  model.trialGarments?.apply(look);
 }

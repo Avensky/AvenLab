@@ -36,6 +36,9 @@ const PIECE_ICONS: Record<ClothingPiece, string> = {
   pouches: "M6 7h12v12H6zM6 12l6 2 6-2m-8-5V4h4v3m-2 7v2",
   glasses: "M3 9h7l1 4-2 3H5l-2-3zm11 0h7v4l-2 3h-4l-2-3zm-3 3h2",
   bag: "M5 9h14l1 11H4zm4 0V6a3 3 0 0 1 6 0v3",
+  dress: "M8 4h2l2 3 2-3h2l-1 7 4 9H5l4-9zm1 7h6",
+  socks: "M8 4h6v9l4 3a2 2 0 0 1-1 4H8a2 2 0 0 1-2-2v-2l2-4zm0 3h6",
+  harness: "M7 4h3l2 6 2-6h3v16h-3v-7h-4v7H7zm0 12h10",
 };
 
 function CameraChoiceIcon({ path }: { path: string }) {

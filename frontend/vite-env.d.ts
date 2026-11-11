@@ -17,3 +17,4 @@ declare const __ROOK_MODEL_URL__: string | null;
 declare const __ROOK_PORTRAIT_URL__: string | null;
 
 declare const __DRESSING_ROOM_IMPORTED_IDS__: string[];
+declare const __DRESSING_ROOM_MOBILE_IDS__: string[];

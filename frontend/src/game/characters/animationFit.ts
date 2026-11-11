@@ -3,7 +3,8 @@ import type { CharacterLook } from "./characterCatalog";
 import type { XYZ } from "./garageEmotes";
 
 export function usesFittedAnimation(look: CharacterLook) {
-  return look.appearance.animation_fit === "fitted" || (look.appearance.animation_fit !== "full" && (!look.female || Boolean(look.wardrobe)));
+  const separates = look.garments?.top || look.garments?.skirt || look.garments?.dress;
+  return look.appearance.animation_fit === "fitted" || (look.appearance.animation_fit !== "full" && (!look.female || Boolean(look.wardrobe || separates)));
 }
 
 /** Keep expressive raised arms and contact IK intact; remove full-skirt clearance from low gestures. */

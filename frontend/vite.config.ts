@@ -10,7 +10,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { findVillagerModel, hasCharacterModel } from "./scripts/character-model-paths.mts";
 const wardrobeSets: { id: string }[] = JSON.parse(readFileSync(new URL("../avenlab-server/src/assets/character-wardrobe.json", import.meta.url), "utf8"));
 
-const dressingRoomImports: { id: string; url: string }[] = JSON.parse(readFileSync(new URL("./src/game/characters/dressingRoomImports.json", import.meta.url), "utf8"));
+const dressingRoomImports: { id: string; url: string; mobileUrl?: string }[] = JSON.parse(readFileSync(new URL("./src/game/characters/dressingRoomImports.json", import.meta.url), "utf8"));
 const bagFolder = "/models/characters/female/props/bag-black-gold";
 const bagModelUrl = [
   `${bagFolder}/bag-black-gold-mobile.glb`,
@@ -31,6 +31,7 @@ const vesperModelUrl = vesper?.sourceUrl ?? (vesper && hasCharacterModel(vesper.
 export default defineConfig({
   define: {
     __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(dressingRoomImports.filter(item => hasCharacterModel(new URL(`./public${item.url}`, import.meta.url))).map(item => item.id)),
+    __DRESSING_ROOM_MOBILE_IDS__: JSON.stringify(dressingRoomImports.filter(item => item.mobileUrl && hasCharacterModel(new URL(`./public${item.mobileUrl}`, import.meta.url))).map(item => item.id)),
     __WARDROBE_SET_IDS__: JSON.stringify(wardrobeSets.filter(({ id }) =>
       ["garage", "mobile"].every(kind => hasCharacterModel(new URL(`./public/models/characters/wardrobe/${id}.${kind}.glb`, import.meta.url))),
     ).map(({ id }) => id)),

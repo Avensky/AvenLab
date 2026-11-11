@@ -93,7 +93,7 @@ test('Dressing room saves corset waist fits without separate shirts on the curre
   const click=async(selector)=>act(async()=>{const button=document.querySelector(selector);assert(button,selector);button.click();});
   const layer=async(label)=>act(async()=>{const button=[...document.querySelectorAll('.dressing-layer-options button')].find(e=>e.textContent===label);assert(button,label);button.click();});
   await click('[data-category=outfits]');
-  assert.equal(document.querySelectorAll('[data-wardrobe-item^="gothic-"]').length,4);
+  assert.equal(document.querySelectorAll('[data-wardrobe-item^="gothic-"]').length,3);
   assert.equal(document.querySelector('[data-wardrobe-item="gothic-04"]'),null);
   assert.deepEqual(previews.at(-1).wardrobe,character.wardrobe,'opening the editor preserves the retired preset');
   assert.equal(requests.length,0,'browsing categories does not save');
@@ -102,10 +102,10 @@ test('Dressing room saves corset waist fits without separate shirts on the curre
   await layer('Tucked into skirt');
   await click('[data-wardrobe-item=gothic-03]');
   assert.equal(previews.at(-1).wardrobe.waist,'tucked','reselecting Ruffled preserves the active fit');
-  await click('[data-wardrobe-item=gothic-01]');await layer('Over skirt');
-  assert.deepEqual(previews.at(-1).wardrobe,{set:'gothic-01',shirt:'none',waist:'over'});
+  await click('[data-wardrobe-item=gothic-02]');
+  assert.deepEqual(previews.at(-1).wardrobe,{set:'gothic-02',shirt:'none',waist:'over'},'Sweetheart equips the preferred over-skirt fit');
   await click('[data-wardrobe-item=gothic-05]');
-  assert.deepEqual(previews.at(-1).wardrobe,{set:'gothic-05',shirt:'none',waist:'over'});
+  assert.deepEqual(previews.at(-1).wardrobe,{set:'gothic-05',shirt:'none',waist:'tucked'},'High Collar equips the preferred tucked fit');
   assert.equal(document.querySelector('[aria-label="Shirt layer"]'),null);
   assert.equal(document.querySelector('[data-dressing-piece="shirt"]'),null);
   assert.equal(previews.at(-1).prop,'shop-bag');assert.equal(previews.at(-1).identity,'nonbinary');
@@ -114,7 +114,7 @@ test('Dressing room saves corset waist fits without separate shirts on the curre
   await act(async()=>{pending=beforeClose.current();});
   assert.equal(requests.length,1);assert.equal(requests[0].character.wardrobe.set,'gothic-05');
   await act(async()=>{client.receiveSocialResult({request_id:requests[0].request_id,ok:true,data:{character:requests[0].character}});await pending;});
-  assert.deepEqual(social.getState().view.profile.progression.character.wardrobe,{set:'gothic-05',shirt:'none',waist:'over'});
+  assert.deepEqual(social.getState().view.profile.progression.character.wardrobe,{set:'gothic-05',shirt:'none',waist:'tucked'});
  }finally{
   if(root)await act(async()=>root.unmount());await vite?.close();dom.window.close();
   for(const[k,d]of original){if(d)Object.defineProperty(globalThis,k,d);else delete globalThis[k];}

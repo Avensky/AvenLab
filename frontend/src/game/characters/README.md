@@ -191,22 +191,22 @@ illustrations. Face, hair, skin, and headwear categories focus the
 face camera. Leaving restores the earlier camera. Colors contains preset dyes,
 paired palettes, and custom fabric/accent pickers.
 
-Outfits contains complete character looks and fitted Gothic corset-and-skirt
-sets. An outfit's details open close-ups for its individual pieces, with waist
-layering controls for the selected Gothic set. Shoes and socks, headwear,
-accessories, handheld props, hair, face, and skin tone have their own categories.
-The bonnet remains part of Vesper's model to cover the open scalp.
+Outfits contains the complete village looks and three fitted Gothic sets.
+Sweetheart and Ruffled equip in Over skirt, and High Collar equips in Tucked.
+An outfit's details open close-ups for its individual pieces, with waist
+layering controls for the selected Gothic set.
 
-`dressingRoomImports.json` inventories the 36 separate female garments added in
-9bd8f49. Standalone tops, skirts, coats, and dresses stay in the inventory for
-future fitting. Materialized footwear, headwear, and accessories appear as
-Fitting pending in their categories. Each entry groups its LODs, and browsing
-loads only the card. Ready to wear filters out fitting work, and search filters
-the current category.
+`dressingRoomImports.json` inventories 41 separate female garments under
+`frontend/public/models/characters/female/wardrobe/`. It includes 14 bows,
+nine skirts, five tops, five harnesses, four pairs of socks, two hats, a coat,
+and a dress. Each entry groups its available model detail levels. Browse the
+catalog to see the pieces, then try them on Vesper and check combinations with
+the Emotes tab. Trial combinations are session-only and leave the saved outfit
+in place. Ready to wear filters out fitting trials, and search filters the
+current category.
 
-Category/search/filter changes never alter saved character state. Equipping a
-card feeds the existing coalesced autosave; keyboard/controller row navigation
-and the pending-save-on-close behavior remain intact.
+Equipping a complete outfit uses the existing autosave. Keyboard and controller
+navigation work in the catalog and outfit details.
 
 ```sh
 node --test tests/dressing-room.test.mjs tests/character-page.test.mjs tests/wardrobe.test.mjs

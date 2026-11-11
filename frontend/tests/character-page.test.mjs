@@ -23,7 +23,8 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
   document.hasFocus = () => true;
   HTMLElement.prototype.scrollIntoView = () => {};
   try {
-    vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+    vite = await createServer({ define: { __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(['gothic-skirt-04', 'top-01']) },
+      server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
     const load = path => vite.ssrLoadModule(`/src/${path}`);
     const { HeroWorkshop } = await load('game/heroes/HeroWorkshop.tsx');
     const { useUIStore: ui } = await load('store/menus/uiStore.ts');
@@ -437,8 +438,23 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('[aria-label="Character model"] [data-character-option="mara-vega"]');
     assert.equal(drafts.at(-1).id, 'mara-vega');
     await click('#character-editor-tab-appearance');
+    await browseWardrobe('bottoms');
+    await click('[data-wardrobe-item=gothic-skirt-04]');
+    await browseWardrobe('tops');
+    await click('[data-wardrobe-item=top-01]');
+    assert.deepEqual(drafts.at(-1).garments, { skirt: 'gothic-skirt-04', top: 'top-01' });
+    await click('[aria-label="Open clothing colors"]');
+    await click('button[aria-label="Gothic Pink"]');
+    assert.equal(drafts.at(-1).appearance.item_colors['top-01:shirt'].accent, '#ff2d95');
+    await click('#character-editor-tab-emotes');
+    assert.deepEqual(drafts.at(-1).garments, { skirt: 'gothic-skirt-04', top: 'top-01' });
+    await select('Animation clothing fit', 'fitted');
+    assert.equal(drafts.at(-1).appearance.animation_fit, 'fitted');
+    await click('#character-editor-tab-appearance');
     await browseWardrobe('outfits');
     await click('[data-wardrobe-item="shop-crew"]');
+    assert.equal(drafts.at(-1).garments, undefined);
+    assert.equal(drafts.at(-1).appearance?.item_colors, undefined, 'test dyes do not leak into a saved preset');
     await click('#character-editor-tab-identity');
     await click('[aria-label="Character model"] [data-character-option="jules-okafor"]');
     assert.equal(drafts.at(-1).outfit, 'race-crew');
@@ -449,6 +465,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(drafts.at(-1).id, 'jules-okafor', 'a disconnect keeps the latest draft');
     await act(async () => social.getState().receive({ ...view, profile: { ...view.profile, progression: serverProgression } }));
     assert.equal(requests[4].character.outfit, 'shop-crew', 'pending female edits resume on reconnect');
+    assert.equal(requests[4].character.garments, undefined, 'trial pieces stay out of character equip messages');
     await acknowledge(requests[4], requests[4].character);
     assert.equal(drafts.at(-1).id, 'jules-okafor', 'an acknowledgement for another model does not change the preview');
     assert.equal(requests[5].character.outfit, 'race-crew');
