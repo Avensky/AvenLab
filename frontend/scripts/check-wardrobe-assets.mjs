@@ -35,6 +35,15 @@ try{
   const bin=original.subarray(20+len),header=Buffer.alloc(20);header.write('glTF');header.writeUInt32LE(2,4);header.writeUInt32LE(20+padded.length+bin.length,8);header.writeUInt32LE(padded.length,12);header.writeUInt32LE(0x4e4f534a,16);
   const bytes=Buffer.concat([header,padded,bin]);const {scene}=await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
   const model=prepareVillager(scene,{female:true});const counts=[];
+  const {withClothingColors}=await vite.ssrLoadModule('/src/game/characters/clothingPieces.ts');
+  const dyed=withClothingColors({...DEFAULT_CHARACTER,wardrobe:{set,shirt:'over',waist:'tucked'}},'corset',{color:'#ff0066',accent:'#ff0066'});
+  applyVillagerLook(model,characterLook(dyed));
+  let dyedMeshes=0;model.root.traverse(o=>{if(o.isMesh&&o.userData.clothingPiece==='corset'){for(const m of(Array.isArray(o.material)?o.material:[o.material]))assert.equal(m.color.getHexString(),'ff0066');dyedMeshes++;}});assert(dyedMeshes>2,'multi-material corsets all receive the piece dye');
+  for(const node of doc.getRoot().listNodes().filter(n=>String(n.getExtras().wardrobeRole).startsWith('corset')&&n.getExtras().fit_version===5))for(const p of node.getMesh().listPrimitives()){
+   const joints=p.getAttribute('JOINTS_0').getArray(),weights=p.getAttribute('WEIGHTS_0').getArray();
+   for(let i=0;i<joints.length;i++)if(weights[i]>1e-5)assert(joints[i]<=5,'v5 corset straps never follow arm or twist joints');
+  }
+
   for(const shirt of ['none','under','over'])for(const waist of ['tucked','over']){
    const look=characterLook({...DEFAULT_CHARACTER,wardrobe:{set,shirt,waist}});applyVillagerLook(model,look);
    assert(model.root.getObjectByName('CLOTH_UNDER_MODESTY_SHORTS').visible);

@@ -5,8 +5,8 @@ import type { RosterEntity } from '../rosterSelector';
 import profiles from './roadLensGeometry.json';
 import outlets from './exhaustOutlets.json';
 
-type Profile = {floor:number; mounts:number[][]; xyz:string; role:string; indices:string; uv?:string; mask?:string};
-export const lensProfiles:Record<string,Profile> = profiles;
+export type RoadLensProfile = {floor:number; mounts:number[][]; xyz:string; role:string; indices:string; uv?:string; mask?:string};
+export const lensProfiles:Record<string,RoadLensProfile> = profiles;
 export const exhaustOutlets:Record<string,number[][]> = outlets;
 export const SERVICE_BRAKE_LAMP = 1 << 12;
 export const AE_HINGE = [-.027568057, .729372382, 1.805554390] as const;
@@ -41,7 +41,7 @@ export function placeModel(body:Object3D,car:RosterEntity,offset:Vector3) {
 }
 
 export const bytes=(s:string)=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
-export function lensGeometry(profile:Profile) {
+export function lensGeometry(profile:RoadLensProfile) {
   const geometry=new BufferGeometry();
   const mm=new Int16Array(bytes(profile.xyz).buffer);
   geometry.setAttribute('position',new BufferAttribute(Float32Array.from(mm,n=>n/1000),3));

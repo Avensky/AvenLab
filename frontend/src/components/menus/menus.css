@@ -237,6 +237,7 @@
   user-select: none;
   filter: drop-shadow(0 0 22px rgb(34 211 238 / 0.35));
 }
+.main-menu-character { flex: none; }
 .menu-brand-copy {
   min-width: 0;
   max-width: 34rem;
@@ -292,9 +293,14 @@
     gap: clamp(0.5rem, 2vw, 2rem);
   }
   .menu-brand-main {
+    position: relative;
     flex-direction: column;
     gap: 0.25rem;
     text-align: center;
+  }
+  .main-menu-character {
+    position: absolute;
+    inset: 0 0 auto auto;
   }
   .menu-brand-title {
     font-size: 1.75rem;
@@ -493,12 +499,14 @@
   color: var(--app-text, #e6efff);
 }
 .menu-confirm-card > header {
+  --angled-header-height: 28px;
   flex-shrink: 0;
   padding: 0.25rem max(0.5rem, env(safe-area-inset-right)) 0.25rem
     max(0.5rem, env(safe-area-inset-left));
   border-bottom: 1px solid var(--app-line, #54749a);
 }
 .menu-confirm-card h1 {
+  flex: 1;
   margin: 0;
   font-size: 1rem;
   font-weight: 800;

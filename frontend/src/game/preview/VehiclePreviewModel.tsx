@@ -1,5 +1,6 @@
+import { nearestSideMirror, type MirrorCheckFit } from "../characters/mirrorCheck";
 import { FACTORY_APPEARANCE, useHeroLoadouts } from "../../vehicles/cosmetics/heroLoadouts";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useGLTF } from "@react-three/drei";
 import { prepareVehicleVisual } from "../../vehicles/tools/vehicleMaterials";
 import {
@@ -12,12 +13,9 @@ import { applyShowroomHighlights, applyShowroomPaint } from "./garageVehiclePain
 import { prepareGarageVehiclePaint } from "./garageVehiclePaint";
 import {createVehiclePartRig,advanceVehiclePartRig,availableVehicleParts,measureDriverDoor} from "./vehiclePartRig";
 import {useVehicleStudioStore} from "../heroes/vehicleStudioStore";
-import {useInputStore} from "../../store/input/inputStore";
-import {VehicleFlags,hasFlag} from "../../store/input/protocol/inputMasks";
-import {Mesh,MeshStandardMaterial,Vector3,type Color,type Group,type Object3D} from "three";
-import { GarageDriver } from "../characters/GarageDriver";
+import {MathUtils,Mesh,MeshStandardMaterial,Vector3,type Color,type Group,type Object3D} from "three";
 import { ROOK_ID, type CharacterChoice } from "../characters/characterCatalog";
-import {useFrame} from "@react-three/fiber";
+import {useFrame,useThree} from "@react-three/fiber";
 import {applyWindowTone} from "./windowTones";
 import {vehicleSystems} from "../../vehicles/vehicleSystems";
 import { prepareGarageCockpit, type GarageCockpit } from "./garageCockpit";
@@ -29,6 +27,20 @@ import { splitTimecarDriverDoor } from "./timecarDriverDoor";
 import { garageCamera, useGarageDrive } from "./garageDriveStore";
 import { useCharacterPreviewStore } from "../characters/characterPreviewStore";
 import { prepareGarageDashboard } from "./garageDashboard";
+import { GarageVehicleDiagnosticsScene } from "./GarageVehicleDiagnosticsScene";
+import { garageMounts, useGarageDiagnostics } from "./garageDiagnosticsStore";
+import { prepareGarageHeadlightGlass } from "./garageHeadlightGlass";
+import { VehicleMaterialization } from "./VehicleMaterialization";
+
+export type VehiclePreviewDriverFit = {
+  model: VehicleModelId;
+  position: [number, number, number];
+  scale: number;
+  yaw: number;
+  lean?: ReturnType<typeof measureDriverLean>;
+  mirror?: MirrorCheckFit;
+  cockpit?: GarageCockpit;
+};
 
 type VehicleLayout = {
   model: VehicleModelId;
@@ -47,18 +59,28 @@ function setLampEmission(material: MeshStandardMaterial, color: number | Color, 
 
 // Selection is always the complete GLB, independent of in-game debug modes.
 // Shared material preparation retains the TSX fixes without runtime network poses.
-export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettled,allowDriver = true,garageOpen = false}:{
+export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettled,onDriverFit,motion,
+  allowDriver = true,garageOpen = false,garageCameraAnchors = garageOpen,summon = false,reducedMotion = false}:{
   platform: readonly [number, number];
   model: VehicleModelId;
   driver?: CharacterChoice | null;
   previewPacks?: boolean;
   onSettled?: (model: VehicleModelId) => void;
+  onDriverFit: (fit: VehiclePreviewDriverFit) => void;
+  motion: RefObject<Group | null>;
   allowDriver?: boolean;
   garageOpen?: boolean;
+  garageCameraAnchors?: boolean;
+  summon?: boolean;
+  reducedMotion?: boolean;
 }) {
   const path=VEHICLE_MODEL_PATHS[model];
   const station = GARAGE_STATIONS[model];
-  const motion = useRef<Group>(null);
+  const revealRoot = useRef<Group>(null);
+  const revealProgress = useRef(0);
+  const [materializing, setMaterializing] = useState(summon);
+  const revealActive = materializing && !reducedMotion;
+  const invalidate = useThree(state => state.invalidate);
   const savedAppearance = useHeroLoadouts(s => s.draft?.vehicle === model ? s.draft.appearance : s.loadouts[model]);
   const { scene } = useGLTF(path, "/draco/");
   const driverReady = usePreviewPaint(Boolean(driver && allowDriver));
@@ -70,7 +92,10 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
       const gullwing = model === "timecar" ? splitTimecarDriverDoor(visual.root) : undefined;
       prepareGarageVehiclePaint(visual.root, model);
       const dashboard = prepareGarageDashboard(visual.root, GARAGE_STATIONS[model]);
-      return { ...visual, gullwing, dashboard, dispose: () => { dashboard?.dispose(); gullwing?.dispose(); releaseSteering?.(); releaseDoor?.(); visual.dispose(); } };
+      const headlightGlass = prepareGarageHeadlightGlass(visual.root, garageMounts(model, "headlights"));
+      return { ...visual, gullwing, dashboard, headlightGlass, dispose: () => {
+        headlightGlass.dispose(); dashboard?.dispose(); gullwing?.dispose(); releaseSteering?.(); releaseDoor?.(); visual.dispose();
+      } };
     },
     [scene, model],
   );
@@ -78,12 +103,24 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
   useLayoutEffect(() => {
     if (vehiclePainted) onSettled?.(model);
   }, [vehiclePainted, model, onSettled]);
+  useLayoutEffect(() => {
+    if (materializing) invalidate();
+  }, [materializing, reducedMotion, invalidate]);
+  useFrame((_, delta) => {
+    if (!materializing || !revealRoot.current) return;
+    const progress = reducedMotion ? 1 : Math.min(1, revealProgress.current + Math.min(.075, delta) / .8);
+    revealProgress.current = progress;
+    revealRoot.current.scale.setScalar(Math.max(.001, MathUtils.smoothstep(progress, .14, .82)));
+    if (progress === 1) setMaterializing(false);
+    else invalidate();
+  }, -.8);
   const partRig=useMemo(() => {
     const parts = createVehiclePartRig(prepared.root, model);
     if (prepared.gullwing) parts.push(prepared.gullwing.hinge);
     return parts;
   }, [prepared, model]);
   const driverDoor = station.kind === "wheel" ? partRig.find(part => part.part === (station.rim[0] < 0 ? "door-right" : "door-left")) : undefined;
+  const popup = partRig.find(part => part.part === "headlights");
   const cockpitSetup = useRef<{ source: Object3D; prepare: ReturnType<typeof prepareGarageCockpit> }>(null);
   const playCockpit = useCallback<GarageCockpit>(driverRoot => {
     const motionGroup = motion.current;
@@ -92,36 +129,27 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
       cockpitSetup.current = { source: prepared.root, prepare: prepareGarageCockpit(prepared.root, prepared.glassMaterials, driverDoor, station) };
     }
     return cockpitSetup.current.prepare?.(driverRoot, motionGroup) ?? null;
-  }, [prepared, driverDoor, station]);
-  const cockpit = previewPacks || garageOpen ? playCockpit : undefined;
+  }, [prepared, driverDoor, station, motion]);
+  const cockpit = !revealActive && (previewPacks || garageOpen) ? playCockpit : undefined;
   const marine=vehicleSystems(model)==="marine";
   const inspectBody=useVehicleStudioStore(s=>s.activeTab==="body"||s.parts["door-left"]||s.parts["door-right"]);
   const glassStyle=useVehicleStudioStore(s=>s.glassStyle);
+  const lensStyle=useGarageDiagnostics(s=>s.tests[model]?.lens??"factory");
   const lamps=useMemo(()=>{
-    const headlights=new Set<MeshStandardMaterial>(),signals=new Set<MeshStandardMaterial>(),leftSignals=new Set<MeshStandardMaterial>(),rightSignals=new Set<MeshStandardMaterial>();
     const navigation=new Set<MeshStandardMaterial>(),searchlights=new Set<MeshStandardMaterial>();
-    prepared.root.traverse(object=>{
+    if (marine) prepared.root.traverse(object=>{
       if(!(object instanceof Mesh))return;
       const objectName=object.name;
       const materials=Array.isArray(object.material)?object.material:[object.material];
       for(const value of materials){
         if(!(value instanceof MeshStandardMaterial))continue;
         const name=`${objectName} ${value.name}`.toLowerCase();
-        if (marine) {
-          if (/running_lights|stern_light/.test(name)) navigation.add(value);
-          if (/searchligh/.test(name)) searchlights.add(value);
-          continue;
-        }
-        if(/head.?light|headlamp|front.?light/.test(name))headlights.add(value);
-        if(/indicator|turn.?signal|blinker|amber|ambar|orange|oarnge|tail.?lens|tail.?light|reflector|vehiclelights|lights\./.test(name)){
-          signals.add(value);
-          if(/left|(?:^|[_ .-])l(?:[_ .-]|$)|_fl|_rl/.test(name))leftSignals.add(value);
-          if(/right|(?:^|[_ .-])r(?:[_ .-]|$)|_fr|_rr/.test(name))rightSignals.add(value);
-        }
+        if (/running_lights|stern_light/.test(name)) navigation.add(value);
+        if (/searchligh/.test(name)) searchlights.add(value);
       }
     });
-    const all=new Set([...headlights,...signals,...navigation,...searchlights]);
-    return {headlights,signals,leftSignals,rightSignals,navigation,searchlights,all,originals:new Map([...all].map(material=>[material,{emissive:material.emissive.clone(),intensity:material.emissiveIntensity}] as const))};
+    const all=new Set([...navigation,...searchlights]);
+    return {navigation,all,originals:new Map([...all].map(material=>[material,{emissive:material.emissive.clone(),intensity:material.emissiveIntensity}] as const))};
   },[prepared,marine]);
   const lastLampStyle=useRef("");
   useEffect(() => () => prepared.dispose(), [prepared]);
@@ -136,11 +164,21 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
     if (!marine) applyWindowTone(prepared.glassMaterials, glassStyle);
   },[prepared,glassStyle,marine]);
   useEffect(() => {
+    if (!garageOpen) return;
+    useGarageDiagnostics.getState().setLensCount(model, prepared.headlightGlass.count);
+    return () => {
+      if (useGarageDiagnostics.getState().lensVehicle === model) useGarageDiagnostics.getState().setLensCount(null, 0);
+    };
+  }, [garageOpen, model, prepared]);
+  useEffect(() => {
+    prepared.headlightGlass.apply(garageOpen ? lensStyle : "factory");
+  }, [prepared, garageOpen, lensStyle]);
+  useEffect(() => {
     const appearance = savedAppearance ?? FACTORY_APPEARANCE;
     applyShowroomPaint(prepared.root, model, "factory", appearance.body === "factory" ? undefined : appearance.body);
     applyShowroomHighlights(prepared.root, .45, appearance.finish, appearance.metallic, model);
   }, [prepared, model, savedAppearance]);
-  useFrame((state,delta)=>{
+  useFrame((_,delta)=>{
     const studio=useVehicleStudioStore.getState();
     const drive = useGarageDrive.getState();
     const stage = drive.stage;
@@ -149,7 +187,8 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
     prepared.dashboard?.update();
     const drivenDoor = driverDoor && ((garageOpen && stage !== "idle" && stage !== "station") ||
       (previewPacks && useCharacterPreviewStore.getState().insideCar)) ? driverDoor.part : undefined;
-    advanceVehiclePartRig(partRig,studio.parts,delta,drivenDoor);
+    const garageLights = garageOpen ? useGarageDiagnostics.getState().tests[model]?.lights : undefined;
+    advanceVehiclePartRig(partRig,studio.parts,delta,drivenDoor,studio.parts.headlights || Boolean(garageLights && garageLights !== "off"));
     if (marine) {
       const {navigation,searchlights}=studio.marineLights;
       const key=`${navigation}:${searchlights}`;
@@ -160,24 +199,6 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
         const original = lamps.originals.get(material)!;
         setLampEmission(material, active ? 0xffecd4 : original.emissive, active ? .9 : original.intensity);
       }
-      return;
-    }
-    const flags=useInputStore.getState().input.vehicleMask;
-    const headlight=hasFlag(flags,VehicleFlags.HEADLIGHTS);
-    const hazards=hasFlag(flags,VehicleFlags.HAZARDS),left=hasFlag(flags,VehicleFlags.BLINKER_LEFT),right=hasFlag(flags,VehicleFlags.BLINKER_RIGHT);
-    const signal=hazards||left||right,blinkOn=signal&&Math.floor(state.clock.elapsedTime*2)%2===0;
-    const signalTargets=hazards||left&&right?null:left&&lamps.leftSignals.size?lamps.leftSignals:right&&lamps.rightSignals.size?lamps.rightSignals:lamps.signals;
-    const key=`${headlight}:${hazards}:${left}:${right}:${blinkOn}`;
-    if(lastLampStyle.current===key)return;
-    lastLampStyle.current=key;
-    for(const material of lamps.all){
-      const original=lamps.originals.get(material)!;
-      const isSignal=lamps.signals.has(material)&&(signalTargets===null||signalTargets.has(material));
-      const activeSignal=isSignal&&blinkOn;
-      const activeHeadlight=lamps.headlights.has(material)&&headlight&&!isSignal;
-      if(activeSignal) setLampEmission(material, 0xff8a16, 1.75);
-      else if(activeHeadlight) setLampEmission(material, 0xffedbc, 1.35);
-      else setLampEmission(material, original.emissive, original.intensity);
     }
   });
   // Keep the original measurements when the garage finishes loading; re-reading
@@ -224,6 +245,15 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
   const driverAcross = staging.edge * display.scale + display.position[0] + staging.side * (.27 - inset) * driverScale;
   // Vehicles without an authored front door still stage beside the front seat.
   const driverAlong = staging.along === undefined ? display.footprint[1] * .12 : staging.along * display.scale + display.position[2];
+  const mirrorFit = useMemo<MirrorCheckFit | undefined>(() => {
+    if (!previewPacks || !driverReady || station.kind !== "wheel" || staging.along === undefined) return undefined;
+    const from = new Vector3(staging.edge + staging.side * (.27 - inset), measurements.support.min.y, staging.along);
+    const mirror = nearestSideMirror(prepared.root, station, measurements.bounds, from);
+    if (!mirror) return undefined;
+    const across = -staging.side * (mirror.z - from.z);
+    if (Math.abs(across) > 1.4) return undefined;
+    return { across, forward: .12, side: staging.side, gaze: Math.max(.15, Math.min(.65, Math.atan2(1.48 - (mirror.y - from.y), .5))) };
+  }, [previewPacks, driverReady, station, staging, inset, measurements, prepared]);
   const cameraRig = useMemo(() => {
     const size = measurements.bounds.getSize(new Vector3());
     const center = measurements.bounds.getCenter(new Vector3());
@@ -251,29 +281,28 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
     }
     return shots;
   }, [doorBounds, measurements, staging.side, staging.along, station, model]);
+  useLayoutEffect(() => {
+    if (!hasDriver || !driverReady) return;
+    onDriverFit({ model, position: [driverAcross, .023, driverAlong], scale: driverScale,
+      yaw: staging.side * Math.PI / 2, lean, mirror: mirrorFit, cockpit });
+  }, [hasDriver, driverReady, onDriverFit, model, driverAcross, driverAlong, driverScale, staging.side, lean, mirrorFit, cockpit]);
   return (
-    <group ref={motion}>
-      {driver && <group position={[driverAcross, .023, driverAlong]} scale={driverScale} rotation={[0, staging.side * Math.PI / 2, 0]}>
-        {driverReady ? <>
-          <group name="garage-driver-shadow"><PreviewContactShadow footprint={[.55, .46]} offset={[0, 0]} /></group>
-          <GarageDriver choice={driver} previewPacks={previewPacks} leanFit={lean} cockpit={cockpit} />
-        </> : null}
-      </group>}
-      <PreviewContactShadow
-        footprint={display.footprint}
-        offset={display.shadowOffset}
-      />
-      <group
-        position={display.position}
-        scale={display.scale}
-        name="selection-vehicle-glb"
-      >
-        <primitive object={prepared.root} dispose={null} />
-        {garageOpen && cameraRig.map(shot => <group key={shot.name} name={`garage-view-${shot.name}`}
+    <>
+      <group ref={revealRoot} scale={revealActive ? .001 : 1}>
+        <PreviewContactShadow footprint={display.footprint} offset={display.shadowOffset} />
+        <group position={display.position} scale={display.scale} name="selection-vehicle-glb">
+          <primitive object={prepared.root} dispose={null} />
+          {garageOpen && vehicleSystems(model) === "road" && <GarageVehicleDiagnosticsScene vehicle={model} popup={popup} />}
+        </group>
+      </group>
+      {revealActive && <VehicleMaterialization progress={revealProgress}
+        footprint={display.footprint} offset={display.shadowOffset} />}
+      {garageCameraAnchors && <group position={display.position} scale={display.scale}>
+        {cameraRig.map(shot => <group key={shot.name} name={`garage-view-${shot.name}`}
           position={shot.at as [number, number, number]}>
           <object3D position={shot.eye as [number, number, number]} />
         </group>)}
-      </group>
-    </group>
+      </group>}
+    </>
   );
 }

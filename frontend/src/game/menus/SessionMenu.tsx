@@ -1,4 +1,5 @@
 import { MenuLogo } from "../../components/menus/MenuLogo";
+import { CharacterHeaderProfile } from "../characters/CharacterHeaderProfile";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ControllerAction } from "../../components/controller";
 import { connectRustServer, disconnectRustServer } from "../../net/rustSocket";
@@ -79,6 +80,7 @@ export function SessionMenu() {
         <header className="menu-title-with-logo">
           <MenuLogo compact/>
           <h1 id={`${id}-title`}>LEAVE GAME?</h1>
+          <CharacterHeaderProfile compact readOnly />
         </header>
         <div className="menu-confirm-body">
           <p id={`${id}-message`}>Are you sure you want to leave game?</p>

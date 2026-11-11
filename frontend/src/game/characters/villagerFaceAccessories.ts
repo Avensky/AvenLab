@@ -5,6 +5,8 @@ import {
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { VILLAGER_EYES } from "./villagerFace";
 
+import type { PieceColors } from "./clothingPieces";
+
 type EyeFit = typeof VILLAGER_EYES.female;
 type Glasses = "round" | "aviator";
 
@@ -41,6 +43,7 @@ function frames(fit: EyeFit, style: Glasses) {
 
   const group = new Group();
   group.name = "villager-glasses";
+  group.userData.clothingPiece = "glasses";
   const rims = new Mesh(tubes(curves, aviator ? .00135 : .0017, 36),
     new MeshStandardMaterial({ color: aviator ? 0xba8845 : 0x282a31, roughness: .37, metalness: aviator ? .72 : .2 }));
   const glass = new Mesh(mergeGeometries(lenses), new MeshStandardMaterial({
@@ -48,7 +51,10 @@ function frames(fit: EyeFit, style: Glasses) {
   }));
   lenses.forEach(lens => lens.dispose());
   group.add(rims, glass);
-  return { group, dispose() {
+  return { group, setColors(colors?: PieceColors) {
+    rims.material.color.set(colors?.color ?? (aviator ? 0xba8845 : 0x282a31));
+    glass.material.color.set(colors?.accent ?? 0xbad4e3);
+  }, dispose() {
     group.removeFromParent();
     rims.geometry.dispose();
     rims.material.dispose();
@@ -93,6 +99,7 @@ export function prepareVillagerFaceAccessories(root: Object3D, female: boolean, 
       glasses = next === "round" || next === "aviator" ? frames(fit, next) : undefined;
       if (glasses) faceOrigin.add(glasses.group);
     },
+    setColors(colors?: PieceColors) { glasses?.setColors(colors); },
     dispose() {
       glasses?.dispose();
       tears?.geometry.dispose();

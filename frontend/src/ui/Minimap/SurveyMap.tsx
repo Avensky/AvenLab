@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo } from "react";
+import { CharacterHeaderProfile } from "../../game/characters/CharacterHeaderProfile";
 import { useUIStore } from "../../store/menus/uiStore";
 import { useWorldStore } from "../../store/world/worldStore";
 import { useMotionView } from "../../store/session/networkViews";
@@ -78,6 +79,7 @@ export function SurveyMap() {
         <button autoFocus onClick={() => useUIStore.getState().closeOverlay()}>
           CLOSE · M
         </button>
+        <CharacterHeaderProfile compact />
       </header>
       <svg
         role="img"

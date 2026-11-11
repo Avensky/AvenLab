@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { normalizePaintFinish, type PaintFinish } from "./paintFinishes";
+import { normalizePaintFinish, type PaintFinish } from "./paintFinishes.ts";
 export type HeroAppearance = {body:string;finish:PaintFinish;metallic:number;seats:"factory"|"black"|"red";skin:string};
 export const FACTORY_APPEARANCE: HeroAppearance = {body:"factory",finish:"gloss",metallic:.42,seats:"factory",skin:"factory"};
 export function normalizeHeroAppearance(value?:Partial<HeroAppearance>|null):HeroAppearance {

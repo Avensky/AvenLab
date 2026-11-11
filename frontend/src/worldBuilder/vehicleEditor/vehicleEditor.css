@@ -1,6 +1,12 @@
 .ve-panel{position:absolute;top:12px;left:12px;bottom:12px;width:min(440px,calc(100vw - 24px));z-index:50;display:flex;flex-direction:column;gap:12px;padding:16px;background:var(--app-panel,#101b2bee);color:var(--app-text,#e5edf5);border:1px solid var(--app-accent,#6688aa);overflow-y:auto;font:13px system-ui;pointer-events:auto;overscroll-behavior:contain}
 .ve-panel header,.ve-panel nav,.ve-actions,.ve-drive-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ve-panel header strong{flex:1}.ve-panel button,.ve-drive-bar button{padding:8px 10px;border:1px solid currentColor;background:transparent;color:inherit;font-size:11px;cursor:pointer}.ve-panel button:disabled{opacity:.4;cursor:default}.ve-panel button:hover:not(:disabled),.ve-panel button[aria-pressed=true]{background:var(--app-accent,#426486)}.ve-fields{flex:1}.ve-panel label{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0}.ve-panel input[type=number]{width:105px}.ve-panel input,.ve-panel select{background:#172436;color:inherit;border:1px solid #60738b;padding:6px;min-width:0}.ve-panel p{font-size:12px;line-height:1.5;opacity:.8}.ve-panel output{color:#e7bc75;white-space:pre-wrap}.ve-drive-bar{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:40;background:#101b2be8;color:#e5edf5;padding:8px;max-width:95vw;font:11px system-ui}.ve-panel :focus-visible{outline:2px solid var(--app-accent,#69ccee);outline-offset:2px}@media(max-height:550px){.ve-panel{gap:6px;padding:10px}.ve-panel label{padding:4px 0}.ve-panel p{margin:4px 0}}
 .ve-drive-bar {background:var(--app-panel,#101b2b);color:var(--app-text,#e5edf5);border:0;box-shadow:0 8px 26px #0003;}
+.ve-panel header .character-header-profile {
+ --angled-header-height:32px;
+ padding:0;
+ border:0;
+ background:transparent;
+}
 .ve-panel input,.ve-panel select {background:var(--app-raised,#172436);color:var(--app-text,#e5edf5);border-color:var(--app-line,#60738b);border-radius:var(--app-radius-sm,10px);}
 
 /* Compact field grids and scoped scrolling keep actions visible on phones. */

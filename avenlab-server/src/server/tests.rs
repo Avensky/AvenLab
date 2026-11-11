@@ -570,16 +570,22 @@ async fn character_equip_validates_the_choice_and_persists_it_on_the_profile() {
     let legacy: crate::alpha::progression::Progression = serde_json::from_value(json!({"level": 7})).unwrap();
     assert!(legacy.view()["character"].is_null());
     assert_eq!(legacy.level, 7);
+    assert_eq!(legacy.cosmetics_revision, 0);
 
     let choice = json!({"id": "mara-vega", "outfit": "shop-crew"});
     let equip = json!({"action": "character_equip", "character": choice});
     assert!(s.handle("unknown", equip.clone()).await.is_err());
-    assert_eq!(s.handle(&player, equip.clone()).await.unwrap()["character"], choice);
-    assert_eq!(s.handle(&player, equip).await.unwrap()["character"], choice);
+    let equipped = s.handle(&player, equip.clone()).await.unwrap();
+    assert_eq!(equipped["character"], choice);
+    assert_eq!(equipped["cosmetics_revision"], 1);
+    assert_eq!(s.handle(&player, equip).await.unwrap(), equipped);
     let invalid = json!({"action": "character_equip", "character": {"id": "mara-vega", "outfit": "flight-line"}});
     assert!(s.handle(&player, invalid).await.is_err());
-    let gender_change = json!({"action": "character_equip", "character": {"id": "jules-okafor", "outfit": "night-run"}});
-    assert!(s.handle(&player, gender_change).await.unwrap_err().contains("gender is already set"));
+    let alternate = json!({"id": "jules-okafor", "outfit": "race-crew"});
+    let changed = s.handle(&player, json!({"action": "character_equip", "character": alternate})).await.unwrap();
+    assert_eq!(changed["character"], alternate);
+    assert_eq!(changed["character_presets"]["mara-vega"], choice);
+    assert_eq!(changed["cosmetics_revision"], 2);
 
     let mut styled = choice;
     styled["prop"] = json!("shop-bag");
@@ -624,8 +630,15 @@ async fn character_equip_validates_the_choice_and_persists_it_on_the_profile() {
     let reloaded: SocialData = serde_json::from_slice(&tokio::fs::read(&s.path).await.unwrap()).unwrap();
     let progression = &reloaded.profiles[profile].progression;
     assert_eq!(progression.view()["character"], styled);
+    assert_eq!(progression.view()["character_presets"]["jules-okafor"], alternate);
     assert_eq!(progression.showcase_hero(), "brz");
     assert!(progression.hero_loadouts.is_empty());
+    let styled_vehicle = s.handle(&player, json!({"action": "hero_loadout_save", "hero": "ae86", "make_default": true,
+        "appearance": {"body":"#123456", "finish":"gloss", "metallic":0.42, "seats":"factory", "skin":"factory"}})).await.unwrap();
+    assert_eq!(styled_vehicle["default_hero"], "ae86");
+    assert_eq!(styled_vehicle["hero_loadouts"]["ae86"]["body"], "#123456");
+    assert_eq!(styled_vehicle["character"], styled);
+    assert_eq!(styled_vehicle["cosmetics_revision"], progression.cosmetics_revision + 1);
     cleanup(s).await;
 }
 

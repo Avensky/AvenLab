@@ -1,4 +1,5 @@
 import { ProgressBadge } from "../alpha/ProgressBadge";
+import { CharacterHeaderProfile } from "../characters/CharacterHeaderProfile";
 import { useUIStore } from "../../store";
 import { GameButton } from "../../components/GameButton";
 import { useEffect, useRef } from "react";
@@ -43,6 +44,7 @@ export function MainMenu() {
 
               <p className="menu-brand-tagline">Land. Air. Sea. Signal.</p>
             </div>
+            <div className="main-menu-character"><CharacterHeaderProfile compact /></div>
           </header>
 
           <ProgressBadge />

@@ -2,18 +2,16 @@
 
 Heroes and Garage use the portrait at the right of the header to open Character.
 The editor previews changes on the same turntable as the vehicle. New profiles
-confirm a character model before editing. Identity saves Male, Female, or
-Nonbinary independently of that model. The server saves identity, appearance,
-and prop edits automatically. Earlier profiles with a
-character keep their saved gender and use default appearance values as needed.
-You can preview emotes before confirming a gender. After setup, the Emotes
-tab can compare both rigs without changing the equipped driver.
+confirm a character model before editing. During alpha, Appearance, Identity,
+and Emotes can switch between male and female models. Each model keeps its own
+saved outfit and appearance. Identity saves Male, Female, or Nonbinary
+independently of the equipped model. The server saves edits automatically,
+and the editor keeps pending changes through a reconnect to the same profile.
 
 Vesper's desktop garage uses the full `villager-female.glb`. The compact
 garage and portrait share the same geometry with smaller textures. The
 selected car loads over a simple stage first. Once the car is on screen, the
-garage shell and driver can load. A stationary metallic platform marks pending assets, with complementary theme accents.
-Only its light sweep animates, and Reduced Motion freezes that sweep. If the character file is missing or unreadable,
+garage shell and driver can load. A circular reflective turntable accentuates the vehicle. The platform follows the display rotation, and Reduced Motion stops automatic rotation. If the character file is missing or unreadable,
 the portrait uses a neutral tile. Download the Git LFS object and restart Vite
 after restoring the file.
 
@@ -34,7 +32,7 @@ hair, skin, and clothing color choices.
 Garage and the Sandbox hero picker play Garage Life (001–010), the first
 batch from the emote catalog. Gestures blend back into relaxed breathing with
 alternating hand placements, and a tap
-queues the friendly wave. The same clips are retargeted to Vesper's imported
+chooses a gesture from the equipped personality without immediately repeating it. The same clips are retargeted to Vesper's imported
 rig and the built-in drivers. Reduced Motion pauses character animation.
 Vesper also has procedural blink, smile, and brow shapes in the live preview.
 The rain and sparks seen during loading use one GPU point batch.
@@ -245,3 +243,78 @@ mounted to retain unsaved tuning. Its controller listener is disabled while the
 character editor owns input. Returning restores the original screen, overlay,
 workspace and builder presentation. Frozen poses render on demand. No extra
 canvas, world entity or server physics actor is created by this preview tool.
+
+
+## Piece colors, inspection, and personality
+
+The fitting-room label sits at top left and the selected piece at top right.
+Both sidebars extend beside the center color and camera toolbars to the footer.
+Choose an equipped piece in the center toolbar, or click its catalog card, to
+inspect it. Selected item measures the visible garment or accessory, including
+glasses and the bag; hidden shirt variants do not enlarge the view. Camera
+presets ease between angles; manual editor orbit/pan cancels the transition.
+Hold pose freezes animation. Clicking the character resumes a personality gesture.
+
+Fabric and trim overrides are stored under `appearance.item_colors` by outfit
+or wardrobe set plus piece, such as `gothic-01:skirt` or `aviator:glasses`.
+Reset piece clears only that override; switching outfits retains each palette.
+Shared GLB materials are cloned per garment and actor. Original fabric textures
+remain in place; trim affects materials with a separate trim/hardware channel.
+The former Dockwear label is Village dress & petticoat; its saved ID is unchanged.
+
+Identity includes Friendly, Playful, Shy, Tsundere, Stoic, Elegant, Racer, and
+Scientist personalities. A character click selects one of four matching emotes,
+excluding the preceding click. It uses the normal lazy clip/prop loader and
+crossfades from the current gesture. Reduced Motion and seated driving disable
+click gestures. Character drag and pointer cancellation do not trigger an emote.
+
+Inner rotation arrows turn the character; outer arrows turn the vehicle display.
+Dragging directly on the character turns it independently of the display; the
+background continues to rotate the turntable. In the standalone editor it orbits
+the camera instead. Touch retains the editor's one-finger orbit and two-finger
+pan/zoom; the character arrows also work on touch screens.
+
+Emotes includes Auto, Full skirt, and Fitted clothing fits. Auto keeps the original
+clearance for the village dress and uses the closer rest pose for fitted sets
+and Rook. Fitted reduces lateral clearance in low hand/arm targets when clips are
+built. Raised gestures, explicit prop grips, and face contact IK retain their
+contact goals. This is a pose modifier, not cloth collision or a replacement for
+visual review of every garment/gesture combination. No new GLBs are required for
+these controls. Server validation persists and validates all three new appearance
+fields; restart both the server and frontend when installing.
+
+
+## Fit review and mirror check
+
+Fit revision 5 shortens and contours the underbust shoulder straps against the
+bare-body mesh, replaces arm/twist weights on corsets with torso weights, and
+shares waist weights across touching garments. Tucked hems sit inside the skirt;
+outer shirts mask the covered corset surface. Shirt fabric and multi-material
+corset children accept per-piece colors. Modesty shorts and required shirts stay.
+
+Emotes uses a left filter rail and a right searchable results list. All searches
+the whole library, My personality shows the equipped personality's reactions,
+and pack filters narrow the list. The center remains the existing live scene.
+
+Fit checks are manual: front, back and animation must all be checked, with no
+outstanding issue note, before a combination shows a checkmark. Records are
+local to this browser, namespaced by profile, fit revision, garment, set, shirt,
+waist, animation fit, glasses, prop and pose. A new asset revision starts
+untested; passing one combination never certifies other shirt layers or emotes.
+The original Wearing indicator is a dot, distinct from the fit checkmark.
+
+Side mirror · lipstick check appears in Garage and All for supported road-car
+previews. It selects the nearer separate exterior mirror where the GLB has one;
+fused meshes use an estimated window corner from the authored driving station.
+The character steps over, faces the mirror, checks their lips with a small prop,
+and returns to the standing mark. Character rotation is held during this
+vehicle interaction. It still needs visual in-game approval per vehicle/rig;
+finite animation tracks and a returned rest pose alone do not certify placement.
+
+```sh
+node scripts/refine-wardrobe-fit.mjs /path/to/original-v4 /path/to/v5
+node scripts/render-fitting-audit.mjs /path/to/v5 /path/to/audit-json
+blender -b -t 4 --python scripts/render-fitting-audit.py -- /path/to/audit-json front
+blender -b -t 4 --python scripts/render-fitting-audit.py -- /path/to/audit-json back
+node --test tests/fit-review-mirror.test.mjs tests/fitting-controls.test.mjs
+```

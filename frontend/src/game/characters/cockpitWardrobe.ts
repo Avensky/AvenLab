@@ -26,13 +26,17 @@ export function cockpitWardrobe(driver: Object3D) {
     const prepared = new Set<MeshStandardMaterial>();
     driver.traverse(mesh => {
       if (!(mesh instanceof Mesh)) return;
+      const piece = mesh.userData.clothingPiece;
+      const sleeve = mesh.name === "CLOTH_ARMS_SLEEVES" || piece === "sleeves";
+      const skirt = piece === "skirt" || piece === "underskirt";
       const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
       for (const material of materials) {
-        if (!(material instanceof MeshStandardMaterial) || (material.name !== "MAT_ClothLower" && mesh.name !== "CLOTH_ARMS_SLEEVES") || driver.name !== "garage-villager-female" || prepared.has(material)) continue;
+        if (!(material instanceof MeshStandardMaterial) || (!skirt && !sleeve && material.name !== "MAT_ClothLower")
+          || driver.name !== "garage-villager-female" || prepared.has(material)) continue;
         prepared.add(material);
         const uniforms = {
           garageLap: { value: 0 },
-          garageSleeve: { value: mesh.name === "CLOTH_ARMS_SLEEVES" ? 1 : 0 },
+          garageSleeve: { value: sleeve ? 1 : 0 },
           garageLeftElbow: { value: new Vector3() }, garageLeftWrist: { value: new Vector3() },
           garageRightElbow: { value: new Vector3() }, garageRightWrist: { value: new Vector3() },
           garageToCar: { value: new Matrix4() },
@@ -77,16 +81,16 @@ export function cockpitWardrobe(driver: Object3D) {
                   : drapeCuff(lap, garageRightElbow, garageRightWrist);
               } else {
                 vec3 delta = lap - garageRim;
-                float across = 1.0 - smoothstep(garageRadius + 0.12, garageRadius + 0.25, abs(delta.x));
-                float along = smoothstep(-0.65, -0.35, delta.z) * (1.0 - smoothstep(0.10, 0.23, delta.z));
-                float ceiling = garageRim.y - garageRadius - 0.055;
+                float across = 1.0 - smoothstep(garageRadius + 0.06, garageRadius + 0.18, abs(delta.x));
+                float along = smoothstep(-0.43, -0.20, delta.z) * (1.0 - smoothstep(0.10, 0.23, delta.z));
+                float ceiling = garageRim.y - garageRadius - 0.035;
                 lap.y = mix(lap.y, min(lap.y, ceiling), garageLap * across * along);
               }
               transformed = (garageToCloth * vec4(lap, 1.0)).xyz;
             }
           `);
         };
-        material.customProgramCacheKey = () => key + "|garage-seated-drape-v2";
+        material.customProgramCacheKey = () => key + "|garage-seated-drape-v3";
         material.needsUpdate = true;
         cloth!.push({ mesh, uniforms });
       }

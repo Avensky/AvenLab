@@ -1,6 +1,4 @@
-import { openCharacterEditor } from "../../worldBuilder/characterEditor/characterEditorStore";
 import { useConnectionView } from "../../store/session/networkViews";
-import { CharacterHeaderProfile } from "../characters/CharacterHeaderProfile";
 import { SceneTabHeader } from "../../components/menus/SceneTabHeader";
 import { useMenuPressOwner } from "../../components/menus/useMenuPressOwner";
 import {MatchModePortraits} from "./ModePortraitCard";
@@ -197,7 +195,7 @@ export function ModeSelection() {
       <SceneTabHeader
         title={play ? "PLAY" : "EXPLORE"}
         compact
-        actions={<CharacterHeaderProfile showProgress onOpen={busy ? undefined : openCharacterEditor} />}
+        character={{ showProgress: true }}
         busy={busy}
         tablistLabel="Game mode"
         tablistClassName="alpha-mode-tabs"

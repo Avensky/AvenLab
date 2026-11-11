@@ -29,7 +29,6 @@ import { HeroRoster } from "./HeroRoster";
 import { heroRoleHeaderTabs, heroMatchesFilter } from "./heroRoleFilters";
 import { PreMatchTeamPreview } from "../stats/PreMatchTeamPreview";
 import { LobbyChat } from "./LobbyChat";
-import { CharacterHeaderProfile } from "../characters/CharacterHeaderProfile";
 import { PreviewZoom } from "../preview/PreviewZoom";
 import "./heroSelection.css";
 export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
@@ -218,7 +217,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
         title="HEROES"
         compact
         titleTeam={confirmedTeam}
-        actions={matchHeader ? undefined : <CharacterHeaderProfile />}
+        character={{readOnly: matchHeader || overlay}}
         showProgress={matchHeader}
         tabs={heroRoleHeaderTabs(allowBoats)}
         tablistClassName="hero-pick-tabs"

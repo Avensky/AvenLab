@@ -82,8 +82,8 @@ export function VehicleStudio({
   useEffect(() => () => setActiveTab(null), [setActiveTab]);
 
   if (tab === "abilities") {
-    return <div className="hero-guide-scroll" id="vehicle-studio-tab-panel" role="tabpanel"
-      aria-labelledby="vehicle-studio-tab-abilities" tabIndex={0}>{children}</div>;
+    return <div className="vehicle-studio vehicle-studio--abilities" id="vehicle-studio-tab-panel" role="tabpanel"
+      aria-labelledby="vehicle-studio-tab-abilities">{children}</div>;
   }
 
   const rows = getPerformanceReadouts(summary, speedUnit, vehicleId);

@@ -2,11 +2,12 @@ import { create } from "zustand";
 import { useUIStore, type MenuScreen, type UIOverlay } from "../../store/menus/uiStore";
 import { useInputStore } from "../../store/input/inputStore";
 import { useBuilderStore } from "../state/builderStore";
-import { useSocialStore } from "../../store/social/socialStore";
+import { selectEquippedCharacter, useSocialStore } from "../../store/social/socialStore";
 import { characterLook, DEFAULT_CHARACTER, type CharacterChoice } from "../../game/characters/characterCatalog";
+import { useFittingTurnStore } from "../../game/characters/fittingControlsStore";
 import { useCharacterPreviewStore } from "../../game/characters/characterPreviewStore";
 
-export const CHARACTER_SHOTS = ["Full body", "Face", "Upper body", "Waist", "Feet", "Back", "Left", "Right"] as const;
+export const CHARACTER_SHOTS = ["Full body", "Selected item", "Face", "Upper body", "Waist", "Feet", "Back", "Left", "Right"] as const;
 export type CharacterShot = typeof CHARACTER_SHOTS[number];
 type ReturnContext = {
   screen: MenuScreen; overlay: UIOverlay;
@@ -29,8 +30,9 @@ export const useCharacterEditorStore = create<{
 export function openCharacterEditor() {
   const ui = useUIStore.getState(), builder = useBuilderStore.getState();
   if (builder.workspace === "character" && (ui.screen === "world_builder" || ui.overlay === "world_builder")) return;
-  const saved = useSocialStore.getState().view?.profile.progression?.character;
+  const saved = selectEquippedCharacter(useSocialStore.getState());
   useInputStore.getState().releaseControls();
+  useFittingTurnStore.setState({ characterYaw: 0, dragging: false });
   useCharacterEditorStore.setState({
     choice: characterLook(saved) ? saved! : DEFAULT_CHARACTER, shot: "Full body", panelsHidden: false, viewport: null,
     returnTo: { screen: ui.screen, overlay: ui.overlay, workspace: builder.workspace === "character" ? "layout" : builder.workspace, presentation: builder.presentation },
@@ -46,6 +48,7 @@ export function openCharacterEditor() {
 export function leaveCharacterEditor() {
   const back = useCharacterEditorStore.getState().returnTo;
   useInputStore.getState().releaseControls();
+  useFittingTurnStore.setState({ characterYaw: 0, dragging: false });
   useCharacterPreviewStore.setState({ playbackPaused: false, automaticEmotes: true, emote: null });
   useBuilderStore.setState({ workspace: back?.workspace ?? "layout", presentation: back?.presentation ?? "workspace" });
   useCharacterEditorStore.setState({ returnTo: null });

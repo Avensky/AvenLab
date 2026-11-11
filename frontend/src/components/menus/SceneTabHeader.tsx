@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { APP_BRANDING } from "../../theme/branding";
 import type { MatchTeam } from "../../theme/matchTeamTheme";
+import type { CharacterHeaderProfileProps } from "../../game/characters/CharacterHeaderProfile";
 import { MenuFrameHeader } from "./MenuFrame";
 import { MenuTabButton } from "./MenuTabButton";
 import { useAngledMenuHeader } from "./useAngledMenuHeader";
@@ -29,6 +30,7 @@ export function SceneTabHeader({
   idPrefix,
   showProgress,
   actions,
+  character,
   busy = false,
   titleTeam,
 }: {
@@ -44,6 +46,7 @@ export function SceneTabHeader({
   idPrefix: string;
   showProgress?: boolean;
   actions?: ReactNode;
+  character?: CharacterHeaderProfileProps;
   busy?: boolean;
   titleTeam?: MatchTeam;
 }) {
@@ -83,6 +86,7 @@ export function SceneTabHeader({
         compact={compact}
         showProgress={showProgress}
         actions={actions}
+        character={{ compact: showProgress, ...character, readOnly: busy || character?.readOnly }}
         titleTeam={titleTeam}
         variant="scene"
         className={angled ? "angled-tab-header" : undefined}

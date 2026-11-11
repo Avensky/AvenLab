@@ -101,5 +101,7 @@ export function garageControlTargets(station: Extract<GarageStation, { kind: "wh
       station.parkingBrake === "switch" ? z + .07 : seatZ + .13),
     ignition: new Vector3(x - .14, y - .11, z + .09),
     signal: new Vector3(x + .20, y - .03, z + .08),
+    wipers: new Vector3(x - .20, y - .025, z + .075),
+    cruise: new Vector3(x - .17, y - .105, z + .065),
   };
 }

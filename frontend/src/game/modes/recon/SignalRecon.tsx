@@ -573,6 +573,7 @@ export function SignalRecon({
           theme="cyan"
           eyebrow="SIGNAL RECON // MISSION DATABASE"
           title={mission?.title ?? "Missions Database"}
+          characterReadOnly={runActive || sessionActive || busy}
           meta={
             mission
               ? `${mission.mission_code} · ${mission.target}`

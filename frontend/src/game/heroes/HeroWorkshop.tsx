@@ -18,8 +18,8 @@ import {CHARACTER_TABS,CharacterPage,type CharacterTab} from "../characters/Char
 import {PreviewZoom} from "../preview/PreviewZoom";
 import {PreviewVisibilityToggle} from "../preview/PreviewVisibilityToggle";
 import {GaragePreviewControls} from "../preview/GaragePreviewControls";
+import {GarageVehicleDiagnostics} from "../preview/GarageVehicleDiagnostics";
 import {useGarageDrive} from "../preview/garageDriveStore";
-import {CharacterHeaderProfile} from "../characters/CharacterHeaderProfile";
 import type {CharacterChoice} from "../characters/characterCatalog";
 import {ControllerAction} from "../../components/controller";
 import {useMenuInputDevice} from "../../components/controller/useMenuInputDevice";
@@ -31,9 +31,6 @@ import {vehicleSystems} from "../../vehicles/vehicleSystems";
 import {DEFAULT_WINDOW_TONE,WINDOW_TONES,type WindowTone} from "../preview/windowTones";
 import {getVehicleStockPerformance} from "./vehiclePerformance";
 import {useVehicleStudioStore,type VehicleStudioPart} from "./vehicleStudioStore";
-import {VehicleFlags,hasFlag} from "../../store/input/protocol/inputMasks";
-import {useInputStore} from "../../store/input/inputStore";
-import {toggleTurnSignal} from "../../ui/Cockpit/stalks/commands";
 import {HeroPortrait} from "../alpha/HeroPortrait";
 import {HeroAbilityDetails} from "./HeroAbilities";
 import {HeroConceptGallery} from "./HeroConceptGallery";
@@ -55,9 +52,10 @@ const MARINE_LAMPS = [
 
 export function HeroLoadoutSync(){
  const owner=useSocialStore(s=>s.view?.profile.id??null);
+ const lastOwner=useSocialStore(s=>s.profileOwner);
  const main=useSocialStore(s=>s.view?.profile.progression?.default_hero);
  const loadouts=useSocialStore(s=>s.view?.profile.progression?.hero_loadouts);
- useEffect(()=>{useHeroLoadouts.getState().adopt(owner,main,loadouts);},[owner,main,loadouts]);
+ useEffect(()=>{if(owner||!lastOwner)useHeroLoadouts.getState().adopt(owner,main,loadouts);},[owner,main,loadouts,lastOwner]);
  return null;
 }
 
@@ -69,7 +67,8 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
 }={}){
  const inputDevice=useMenuInputDevice();
  const overlay=useUIStore(s=>s.overlay);
- const owner=useSocialStore(s=>s.view?.profile.id??null);
+ const owner=useSocialStore(s=>s.view?.profile.id??s.profileOwner);
+ const connected=useSocialStore(s=>Boolean(s.view));
  const main=useHeroLoadouts(s=>s.ownerId===owner?s.defaultHero:null);
  const skins=useSocialStore(s=>s.view?.alpha?.skins);
  const owned=useSocialStore(s=>s.view?.profile.progression?.owned??NO_OWNED_SKINS);
@@ -117,24 +116,24 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  const setGlassStyle=useVehicleStudioStore(s=>s.setGlassStyle);
  const marineLights=useVehicleStudioStore(s=>s.marineLights);
  const toggleMarineLamp=useVehicleStudioStore(s=>s.toggleMarineLamp);
- const vehicleFlags=useInputStore(s=>s.input.vehicleMask);
  const setStudioFooterContent=useCallback((content:ReactNode|null)=>setStudioFooter(content),[]);
  const setPerformanceSummary=useCallback((summary:VehiclePerformanceSummary)=>setStudioSummary(summary),[]);
  const updateVehicleModStages=useCallback((stages:Record<string,number>)=>{if(vehicle)setVehicleModStages(previous=>({...previous,[vehicle]:stages}));},[vehicle]);
- const lightingBits=VehicleFlags.HEADLIGHTS|VehicleFlags.BLINKER_LEFT|VehicleFlags.BLINKER_RIGHT|VehicleFlags.HAZARDS;
  const queue=useMemo(()=>new HeroSaveQueue(async job=>{
   if(!owner||useSocialStore.getState().view?.profile.id!==owner)throw Error("Connect with your player profile to save.");
-  await requestSocial("hero_loadout_save",{hero:job.hero,appearance:job.appearance,make_default:job.makeDefault});
- },job=>{
+  return requestSocial("hero_loadout_save",{hero:job.hero,appearance:job.appearance,make_default:job.makeDefault});
+ },(job,result)=>{
   if(!owner||useHeroLoadouts.getState().ownerId!==owner)return;
   useSocialStore.getState().acknowledgeProgression(owner,progression=>({
    ...progression,
    default_hero:job.makeDefault?job.hero:progression.default_hero,
    hero_loadouts:{...progression.hero_loadouts,[job.vehicle]:job.appearance},
-  }));
-  useHeroLoadouts.getState().save(job.hero,job.vehicle,job.appearance,job.makeDefault);
+  }),result);
+  const progression=useSocialStore.getState().view?.profile.progression;
+  if(progression)useHeroLoadouts.getState().adopt(owner,progression.default_hero,progression.hero_loadouts);
  },(next,error)=>{setStatus(next);setMessage(error??"");}),[owner]);
  useEffect(()=>()=>queue.dispose(),[queue]);
+ useEffect(()=>{if(connected)queue.resume();},[connected,queue]);
  useEffect(()=>{root.current?.focus();},[]);
  useEffect(()=>{if(!editing)useVehicleStudioStore.getState().closeParts();},[editing]);
  useEffect(()=>{
@@ -144,17 +143,12 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  },[characterOpen,onCharacterViewChange]);
  useEffect(()=>{
   const target=characterOpen?root.current?.querySelector<HTMLElement>(characterReady?'[role=tab][aria-selected="true"]':'[data-character-option][aria-pressed="true"]')
-   : viewingReference?root.current?.querySelector<HTMLElement>(".hero-guide-scroll")
+   : viewingConcepts?root.current?.querySelector<HTMLElement>(".hero-guide-scroll")
    : editing?root.current?.querySelector<HTMLElement>("[role=tab][aria-selected=true]"):root.current;
   target?.focus({preventScroll:true});
- },[characterOpen,characterReady,editing,role,studioTab,viewingReference]);
+ },[characterOpen,characterReady,editing,role,studioTab,viewingConcepts]);
  useLayoutEffect(()=>{if(hero)useAlphaStore.getState().preview(hero);else useAlphaStore.setState({previewHero:null});},[hero]);
  useEffect(()=>{setStudioTab("performance");setStudioSummary(vehicle?getVehicleStockPerformance(vehicle):STOCK_VEHICLE_SUMMARY);setStudioFooter(null);},[vehicle]);
- useEffect(()=>{
-  if(!editing)return;
-  const savedFlags=useInputStore.getState().input.vehicleMask&lightingBits;
-  return()=>{const current=useInputStore.getState().input.vehicleMask;useInputStore.getState().setInput({vehicleMask:(current&~lightingBits)|savedFlags});};
- },[editing,lightingBits]);
  useLayoutEffect(()=>{useHeroLoadouts.setState({draft:vehicle?{vehicle,appearance}:null});},[vehicle,appearance]);
  useLayoutEffect(()=>()=>{useHeroLoadouts.setState({draft:null});},[]);
  const preview=(id:string)=>{
@@ -232,23 +226,19 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
   return <button key={part} type="button" className="vehicle-studio-feature" data-supported={supported} disabled={!supported||drivingOut} aria-pressed={supported?open:undefined} title={supported?`${open?"Close":"Open"} ${partLabels[part].toLowerCase()}`:`No separate movable ${partLabels[part].toLowerCase()} mesh in this vehicle model`} onClick={()=>useVehicleStudioStore.getState().setPart(part,!open)}>{partLabels[part]} · {supported?(open?"OPEN":"CLOSED"):"NOT RIGGED"}</button>;
  };
  const bodyFooter=marine?null:<>{partOptions.map(renderPartButton)}</>;
- const lightingFooter=marine
-  ? shipLightPreview?MARINE_LAMPS.map(lamp=><button key={lamp.id} type="button" aria-pressed={marineLights[lamp.id]} onClick={()=>toggleMarineLamp(lamp.id)}>{lamp.label}</button>):null
-  : <>
-  <button type="button" aria-pressed={hasFlag(vehicleFlags,VehicleFlags.HEADLIGHTS)} onClick={()=>useInputStore.getState().toggleVehicleFlag(VehicleFlags.HEADLIGHTS)}>HEADLIGHTS · {hasFlag(vehicleFlags,VehicleFlags.HEADLIGHTS)?"ON":"OFF"}</button>
-  <button type="button" aria-pressed={hasFlag(vehicleFlags,VehicleFlags.BLINKER_LEFT)} onClick={()=>toggleTurnSignal(-1)}>LEFT STALK</button>
-  <button type="button" aria-pressed={hasFlag(vehicleFlags,VehicleFlags.BLINKER_RIGHT)} onClick={()=>toggleTurnSignal(1)}>RIGHT STALK</button>
-  <button type="button" aria-pressed={hasFlag(vehicleFlags,VehicleFlags.HAZARDS)} onClick={()=>useInputStore.getState().toggleVehicleFlag(VehicleFlags.HAZARDS)}>HAZARDS</button>
- </>;
+ const lightingFooter=shipLightPreview
+  ? MARINE_LAMPS.map(lamp=><button key={lamp.id} type="button" aria-pressed={marineLights[lamp.id]} onClick={()=>toggleMarineLamp(lamp.id)}>{lamp.label}</button>)
+  : null;
  const currentFooter=studioTab==="performance"?studioFooter:studioTab==="body"?bodyFooter:studioTab==="lighting"?lightingFooter:null;
- return <section ref={root} className={`game-ui menu-surface alpha-selection hero-selection hero-workshop${panelsHidden?" hero-workshop--hidden":""}${viewingReference?" hero-ability-guide":""}`} data-character-page={characterOpen||undefined} inert={overlay!==null} tabIndex={-1} aria-label={characterOpen?"Character":"Heroes garage"} data-controller-form data-controller-rows>
+ return <section ref={root} className={`game-ui menu-surface alpha-selection hero-selection hero-workshop${panelsHidden?" hero-workshop--hidden":""}${viewingConcepts?" hero-ability-guide":""}`} data-character-page={characterOpen||undefined} inert={overlay!==null} tabIndex={-1} aria-label={characterOpen?"Character":"Heroes garage"} data-controller-form data-controller-rows>
   {characterOpen?characterReady?<SceneTabHeader title="CHARACTER" compact tabs={CHARACTER_TABS} activeTab={characterTab}
+    character={{readOnly:true}}
     onTabChange={id=>setCharacterTab(id as CharacterTab)} idPrefix="character-editor" panelId="character-editor-panel"/>
-    :<SelectionHeader title="CHARACTER" compact/>:editing&&definition
+    :<SelectionHeader title="CHARACTER" compact character={{readOnly:true}}/>:editing&&definition
     ? <SceneTabHeader
         title="GARAGE"
         compact
-        actions={<CharacterHeaderProfile onOpen={openCharacter}/>}
+        character={{onOpen:openCharacter}}
         activeTab={studioTab}
         onTabChange={next=>setStudioTab(next as VehicleStudioTab)}
         tablistClassName="garage-studio-tabs"
@@ -262,7 +252,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
           separatorBefore:item.id==="studio",
         }))}
       />
-    : <SceneTabHeader title="HEROES" compact actions={<CharacterHeaderProfile onOpen={openCharacter}/>} tabs={WORKSHOP_TABS} activeTab={role}
+    : <SceneTabHeader title="HEROES" compact character={{onOpen:openCharacter}} tabs={WORKSHOP_TABS} activeTab={role}
         tablistClassName="hero-pick-tabs" onTabChange={next=>setRole(next as WorkshopFilter)}
         idPrefix="hero-workshop-role" panelId="hero-workshop-role-panel"/>}
   <div className="hero-selection-stage hero-workshop-body">
@@ -350,15 +340,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
          ? <div className="vehicle-studio-feature-list">{MARINE_LAMPS.map(lamp=><div key={lamp.id}><span>{lamp.label}</span><strong>{marineLights[lamp.id]?"ON":"OFF"}</strong></div>)}</div>
          : <p role="status">Deck and navigation lights use the ship's authored materials.</p>}
        </section>
-     : <section className="vehicle-studio-card"><header><small>LOCAL GARAGE TEST</small><h3>Steering stalks & hazards</h3></header>
-        <p>Test the model's headlight and signal lens materials.</p>
-        <div className="vehicle-studio-feature-list">
-         <div><span>HEADLIGHT CIRCUIT</span><strong>{hasFlag(vehicleFlags,VehicleFlags.HEADLIGHTS)?"ON":"OFF"}</strong></div>
-         <div><span>LEFT STALK</span><strong>{hasFlag(vehicleFlags,VehicleFlags.BLINKER_LEFT)?"ACTIVE":"CENTER"}</strong></div>
-         <div><span>RIGHT STALK</span><strong>{hasFlag(vehicleFlags,VehicleFlags.BLINKER_RIGHT)?"ACTIVE":"CENTER"}</strong></div>
-         <div><span>HAZARDS</span><strong>{hasFlag(vehicleFlags,VehicleFlags.HAZARDS)?"ON":"OFF"}</strong></div>
-        </div>
-       </section>)}
+     : <GarageVehicleDiagnostics vehicle={definition.vehicle}/>)}
     {studioTab==="studio"&&<section className="vehicle-studio-card">
      <header><small>PORTRAIT PREVIEW</small><h3>{definition.name}</h3></header>
      <HeroPortrait hero={definition.id} appearance={appearance} className="vehicle-studio-portrait" windowTone={marine?DEFAULT_WINDOW_TONE:glassStyle}/>
@@ -367,8 +349,8 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
     {(!owner||status!=="idle")&&<p className="vehicle-studio-save-status" role="status" aria-live="polite">{!owner?"CONNECT YOUR PLAYER PROFILE":status==="pending"||status==="saving"?"SAVING YOUR STYLE…":status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER · SHARED IN GAME":"Appearance changes save automatically for this vehicle."}</p>}
     {status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}
    </VehicleStudio>}
-   {editing&&definition&&studioTab!=="abilities"&&<GaragePreviewControls vehicle={definition.vehicle}/>}
-   {((characterOpen&&!characterReady)||viewingConcepts||(editing&&studioTab==="abilities")||(!characterOpen&&!definition))&&<div className="hero-garage-zoom" data-controller-row><PreviewVisibilityToggle/></div>}
+   {editing&&definition&&<GaragePreviewControls vehicle={definition.vehicle}/>}
+   {((characterOpen&&!characterReady)||viewingConcepts||(!characterOpen&&!definition))&&<div className="hero-garage-zoom" data-controller-row><PreviewVisibilityToggle/></div>}
   </div>
   <SelectionFooter tabs={!characterOpen||characterReady} selectLabel={editing&&studioTab==="abilities"?"Toggle":undefined} hasPrimaryAction={!characterOpen&&(!editing||studioTab!=="abilities")} backAction={{onClick:()=>void back(),label:"Back"}}>{!characterOpen&&<div className="hero-workshop-actions">
    {!viewingReference&&<ControllerAction button="A" type="button" className="menu-control" disabled={!owner} tabIndex={-1} onClick={()=>editing?setPage("heroes"):openHero()}>{editing?"APPLY":"OPEN GARAGE"}</ControllerAction>}

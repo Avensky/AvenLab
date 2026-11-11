@@ -1,0 +1,19 @@
+[
+  {"id":"corset","label":"Corset / bodice","center":0.71,"span":0.37},
+  {"id":"shirt","label":"Layering shirt","center":0.72,"span":0.42},
+  {"id":"skirt","label":"Skirt","center":0.36,"span":0.62},
+  {"id":"sleeves","label":"Sleeves","center":0.69,"span":0.58},
+  {"id":"underskirt","label":"Petticoat","center":0.33,"span":0.64},
+  {"id":"shorts","label":"Modesty shorts","center":0.45,"span":0.32},
+  {"id":"shoes","label":"Shoes / boots","center":0.09,"span":0.25},
+  {"id":"hat","label":"Hat / bonnet","center":0.94,"span":0.23},
+  {"id":"bow","label":"Bow","center":0.77,"span":0.27},
+  {"id":"belt","label":"Belt","center":0.55,"span":0.25},
+  {"id":"coat","label":"Coat","center":0.62,"span":0.65},
+  {"id":"pants","label":"Trousers","center":0.3,"span":0.62},
+  {"id":"gloves","label":"Gloves","center":0.55,"span":0.6},
+  {"id":"collar","label":"Collar","center":0.82,"span":0.22},
+  {"id":"pouches","label":"Belt pouches","center":0.5,"span":0.34},
+  {"id":"glasses","label":"Glasses","center":0.92,"span":0.18},
+  {"id":"bag","label":"Shop bag","center":0.4,"span":0.45}
+]

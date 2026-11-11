@@ -353,6 +353,8 @@ impl Server {
                 appearance.validate(&p.owned)?;
                 p.hero_loadouts.insert(selected.vehicle.into(),appearance.clone());
                 if value["make_default"].as_bool()==Some(true) { p.default_hero=hero.into(); }
+                p.cosmetics_revision = p.cosmetics_revision.saturating_add(1);
+                let confirmed = p.cosmetics_view();
                 drop(data);self.commit(previous).await?;
                 if let Ok(runtime)=self.runtime(player).await {
                     let mut room=runtime.lock().await;
@@ -360,7 +362,7 @@ impl Server {
                         if entity.vehicle_id.as_deref()==Some(selected.vehicle) { entity.appearance=appearance; }
                     }
                 }
-                Ok(json!({}))
+                Ok(confirmed)
             }
             "character_equip" => {
                 let actor = self.actor(player).await?;
@@ -368,22 +370,25 @@ impl Server {
                     .map_err(|_| "Choose a character and outfit.")?;
                 if !choice.is_available() { return Err("Choose an available character outfit.".into()); }
                 let mut data = self.data.lock().await;
-                let profile = data.profiles.get(&actor).ok_or("Profile unavailable.")?;
-                if profile.progression.character.as_ref().and_then(|current| current.gender())
-                    .is_some_and(|gender| Some(gender) != choice.gender()) {
-                    return Err("Your character gender is already set for this profile.".into());
-                }
+                let progression = &data.profiles.get(&actor).ok_or("Profile unavailable.")?.progression;
                 if choice.identity.is_none() {
-                    choice.identity = profile.progression.character.as_ref().and_then(|current| current.identity);
+                    choice.identity = progression.character.as_ref().and_then(|current| current.identity);
                 }
-                if profile.progression.character.as_ref() == Some(&choice) {
-                    return Ok(json!({"character":choice}));
+                if progression.character.as_ref() == Some(&choice) {
+                    return Ok(progression.cosmetics_view());
                 }
                 let previous = data.clone();
-                data.profiles.get_mut(&actor).ok_or("Profile unavailable.")?.progression.character = Some(choice.clone());
+                let progression = &mut data.profiles.get_mut(&actor).ok_or("Profile unavailable.")?.progression;
+                progression.character_presets.remove(&choice.id);
+                let active_id = choice.id.clone();
+                if let Some(last) = progression.character.replace(choice).filter(|last| last.id != active_id && last.is_available()) {
+                    progression.character_presets.insert(last.id.clone(), last);
+                }
+                progression.cosmetics_revision = progression.cosmetics_revision.saturating_add(1);
+                let confirmed = progression.cosmetics_view();
                 drop(data);
                 self.commit(previous).await?;
-                Ok(json!({"character":choice}))
+                Ok(confirmed)
             }
             "skin_redeem" | "skin_equip" => {
                 let actor = self.actor(player).await?;

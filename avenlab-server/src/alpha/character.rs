@@ -56,6 +56,12 @@ pub enum CharacterProp { ShopBag }
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CharacterAppearance {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    item_colors: Option<std::collections::BTreeMap<String, ClothingColors>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    personality: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    animation_fit: Option<String>,
     hair: String,
     hair_color: String,
     skin: String,
@@ -71,10 +77,23 @@ pub struct CharacterAppearance {
     glasses: Option<String>,
 }
 
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ClothingColors {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    accent: Option<String>,
+}
+#[derive(Deserialize)]
+struct ClothingPiece { id: String }
+static CLOTHING_PIECES: LazyLock<Vec<ClothingPiece>> = LazyLock::new(|| {
+    serde_json::from_str(include_str!("../assets/character-clothing-pieces.json")).expect("valid clothing pieces")
+});
+
 #[derive(Deserialize)]
 struct Character {
     id: String,
-    gender: String,
     outfits: Vec<Outfit>,
 }
 
@@ -101,10 +120,6 @@ fn hex_color(value: &str) -> bool {
 }
 
 impl CharacterChoice {
-    pub fn gender(&self) -> Option<&'static str> {
-        CAST.iter().find(|character| character.id == self.id).map(|character| character.gender.as_str())
-    }
-
     pub fn is_available(&self) -> bool {
         CAST.iter().any(|character| {
             character.id == self.id
@@ -117,6 +132,19 @@ impl CharacterChoice {
                 set.id == wardrobe.set && (!set.requires_shirt || wardrobe.shirt != ShirtLayer::None)
             })
         }) && self.appearance.as_ref().is_none_or(|appearance| {
+            if !appearance.personality.as_deref().is_none_or(|value| ["friendly", "playful", "shy", "tsundere", "stoic", "elegant", "racer", "scientist"].contains(&value))
+                || !appearance.animation_fit.as_deref().is_none_or(|value| ["auto", "full", "fitted"].contains(&value)) {
+                return false;
+            }
+            if !appearance.item_colors.as_ref().is_none_or(|items| items.len() <= 128 && items.iter().all(|(key, colors)| {
+                let Some((variant, piece)) = key.split_once(':') else { return false; };
+                let known_piece = CLOTHING_PIECES.iter().any(|entry| entry.id == piece);
+                let known_variant = CAST.iter().filter(|entry| entry.id == self.id).any(|entry| entry.outfits.iter().any(|outfit| outfit.id == variant))
+                    || (self.id == "mara-vega" && WARDROBE.iter().any(|set| set.id == variant))
+                    || (piece == "glasses" && ["round", "aviator"].contains(&variant))
+                    || (piece == "bag" && variant == "shop-bag");
+                known_piece && known_variant && colors.color.as_deref().is_none_or(hex_color) && colors.accent.as_deref().is_none_or(hex_color)
+            })) { return false; }
             if !appearance.accent.as_deref().is_none_or(hex_color) {
                 return false;
             }
@@ -175,4 +203,24 @@ mod wardrobe_tests {
         assert!(serde_json::from_value::<WardrobeChoice>(json!({"set":"gothic-01","shirt":"invisible","waist":"over"})).is_err());
         assert!(serde_json::from_value::<WardrobeChoice>(json!({"set":"gothic-01","shirt":"under","waist":"over","shorts":false})).is_err());
     }
+    #[test]
+    fn piece_colors_personality_and_fit_round_trip_and_validate() {
+        let mut value = serde_json::to_value(choice(serde_json::Value::Null)).unwrap();
+        value["appearance"] = json!({ "hair":"natural", "hair_color":"original", "skin":"original",
+            "headwear":"hat", "color":"original", "personality":"tsundere", "animation_fit":"fitted",
+            "item_colors": {"gothic-01:skirt":{"color":"#123aBC","accent":"#abcdef"}, "aviator:glasses":{"color":"#112233"}} });
+        let good: CharacterChoice = serde_json::from_value(value.clone()).unwrap();
+        assert!(good.is_available());
+        assert_eq!(serde_json::from_value::<CharacterChoice>(serde_json::to_value(&good).unwrap()).unwrap(), good);
+        for (field, bad) in [("personality", json!("unknown")), ("animation_fit", json!("invisible")),
+            ("item_colors", json!({"gothic-01:skin":{"color":"#112233"}})),
+            ("item_colors", json!({"unknown:skirt":{"color":"#112233"}})),
+            ("item_colors", json!({"gothic-01:skirt":{"color":"transparent"}}))] {
+            let mut invalid = value.clone(); invalid["appearance"][field] = bad;
+            assert!(!serde_json::from_value::<CharacterChoice>(invalid).unwrap().is_available());
+        }
+        value["appearance"]["item_colors"]["gothic-01:skirt"]["opacity"] = json!(0);
+        assert!(serde_json::from_value::<CharacterChoice>(value).is_err());
+    }
+
 }

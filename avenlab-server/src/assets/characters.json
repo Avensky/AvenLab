@@ -6,7 +6,7 @@
     "title": "Harbor mechanic",
     "bio": "Vesper runs a late-shift repair bay on the waterfront. On quiet nights, she takes the long way home through the hill roads to test what she fixed.",
     "outfits": [
-      { "id": "dockwear", "name": "Dockwear", "jacket": "#46584b", "trim": "#e7ab62" },
+      { "id": "dockwear", "name": "Village dress & petticoat", "jacket": "#46584b", "trim": "#e7ab62" },
       { "id": "shop-crew", "name": "Shop crew", "jacket": "#32566a", "trim": "#9de0d6" }
     ]
   },

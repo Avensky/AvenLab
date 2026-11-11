@@ -1,4 +1,3 @@
-import { openCharacterEditor } from "../characterEditor/characterEditorStore";
 import { EditorTestAction } from "../../game/alpha/EditorTestAction";
 import { refreshInstalledWorlds, useWorldCatalog } from "../../store/selection/worldCatalog";
 import { useEffect } from "react";
@@ -44,7 +43,6 @@ export function EditorWorldControls({
       </label>
       {ready && !worlds.length && <span className="le-muted" role="status">{status}</span>}
       <button type="button" onClick={() => useBuilderStore.setState({ workspace: "vehicle" })}>EDIT VEHICLE</button>
-      <button type="button" onClick={openCharacterEditor}>EDIT CHARACTER</button>
       <EditorTestAction />
       {!compact && (
         <>

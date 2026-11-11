@@ -1,6 +1,7 @@
 import { MenuLogo } from "../../../components/menus/MenuLogo";
 import { useMemo, type ReactNode } from "react";
 import { GameButton } from "../../../components/GameButton";
+import { CharacterHeaderProfile } from "../../characters/CharacterHeaderProfile";
 
 export type ReconHeaderTheme = "green" | "cyan" | "purple" | "red" | "yellow";
 
@@ -27,6 +28,7 @@ type ReconWorkspaceHeaderProps = {
   collapsed?: boolean;
   setCollapsed: (collapsed: boolean) => void;
   className?: string;
+  characterReadOnly?: boolean;
 };
 
 const THEME_CLASSES: Record<
@@ -85,6 +87,7 @@ export function ReconWorkspaceHeader({
   collapsed,
   setCollapsed,
   className = "",
+  characterReadOnly = false,
 }: ReconWorkspaceHeaderProps) {
   const tone = THEME_CLASSES[theme];
   const activeLabel = useMemo(
@@ -108,15 +111,18 @@ export function ReconWorkspaceHeader({
             <span className="hidden sm:inline"> · {status}</span>
           ) : null}
         </div>
-        <button
-          type="button"
-          onClick={() => setCollapsed(false)}
-          className={`rounded-sm border bg-slate-900 px-2 text-[9px] font-black text-slate-200 ${tone.border}`}
-          aria-label="Show workspace header"
-          title="Show header"
-        >
-          HEADER ▾
-        </button>
+        <div className="flex shrink-0 items-center gap-1 [--angled-header-height:24px]">
+          <button
+            type="button"
+            onClick={() => setCollapsed(false)}
+            className={`rounded-sm border bg-slate-900 px-2 text-[9px] font-black text-slate-200 ${tone.border}`}
+            aria-label="Show workspace header"
+            title="Show header"
+          >
+            HEADER ▾
+          </button>
+          <CharacterHeaderProfile compact readOnly={characterReadOnly} />
+        </div>
       </header>
     );
   }
@@ -144,6 +150,7 @@ export function ReconWorkspaceHeader({
         </div>
 
         {actions ? <div className="min-w-0">{actions}</div> : null}
+        <CharacterHeaderProfile compact readOnly={characterReadOnly} />
       </div>
 
       {showTabs && tabs.length ? (

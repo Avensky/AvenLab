@@ -1,3 +1,5 @@
+import type { PieceColors } from "./clothingPieces";
+import type { AnimationFit, CharacterPersonality } from "./characterPersonality";
 import catalog from "../../../../avenlab-server/src/assets/characters.json";
 import appearanceOptions from "../../../../avenlab-server/src/assets/character-appearance.json";
 import { resolveWardrobe, type WardrobeChoice } from "./wardrobe";
@@ -7,7 +9,7 @@ export const CHARACTER_APPEARANCE_OPTIONS = appearanceOptions;
 export type CharacterStyleField = keyof typeof appearanceOptions;
 type FaceField = "eye_color" | "brow_color" | "glasses";
 export type CharacterAppearance = Record<Exclude<CharacterStyleField, FaceField>, string>
-  & Partial<Record<FaceField, string>> & { accent?: string };
+  & Partial<Record<FaceField, string>> & { accent?: string; item_colors?: Record<string, PieceColors>; personality?: CharacterPersonality; animation_fit?: AnimationFit };
 
 export const OUTFIT_THEMES = [
   { name: "Gothic Pink", color: "#101015", accent: "#ff2d95" },

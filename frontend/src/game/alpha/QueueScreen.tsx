@@ -1,4 +1,5 @@
 import { MenuLogo } from "../../components/menus/MenuLogo";
+import { CharacterHeaderProfile } from "../characters/CharacterHeaderProfile";
 import { useConnectionView } from "../../store/session/networkViews";
 import { useCallback, useRef, useState } from "react";
 import { MenuVideoBackground } from "../../components/menus/MenuVideoBackground";
@@ -59,7 +60,11 @@ export function QueueScreen() {
       <MenuVideoBackground loading cycle />
       <section className="alpha-queue-card" aria-label="Alpha waiting line">
         <small>REDLINE VECTOR · LIMITED ALPHA</small>
-        <div className="menu-title-with-logo"><MenuLogo compact/><h1>{queue ? "YOU’RE IN LINE" : "FINDING A SERVER"}</h1></div>
+        <header className="menu-title-with-logo">
+          <MenuLogo compact />
+          <h1>{queue ? "YOU’RE IN LINE" : "FINDING A SERVER"}</h1>
+          <CharacterHeaderProfile compact readOnly />
+        </header>
         <h2>
           {queue?matchModeLabel(queue.mode,queue.team_size):(connected ? "REJOIN AVAILABLE" : "RECONNECTING")}
         </h2>

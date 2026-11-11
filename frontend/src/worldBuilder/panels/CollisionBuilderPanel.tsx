@@ -1,4 +1,5 @@
 import { MenuLogo } from "../../components/menus/MenuLogo";
+import { CharacterHeaderProfile } from "../../game/characters/CharacterHeaderProfile";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { ControllerAction, ControlGlyph } from "../../components/controller";
 import type { MenuAction } from "../../controls/inputRouting";
@@ -253,6 +254,7 @@ export function CollisionBuilderPanel({
         <ControllerAction button="B" onClick={closeWorldBuilder}>
            EXIT
         </ControllerAction>
+        <CharacterHeaderProfile compact />
       </header>
       <div className="wb-toolbar">
         <button

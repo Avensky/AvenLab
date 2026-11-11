@@ -1,4 +1,5 @@
-import { useCallback, useRef, type ReactNode } from "react";
+import { useFittingTurnStore } from "../characters/fittingControlsStore";
+import { useEffect, useCallback, useRef, type ReactNode } from "react";
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { DoubleSide, Group, MathUtils } from "three";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
@@ -16,6 +17,7 @@ export function PreviewTurntable({
 }) {
   const group = useRef<Group>(null);
   const angle = useRef(0);
+  const lastVehicleYaw = useRef(useFittingTurnStore.getState().vehicleYaw);
   const drag = useRef<{ pointerId: number; clientX: number } | null>(null);
   const attach = useCallback(
     (object: Group | null) => {
@@ -28,9 +30,13 @@ export function PreviewTurntable({
   const cameraSensitivity = usePreferencesStore((s) => s.cameraSensitivity);
   const invalidate = useThree(s => s.invalidate);
 
+  useEffect(() => useFittingTurnStore.subscribe(() => invalidate()), [invalidate]);
   useFrame(({ frameloop }, delta) => {
     if (!group.current) return;
     const step = Math.min(delta, 0.1);
+    const requested = useFittingTurnStore.getState().vehicleYaw;
+    if (!locked) angle.current += requested - lastVehicleYaw.current;
+    lastVehicleYaw.current = requested;
     if (locked) return;
     if (spin && !reducedMotion && !drag.current && frameloop !== "never") angle.current += step * 0.035;
     const rotation = group.current.rotation;
@@ -42,7 +48,7 @@ export function PreviewTurntable({
   }, -1);
 
   const beginDrag = (event: ThreeEvent<PointerEvent>) => {
-    if (locked) return;
+    if (locked || event.button !== 0 || useFittingTurnStore.getState().dragging) return;
     event.stopPropagation();
     drag.current = { pointerId: event.pointerId, clientX: event.clientX };
     (event.target as EventTarget & { setPointerCapture(pointerId: number): void }).setPointerCapture(event.pointerId);

@@ -16,18 +16,18 @@
   text-transform: uppercase;
   flex-wrap: wrap;
 }
-.survey-map header span {
+.survey-map > header > span {
   color: #b2c3cf;
   font-size: 0.82rem;
 }
-.survey-map button {
+.survey-map > header > button:not(.character-header-profile) {
   margin-left: auto;
   color: inherit;
   background: #223441;
   border: 1px solid currentColor;
   padding: 0.45rem 0.85rem;
 }
-.survey-map svg {
+.survey-map > svg {
   flex: 1;
   min-height: 0;
   width: 100%;
