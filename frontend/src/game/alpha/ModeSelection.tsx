@@ -4,7 +4,7 @@ import { useMenuPressOwner } from "../../components/menus/useMenuPressOwner";
 import {MatchModePortraits} from "./ModePortraitCard";
 import {useSelectionStore as useWorldSelection} from '../../store/selection/selectionStore';
 import {WorldPortraitCard} from '../preview/WorldPortraitCard';
-import {createTabProfile,identifySocial} from "../../net/socialClient";
+import {createGuestProfile,createTabProfile,identifySocial,signInDeviceProfile} from "../../net/socialClient";
 import "./profileRecovery.css";
 import {useSocialStore} from '../../store/social/socialStore';
 import { useHeroLoadouts } from "../../vehicles/cosmetics/heroLoadouts";
@@ -47,6 +47,7 @@ export function ModeSelection() {
   const profileStatus=useSocialStore(s=>s.profileStatus);
   const profileMessage=useSocialStore(s=>s.message);
   const profileReady=Boolean(profileId)&&profileStatus!=="restoring";
+  const needsProfileChoice=useSocialStore(s=>s.available && s.profileScope===null);
   const selectedWorld=useWorldSelection(s=>s.getSelectedMap());
   const mode = useAlphaStore((s) => s.mode);
   const teamSize = useAlphaStore((s) => s.teamSize);
@@ -129,10 +130,10 @@ export function ModeSelection() {
       setBusy(false);
     }
   }, [research, planned,profileReady,selectMatchSize]);
-  const recoverProfile=async(tabOnly:boolean)=>{
+  const recoverProfile=async(connect:()=>Promise<void>)=>{
     if(pending.current||profileStatus==="restoring")return;
     pending.current=true;setBusy(true);setStatus("");
-    try {await (tabOnly?createTabProfile():identifySocial());}
+    try {await connect();}
     catch { /* The social client exposes the failed attempt beside these actions. */ }
     finally {pending.current=false;setBusy(false);}
   };
@@ -214,14 +215,13 @@ export function ModeSelection() {
           {match&&<p className="alpha-status" role="note">{teamSize===3?'3 VS 3 · One Tank, DPS and Support per team. ':'5 VS 5 · '}First to 3 captures · 15 minutes. Career records are live; {mode==='competitive'?'ranked MMR is pending.':'choose a match size to find a game.'}</p>}
           {mode === "solo" && <p className="alpha-status" role="note">{item.description} City course in development.</p>}
           {!research&&!planned&&!profileReady&&<div className="profile-recovery" aria-label="Player profile recovery">
-            <p role="status">{connected?profileMessage:"Connect to the game server to restore your player."}</p>
+            <p role="status">{connected?profileMessage:"Connect to the game server to choose a player profile."}</p>
             {connected&&profileStatus!=="restoring"&&<>
-              <p>Your saved player may be active in another tab. Create another player here to test together; your main profile is kept.</p>
               <div className="profile-recovery-actions" data-controller-row>
-                <ControllerAction button="A" className="menu-control" data-profile-action disabled={busy} onClick={()=>void recoverProfile(true)}>NEW TAB PROFILE</ControllerAction>
-                <button type="button" className="menu-control" data-profile-action disabled={busy} onClick={()=>void recoverProfile(false)}>RETRY SAVED PROFILE</button>
+                <ControllerAction button="A" className="menu-control" data-profile-action disabled={busy} onClick={()=>void recoverProfile(needsProfileChoice ? createGuestProfile : createTabProfile)}>{needsProfileChoice ? "CONTINUE AS GUEST" : "NEW TAB PROFILE"}</ControllerAction>
+                <button type="button" className="menu-control" data-profile-action disabled={busy} onClick={()=>void recoverProfile(needsProfileChoice ? signInDeviceProfile : identifySocial)}>{needsProfileChoice ? "SIGN IN ON THIS DEVICE" : "RETRY SAVED PROFILE"}</button>
               </div>
-              <small>A tab profile keeps its own styles and progress for reconnects and reloads in this tab. Rename it in Social → Profile.</small>
+              <small>A guest profile keeps your styles and progress in this tab. A device profile keeps them for later visits on this device.</small>
             </>}
           </div>}
           {(status||recoveryNotice) && (

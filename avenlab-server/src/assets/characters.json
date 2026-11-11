@@ -7,7 +7,16 @@
     "bio": "Vesper runs a late-shift repair bay on the waterfront. On quiet nights, she takes the long way home through the hill roads to test what she fixed.",
     "outfits": [
       { "id": "dockwear", "name": "Village dress & petticoat", "jacket": "#46584b", "trim": "#e7ab62" },
-      { "id": "shop-crew", "name": "Shop crew", "jacket": "#32566a", "trim": "#9de0d6" }
+      { "id": "shop-crew", "name": "Shop crew", "jacket": "#32566a", "trim": "#9de0d6" },
+      { "id": "linen-nightgown", "name": "Linen nightgown", "jacket": "#e6ddcf", "trim": "#a98caa" },
+      { "id": "medieval-01", "name": "Laced linen dress", "jacket": "#302337", "trim": "#d8c6ab" },
+      { "id": "medieval-02", "name": "Bell-sleeve gown", "jacket": "#342942", "trim": "#b49dc3" },
+      { "id": "medieval-03", "name": "Ribbon-waist gown", "jacket": "#442338", "trim": "#b79ba9" },
+      { "id": "medieval-04", "name": "Belted court dress", "jacket": "#363e51", "trim": "#ac92a0" },
+      { "id": "medieval-05", "name": "Hooded gown", "jacket": "#252638", "trim": "#a6a4c1" },
+      { "id": "medieval-06", "name": "Belted tunic", "jacket": "#393044", "trim": "#b59677" },
+      { "id": "medieval-07", "name": "Quilted traveling dress", "jacket": "#333047", "trim": "#ac8c80" },
+      { "id": "medieval-08", "name": "Quilted riding coat", "jacket": "#3a263d", "trim": "#b19683" }
     ]
   },
   {

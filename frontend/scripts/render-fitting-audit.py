@@ -13,7 +13,7 @@ view=sys.argv[-1] if sys.argv[-1] in ('front','back') else 'front'
 if view=='back':
  camera.location.y=2.8;camera.rotation_euler=(Vector((0,0,1.08))-camera.location).to_track_quat('-Z','Y').to_euler()
 for file in sorted(src.glob('*.json')):
- if not any(file.name.startswith(n)for n in ['2-under-idle','3-under-clap','4-under-idle','4-under-clap','5-under-clap','4-over-idle','2-under-long-clap','3-under-long-clap','4-under-long-clap','5-under-long-clap','4-over-long-idle']):continue
+ if file.stem not in [f'{n}-none{fit}-{pose}' for n in range(1,6) for fit in ('','-long') for pose in ('idle','clap')]:continue
  for o in list(bpy.data.objects):
   if o.type=='MESH':bpy.data.objects.remove(o,do_unlink=True)
  for item in json.loads(file.read_text()):

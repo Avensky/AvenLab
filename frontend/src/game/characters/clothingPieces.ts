@@ -1,19 +1,27 @@
 import { Box3, Mesh, type Object3D } from "three";
 import catalog from "../../../../avenlab-server/src/assets/character-clothing-pieces.json";
-import { characterAppearance, type CharacterChoice, type CharacterLook } from "./characterCatalog";
+import { characterAppearance, characterLook, type CharacterChoice, type CharacterLook } from "./characterCatalog";
+import { resolveWardrobe } from "./wardrobe";
+import { getWardrobeGarment, wardrobeGarmentReplacements, wardrobeRemovalPieces } from "./wardrobeGarments";
 
-export type ClothingPiece = "corset" | "shirt" | "skirt" | "sleeves" | "underskirt" | "shorts" | "shoes" | "hat" | "bow" | "belt" | "coat" | "pants" | "gloves" | "collar" | "pouches" | "glasses" | "bag";
+export type ClothingPiece = "corset" | "shirt" | "skirt" | "sleeves" | "underskirt" | "shorts" | "shoes" | "hat" | "bow" | "belt" | "coat" | "pants" | "gloves" | "collar" | "pouches" | "glasses" | "bag" | "dress" | "socks" | "harness" | "armor" | "bracer";
 export type PieceColors = { color?: string; accent?: string };
 export const CLOTHING_PIECES = catalog as { id: ClothingPiece; label: string; center: number; span: number }[];
 export const clothingPieceLabel = (piece: ClothingPiece) => CLOTHING_PIECES.find(item => item.id === piece)!.label;
 
-export function clothingColorKey(choice: Pick<CharacterChoice, "outfit" | "wardrobe" | "appearance">, piece: ClothingPiece) {
-  const variant = piece === "glasses" ? choice.appearance?.glasses ?? "none" : piece === "bag" ? "shop-bag"
-    : choice.wardrobe?.set ?? choice.outfit;
+export function clothingColorKey(choice: Pick<CharacterChoice, "outfit" | "wardrobe" | "wardrobeTrial" | "appearance" | "garments">, piece: ClothingPiece) {
+  const garment = Object.values(choice.garments ?? {}).map(getWardrobeGarment).find(item => item?.piece === piece);
+  const corset = resolveWardrobe(choice.wardrobeTrial, { includeRetired: true });
+  const corsetSet = piece === "corset" ? corset?.set : undefined;
+  const variant = garment?.id ?? (piece === "glasses" ? choice.appearance?.glasses ?? "none" : piece === "bag" ? "shop-bag"
+    : corsetSet ?? resolveWardrobe(choice.wardrobe)?.set ?? choice.outfit);
   return `${variant}:${piece}`;
 }
 export function clothingColors(look: CharacterLook, piece: ClothingPiece) {
-  return look.appearance.item_colors?.[clothingColorKey({ outfit: look.outfit.id, wardrobe: look.wardrobe, appearance: look.appearance }, piece)];
+  return look.appearance.item_colors?.[clothingColorKey({
+    outfit: look.outfit.id, wardrobe: look.wardrobe, appearance: look.appearance, garments: look.garments,
+    wardrobeTrial: look.corset,
+  }, piece)];
 }
 export function withClothingColors(choice: CharacterChoice, piece: ClothingPiece, colors?: PieceColors): CharacterChoice {
   const item_colors = { ...choice.appearance?.item_colors };
@@ -24,13 +32,30 @@ export function withClothingColors(choice: CharacterChoice, piece: ClothingPiece
 }
 export function wornClothing(choice: CharacterChoice): ClothingPiece[] {
   const female = choice.id === "mara-vega";
-  const pieces: ClothingPiece[] = female ? choice.wardrobe
-    ? ["corset", ...(choice.wardrobe.shirt !== "none" ? ["shirt" as const] : []), "skirt", "shorts", "shoes", "hat"]
+  const look = characterLook(choice);
+  const wardrobe = look?.wardrobe;
+  const removed = look?.removedClothing ?? [];
+  const corset = look?.corset;
+  let pieces: ClothingPiece[] = female ? wardrobe
+    ? ["corset", "skirt", "shoes", "hat"]
     : ["corset", "skirt", "sleeves", "underskirt", "shoes", "hat", "belt", ...((choice.appearance?.accent || choice.outfit === "shop-crew") ? ["bow" as const] : [])]
     : ["coat", "pants", "shoes", "gloves", "collar", "belt", "pouches"];
+  if (corset) {
+    pieces = pieces.filter(piece => !wardrobeGarmentReplacements.top.some(replaced => replaced === piece));
+    pieces.unshift("corset");
+  }
+  const visible = look?.garments;
+  if (visible) {
+    const garments = Object.values(visible).map(getWardrobeGarment).filter(item => item !== undefined);
+    const replaced = new Set<ClothingPiece>(garments.flatMap(item => wardrobeGarmentReplacements[item.slot]));
+    if (corset) replaced.delete("corset");
+    pieces = [...new Set([...pieces.filter(piece => !replaced.has(piece)), ...garments.map(item => item.piece)])];
+  }
+  if (!female && choice.appearance?.headwear === "hat") pieces.push("hat");
   if (choice.appearance?.glasses && choice.appearance.glasses !== "none") pieces.push("glasses");
   if (choice.prop === "shop-bag") pieces.push("bag");
-  return pieces;
+  const hidden = new Set<ClothingPiece>(removed.flatMap(slot => wardrobeRemovalPieces[slot]));
+  return pieces.filter(piece => !hidden.has(piece));
 }
 
 export function clothingPieceFor(object: Object3D): ClothingPiece | undefined {
@@ -39,6 +64,7 @@ export function clothingPieceFor(object: Object3D): ClothingPiece | undefined {
   const role = String(object.userData.wardrobeRole ?? "");
   if (role.startsWith("corset")) return "corset";
   if (role.startsWith("shirt")) return "shirt";
+  if (role.startsWith("bottom")) return "skirt";
   if (role === "shorts") return "shorts";
   const name = object.name;
   if (/^CLOTH_BOTTOM_SKIRT/.test(name)) return "skirt";

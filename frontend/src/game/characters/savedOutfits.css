@@ -1,0 +1,46 @@
+.saved-outfits {
+  display: grid;
+  gap: 6px;
+  padding-top: 3px;
+}
+.saved-outfit-form, .saved-outfit-form label {
+  display: grid;
+  gap: 4px;
+}
+.saved-outfit-form label, .saved-outfit-message {
+  color: var(--app-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.saved-outfits .menu-control {
+  min-width: 0;
+  min-height: 28px;
+  padding: 4px 6px;
+  border: 1px solid var(--app-line);
+  border-radius: 0;
+  clip-path: var(--dressing-control-shape);
+  background: var(--dressing-raised);
+  color: var(--app-text);
+  font-size: 11px;
+  line-height: 1.25;
+}
+.saved-outfit-form input, .saved-outfit-form button {
+  box-sizing: border-box;
+  width: 100%;
+}
+.saved-outfit-form input { text-transform: none; cursor: text; }
+.saved-outfit-form button { justify-content: center; }
+.saved-outfit-message { margin: 0; overflow-wrap: anywhere; }
+.saved-outfit-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.saved-outfit-list li { display: grid; grid-template-columns: minmax(0, 1fr) 29px; gap: 4px; }
+.saved-outfit-preview.menu-control {
+  display: grid;
+  gap: 2px;
+  white-space: normal;
+  text-align: left;
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+.saved-outfit-preview small { color: var(--app-muted); font-size: 9px; }
+.saved-outfit-delete.menu-control { display: grid; place-items: center; padding: 3px; }
+.saved-outfit-delete svg { width: 15px; height: 15px; }

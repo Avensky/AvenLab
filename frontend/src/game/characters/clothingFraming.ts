@@ -1,4 +1,4 @@
-import { Box3, MathUtils, Quaternion, Vector3 } from "three";
+import { Box3, MathUtils, Quaternion, Spherical, Vector3 } from "three";
 import { CLOTHING_PIECES, clothingBounds, type ClothingPiece } from "./clothingPieces";
 import type { Object3D } from "three";
 
@@ -16,6 +16,17 @@ export function clothingFrame(root: Object3D, piece: ClothingPiece, fov: number,
   const size = bounds.getSize(new Vector3());
   const span = Math.max(.12, size.y, size.x / Math.max(.15, aspect));
   return { center: bounds.getCenter(new Vector3()), distance: span * 1.25 / (2 * Math.tan(MathUtils.degToRad(fov) / 2)) + size.z * .5 };
+}
+
+/** Orbit the current close-up at its existing distance, keeping the eye above the floor. */
+export function orbitFittingCamera(position: Vector3, target: Vector3, yaw: number, pitch: number, sphere: Spherical) {
+  sphere.setFromVector3(position.sub(target));
+  const basePolar = sphere.phi;
+  const floorPolar = Math.acos(MathUtils.clamp((.30 - target.y) / sphere.radius, -1, 1));
+  sphere.theta += yaw;
+  sphere.phi = MathUtils.clamp(basePolar + pitch, .35, Math.max(.35, Math.min(2.15, floorPolar)));
+  position.setFromSpherical(sphere).add(target);
+  return sphere.phi - basePolar;
 }
 
 /** Arc around the subject instead of cutting through it when switching front/back views. */

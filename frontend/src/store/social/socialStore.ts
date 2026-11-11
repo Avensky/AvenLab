@@ -76,14 +76,14 @@ const person = (value: unknown) => {
   );
 };
 
-type Cosmetics = Pick<Progression, "character" | "character_presets" | "default_hero" | "hero_loadouts" | "cosmetics_revision">;
+type Cosmetics = Pick<Progression, "character" | "character_presets" | "character_outfits" | "default_hero" | "hero_loadouts" | "cosmetics_revision">;
 
 export function selectEquippedCharacter(state: { view: SocialView | null; cachedCosmetics: Cosmetics | null }) {
   return state.view ? state.view.profile.progression?.character : state.cachedCosmetics?.character;
 }
 
-function cosmeticsFrom({ character, character_presets, default_hero, hero_loadouts, cosmetics_revision }: Cosmetics): Cosmetics {
-  return { character, character_presets, default_hero, hero_loadouts, cosmetics_revision };
+function cosmeticsFrom({ character, character_presets, character_outfits, default_hero, hero_loadouts, cosmetics_revision }: Cosmetics): Cosmetics {
+  return { character, character_presets, character_outfits, default_hero, hero_loadouts, cosmetics_revision };
 }
 
 function hasCosmeticsRevision(cosmetics: unknown): cosmetics is Cosmetics & { cosmetics_revision: number } {
@@ -96,6 +96,7 @@ function hasCosmeticsRevision(cosmetics: unknown): cosmetics is Cosmetics & { co
 export const useSocialStore = create<{
   available: boolean;
   profileStatus: "idle" | "restoring" | "ready" | "error";
+  profileScope: "device" | "tab" | null;
   /** Editor key retained through a transport reconnect. Actions still require the current view. */
   profileOwner: string | null;
   cachedCosmetics: Cosmetics | null;
@@ -109,6 +110,7 @@ export const useSocialStore = create<{
 }>((set) => ({
   available: false,
   profileStatus: "idle",
+  profileScope: null,
   profileOwner: null,
   cachedCosmetics: null,
   view: null,
@@ -119,6 +121,7 @@ export const useSocialStore = create<{
     set({
       available: false,
       profileStatus: "idle",
+      profileScope: null,
       view: null,
       message: "Connecting to the game server…",
     }),

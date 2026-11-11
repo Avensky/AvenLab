@@ -62,7 +62,7 @@ export function HeroLoadoutSync(){
 /** Vehicle styling and the stock-relative performance page share one studio
  * chrome. Appearance edits save to the authenticated player's vehicle loadout. */
 export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
- onCharacterViewChange?:(open:boolean)=>void;
+ onCharacterViewChange?:(tab:CharacterTab|null)=>void;
  onCharacterPreviewChange?:(choice:CharacterChoice|null)=>void;
 }={}){
  const inputDevice=useMenuInputDevice();
@@ -135,12 +135,12 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  useEffect(()=>()=>queue.dispose(),[queue]);
  useEffect(()=>{if(connected)queue.resume();},[connected,queue]);
  useEffect(()=>{root.current?.focus();},[]);
- useEffect(()=>{if(!editing)useVehicleStudioStore.getState().closeParts();},[editing]);
- useEffect(()=>{
-  if(!characterOpen)return;
-  onCharacterViewChange?.(true);
-  return ()=>onCharacterViewChange?.(false);
- },[characterOpen,onCharacterViewChange]);
+ const garageSession=editing||(characterOpen&&previousCharacterPage.current==="garage");
+ useEffect(()=>{if(!garageSession)useVehicleStudioStore.getState().closeParts();},[garageSession]);
+ useLayoutEffect(()=>{useVehicleStudioStore.getState().setActiveTab(garageSession?studioTab:null);},[garageSession,studioTab]);
+ useLayoutEffect(()=>()=>useVehicleStudioStore.getState().setActiveTab(null),[]);
+ useLayoutEffect(()=>{onCharacterViewChange?.(characterOpen?characterTab:null);},[characterOpen,characterTab,onCharacterViewChange]);
+ useLayoutEffect(()=>()=>onCharacterViewChange?.(null),[onCharacterViewChange]);
  useEffect(()=>{
   const target=characterOpen?root.current?.querySelector<HTMLElement>(characterReady?'[role=tab][aria-selected="true"]':'[data-character-option][aria-pressed="true"]')
    : viewingConcepts?root.current?.querySelector<HTMLElement>(".hero-guide-scroll")

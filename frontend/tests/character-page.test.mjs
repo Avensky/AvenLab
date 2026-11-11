@@ -23,7 +23,8 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
   document.hasFocus = () => true;
   HTMLElement.prototype.scrollIntoView = () => {};
   try {
-    vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+    vite = await createServer({ define: { __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(['gothic-skirt-04', 'top-01']) },
+      server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
     const load = path => vite.ssrLoadModule(`/src/${path}`);
     const { HeroWorkshop } = await load('game/heroes/HeroWorkshop.tsx');
     const { useUIStore: ui } = await load('store/menus/uiStore.ts');
@@ -53,10 +54,23 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     })));
     const find = selector => document.querySelector(selector);
     const click = selector => act(async () => find(selector).click());
+    const browseWardrobe = async category => {
+      const back = find('[data-wardrobe-back]');
+      if (back && !back.closest('[hidden]')) await click('[data-wardrobe-back]');
+      await click(`[data-category=${category}]`);
+    };
     const select = (label, value) => act(async () => {
       const input = find(`select[aria-label="${label}"]`);
       input.value = value;
       input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    const cameraTools = 'button[aria-label="Camera tools"]';
+    const cameraView = label => [...find('[aria-label="Preview camera"]').querySelectorAll('button')]
+      .find(button => button.getAttribute('aria-label') === label);
+    const chooseCameraView = label => act(async () => {
+      const button = cameraView(label);
+      assert(button && !button.closest('[hidden]'), `${label} is an available camera view`);
+      button.click();
     });
     const move = action => act(async () => route(action));
     const title = () => find('.menu-frame-header h1').textContent;
@@ -171,11 +185,21 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
       });
     };
     await acknowledge(requests[0], choice);
-    assert.equal(find('[aria-label="Character model"] [data-character-option="jules-okafor"]').getAttribute('aria-pressed'), 'true');
     assert.deepEqual([...document.querySelectorAll('[role=tab]')].map(node => node.textContent), ['Identity', 'Appearance', 'Emotes']);
+    await click('#character-editor-tab-identity');
+    assert.equal(find('[aria-label="Character model"] [data-character-option="jules-okafor"]').getAttribute('aria-pressed'), 'true');
     await click('#character-editor-tab-emotes');
     assert(find('[aria-label="Emote results"]').classList.contains('character-controls--right'));
     assert(find('[aria-label="Emote collection"]').closest('.character-controls--left'));
+    assert.equal(find('[data-character-option]'), null, 'Emotes uses the model chosen in Identity');
+    assert(find('.dressing-toolbar .fitting-camera-toolbar'), 'Emotes uses the Dressing Room camera toolbar');
+    assert(find('.dressing-toolbar button[aria-label="Hide interface"]'));
+    assert.equal(find('select[aria-label="Preview camera"]'), null);
+    const results = find('[aria-label="Emote results"]');
+    const fitReview = find('[aria-label="In-game fit checks"]');
+    assert(results.contains(fitReview) && !results.querySelector('.character-emotes').contains(fitReview),
+      'the fit review is accessible separately from the emote results list');
+    assert(fitReview.querySelector('[aria-label="Fit issue notes"]'));
     await act(async () => [...document.querySelectorAll('[aria-label="Emote collection"] button')].find(b => b.textContent === 'All').click());
     assert(document.querySelectorAll('.character-emotes button').length > 180);
     await act(async () => {
@@ -185,6 +209,11 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     });
     assert(document.querySelectorAll('.character-emotes button').length > 0);
     assert([...document.querySelectorAll('.character-emotes .emote-name')].every(n => n.textContent.toLowerCase().includes('applause')));
+    const emoteButton = results.querySelector('.character-emotes button');
+    await click('[aria-label="Emote results"] .character-emotes button:first-child');
+    assert(fitReview.textContent.includes(emoteButton.querySelector('.emote-name').textContent), 'the review identifies the selected emote');
+    await click('[aria-label="In-game fit checks"] input[type="checkbox"]');
+    assert(fitReview.querySelector('input[type="checkbox"]').checked, 'the selected emote review can be edited beside the results');
     await click('[aria-label="Emote collection"] button:first-child');
 
     const cockpitToggle = '[data-cockpit-toggle]';
@@ -198,18 +227,27 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await act(async () => preview.setState({ cockpitAvailable: true }));
     assert.equal(find('[aria-label="Driving emotes"] button:last-child .emote-name').textContent, 'Steering test · Right');
     assert.equal(find('[aria-label="Driving emotes"] button:first-child').disabled, false);
-    await select('Preview camera', 'Whole car');
+    await click(cameraTools);
+    assert.equal(cameraView('Driver').getAttribute('aria-pressed'), 'true');
+    await chooseCameraView('Whole vehicle');
     await click('[aria-label="Driving emotes"] button:last-child');
     assert.equal(preview.getState().emote.id, '200');
     assert.equal(preview.getState().camera, 'Whole car');
-    await select('Preview camera', 'Full body');
+    assert(find('.fitting-camera-panel').hidden, 'selecting an emote dismisses the camera popover');
+    await click(cameraTools);
+    assert.equal(cameraView('Whole vehicle').getAttribute('aria-pressed'), 'true');
+    await chooseCameraView('Driver');
+    assert.equal(preview.getState().camera, 'Full body');
     await click(cockpitToggle);
     assert.equal(preview.getState().insideCar, false);
     assert.equal(preview.getState().emote, null);
     await click(cockpitToggle);
     await click('#character-editor-tab-appearance');
-    await click('[data-category=face]');
-    assert(find('.character-controls--bottom .character-camera button[aria-label="Hide interface"]'), 'dressing room keeps the eye beside its camera');
+    assert.equal(find('[data-character-option]'), null, 'the Dressing Room uses the model chosen in Identity');
+    await browseWardrobe('outfits');
+    assert.equal(cameraView('Coat').getAttribute('aria-pressed'), 'true');
+    await browseWardrobe('face');
+    assert(find('.dressing-toolbar button[aria-label="Hide interface"]'), 'dressing room keeps the eye beside its camera');
     assert.equal(preview.getState().camera, 'Face');
     assert.equal(preview.getState().insideCar, false);
     assert.equal(preview.getState().emote, null);
@@ -217,37 +255,73 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     t.mock.timers.enable({ apis: ['setTimeout'] });
     await click('[data-wardrobe-item="eye_color:obsidian"]');
     await click('[data-wardrobe-item="brow_color:copper"]');
-    await click('[data-category=accessories]');
+    await browseWardrobe('accessories');
     await click('[data-wardrobe-item="glasses:aviator"]');
     assert.equal(drafts.at(-1).appearance.eye_color, 'obsidian');
     assert.equal(drafts.at(-1).appearance.brow_color, 'copper');
     assert.equal(drafts.at(-1).appearance.glasses, 'aviator');
     assert.equal(preview.getState().camera, 'Selected item');
-    assert.equal(find('[aria-label="Preview camera"]').value, 'piece:glasses');
+    assert.equal(cameraView('Glasses').getAttribute('aria-pressed'), 'true');
     assert.equal(find('[aria-label="Clothing piece"]'), null, 'the camera selector also inspects clothing');
-    await select('Preview camera', 'Full body');
+    assert(find('[aria-label="Preview camera"]').closest('[hidden]'), 'camera controls start collapsed');
+    await click(cameraTools);
+    assert.equal(find('[aria-label="Preview camera"]').closest('[hidden]'), null);
+    assert(find('[aria-label="Preview camera"]').contains(document.activeElement), 'keyboard activation focuses a camera choice');
+    assert.equal(find('.fitting-camera-panel').textContent.trim(), '', 'the camera popup uses icons and a zoom bar');
+    assert(cameraView('Glasses').querySelector('svg'), 'the clothing close-up has a labeled icon');
+    await click('.fitting-camera-panel [aria-label="Zoom in"]');
+    assert.equal(preview.getState().zoom, 1.05);
+    await click('.fitting-camera-panel [aria-label="Zoom out"]');
+    assert.equal(preview.getState().zoom, 1);
+    await act(async () => document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown', {
+      key: 'Escape', code: 'Escape', bubbles: true, cancelable: true,
+    })));
+    assert(find('.fitting-camera-panel').hidden);
+    assert.equal(document.activeElement, find(cameraTools));
+    await click(cameraTools);
+    assert.equal(cameraView('Whole car'), undefined);
+    assert.equal(find('.dressing-toolbar [data-rotation=vehicle]'), null);
+    await chooseCameraView('Full body');
     assert.equal(preview.getState().camera, 'Full body');
-    await select('Preview camera', 'piece:glasses');
+    await chooseCameraView('Glasses');
     assert.equal(preview.getState().selectedPiece, 'glasses');
     assert.equal(preview.getState().camera, 'Selected item');
     assert.equal(find('.dressing-color-panel').hidden, true);
+    assert.equal(find('[aria-label="Open clothing colors"]').textContent, '', 'the toolbar uses a swatch icon');
     await click('[aria-label="Open clothing colors"]');
     assert.equal(find('.dressing-color-panel').hidden, false);
-    const chooseColor = async label => {
-      const button = [...document.querySelectorAll('.dressing-color-preset')].find(item => item.textContent === label);
-      assert(button, label);
-      await act(async () => button.click());
-    };
-    await chooseColor('Deep navy');
-    assert.equal(find('input[aria-label="Selected item fabric color"]').value, '#293953');
+    assert(find('[aria-label="Preview camera"]').closest('[hidden]'), 'opening colors closes the camera tools');
+    const initialMain = find('input[aria-label="Custom main color"]').value;
+    await click('button[aria-label="Accent color: Crimson"]');
+    assert.equal(find('input[aria-label="Custom main color"]').value, initialMain);
+    await click('button[aria-label="Main color: Deep navy"]');
+    assert.equal(find('input[aria-label="Custom main color"]').value, '#293953');
+    assert.equal(find('input[aria-label="Custom accent color"]').value, '#ad444d');
     assert.equal(preview.getState().camera, 'Selected item', 'applying color keeps the current close-up');
-    await click('[data-category=outfits]');
+    await browseWardrobe('outfits');
+    assert.equal(find('.dressing-color-panel').hidden, true, 'browsing dismisses the color palette');
     await click('[data-wardrobe-item=race-crew]');
-    await chooseColor('Gothic Pink');
+    assert.equal(cameraView('Coat').getAttribute('aria-pressed'), 'true');
+    await click('[aria-label="Open clothing colors"]');
+    const themes = find('[aria-label="Color combinations"]');
+    for (const name of ['Pink', 'Pastels', 'Vibrant', 'White', 'Yellow', 'Blue', 'Red', 'Red + Black', 'Black + Red']) {
+      assert(themes.querySelector(`button[aria-label="${name}"]`), `${name} has a theme shortcut`);
+    }
+    const mainColor = () => find('input[aria-label="Custom main color"]').value;
+    const accentColor = () => find('input[aria-label="Custom accent color"]').value;
+    await click('button[aria-label="Red + Black"]');
+    assert.deepEqual([mainColor(), accentColor()], ['#b62235', '#101015']);
+    await click('button[aria-label="Black + Red"]');
+    assert.deepEqual([mainColor(), accentColor()], ['#101015', '#b62235']);
+    assert.equal(find('button[aria-label="Red + Black"]').getAttribute('aria-pressed'), 'false');
+    assert.equal(find('button[aria-label="Black + Red"]').getAttribute('aria-pressed'), 'true');
+    await click('button[aria-label="Gothic Pink"]');
     assert.equal(find('[data-outfit-preview]').dataset.outfitPreview, 'race-crew');
-    assert.equal(drafts.at(-1).appearance.item_colors['aviator:glasses'].color, '#101015');
+    assert.equal(drafts.at(-1).appearance.item_colors['aviator:glasses'].color, '#293953');
+    assert.equal(drafts.at(-1).appearance.item_colors['aviator:glasses'].accent, '#ad444d');
+    assert.equal(drafts.at(-1).appearance.item_colors['race-crew:coat'].color, '#101015');
     assert.equal(drafts.at(-1).appearance.color, 'original', 'piece dye leaves the overall outfit palette unchanged');
-    assert.equal(find('input[aria-label="Selected item trim color"]').value, '#ff2d95');
+    assert.equal(find('input[aria-label="Custom accent color"]').value, '#ff2d95');
     await click('[aria-label="Close clothing colors"]');
     assert.equal(find('.dressing-color-panel').hidden, true);
     await click('[aria-label="Open clothing colors"]');
@@ -271,7 +345,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(requests[1].character.appearance.glasses, 'aviator');
     assert.equal(requests[1].character.appearance.personality, 'tsundere');
     assert.equal(requests[1].character.appearance.animation_fit, 'fitted');
-    await click('[data-category=props]');
+    await browseWardrobe('props');
     await click('[data-wardrobe-item=shop-bag]');
     assert.equal(drafts.at(-1).prop, 'shop-bag');
     await click('#character-editor-tab-emotes');
@@ -303,7 +377,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(social.getState().view.profile.progression.level, 7, 'unrelated progression still updates');
     await move('back');
     assert.equal(title(), 'HEROES');
-    assert.equal(characterViews.at(-1), false);
+    assert.equal(characterViews.at(-1), null);
     assert.equal(drafts.at(-1), null);
     assert.match(find('[data-open-character]').textContent, /Rook Okafor/);
     await click('[data-hero=camaro]');
@@ -355,11 +429,11 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await move('back');
     await click('[data-open-character]');
     assert.equal(find('[data-outfit-preview]').dataset.outfitPreview, 'race-crew');
-    assert.equal(find('[aria-label="Character model"] [data-character-option="jules-okafor"]').getAttribute('aria-pressed'), 'true');
-    await click('#character-editor-tab-appearance');
-    await click('[data-category=face]');
+    assert.equal(find('[data-character-option]'), null);
+    await browseWardrobe('face');
     assert.equal(find('[data-wardrobe-item="eye_color:obsidian"]').getAttribute('aria-pressed'), 'true');
     await click('#character-editor-tab-identity');
+    assert.equal(find('[aria-label="Character model"] [data-character-option="jules-okafor"]').getAttribute('aria-pressed'), 'true');
     const identities = '[aria-label="Character identity"] button';
     assert.deepEqual([...document.querySelectorAll(identities)].map(node => node.textContent), ['Male', 'Female', 'Nonbinary']);
     assert.equal(find(identities + ':first-child').getAttribute('aria-pressed'), 'true');
@@ -373,10 +447,27 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('#character-editor-tab-identity');
     assert.equal(find(identities + ':last-child').getAttribute('aria-pressed'), 'true');
 
-    await click('#character-editor-tab-appearance');
     await click('[aria-label="Character model"] [data-character-option="mara-vega"]');
     assert.equal(drafts.at(-1).id, 'mara-vega');
+    await click('#character-editor-tab-appearance');
+    await browseWardrobe('bottoms');
+    await click('[data-wardrobe-item=gothic-skirt-04]');
+    await browseWardrobe('tops');
+    await click('[data-wardrobe-item=top-01]');
+    assert.deepEqual(drafts.at(-1).garments, { skirt: 'gothic-skirt-04', top: 'top-01' });
+    await click('[aria-label="Open clothing colors"]');
+    await click('button[aria-label="Gothic Pink"]');
+    assert.equal(drafts.at(-1).appearance.item_colors['top-01:shirt'].accent, '#ff2d95');
+    await click('#character-editor-tab-emotes');
+    assert.deepEqual(drafts.at(-1).garments, { skirt: 'gothic-skirt-04', top: 'top-01' });
+    await select('Animation clothing fit', 'fitted');
+    assert.equal(drafts.at(-1).appearance.animation_fit, 'fitted');
+    await click('#character-editor-tab-appearance');
+    await browseWardrobe('outfits');
     await click('[data-wardrobe-item="shop-crew"]');
+    assert.equal(drafts.at(-1).garments, undefined);
+    assert.equal(drafts.at(-1).appearance?.item_colors, undefined, 'test dyes do not leak into a saved preset');
+    await click('#character-editor-tab-identity');
     await click('[aria-label="Character model"] [data-character-option="jules-okafor"]');
     assert.equal(drafts.at(-1).outfit, 'race-crew');
     assert.equal(drafts.at(-1).appearance.eye_color, 'obsidian');
@@ -386,6 +477,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(drafts.at(-1).id, 'jules-okafor', 'a disconnect keeps the latest draft');
     await act(async () => social.getState().receive({ ...view, profile: { ...view.profile, progression: serverProgression } }));
     assert.equal(requests[4].character.outfit, 'shop-crew', 'pending female edits resume on reconnect');
+    assert.equal(requests[4].character.garments, undefined, 'trial pieces stay out of character equip messages');
     await acknowledge(requests[4], requests[4].character);
     assert.equal(drafts.at(-1).id, 'jules-okafor', 'an acknowledgement for another model does not change the preview');
     assert.equal(requests[5].character.outfit, 'race-crew');

@@ -1,5 +1,5 @@
 import {
-  CatmullRomCurve3, DoubleSide, Group, Mesh, MeshStandardMaterial, Object3D, Shape, ShapeGeometry, TubeGeometry, Vector2, Vector3,
+  CatmullRomCurve3, DoubleSide, Group, MathUtils, Mesh, MeshStandardMaterial, Object3D, Shape, ShapeGeometry, TubeGeometry, Vector2, Vector3,
   type BufferGeometry,
 } from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
@@ -9,6 +9,10 @@ import type { PieceColors } from "./clothingPieces";
 
 type EyeFit = typeof VILLAGER_EYES.female;
 type Glasses = "round" | "aviator";
+const GLASSES_FIT = {
+  female: { front: .0185, wrap: .018, bridge: .015, temples: [[.060, .004, .076], [.071, .006, .028], [.0815, .005, .008], [.0815, -.006, -.012]] },
+  male: { front: .021, wrap: .0145, bridge: .016, temples: [[.068, .004, .101], [.083, .006, .044], [.089, .005, .014], [.088, -.006, -.013]] },
+} as const;
 
 function tubes(curves: { points: Vector3[]; closed?: boolean }[], radius: number, segments: number) {
   const parts = curves.map(({ points, closed }) => new TubeGeometry(new CatmullRomCurve3(points, closed), segments, radius, 6, closed));
@@ -17,9 +21,11 @@ function tubes(curves: { points: Vector3[]; closed?: boolean }[], radius: number
   return merged;
 }
 
-function frames(fit: EyeFit, style: Glasses) {
+function frames(fit: EyeFit, female: boolean, style: Glasses) {
   const aviator = style === "aviator";
-  const z = fit.z + .039;
+  const depth = GLASSES_FIT[female ? "female" : "male"];
+  const nose = fit.z + depth.bridge;
+  const lensDepth = (x: number) => fit.z + depth.front - depth.wrap * MathUtils.smoothstep(Math.abs(x), .018, .050);
   const y = fit.y + .002;
   const curves: { points: Vector3[]; closed?: boolean }[] = [];
   const lenses: BufferGeometry[] = [];
@@ -28,18 +34,23 @@ function frames(fit: EyeFit, style: Glasses) {
       const angle = i * Math.PI / 12;
       const height = Math.sin(angle);
       const width = aviator ? .021 * (.91 + .24 * height) : .021;
-      return new Vector3(side * (fit.x + .001 + width * Math.cos(angle)), y + height * (aviator ? .019 : .017), z);
+      const x = side * (fit.x + .001 + width * Math.cos(angle));
+      return new Vector3(x, y + height * (aviator ? .019 : .017), lensDepth(x));
     });
     curves.push({ points: rim, closed: true });
     const shape = new Shape(rim.map(({ x, y }) => new Vector2(x, y)));
-    lenses.push(new ShapeGeometry(shape).translate(0, 0, z - .0003));
-    curves.push({ points: [new Vector3(side * (fit.x + .021), y + .002, z),
-      new Vector3(side * .061, y + .005, z - .013), new Vector3(side * .066, y + .004, z - .088),
-      new Vector3(side * .067, y - .003, z - .101)] });
+    const lens = new ShapeGeometry(shape);
+    const position = lens.getAttribute("position");
+    for (let i = 0; i < position.count; i++) position.setZ(i, lensDepth(position.getX(i)) - .0003);
+    lens.computeVertexNormals();
+    lenses.push(lens);
+    curves.push({ points: [rim[0], ...depth.temples.map(([x, height, z]) => new Vector3(side * x, y + height, z))] });
   }
   const bridge = fit.x - .018;
-  curves.push({ points: [new Vector3(-bridge, y + .006, z), new Vector3(0, y + .011, z + .001), new Vector3(bridge, y + .006, z)] });
-  if (aviator) curves.push({ points: [new Vector3(-.015, y + .015, z), new Vector3(0, y + .017, z), new Vector3(.015, y + .015, z)] });
+  curves.push({ points: [new Vector3(-bridge, y + .006, lensDepth(bridge)), new Vector3(0, y + .011, nose),
+    new Vector3(bridge, y + .006, lensDepth(bridge))] });
+  if (aviator) curves.push({ points: [new Vector3(-.015, y + .015, lensDepth(.015)), new Vector3(0, y + .017, nose + .001),
+    new Vector3(.015, y + .015, lensDepth(.015))] });
 
   const group = new Group();
   group.name = "villager-glasses";
@@ -96,7 +107,7 @@ export function prepareVillagerFaceAccessories(root: Object3D, female: boolean, 
       if (!head || style === next) return;
       style = next;
       glasses?.dispose();
-      glasses = next === "round" || next === "aviator" ? frames(fit, next) : undefined;
+      glasses = next === "round" || next === "aviator" ? frames(fit, female, next) : undefined;
       if (glasses) faceOrigin.add(glasses.group);
     },
     setColors(colors?: PieceColors) { glasses?.setColors(colors); },

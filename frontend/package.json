@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "predev": "node ../scripts/sync-vehicle-asset-catalog.mjs && node ../scripts/sync-world-builder-map.mjs && node ../scripts/sync-road-kit-catalog.mjs && node ../scripts/build-road-colliders.mjs --check && node ../scripts/build-placement-colliders.mjs --check && node ../scripts/build-map-kit-colliders.mjs --check && node scripts/build-harbor-facades.mjs && node scripts/build-character-lods.mjs",
-    "prebuild": "node ../scripts/sync-vehicle-asset-catalog.mjs && node ../scripts/sync-world-builder-map.mjs && node ../scripts/sync-road-kit-catalog.mjs && node ../scripts/build-road-colliders.mjs --check && node ../scripts/build-placement-colliders.mjs --check && node ../scripts/build-map-kit-colliders.mjs --check && node scripts/build-harbor-facades.mjs && node scripts/build-character-lods.mjs",
+    "predev": "node ../scripts/sync-vehicle-asset-catalog.mjs && node ../scripts/sync-world-builder-map.mjs && node ../scripts/sync-road-kit-catalog.mjs && node ../scripts/build-road-colliders.mjs --check && node ../scripts/build-placement-colliders.mjs --check && node ../scripts/build-map-kit-colliders.mjs --check && node scripts/build-harbor-facades.mjs && node scripts/build-character-lods.mjs && node scripts/build-wardrobe-pieces.mjs",
+    "prebuild": "node ../scripts/sync-vehicle-asset-catalog.mjs && node ../scripts/sync-world-builder-map.mjs && node ../scripts/sync-road-kit-catalog.mjs && node ../scripts/build-road-colliders.mjs --check && node ../scripts/build-placement-colliders.mjs --check && node ../scripts/build-map-kit-colliders.mjs --check && node scripts/build-harbor-facades.mjs && node scripts/build-character-lods.mjs && node scripts/build-wardrobe-pieces.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
@@ -24,6 +24,7 @@
     "react-dom": "^19.2.0",
     "socket.io-client": "^4.8.1",
     "three": "^0.181.2",
+    "three-mesh-bvh": "^0.8.3",
     "zustand": "5.0.14"
   },
   "devDependencies": {

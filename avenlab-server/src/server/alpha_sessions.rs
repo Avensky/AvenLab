@@ -368,7 +368,7 @@ impl Server {
                 let actor = self.actor(player).await?;
                 let mut choice: crate::alpha::character::CharacterChoice = serde_json::from_value(value["character"].clone())
                     .map_err(|_| "Choose a character and outfit.")?;
-                if !choice.is_available() { return Err("Choose an available character outfit.".into()); }
+                if !choice.is_equippable() { return Err("Choose an available character outfit.".into()); }
                 let mut data = self.data.lock().await;
                 let progression = &data.profiles.get(&actor).ok_or("Profile unavailable.")?.progression;
                 if choice.identity.is_none() {
@@ -381,8 +381,46 @@ impl Server {
                 let progression = &mut data.profiles.get_mut(&actor).ok_or("Profile unavailable.")?.progression;
                 progression.character_presets.remove(&choice.id);
                 let active_id = choice.id.clone();
-                if let Some(last) = progression.character.replace(choice).filter(|last| last.id != active_id && last.is_available()) {
+                if let Some(last) = progression.character.replace(choice).filter(|last| last.id != active_id && last.is_equippable()) {
                     progression.character_presets.insert(last.id.clone(), last);
+                }
+                progression.cosmetics_revision = progression.cosmetics_revision.saturating_add(1);
+                let confirmed = progression.cosmetics_view();
+                drop(data);
+                self.commit(previous).await?;
+                Ok(confirmed)
+            }
+            "character_outfit_save" | "character_outfit_delete" => {
+                let actor = self.actor(player).await?;
+                let name = value["name"].as_str().unwrap_or_default().trim();
+                if name.is_empty() || name.chars().count() > 48 || name.chars().any(char::is_control) {
+                    return Err("Enter an outfit name with 1 to 48 characters.".into());
+                }
+                let choice = if value["action"] == "character_outfit_save" {
+                    let choice: crate::alpha::character::CharacterChoice =
+                        serde_json::from_value(value["character"].clone()).map_err(|_| "Choose a valid outfit.")?;
+                    if !choice.is_available() {
+                        return Err("Choose available pieces and a valid fit for this outfit.".into());
+                    }
+                    Some(choice)
+                } else {
+                    None
+                };
+                let mut data = self.data.lock().await;
+                let progression = &data.profiles.get(&actor).ok_or("Profile unavailable.")?.progression;
+                let existing = progression.character_outfits.get(name);
+                if existing == choice.as_ref() {
+                    return Ok(progression.cosmetics_view());
+                }
+                if choice.is_some() && existing.is_none() && progression.character_outfits.len() >= 24 {
+                    return Err("Remove a saved outfit before adding another. The limit is 24.".into());
+                }
+                let previous = data.clone();
+                let progression = &mut data.profiles.get_mut(&actor).ok_or("Profile unavailable.")?.progression;
+                if let Some(choice) = choice {
+                    progression.character_outfits.insert(name.to_owned(), choice);
+                } else {
+                    progression.character_outfits.remove(name);
                 }
                 progression.cosmetics_revision = progression.cosmetics_revision.saturating_add(1);
                 let confirmed = progression.cosmetics_view();

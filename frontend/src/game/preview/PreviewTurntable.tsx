@@ -1,5 +1,5 @@
 import { useFittingTurnStore } from "../characters/fittingControlsStore";
-import { useEffect, useCallback, useRef, type ReactNode } from "react";
+import { useEffect, useCallback, useLayoutEffect, useRef, type ReactNode } from "react";
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { DoubleSide, Group, MathUtils } from "three";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
@@ -9,11 +9,13 @@ export function PreviewTurntable({
   onReady,
   spin = true,
   locked = false,
+  restoreAngle = false,
 }: {
   children: ReactNode;
   onReady: (group: Group | null) => void;
   spin?: boolean;
   locked?: boolean;
+  restoreAngle?: boolean;
 }) {
   const group = useRef<Group>(null);
   const angle = useRef(0);
@@ -30,6 +32,16 @@ export function PreviewTurntable({
   const cameraSensitivity = usePreferencesStore((s) => s.cameraSensitivity);
   const invalidate = useThree(s => s.invalidate);
 
+  useLayoutEffect(() => {
+    const object = group.current;
+    if (!restoreAngle || !object) return;
+    const parkedAngle = angle.current, renderedAngle = object.rotation.y;
+    return () => {
+      angle.current = parkedAngle;
+      object.rotation.y = renderedAngle;
+      lastVehicleYaw.current = useFittingTurnStore.getState().vehicleYaw;
+    };
+  }, [restoreAngle]);
   useEffect(() => useFittingTurnStore.subscribe(() => invalidate()), [invalidate]);
   useFrame(({ frameloop }, delta) => {
     if (!group.current) return;

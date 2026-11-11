@@ -2,7 +2,9 @@ import { Suspense, useEffect, useMemo, useState, type CSSProperties, type ReactN
 import { useGLTF } from "@react-three/drei";
 import type { Object3D } from "three";
 import { AssetBoundary } from "../../components/debugger/AssetBoundary";
-import { bakeCharacterPortrait } from "./bakeCharacterPortrait";
+import { bakeCharacterPortrait, type PortraitOutfit } from "./bakeCharacterPortrait";
+import { FITTING_BODY_URL } from "./standaloneCorset";
+import { getWardrobeGarment, wardrobeGarmentModelUrl } from "./wardrobeGarments";
 import { villagerModelUrl } from "./villagerModel";
 import { VILLAGER_ID, characterLook, type CharacterChoice, type CharacterLook } from "./characterCatalog";
 import "./characters.css";
@@ -55,27 +57,40 @@ function schedulePortraitWork(work: () => void, delay: number) {
   };
 }
 
-function ModelPortrait({ source, look, fallback, pending = fallback, label }: PortraitProps & { source?: Object3D }) {
-  const key = JSON.stringify([Boolean(source), look.character.id, look.outfit.id, look.appearance, look.wardrobe]);
+function ModelPortrait({ source, outfit, look, fallback, pending = fallback, label }: PortraitProps & { source?: Object3D; outfit?: PortraitOutfit }) {
+  const key = JSON.stringify([Boolean(source), outfit?.garment.item.id, look.character.id, look.outfit.id, look.appearance, look.wardrobe]);
   const [portrait, setPortrait] = useState<{ key: string; image: string | null; characterId: string }>();
   useEffect(() => {
     return schedulePortraitWork(() => {
       try {
-        setPortrait({ key, image: bakeCharacterPortrait(look, key, source), characterId: look.character.id });
+        setPortrait({ key, image: bakeCharacterPortrait(look, key, source, outfit), characterId: look.character.id });
       } catch {
         setPortrait({ key, image: null, characterId: look.character.id });
       }
     }, 160);
-  }, [key, look, source]);
+  }, [key, look, source, outfit]);
   if (portrait?.key !== key && (!portrait?.image || portrait.characterId !== look.character.id)) return pending;
   return portrait?.image
     ? <img className="character-portrait character-portrait--model" src={portrait.image} alt={label ?? ""} />
     : fallback;
 }
 
+function OutfitPortrait({ source, url, item, ...props }: PortraitProps & {
+  source: Object3D; url: string; item: NonNullable<ReturnType<typeof getWardrobeGarment>>;
+}) {
+  const [{ scene: garment }, { scene: body }] = useGLTF([url, FITTING_BODY_URL]);
+  const outfit = useMemo(() => ({ garment: { item, scene: garment }, body: body.getObjectByName("BODY_WARDROBE") }), [item, garment, body]);
+  return <ModelPortrait {...props} source={source} outfit={outfit} />;
+}
+
 function VillagerPortrait({ url, ...props }: PortraitProps & { url: string }) {
   const { scene } = useGLTF(url);
-  return <ModelPortrait {...props} source={scene} />;
+  const item = getWardrobeGarment(props.look.garments?.dress);
+  const outfitUrl = item?.outfit && wardrobeGarmentModelUrl(item, "portrait");
+  const stock = <ModelPortrait {...props} source={scene} />;
+  return item && outfitUrl ? <AssetBoundary key={outfitUrl} fallback={stock}>
+    <OutfitPortrait {...props} source={scene} item={item} url={outfitUrl} />
+  </AssetBoundary> : stock;
 }
 
 /** Garage portraits use the selected GLB appearance, with art for unavailable models. */

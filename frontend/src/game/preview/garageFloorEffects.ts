@@ -16,11 +16,11 @@ export function configureGarageFloor(
   material.uniforms.reflectionBlur.value = settings.reflectionBlur;
 }
 
-export function gateGarageFloorCapture(floor: Reflector, elapsedSeconds?: () => number | undefined, interval = 1 / 30) {
-  const capture = floor.onBeforeRender;
+export function gatePlanarReflectionCapture(reflector: Reflector, elapsedSeconds?: () => number | undefined, interval = 1 / 30, enabled = () => true) {
+  const capture = reflector.onBeforeRender;
   let capturedAt = -Infinity;
-  floor.onBeforeRender = function (...args) {
-    if (floor.userData.garageReflectionCapture === false) {
+  reflector.onBeforeRender = function (...args) {
+    if (!enabled()) {
       capturedAt = -Infinity;
       return;
     }
@@ -30,4 +30,8 @@ export function gateGarageFloorCapture(floor: Reflector, elapsedSeconds?: () => 
     capture.apply(this, args);
     if (now !== undefined) capturedAt = now;
   };
+}
+
+export function gateGarageFloorCapture(floor: Reflector, elapsedSeconds?: () => number | undefined, interval?: number) {
+  gatePlanarReflectionCapture(floor, elapsedSeconds, interval, () => floor.userData.garageReflectionCapture !== false);
 }

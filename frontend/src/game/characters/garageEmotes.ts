@@ -1,4 +1,4 @@
-import { fittedArmTarget, fittedHandTarget } from "./animationFit";
+import { fittedArmTarget, fittedElbowPole, fittedHandTarget, skirtHandTarget } from "./animationFit";
 import {
   AnimationClip, Bone, BooleanKeyframeTrack, Euler, NumberKeyframeTrack, Quaternion, QuaternionKeyframeTrack, Vector3, VectorKeyframeTrack,
   type Object3D,
@@ -30,6 +30,7 @@ export type XYZ = readonly [number, number, number];
 type Arm = readonly [upper: XYZ, lower: XYZ];
 type HandShape = "fist" | "peace" | "heart" | "open" | "paw" | "cup" | "point" | "three" | "finger-heart" | "finger-gun" | "thumb-up" | "pinch" | "frame" | "shaka" | "pole-grip";
 export type Palm = readonly [fingerDirection: XYZ, normal: XYZ];
+type HandOptions = { behindBack?: boolean; articulated?: boolean; contact?: Vector3; tuckElbow?: boolean };
 // Offsets from the resting ankle in stage meters, with optional toe yaw.
 type Foot = readonly [across: number, lift: number, forward: number, pivot?: number, pitch?: number];
 type Pose = {
@@ -255,6 +256,7 @@ export function driverHand(root: Object3D, side: "l" | "r") {
 
 export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?: ReadonlyMap<EmoteProp, EmotePropModel>) {
   const fitted = root.userData.fittedClothing === true;
+  const skirtRoom = typeof root.userData.skirtHandRoom === "number" ? root.userData.skirtHandRoom : undefined;
   const torso = root.getObjectByName("spine_02");
   const head = root.getObjectByName("head");
   const left = driverArm(root, "l");
@@ -303,7 +305,7 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
     aimDriverJoint(limb.elbow, limb.hand, new Vector3(...target[1]).applyQuaternion(modelRotation));
   };
   const hands = (limb: ReturnType<typeof driverArm>, opposite: ReturnType<typeof driverArm>, target: XYZ | undefined,
-    side: number, behindBack?: boolean, articulated?: boolean, contact?: Vector3) => {
+    side: number, { behindBack, articulated, contact, tuckElbow }: HandOptions = {}) => {
     if (!limb || !opposite || (!target && !contact)) return;
     const shoulder = limb.shoulder.getWorldPosition(new Vector3());
     const other = opposite.shoulder.getWorldPosition(new Vector3());
@@ -314,7 +316,8 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
     // the different arm lengths on the imported rigs and the built-in rig.
     const goal = contact ?? new Vector3(target![0] * shoulder.distanceTo(other) * .5, target![1] * reach, target![2] * reach)
       .applyQuaternion(modelRotation).add(shoulder.clone().lerp(other, .5));
-    const pole = new Vector3(side, -.8, behindBack ? -.57 : -.14).applyQuaternion(modelRotation);
+    const pole = new Vector3(...(tuckElbow && target && !behindBack && !articulated && !contact
+      ? fittedElbowPole(target, side) : [side, -.8, behindBack ? -.57 : -.14])).applyQuaternion(modelRotation);
     // The imported Villager elbows flex around local -Z on both mirrored bones.
     const hinge = !behindBack && !articulated ? undefined : limb.shoulder instanceof Bone ? new Vector3(0, 0, -1)
       : elbow.clone().sub(shoulder).cross(wrist.sub(elbow)).normalize()
@@ -347,6 +350,7 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
     ];
     const grips = emote.prop && EMOTE_PROP_GRIPS[emote.prop];
     const prop = emote.prop && props?.get(emote.prop);
+    const tuckElbow = fitted && !emote.prop;
     const animated = grips || keys.some(([, pose]) => pose.fingers) ? joints : body;
     const times = keys.map(([time]) => time * emote.duration);
     const rotations = animated.map((): number[] => []);
@@ -361,8 +365,18 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
       tilt(head, pose.head);
       arms(left, fitted ? fittedArmTarget(pose.left) : pose.left);
       arms(right, fitted ? fittedArmTarget(pose.right) : pose.right);
-      hands(left, right, fitted ? fittedHandTarget(pose.leftHand) : pose.leftHand, 1, pose.elbowsBack, !!pose.leftPalm);
-      hands(right, left, fitted ? fittedHandTarget(pose.rightHand) : pose.rightHand, -1, pose.elbowsBack, !!pose.rightPalm);
+      const freeHands = skirtRoom !== undefined && !emote.prop && !pose.joinIndexTips && !pose.elbowsBack;
+      const tuckPoseElbow = tuckElbow && !pose.joinIndexTips;
+      let leftHand = fitted ? fittedHandTarget(pose.leftHand) : pose.leftHand;
+      let rightHand = fitted ? fittedHandTarget(pose.rightHand) : pose.rightHand;
+      if (freeHands) {
+        if (!pose.leftPalm) leftHand = skirtHandTarget(leftHand, skirtRoom);
+        if (!pose.rightPalm && !pose.rightAtLips) rightHand = skirtHandTarget(rightHand, skirtRoom);
+      }
+      hands(left, right, leftHand, 1,
+        { behindBack: pose.elbowsBack, articulated: !!pose.leftPalm, tuckElbow: tuckPoseElbow });
+      hands(right, left, rightHand, -1,
+        { behindBack: pose.elbowsBack, articulated: !!pose.rightPalm, tuckElbow: tuckPoseElbow && !pose.rightAtLips });
       orientPalm(handRigs[0], pose.leftPalm);
       orientPalm(handRigs[1], pose.rightPalm);
       // Solve the wrists against the prop frame so the same hand grips fit
@@ -394,7 +408,7 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
           const gripHinge = emote.prop === "map" ? hinge : new Quaternion();
           const wrist = new Vector3(...grip.wrist).applyQuaternion(gripHinge).applyQuaternion(orientation).add(origin);
           const [arm, other, sign] = side === 0 ? [left, right, 1] : [right, left, -1];
-          hands(arm, other, undefined, sign, false, true, root.localToWorld(wrist));
+          hands(arm, other, undefined, sign, { articulated: true, contact: root.localToWorld(wrist) });
           orientPalm(handRigs[side], grip.palm, palmRotation.clone().multiply(gripHinge), arm.elbow);
         });
       }
@@ -478,7 +492,7 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
         // at the same point on both imported rigs.
         const tipOffset = rightRig.fingertip.getWorldPosition(new Vector3()).sub(rightRig.hand.getWorldPosition(new Vector3()));
         const goal = head.localToWorld(lipAnchor.clone()).add(lipClearance).sub(tipOffset);
-        hands(right, left, fitted ? fittedHandTarget(pose.rightHand) : pose.rightHand, -1, false, true, goal);
+        hands(right, left, undefined, -1, { articulated: true, contact: goal });
         orientPalm(rightRig, pose.rightPalm);
       }
       root.position.add(new Vector3(pose.sway ?? 0, pose.rise ?? 0, pose.travel ?? 0).applyQuaternion(rest[0]));

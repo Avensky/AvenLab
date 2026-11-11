@@ -7,10 +7,24 @@ import { defineConfig, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
-import { findVillagerModel, hasCharacterModel } from "./scripts/character-model-paths.mts";
+import { findVillagerModel, hasCharacterModel, hasCompatibleWardrobeRevision } from "./scripts/character-model-paths.mts";
 const wardrobeSets: { id: string }[] = JSON.parse(readFileSync(new URL("../avenlab-server/src/assets/character-wardrobe.json", import.meta.url), "utf8"));
+const standaloneCorsetLods = Object.fromEntries(wardrobeSets.map(({ id }) => [id, {
+  garage: hasCharacterModel(new URL(`./public/models/characters/female/wardrobe/corsets/${id}.garage.glb`, import.meta.url)),
+  mobile: hasCharacterModel(new URL(`./public/models/characters/female/wardrobe/corsets/${id}.mobile.glb`, import.meta.url)),
+}]));
+const bundledWardrobeLods = Object.fromEntries(wardrobeSets.map(({ id }) => [id, {
+  garage: hasCharacterModel(new URL(`./public/models/characters/wardrobe/${id}.garage.glb`, import.meta.url)),
+  mobile: hasCharacterModel(new URL(`./public/models/characters/wardrobe/${id}.mobile.glb`, import.meta.url)),
+}]));
 
-const dressingRoomImports: { id: string; url: string }[] = JSON.parse(readFileSync(new URL("./src/game/characters/dressingRoomImports.json", import.meta.url), "utf8"));
+const dressingRoomImports: { id: string; url: string; mobileUrl?: string; revisionUrl?: string; retired?: boolean }[] =
+  JSON.parse(readFileSync(new URL("../avenlab-server/src/assets/character-garments.json", import.meta.url), "utf8"));
+const activeImports = dressingRoomImports.filter(item => !item.retired);
+const garmentFile = (url: string) => new URL(`./public${url}`, import.meta.url);
+const installedRevisions = activeImports.filter(({ revisionUrl, url }) =>
+  revisionUrl && hasCompatibleWardrobeRevision(garmentFile(revisionUrl), garmentFile(url)),
+).map(({ id }) => id);
 const bagFolder = "/models/characters/female/props/bag-black-gold";
 const bagModelUrl = [
   `${bagFolder}/bag-black-gold-mobile.glb`,
@@ -30,10 +44,14 @@ const vesperModelUrl = vesper?.sourceUrl ?? (vesper && hasCharacterModel(vesper.
 
 export default defineConfig({
   define: {
-    __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(dressingRoomImports.filter(item => hasCharacterModel(new URL(`./public${item.url}`, import.meta.url))).map(item => item.id)),
-    __WARDROBE_SET_IDS__: JSON.stringify(wardrobeSets.filter(({ id }) =>
-      ["garage", "mobile"].every(kind => hasCharacterModel(new URL(`./public/models/characters/wardrobe/${id}.${kind}.glb`, import.meta.url))),
-    ).map(({ id }) => id)),
+    __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(activeImports.filter(item => hasCharacterModel(garmentFile(item.url))).map(item => item.id)),
+    __DRESSING_ROOM_MOBILE_IDS__: JSON.stringify(activeImports.filter(item => item.mobileUrl && hasCharacterModel(garmentFile(item.mobileUrl))).map(item => item.id)),
+    __DRESSING_ROOM_REVISION_IDS__: JSON.stringify(installedRevisions),
+    __STANDALONE_CORSET_LODS__: JSON.stringify(standaloneCorsetLods),
+    __BUNDLED_WARDROBE_LODS__: JSON.stringify(bundledWardrobeLods),
+    __WARDROBE_SET_IDS__: JSON.stringify(Object.keys(bundledWardrobeLods).filter(id =>
+      bundledWardrobeLods[id].garage && bundledWardrobeLods[id].mobile,
+    )),
     __CHARACTER_BAG_URL__: JSON.stringify(bagModelUrl ?? null),
     __VILLAGER_MODEL_URL__: JSON.stringify(vesperModelUrl),
     __VILLAGER_PORTRAIT_URL__: JSON.stringify(characterLod(vesper, "portrait") ?? vesperModelUrl),

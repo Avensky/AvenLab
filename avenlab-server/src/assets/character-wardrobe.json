@@ -1,7 +1,7 @@
 [
-  { "id": "gothic-01", "name": "Laced bodice", "requiresShirt": false },
-  { "id": "gothic-02", "name": "Sweetheart corset", "requiresShirt": false },
-  { "id": "gothic-03", "name": "Ruffled corset", "requiresShirt": false },
-  { "id": "gothic-04", "name": "Underbust vest", "requiresShirt": true },
-  { "id": "gothic-05", "name": "High-collar corset", "requiresShirt": false }
+  { "id": "gothic-01", "name": "Laced bodice" },
+  { "id": "gothic-02", "name": "Sweetheart corset" },
+  { "id": "gothic-03", "name": "Ruffled corset" },
+  { "id": "gothic-04", "name": "Underbust vest", "retired": true },
+  { "id": "gothic-05", "name": "High-collar corset" }
 ]

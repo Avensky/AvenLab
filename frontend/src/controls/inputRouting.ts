@@ -97,6 +97,7 @@ export function routeMenuAction(action: MenuAction) {
   if (!canNavigateMenu()) return;
   if(ui.overlay==="survey_map"){ if(action==="back"||action==="activate")ui.closeOverlay(); return; }
   const panel = ui.overlay ?? ui.screen;
+  if (panel === "main" && !window.dispatchEvent(new CustomEvent<MenuAction>("avenlab:main-menu-action", { detail: action, cancelable: true }))) return;
   if (
     [
       "debug_menu",

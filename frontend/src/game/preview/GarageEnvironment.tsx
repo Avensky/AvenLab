@@ -25,6 +25,7 @@ type GarageProps = {
   accentOverride?: string | null;
   onPlatformReady?: (footprint: [number, number]) => void;
   onSettled?: () => void;
+  reflectFloor?: boolean;
 };
 
 function GarageUnavailable({ onSettled }: Pick<GarageProps, "onSettled">) {
@@ -37,7 +38,7 @@ function GarageUnavailable({ onSettled }: Pick<GarageProps, "onSettled">) {
   </>;
 }
 
-export function GarageEnvironment({ turntable, onPlatformReady, onSettled, accentOverride = null, allowLoad = true }: GarageProps & {
+export function GarageEnvironment({ turntable, onPlatformReady, onSettled, accentOverride = null, allowLoad = true, reflectFloor = true }: GarageProps & {
   allowLoad?: boolean;
 }) {
   const loadRoom = usePreviewPaint(allowLoad);
@@ -53,6 +54,7 @@ export function GarageEnvironment({ turntable, onPlatformReady, onSettled, accen
             onPlatformReady={onPlatformReady}
             onSettled={onSettled}
             accentOverride={accentOverride}
+            reflectFloor={reflectFloor}
           /> : floor}
         </Suspense>
       </AssetBoundary>
@@ -60,7 +62,7 @@ export function GarageEnvironment({ turntable, onPlatformReady, onSettled, accen
   );
 }
 
-function GarageModel({ turntable, onPlatformReady, onSettled, accentOverride = null }: GarageProps) {
+function GarageModel({ turntable, onPlatformReady, onSettled, accentOverride = null, reflectFloor = true }: GarageProps) {
   const compact = useThree(s => isCompactPreview(s.size.width));
   const theme = usePreferencesStore((s) => s.theme),
     contrast = usePreferencesStore((s) => s.highContrast);
@@ -284,6 +286,7 @@ function GarageModel({ turntable, onPlatformReady, onSettled, accentOverride = n
           depth={prepared.platformDiameter}
           turntable={turntable}
           perimeter={prepared.perimeter}
+          active={reflectFloor}
         />
       )}
       {/* One small, generated reflection map. No HDRI fetch or per-frame cube capture. */}

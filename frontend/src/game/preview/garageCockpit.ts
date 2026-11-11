@@ -12,7 +12,7 @@ import { createGarageHorn } from "../../audio/garageHorn";
 type TakeId = CockpitTake["id"];
 type HandControl = keyof ReturnType<typeof garageControlTargets> | "horn";
 export type CockpitPlayback = { hasDoor?: boolean; sample: (id: TakeId | null, phase: number, drive?: DriveOutPose) => void; stop: () => void };
-export type GarageCockpit = (driver: Object3D) => CockpitPlayback | null;
+export type GarageCockpit = (driver: Object3D, characterPreview?: boolean) => CockpitPlayback | null;
 
 const AXLE = new Vector3(1, 0, 0);
 const UP = new Vector3(0, 1, 0);
@@ -171,7 +171,7 @@ export function prepareGarageCockpit(
   const shot = garageStationCamera(station);
   const controls = road ? garageControlTargets(road) : undefined;
 
-  return (driver: Object3D, motion: Group): CockpitPlayback | null => {
+  return (driver: Object3D, motion: Group, characterPreview = false): CockpitPlayback | null => {
     const parent = driver.parent;
     const head = driver.getObjectByName("head");
     const torso = driver.getObjectByName("spine_02");
@@ -197,7 +197,8 @@ export function prepareGarageCockpit(
     });
     if (!parent || !head || arms.length !== 2 || legs.length !== 2) return null;
     const motionRest = localRest(motion);
-    const driverShadow = motion.getObjectByName("garage-driver-shadow");
+    const context = characterPreview ? "character" : "garage";
+    const driverShadow = motion.getObjectByName(`${context}-driver-shadow`);
     const standingHip = legs[0].hip.getWorldPosition(new Vector3()).lerp(legs[1].hip.getWorldPosition(new Vector3()), .5);
     const hip = driver.worldToLocal(standingHip.clone());
     car.worldToLocal(standingHip);
@@ -233,11 +234,11 @@ export function prepareGarageCockpit(
     const driverRotation = driver.getWorldQuaternion(new Quaternion()).invert();
     const seatedFeet = legs.map(({ foot }) => driverRotation.clone().multiply(foot.getWorldQuaternion(new Quaternion())).normalize());
     const camera = new Object3D();
-    camera.name = "garage-cockpit-camera";
+    camera.name = `${context}-cockpit-camera`;
     const lens = new Object3D();
     camera.add(lens);
     const overview = new Object3D();
-    overview.name = "garage-cockpit-overview";
+    overview.name = `${context}-cockpit-overview`;
     const bounds = road ? null : new Box3().setFromObject(car);
     const span = bounds?.getSize(new Vector3()).length() ?? 4.2;
     if (bounds) car.worldToLocal(bounds.getCenter(overview.position));

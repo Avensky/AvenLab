@@ -1,0 +1,77 @@
+.dressing-color-toolbar {
+  --color-swatch-shape: polygon(3px 0, 100% 0, 100% calc(100% - 3px), calc(100% - 3px) 100%, 0 100%, 0 3px);
+  position: relative;
+  z-index: 4;
+  flex: none;
+  pointer-events: auto;
+}
+.dressing-color-toolbar .menu-control.menu-panel-frame {
+  --menu-panel-cut: 5px;
+  --menu-panel-fill: var(--app-raised);
+  display: grid;
+  place-items: center;
+  min-height: 26px;
+  width: 25px;
+  padding: 4px;
+}
+.dressing-color-toolbar .menu-control.dressing-color-toggle {
+  width: 34px;
+  min-height: 32px;
+}
+.dressing-color-toolbar .menu-control:is([aria-pressed="true"], [aria-expanded="true"]) {
+  --menu-panel-edge: var(--app-accent);
+}
+.dressing-color-swatch {
+  display: block;
+  width: 15px;
+  height: 15px;
+  background: linear-gradient(135deg, var(--swatch-color) 62%, var(--swatch-accent) 62%);
+  clip-path: var(--color-swatch-shape);
+}
+.dressing-color-toggle .dressing-color-swatch { width: 18px; height: 18px; }
+.dressing-color-panel.menu-panel-frame {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  display: grid;
+  gap: 5px;
+  width: min(23rem, calc(100dvw - 16px));
+  max-height: min(9rem, 40dvh);
+  box-sizing: border-box;
+  padding: 8px;
+  transform: translateX(-50%);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.dressing-color-panel[hidden] { display: none; }
+.dressing-color-bar {
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr);
+  align-items: start;
+  gap: 5px;
+}
+.dressing-color-bar > span {
+  align-self: center;
+  color: var(--app-muted);
+  font-size: 10px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+.dressing-color-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.dressing-color-chips input[type="color"] {
+  width: 27px;
+  height: 26px;
+  box-sizing: border-box;
+  padding: 3px;
+  border: 1px dashed var(--app-muted);
+  border-radius: 0;
+  background: var(--app-raised);
+  clip-path: var(--color-swatch-shape);
+  cursor: pointer;
+}
+.dressing-color-chips input::-webkit-color-swatch-wrapper { padding: 0; }
+.dressing-color-chips input::-webkit-color-swatch { border: 0; clip-path: var(--color-swatch-shape); }
+.dressing-color-chips input::-moz-color-swatch { border: 0; clip-path: var(--color-swatch-shape); }
+.dressing-color-reset { margin-inline-start: auto; }
+.dressing-color-reset svg { width: 14px; height: 14px; }

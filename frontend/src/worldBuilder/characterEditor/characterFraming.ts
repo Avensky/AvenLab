@@ -5,7 +5,7 @@ export function characterFrame(shot: CharacterShot, height: number, aspect: numb
   const h = Math.max(.5, height);
   const regions = {
     "Full body": [.5, 1.12], "Selected item": [.71, .4], Face: [.91, .24], "Upper body": [.71, .55],
-    Waist: [.5, .4], Feet: [.12, .3], Back: [.5, 1.12], Left: [.5, 1.12], Right: [.5, 1.12],
+    Waist: [.5, .4], Hands: [.57, .6], Feet: [.12, .3], Back: [.5, 1.12], Left: [.5, 1.12], Right: [.5, 1.12],
   } as const;
   const [center, span] = regions[shot];
   const tangent = Math.tan(fov * Math.PI / 360);

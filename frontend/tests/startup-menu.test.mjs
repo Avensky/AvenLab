@@ -74,7 +74,16 @@ test("real App removes the startup cover and opens the latest main menu without 
       "startup cover must be removed after React commits",
     );
     assert.ok(document.querySelector(".main-menu"));
-    assert.equal(document.querySelector(".main-menu .menu-panel-frame"), null);
+    assert.equal(document.querySelector(".main-menu .menu-home-content .menu-panel-frame"), null);
+    const profile = document.querySelector(".main-menu > header [data-main-profile-toggle]");
+    assert.ok(profile, "the profile portrait is available at startup");
+    await act(async () => profile.click());
+    const profilePanel = document.querySelector('[aria-label="Player profile options"]');
+    assert.equal(profilePanel.hidden, false);
+    const guest = [...profilePanel.querySelectorAll("button")].find(button => button.textContent === "Continue as guest");
+    assert.ok(guest);
+    await act(async () => guest.click());
+    assert.equal(profilePanel.hidden, true, "offline guests can dismiss the panel and use the menu");
     assert.equal(document.querySelectorAll(".main-menu .menu-action-list .menu-icon").length, 6);
     assert.ok(
       document

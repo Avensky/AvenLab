@@ -1,0 +1,698 @@
+[
+  {
+    "id": "top-01",
+    "label": "Top 01",
+    "category": "tops",
+    "url": "/models/characters/female/wardrobe/tops/pack7-top-01.glb",
+    "section": "Tops",
+    "slot": "top",
+    "piece": "shirt"
+  },
+  {
+    "id": "top-02",
+    "label": "Top 02",
+    "category": "tops",
+    "url": "/models/characters/female/wardrobe/tops/pack7-top-02.glb",
+    "section": "Tops",
+    "slot": "top",
+    "piece": "shirt"
+  },
+  {
+    "id": "top-03",
+    "label": "Top 03",
+    "category": "tops",
+    "url": "/models/characters/female/wardrobe/tops/pack7-top-03.glb",
+    "section": "Tops",
+    "slot": "top",
+    "piece": "shirt"
+  },
+  {
+    "id": "top-04",
+    "label": "Top 04",
+    "category": "tops",
+    "url": "/models/characters/female/wardrobe/tops/pack7-top-04.glb",
+    "section": "Tops",
+    "slot": "top",
+    "piece": "shirt"
+  },
+  {
+    "id": "top-05",
+    "label": "Top 05",
+    "category": "tops",
+    "url": "/models/characters/female/wardrobe/tops/pack7-top-05.glb",
+    "section": "Tops",
+    "slot": "top",
+    "piece": "shirt"
+  },
+  {
+    "id": "skirt-01",
+    "label": "Skirt 01",
+    "category": "bottoms",
+    "url": "/models/characters/female/wardrobe/skirts/skirt-01.garage.glb",
+    "section": "Skirts",
+    "slot": "skirt",
+    "piece": "skirt",
+    "mobileUrl": "/models/characters/female/wardrobe/skirts/skirt-01.mobile.glb"
+  },
+  {
+    "id": "skirt-02",
+    "label": "Skirt 02",
+    "category": "bottoms",
+    "url": "/models/characters/female/wardrobe/skirts/skirt-02.garage.glb",
+    "section": "Skirts",
+    "slot": "skirt",
+    "piece": "skirt",
+    "mobileUrl": "/models/characters/female/wardrobe/skirts/skirt-02.mobile.glb"
+  },
+  {
+    "id": "skirt-03",
+    "label": "Skirt 03",
+    "category": "bottoms",
+    "url": "/models/characters/female/wardrobe/skirts/skirt-03.garage.glb",
+    "section": "Skirts",
+    "slot": "skirt",
+    "piece": "skirt",
+    "mobileUrl": "/models/characters/female/wardrobe/skirts/skirt-03.mobile.glb"
+  },
+  {
+    "id": "skirt-04",
+    "label": "Skirt 04",
+    "category": "bottoms",
+    "url": "/models/characters/female/wardrobe/skirts/skirt-04.garage.glb",
+    "section": "Skirts",
+    "slot": "skirt",
+    "piece": "skirt",
+    "mobileUrl": "/models/characters/female/wardrobe/skirts/skirt-04.mobile.glb"
+  },
+  {
+    "id": "coat-01",
+    "label": "Coat 01",
+    "retired": true,
+    "category": "outerwear",
+    "url": "/models/characters/female/wardrobe/coat/coat-01.garage.glb",
+    "section": "Coats",
+    "slot": "coat",
+    "piece": "coat",
+    "mobileUrl": "/models/characters/female/wardrobe/coat/coat-01.mobile.glb"
+  },
+  {
+    "id": "dress-01",
+    "label": "Dress 01",
+    "retired": true,
+    "category": "dresses",
+    "url": "/models/characters/female/wardrobe/dress/dress-01.garage.glb",
+    "section": "Dresses",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/dress/dress-01.mobile.glb"
+  },
+  {
+    "id": "linen-nightgown",
+    "label": "Linen nightgown",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/dress/linen-nightgown.garage.glb",
+    "section": "Sleepwear",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/dress/linen-nightgown.mobile.glb",
+    "outfit": {
+      "description": "A soft, full-length linen gown with flared sleeves.",
+      "barefoot": true
+    }
+  },
+  {
+    "id": "medieval-01",
+    "label": "Laced linen dress",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/dress/medieval-01.garage.glb",
+    "section": "Medieval outfits",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/dress/medieval-01.mobile.glb",
+    "outfit": {
+      "description": "A laced overdress with a linen undergown and flared sleeves."
+    }
+  },
+  {
+    "id": "medieval-02",
+    "label": "Bell-sleeve gown",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/dress/medieval-02.garage.glb",
+    "section": "Medieval outfits",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/dress/medieval-02.mobile.glb",
+    "outfit": {
+      "description": "A square-neck gown with bell sleeves and a laced front."
+    }
+  },
+  {
+    "id": "medieval-03",
+    "label": "Ribbon-waist gown",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/dress/medieval-03.garage.glb",
+    "section": "Medieval outfits",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/dress/medieval-03.mobile.glb",
+    "outfit": {
+      "description": "A layered gown with gathered sleeves, a laced bodice, and a ribbon waist."
+    }
+  },
+  {
+    "id": "medieval-04",
+    "label": "Belted court dress",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/dress/medieval-04.garage.glb",
+    "section": "Medieval outfits",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/dress/medieval-04.mobile.glb",
+    "outfit": {
+      "description": "A belted floor-length gown with gathered cuffs and a laced neckline."
+    }
+  },
+  {
+    "id": "medieval-05",
+    "label": "Hooded gown",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/dress/medieval-05.garage.glb",
+    "section": "Medieval outfits",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/dress/medieval-05.mobile.glb",
+    "outfit": {
+      "description": "A hooded gown with pointed cuffs and a paneled skirt."
+    }
+  },
+  {
+    "id": "medieval-06",
+    "label": "Belted tunic",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/dress/medieval-06.garage.glb",
+    "section": "Medieval outfits",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/dress/medieval-06.mobile.glb",
+    "outfit": {
+      "description": "A short tunic with its matching belt and pouch."
+    }
+  },
+  {
+    "id": "medieval-07",
+    "label": "Quilted traveling dress",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/dress/medieval-07.garage.glb",
+    "section": "Medieval outfits",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/dress/medieval-07.mobile.glb",
+    "outfit": {
+      "description": "A quilted shoulder layer over a short dress with a belt and pouch."
+    }
+  },
+  {
+    "id": "medieval-08",
+    "label": "Quilted riding coat",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/dress/medieval-08.garage.glb",
+    "section": "Medieval outfits",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/dress/medieval-08.mobile.glb",
+    "outfit": {
+      "description": "A quilted coat with a high collar, clasp closures, and full sleeves."
+    }
+  },
+  {
+    "id": "hat-01",
+    "label": "Visor",
+    "category": "headwear",
+    "url": "/models/characters/female/wardrobe/hats/hat-01-visor.garage.glb",
+    "section": "Hats",
+    "slot": "hat",
+    "piece": "hat",
+    "mobileUrl": "/models/characters/female/wardrobe/hats/hat-01-visor.mobile.glb"
+  },
+  {
+    "id": "hat-02",
+    "label": "Beanie",
+    "category": "headwear",
+    "url": "/models/characters/female/wardrobe/hats/hat-02-beanie.garage.glb",
+    "section": "Hats",
+    "slot": "hat",
+    "piece": "hat",
+    "mobileUrl": "/models/characters/female/wardrobe/hats/hat-02-beanie.mobile.glb"
+  },
+  {
+    "id": "hood-01",
+    "label": "Medieval Hood 01",
+    "category": "headwear",
+    "url": "/models/characters/female/wardrobe/hats/hood-01.garage.glb",
+    "section": "Medieval hoods",
+    "slot": "hat",
+    "piece": "hat",
+    "mobileUrl": "/models/characters/female/wardrobe/hats/hood-01.mobile.glb",
+    "description": "A simple hood with a short shoulder cape.",
+    "hideLongHair": true,
+    "tucksHair": true
+  },
+  {
+    "id": "hood-02",
+    "label": "Medieval Hood 02",
+    "category": "headwear",
+    "url": "/models/characters/female/wardrobe/hats/hood-02.garage.glb",
+    "section": "Medieval hoods",
+    "slot": "hat",
+    "piece": "hat",
+    "mobileUrl": "/models/characters/female/wardrobe/hats/hood-02.mobile.glb",
+    "description": "A layered hood with a ruffled capelet and front bow.",
+    "hideLongHair": true,
+    "tucksHair": true
+  },
+  {
+    "id": "hood-03",
+    "label": "Medieval Hood 03",
+    "category": "headwear",
+    "url": "/models/characters/female/wardrobe/hats/hood-03.garage.glb",
+    "section": "Medieval hoods",
+    "slot": "hat",
+    "piece": "hat",
+    "mobileUrl": "/models/characters/female/wardrobe/hats/hood-03.mobile.glb",
+    "tucksHair": true
+  },
+  {
+    "id": "hood-04",
+    "label": "Medieval Hood 04",
+    "category": "headwear",
+    "url": "/models/characters/female/wardrobe/hats/hood-04.garage.glb",
+    "section": "Medieval hoods",
+    "slot": "hat",
+    "piece": "hat",
+    "mobileUrl": "/models/characters/female/wardrobe/hats/hood-04.mobile.glb",
+    "tucksHair": true
+  },
+  {
+    "id": "hood-05",
+    "label": "Medieval Hood 05",
+    "category": "headwear",
+    "url": "/models/characters/female/wardrobe/hats/hood-05.garage.glb",
+    "section": "Medieval hoods",
+    "slot": "hat",
+    "piece": "hat",
+    "mobileUrl": "/models/characters/female/wardrobe/hats/hood-05.mobile.glb",
+    "tucksHair": true
+  },
+  {
+    "id": "hood-06",
+    "label": "Medieval Hood 06",
+    "category": "headwear",
+    "url": "/models/characters/female/wardrobe/hats/hood-06.garage.glb",
+    "section": "Medieval hoods",
+    "slot": "hat",
+    "piece": "hat",
+    "mobileUrl": "/models/characters/female/wardrobe/hats/hood-06.mobile.glb",
+    "tucksHair": true
+  },
+  {
+    "id": "hood-07",
+    "label": "Medieval Hood 07 (Down)",
+    "category": "headwear",
+    "url": "/models/characters/female/wardrobe/hats/hood-07.garage.glb",
+    "section": "Medieval hoods",
+    "slot": "hat",
+    "piece": "hat",
+    "mobileUrl": "/models/characters/female/wardrobe/hats/hood-07.mobile.glb",
+    "scalpCap": true
+  },
+  {
+    "id": "socks-01",
+    "label": "Socks 01",
+    "category": "footwear",
+    "url": "/models/characters/female/wardrobe/socks/pack7-socks-01.glb",
+    "section": "Socks",
+    "slot": "socks",
+    "piece": "socks"
+  },
+  {
+    "id": "socks-02",
+    "label": "Socks 02",
+    "category": "footwear",
+    "url": "/models/characters/female/wardrobe/socks/pack7-socks-02.glb",
+    "section": "Socks",
+    "slot": "socks",
+    "piece": "socks"
+  },
+  {
+    "id": "socks-03",
+    "label": "Socks 03",
+    "category": "footwear",
+    "url": "/models/characters/female/wardrobe/socks/pack7-socks-03.glb",
+    "section": "Socks",
+    "slot": "socks",
+    "piece": "socks"
+  },
+  {
+    "id": "socks-04",
+    "label": "Socks 04",
+    "category": "footwear",
+    "url": "/models/characters/female/wardrobe/socks/pack7-socks-04.glb",
+    "section": "Socks",
+    "slot": "socks",
+    "piece": "socks"
+  },
+  {
+    "id": "bowtie-01",
+    "label": "Bow tie 01",
+    "category": "bows",
+    "url": "/models/characters/female/wardrobe/bowties/pack7-bowtie-01.glb",
+    "section": "Bow ties",
+    "slot": "bow",
+    "piece": "bow"
+  },
+  {
+    "id": "bowtie-02",
+    "label": "Bow tie 02",
+    "category": "bows",
+    "url": "/models/characters/female/wardrobe/bowties/pack7-bowtie-02.glb",
+    "section": "Bow ties",
+    "slot": "bow",
+    "piece": "bow"
+  },
+  {
+    "id": "bowtie-03",
+    "label": "Bow tie 03",
+    "category": "bows",
+    "url": "/models/characters/female/wardrobe/bowties/pack7-bowtie-03.glb",
+    "section": "Bow ties",
+    "slot": "bow",
+    "piece": "bow"
+  },
+  {
+    "id": "bowtie-04",
+    "label": "Bow tie 04",
+    "category": "bows",
+    "url": "/models/characters/female/wardrobe/bowties/pack7-bowtie-04.glb",
+    "section": "Bow ties",
+    "slot": "bow",
+    "piece": "bow"
+  },
+  {
+    "id": "bowtie-05",
+    "label": "Bow tie 05",
+    "category": "bows",
+    "url": "/models/characters/female/wardrobe/bowties/pack7-bowtie-05.glb",
+    "section": "Bow ties",
+    "slot": "bow",
+    "piece": "bow"
+  },
+  {
+    "id": "bowtie-06",
+    "label": "Bow tie 06",
+    "category": "bows",
+    "url": "/models/characters/female/wardrobe/bowties/pack7-bowtie-06.glb",
+    "section": "Bow ties",
+    "slot": "bow",
+    "piece": "bow"
+  },
+  {
+    "id": "bowtie-07",
+    "label": "Bow tie 07",
+    "category": "bows",
+    "url": "/models/characters/female/wardrobe/bowties/pack7-bowtie-07.glb",
+    "section": "Bow ties",
+    "slot": "bow",
+    "piece": "bow"
+  },
+  {
+    "id": "bowtie-08",
+    "label": "Bow tie 08",
+    "category": "bows",
+    "url": "/models/characters/female/wardrobe/bowties/pack7-bowtie-08.glb",
+    "section": "Bow ties",
+    "slot": "bow",
+    "piece": "bow"
+  },
+  {
+    "id": "bowtie-09",
+    "label": "Bow tie 09",
+    "category": "bows",
+    "url": "/models/characters/female/wardrobe/bowties/pack7-bowtie-09.glb",
+    "section": "Bow ties",
+    "slot": "bow",
+    "piece": "bow"
+  },
+  {
+    "id": "bowtie-10",
+    "label": "Bow tie 10",
+    "category": "bows",
+    "url": "/models/characters/female/wardrobe/bowties/pack7-bowtie-10.glb",
+    "section": "Bow ties",
+    "slot": "bow",
+    "piece": "bow"
+  },
+  {
+    "id": "bowtie-11",
+    "label": "Bow tie 11",
+    "category": "bows",
+    "url": "/models/characters/female/wardrobe/bowties/pack7-bowtie-11.glb",
+    "section": "Bow ties",
+    "slot": "bow",
+    "piece": "bow"
+  },
+  {
+    "id": "bowtie-12",
+    "label": "Bow tie 12",
+    "category": "bows",
+    "url": "/models/characters/female/wardrobe/bowties/pack7-bowtie-12.glb",
+    "section": "Bow ties",
+    "slot": "bow",
+    "piece": "bow"
+  },
+  {
+    "id": "bowtie-13",
+    "label": "Bow tie 13",
+    "category": "bows",
+    "url": "/models/characters/female/wardrobe/bowties/pack7-bowtie-13.glb",
+    "section": "Bow ties",
+    "slot": "bow",
+    "piece": "bow"
+  },
+  {
+    "id": "bowtie-14",
+    "label": "Bow tie 14",
+    "category": "bows",
+    "url": "/models/characters/female/wardrobe/bowties/pack7-bowtie-14.glb",
+    "section": "Bow ties",
+    "slot": "bow",
+    "piece": "bow"
+  },
+  {
+    "id": "harness-01",
+    "label": "Harness 01",
+    "category": "accessories",
+    "url": "/models/characters/female/wardrobe/harness/pack7-harness-01.glb",
+    "section": "Harnesses",
+    "slot": "harness",
+    "piece": "harness"
+  },
+  {
+    "id": "harness-02",
+    "label": "Harness 02",
+    "category": "accessories",
+    "url": "/models/characters/female/wardrobe/harness/pack7-harness-02.glb",
+    "section": "Harnesses",
+    "slot": "harness",
+    "piece": "harness"
+  },
+  {
+    "id": "harness-03",
+    "label": "Harness 03",
+    "category": "accessories",
+    "url": "/models/characters/female/wardrobe/harness/pack7-harness-03.glb",
+    "section": "Harnesses",
+    "slot": "harness",
+    "piece": "harness"
+  },
+  {
+    "id": "harness-04",
+    "label": "Harness 04",
+    "category": "accessories",
+    "url": "/models/characters/female/wardrobe/harness/pack7-harness-04.glb",
+    "section": "Harnesses",
+    "slot": "harness",
+    "piece": "harness"
+  },
+  {
+    "id": "harness-05",
+    "label": "Harness 05",
+    "category": "accessories",
+    "url": "/models/characters/female/wardrobe/harness/pack7-harness-05.glb",
+    "section": "Harnesses",
+    "slot": "harness",
+    "piece": "harness"
+  },
+  {
+    "id": "gothic-skirt-01",
+    "label": "Gothic Skirt 01",
+    "category": "bottoms",
+    "url": "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-01.glb",
+    "section": "Gothic skirts",
+    "slot": "skirt",
+    "piece": "skirt"
+  },
+  {
+    "id": "gothic-skirt-02",
+    "label": "Gothic Skirt 02",
+    "category": "bottoms",
+    "url": "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-02.glb",
+    "revisionUrl": "/models/characters/female/wardrobe/corsettes/gothic-skirt-02-update.glb",
+    "section": "Gothic skirts",
+    "slot": "skirt",
+    "piece": "skirt"
+  },
+  {
+    "id": "gothic-skirt-03",
+    "label": "Gothic Skirt 03",
+    "category": "bottoms",
+    "url": "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-03.glb",
+    "revisionUrl": "/models/characters/female/wardrobe/corsettes/gothic-skirt-03-update.glb",
+    "section": "Gothic skirts",
+    "slot": "skirt",
+    "piece": "skirt"
+  },
+  {
+    "id": "gothic-skirt-04",
+    "label": "Gothic Skirt 04",
+    "category": "bottoms",
+    "url": "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-04.glb",
+    "section": "Gothic skirts",
+    "slot": "skirt",
+    "piece": "skirt"
+  },
+  {
+    "id": "gothic-skirt-05",
+    "label": "Gothic Skirt 05",
+    "category": "bottoms",
+    "url": "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-05.glb",
+    "section": "Gothic skirts",
+    "slot": "skirt",
+    "piece": "skirt"
+  },
+  {
+    "id": "armor-01",
+    "label": "Riveted vest",
+    "category": "tops",
+    "url": "/models/characters/female/wardrobe/armor/armor-01.garage.glb",
+    "section": "Armor",
+    "slot": "top",
+    "piece": "armor",
+    "mobileUrl": "/models/characters/female/wardrobe/armor/armor-01.mobile.glb",
+    "description": "A fitted vest with rivets and two rings at the waist."
+  },
+  {
+    "id": "armor-02",
+    "label": "Laced guard vest",
+    "category": "tops",
+    "url": "/models/characters/female/wardrobe/armor/armor-02.garage.glb",
+    "section": "Armor",
+    "slot": "top",
+    "piece": "armor",
+    "mobileUrl": "/models/characters/female/wardrobe/armor/armor-02.mobile.glb",
+    "description": "A front-laced vest with side buckles and shoulder fittings."
+  },
+  {
+    "id": "armor-03",
+    "label": "Four-buckle vest",
+    "category": "tops",
+    "url": "/models/characters/female/wardrobe/armor/armor-03.garage.glb",
+    "section": "Armor",
+    "slot": "top",
+    "piece": "armor",
+    "mobileUrl": "/models/characters/female/wardrobe/armor/armor-03.mobile.glb",
+    "description": "A V-neck vest with four buckles and side lacing."
+  },
+  {
+    "id": "armor-04",
+    "label": "Stitched cuirass",
+    "category": "tops",
+    "url": "/models/characters/female/wardrobe/armor/armor-04.garage.glb",
+    "section": "Armor",
+    "slot": "top",
+    "piece": "armor",
+    "mobileUrl": "/models/characters/female/wardrobe/armor/armor-04.mobile.glb",
+    "description": "A stitched cuirass with a rounded neckline and side clasps."
+  },
+  {
+    "id": "armor-05",
+    "label": "Split-panel cuirass",
+    "category": "tops",
+    "url": "/models/characters/female/wardrobe/armor/armor-05.garage.glb",
+    "section": "Armor",
+    "slot": "top",
+    "piece": "armor",
+    "mobileUrl": "/models/characters/female/wardrobe/armor/armor-05.mobile.glb",
+    "description": "A pointed cuirass with side lacing and a split torso panel."
+  },
+  {
+    "id": "bracer-01",
+    "label": "Three-buckle bracer",
+    "category": "accessories",
+    "url": "/models/characters/female/wardrobe/bracers/bracer-01.garage.glb",
+    "section": "Bracers",
+    "slot": "bracer",
+    "piece": "bracer",
+    "mobileUrl": "/models/characters/female/wardrobe/bracers/bracer-01.mobile.glb",
+    "description": "A single left forearm bracer with three buckled straps."
+  },
+  {
+    "id": "medieval-kaftan-01",
+    "label": "Medieval Kaftan 01",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/kaftan/medieval-kaftan-01.garage.glb",
+    "section": "Medieval kaftans",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/kaftan/medieval-kaftan-01.mobile.glb"
+  },
+  {
+    "id": "medieval-kaftan-02",
+    "label": "Medieval Kaftan 02",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/kaftan/medieval-kaftan-02.garage.glb",
+    "section": "Medieval kaftans",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/kaftan/medieval-kaftan-02.mobile.glb"
+  },
+  {
+    "id": "medieval-kaftan-03",
+    "label": "Medieval Kaftan 03",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/kaftan/medieval-kaftan-03.garage.glb",
+    "section": "Medieval kaftans",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/kaftan/medieval-kaftan-03.mobile.glb"
+  },
+  {
+    "id": "medieval-kaftan-04",
+    "label": "Medieval Kaftan 04",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/kaftan/medieval-kaftan-04.garage.glb",
+    "section": "Medieval kaftans",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/kaftan/medieval-kaftan-04.mobile.glb"
+  },
+  {
+    "id": "medieval-kaftan-05",
+    "label": "Medieval Kaftan 05",
+    "category": "outfits",
+    "url": "/models/characters/female/wardrobe/kaftan/medieval-kaftan-05.garage.glb",
+    "section": "Medieval kaftans",
+    "slot": "dress",
+    "piece": "dress",
+    "mobileUrl": "/models/characters/female/wardrobe/kaftan/medieval-kaftan-05.mobile.glb"
+  }
+]

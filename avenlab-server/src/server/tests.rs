@@ -617,16 +617,15 @@ async fn character_equip_validates_the_choice_and_persists_it_on_the_profile() {
         assert_eq!(s.handle(&player, json!({"action": "character_equip", "character": styled})).await.unwrap()["character"], styled);
     }
     assert_eq!(s.handle(&player, json!({"action": "character_equip", "character": legacy_style})).await.unwrap()["character"], styled);
-    styled["wardrobe"] = json!({"set": "gothic-04", "shirt": "under", "waist": "over"});
-    assert_eq!(s.handle(&player, json!({"action": "character_equip", "character": styled})).await.unwrap()["character"], styled);
-    for wardrobe in [
-        json!({"set": "gothic-04", "shirt": "none", "waist": "over"}),
-        json!({"set": "missing", "shirt": "under", "waist": "tucked"}),
-    ] {
-        let mut invalid_wardrobe = styled.clone();
-        invalid_wardrobe["wardrobe"] = wardrobe;
-        assert!(s.handle(&player, json!({"action": "character_equip", "character": invalid_wardrobe})).await.is_err());
+    styled["wardrobe"] = json!({"set": "gothic-04", "shirt": "none", "waist": "over"});
+    for shirt in ["under", "over", "none"] {
+        let mut incoming = styled.clone();
+        incoming["wardrobe"]["shirt"] = json!(shirt);
+        assert_eq!(s.handle(&player, json!({"action": "character_equip", "character": incoming})).await.unwrap()["character"], styled);
     }
+    let mut invalid_wardrobe = styled.clone();
+    invalid_wardrobe["wardrobe"] = json!({"set": "missing", "shirt": "under", "waist": "tucked"});
+    assert!(s.handle(&player, json!({"action": "character_equip", "character": invalid_wardrobe})).await.is_err());
     let reloaded: SocialData = serde_json::from_slice(&tokio::fs::read(&s.path).await.unwrap()).unwrap();
     let progression = &reloaded.profiles[profile].progression;
     assert_eq!(progression.view()["character"], styled);
@@ -643,6 +642,86 @@ async fn character_equip_validates_the_choice_and_persists_it_on_the_profile() {
 }
 
 #[tokio::test]
+async fn character_outfits_save_validated_fitting_room_combinations_to_the_owning_profile() {
+    let s = server(1, 10);
+    let (player, identity, _) = client(&s, "Driver").await;
+    let (peer, _, _) = client(&s, "Peer").await;
+    let profile = identity["profile_id"].as_str().unwrap();
+    let equipped = json!({"id": "mara-vega", "outfit": "shop-crew"});
+    s.handle(&player, json!({"action": "character_equip", "character": equipped})).await.unwrap();
+    let legacy: crate::alpha::progression::Progression = serde_json::from_value(json!({"level": 7})).unwrap();
+    assert_eq!(legacy.view()["character_outfits"], json!({}));
+
+    let mut outfit = json!({
+        "id": "mara-vega", "outfit": "shop-crew",
+        "wardrobe": {"set": "gothic-05", "waist": "tucked", "shirt": "none"},
+        "wardrobeTrial": {"set": "gothic-04", "waist": "over", "shirt": "none"},
+        "wardrobeEase": 2,
+        "garments": {"top": "top-02", "skirt": "gothic-skirt-04", "bow": "bowtie-03", "socks": "socks-01"},
+        "removedClothing": ["shoes", "bonnet-bow"],
+        "appearance": {"hair": "cropped", "hair_color": "copper", "skin": "warm", "headwear": "hat", "color": "original",
+            "item_colors": {"top-02:shirt": {"color": "#123456"}, "gothic-skirt-04:skirt": {"accent": "#abcdef"}}},
+    });
+    let save = |name: &str, character: &Value| json!({
+        "action": "character_outfit_save", "name": name, "character": character,
+    });
+    assert!(s.handle("unknown", save("Gothic layers", &outfit)).await.is_err());
+    assert!(s.handle(&player, save(" ", &outfit)).await.is_err());
+    let saved = s.handle(&player, save(" Gothic layers ", &outfit)).await.unwrap();
+    assert_eq!(saved["character_outfits"], json!({"Gothic layers": outfit}));
+    assert_eq!(saved["character"], equipped);
+    assert_eq!(saved["character_presets"], json!({}));
+    assert_eq!(saved["cosmetics_revision"], 2);
+    assert_eq!(s.handle(&player, save("Gothic layers", &outfit)).await.unwrap(), saved);
+    assert!(s.handle(&player, json!({"action": "character_equip", "character": outfit})).await.is_err());
+    let mut hidden_only = equipped.clone();
+    hidden_only["removedClothing"] = json!(["shoes"]);
+    assert!(s.handle(&player, json!({"action": "character_equip", "character": hidden_only})).await.is_err());
+
+    let mut invalid = outfit.clone();
+    invalid["garments"]["top"] = json!("gothic-skirt-04");
+    assert!(s.handle(&player, save("Gothic layers", &invalid)).await.is_err());
+    let mut invalid = outfit.clone();
+    invalid["wardrobeTrial"]["set"] = json!("unknown");
+    assert!(s.handle(&player, save("Gothic layers", &invalid)).await.is_err());
+    let mut invalid = outfit.clone();
+    invalid["wardrobeTrial"]["waist"] = json!("tucked");
+    assert!(s.handle(&player, save("Gothic layers", &invalid)).await.is_err());
+    let mut invalid = outfit.clone();
+    invalid["wardrobeEase"] = json!(3);
+    assert!(s.handle(&player, save("Gothic layers", &invalid)).await.is_err());
+    let mut invalid = outfit.clone();
+    invalid["removedClothing"] = json!(["shoes", "unknown"]);
+    assert!(s.handle(&player, save("Gothic layers", &invalid)).await.is_err());
+    let mut invalid = outfit.clone();
+    invalid["removedClothing"] = json!(["shoes", "shoes"]);
+    assert!(s.handle(&player, save("Gothic layers", &invalid)).await.is_err());
+    let rook = json!({"id": "jules-okafor", "outfit": "race-crew", "removedClothing": ["shoes"]});
+    assert!(s.handle(&player, save("Driver", &rook)).await.is_err());
+
+    outfit["wardrobeTrial"]["set"] = json!("gothic-01");
+    outfit["wardrobeEase"] = json!(1);
+    outfit["removedClothing"] = json!(["corset", "top", "skirt", "shoes", "socks", "hat", "bow", "bonnet-bow", "harness"]);
+    let replaced = s.handle(&player, save("Gothic layers", &outfit)).await.unwrap();
+    assert_eq!(replaced["character_outfits"]["Gothic layers"], outfit);
+    assert_eq!(replaced["cosmetics_revision"], 3);
+    let extra = s.handle(&player, save("Village", &equipped)).await.unwrap();
+    assert_eq!(extra["character_outfits"]["Village"], equipped);
+    let remove = json!({"action": "character_outfit_delete", "name": "Gothic layers"});
+    assert_eq!(s.handle(&peer, remove.clone()).await.unwrap()["character_outfits"], json!({}));
+
+    let reloaded: SocialData = serde_json::from_slice(&tokio::fs::read(&s.path).await.unwrap()).unwrap();
+    let progression = reloaded.profiles[profile].progression.view();
+    assert_eq!(progression["character_outfits"], extra["character_outfits"]);
+    assert_eq!(progression["character"], equipped);
+    let deleted = s.handle(&player, remove).await.unwrap();
+    assert_eq!(deleted["character_outfits"], json!({"Village": equipped}));
+    let reloaded: SocialData = serde_json::from_slice(&tokio::fs::read(&s.path).await.unwrap()).unwrap();
+    assert_eq!(reloaded.profiles[profile].progression.view()["character_outfits"], deleted["character_outfits"]);
+    cleanup(s).await;
+}
+
+#[tokio::test]
 async fn roster_portraits_publish_only_equipped_styles_for_live_and_reserved_players() {
     use crate::alpha::{AlphaState, Member, Mode, Reservation};
     let server = server(1, 10);
@@ -654,7 +733,7 @@ async fn roster_portraits_publish_only_equipped_styles_for_live_and_reserved_pla
     appearance.body = "#ed258d".into();
     appearance.finish = "soft".into();
     profile.progression.hero_loadouts.insert("cx30".into(), appearance.clone());
-    profile.progression.character = Some(crate::alpha::character::CharacterChoice { id: "niko-park".into(), outfit: "field-kit".into(), appearance: None, prop: None, identity: None, wardrobe: None });
+    profile.progression.character = Some(serde_json::from_value(json!({"id": "niko-park", "outfit": "field-kit"})).unwrap());
     let mut alpha = AlphaState::default();
     alpha.members.insert(player.clone(), Member { mode: Mode::Quickplay, team_size:5, world: 7, hero: "cx30".into(), team: Team::Red });
     let clients = server.connections.lock().await;
@@ -699,7 +778,7 @@ async fn enemy_lobby_picks_are_hidden_until_their_exact_world_has_started() {
     let mut data=s.data.lock().await;
     let mut paint=crate::alpha::appearance::HeroAppearance::default();paint.body="#ed258d".into();
     data.profiles.get_mut(enemy_profile).unwrap().progression.hero_loadouts.insert("cx30".into(),paint);
-    data.profiles.get_mut(enemy_profile).unwrap().progression.character = Some(crate::alpha::character::CharacterChoice { id: "jules-okafor".into(), outfit: "race-crew".into(), appearance: None, prop: None, identity: None, wardrobe: None });
+    data.profiles.get_mut(enemy_profile).unwrap().progression.character = Some(serde_json::from_value(json!({"id": "jules-okafor", "outfit": "race-crew"})).unwrap());
     let clients=s.connections.lock().await;
     let mut phases=HashMap::from([(7,("round-seven".into(),CtfPhase::Waiting)),(8,("other-round".into(),CtfPhase::Running))]);
     let view=Server::alpha_view_for_phases(&a,profile,&me,&clients,&data,3,&phases);

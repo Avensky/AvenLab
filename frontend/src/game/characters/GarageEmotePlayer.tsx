@@ -49,8 +49,8 @@ function setBlinkWeight(targets: ReturnType<typeof driverFaceTargets>, weight: n
   for (const { mesh, index } of targets) mesh.morphTargetInfluences![index] = weight;
 }
 
-export function GarageEmotePlayer({ root, bag = false, previewPacks = false, leanFit, mirrorFit, victory, cockpit, personality = "friendly", bagColors }: {
-  root: Object3D; personality?: CharacterPersonality; bagColors?: PieceColors; bag?: boolean; previewPacks?: boolean; leanFit?: GarageLeanFit; mirrorFit?: MirrorCheckFit; victory?: VictoryPlayback; cockpit?: GarageCockpit;
+export function GarageEmotePlayer({ root, bag = false, previewPacks = false, leanFit, mirrorFit, victory, cockpit, personality = "friendly", bagColors, paused = false }: {
+  root: Object3D; personality?: CharacterPersonality; bagColors?: PieceColors; bag?: boolean; previewPacks?: boolean; leanFit?: GarageLeanFit; mirrorFit?: MirrorCheckFit; victory?: VictoryPlayback; cockpit?: GarageCockpit; paused?: boolean;
 }) {
   const invalidate = useThree(s => s.invalidate);
   const contextFit = useRef("");
@@ -130,7 +130,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
 
   useFrame((_, delta) => {
     const current = player.current;
-    if (!current || (previewPacks && useCharacterPreviewStore.getState().playbackPaused)) return;
+    if (paused || !current || (previewPacks && useCharacterPreviewStore.getState().playbackPaused)) return;
     const step = Math.min(delta, .1);
     if (current.blink.length) {
       current.elapsed += step;
@@ -155,7 +155,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
         current.idle.stop();
         current.clicked = null;
         current.preview = null;
-        current.cabin = cockpit(root);
+        current.cabin = cockpit(root, previewPacks);
         if (!current.cabin) {
           current.idle.reset().setEffectiveWeight(1).play();
           const error = "This driver could not be fitted to the selected vehicle.";
@@ -260,11 +260,11 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     }
     current.mixer.update(step);
     current.fitFlag?.();
-  }, cockpit ? -.5 : 0);
+  }, cockpit ? -.5 : -.125);
 
   return <group>
     <primitive object={root} dispose={null} onClick={(event: import("@react-three/fiber").ThreeEvent<MouseEvent>) => {
-      if (victory || reducedMotion || !player.current || player.current.cabin || event.delta > 3 || performance.now() < useFittingTurnStore.getState().suppressClickUntil) return;
+      if (paused || victory || reducedMotion || !player.current || player.current.cabin || event.delta > 3 || performance.now() < useFittingTurnStore.getState().suppressClickUntil) return;
       event.stopPropagation();
       const id = personalityEmote(personality, lastInteraction.current);
       lastInteraction.current = id;

@@ -5,6 +5,7 @@ import { Mesh, MeshStandardMaterial, Vector3, type Group, type Object3D } from "
 import { AssetBoundary } from "../../components/debugger/AssetBoundary";
 
 import type { PieceColors } from "./clothingPieces";
+import { createHeldBagFit } from "./heldBagFit";
 
 function BagFallback({ colors }: { colors?: PieceColors }) {
   return <>
@@ -43,16 +44,12 @@ function BagModel({ url, colors }: { url: string; colors?: PieceColors }) {
 }
 
 export function DriverBag({ driver, colors }: { driver: Object3D; colors?: PieceColors }) {
-  const hand = driver.getObjectByName("middle_01_l") ?? driver.getObjectByName("hand_l");
   const holder = useRef<Group>(null);
-  const position = useMemo(() => new Vector3(), []);
+  const fit = useMemo(() => createHeldBagFit(driver), [driver]);
   useFrame(() => {
-    if (hand && holder.current?.parent) {
-      hand.getWorldPosition(position);
-      holder.current.position.copy(holder.current.parent.worldToLocal(position));
-    }
+    if (holder.current) fit?.(holder.current);
   });
-  if (!hand) return null;
+  if (!fit) return null;
   const fallback = <BagFallback colors={colors} />;
   return <group name="driver-shop-bag" ref={holder}>
     {__CHARACTER_BAG_URL__

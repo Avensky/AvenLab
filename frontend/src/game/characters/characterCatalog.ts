@@ -2,7 +2,9 @@ import type { PieceColors } from "./clothingPieces";
 import type { AnimationFit, CharacterPersonality } from "./characterPersonality";
 import catalog from "../../../../avenlab-server/src/assets/characters.json";
 import appearanceOptions from "../../../../avenlab-server/src/assets/character-appearance.json";
-import { resolveWardrobe, type WardrobeChoice } from "./wardrobe";
+import { resolveWardrobe, wardrobeOverEase, type WardrobeChoice } from "./wardrobe";
+import type { OverSkirtEase } from "./overSkirtEase";
+import { getWardrobeGarment, removedWardrobeLayers, visibleWardrobeGarments, wardrobeGarmentModelUrl, type WardrobeGarmentChoice, type WardrobeRemoval } from "./wardrobeGarments";
 
 export const CHARACTERS = catalog.filter(item => item.id !== "niko-park");
 export const CHARACTER_APPEARANCE_OPTIONS = appearanceOptions;
@@ -13,6 +15,17 @@ export type CharacterAppearance = Record<Exclude<CharacterStyleField, FaceField>
 
 export const OUTFIT_THEMES = [
   { name: "Gothic Pink", color: "#101015", accent: "#ff2d95" },
+  { name: "Pink", color: "#ef88b6", accent: "#7d315a" },
+  { name: "Pastels", color: "#c7b8ec", accent: "#b5dece" },
+  { name: "Vibrant", color: "#6f38df", accent: "#ff9434" },
+  { name: "White", color: "#ffffff", accent: "#ffffff" },
+  { name: "Yellow", color: "#edbf44", accent: "#fff1ad" },
+  { name: "Blue", color: "#2566b3", accent: "#9ed6f1" },
+  { name: "Red", color: "#b62235", accent: "#f0736f" },
+  { name: "Red + Black", color: "#b62235", accent: "#101015" },
+  { name: "Black + Red", color: "#101015", accent: "#b62235" },
+  { name: "Ivory + Gold", color: "#f4e6cc", accent: "#b88636" },
+  { name: "Navy + Silver", color: "#26395e", accent: "#bcc9d6" },
   { name: "Midnight Circuit", color: "#171d36", accent: "#56e9ff" },
   { name: "Harbor Crew", color: "#263a35", accent: "#efaf6a" },
   { name: "Black Cherry", color: "#2d1d28", accent: "#a84a70" },
@@ -22,11 +35,22 @@ export const CHARACTER_IDENTITIES = [
   { id: "male", label: "Male" }, { id: "female", label: "Female" }, { id: "nonbinary", label: "Nonbinary" },
 ] as const;
 export type CharacterIdentity = typeof CHARACTER_IDENTITIES[number]["id"];
-export type CharacterChoice = { id: string; outfit: string; identity?: CharacterIdentity; appearance?: CharacterAppearance; prop?: "shop-bag"; wardrobe?: WardrobeChoice };
+export type CharacterChoice = {
+  id: string; outfit: string; identity?: CharacterIdentity; appearance?: CharacterAppearance; prop?: "shop-bag"; wardrobe?: WardrobeChoice;
+  /** Session-only fitting room selections. */
+  garments?: WardrobeGarmentChoice;
+  wardrobeTrial?: WardrobeChoice;
+  wardrobeEase?: Exclude<OverSkirtEase, 0>;
+  removedClothing?: WardrobeRemoval[];
+};
 
 export const VILLAGER_ID = "mara-vega";
 export const ROOK_ID = "jules-okafor";
 export const DEFAULT_CHARACTER: CharacterChoice = { id: VILLAGER_ID, outfit: CHARACTERS[0].outfits[0].id };
+
+const OUTFIT_REMOVALS = ["hat"] as const;
+const SLEEPWEAR_REMOVALS = ["hat", "shoes"] as const;
+const NO_OUTFIT_REMOVALS: readonly WardrobeRemoval[] = [];
 
 const DEFAULT_APPEARANCE: CharacterAppearance = {
   hair: "natural", hair_color: "original", skin: "original", headwear: "none", color: "original",
@@ -48,9 +72,23 @@ export function characterLook(choice: CharacterChoice | null | undefined) {
     return option && "color" in option ? option.color : undefined;
   };
   const female = character.id !== ROOK_ID;
+  const wardrobe = character.id === VILLAGER_ID ? resolveWardrobe(choice?.wardrobe) : undefined;
+  const trials = character.id === VILLAGER_ID ? visibleWardrobeGarments(choice) : undefined;
+  const outfitGarment = character.id === VILLAGER_ID ? getWardrobeGarment(outfit.id) : undefined;
+  const wearsOutfitGarment = outfitGarment?.outfit && !wardrobe && !choice?.wardrobeTrial
+    && !trials?.top && !trials?.skirt && !trials?.dress && wardrobeGarmentModelUrl(outfitGarment, "garage");
+  const outfitRemovals: readonly WardrobeRemoval[] = !wearsOutfitGarment ? NO_OUTFIT_REMOVALS
+    : outfitGarment.outfit?.barefoot ? SLEEPWEAR_REMOVALS : OUTFIT_REMOVALS;
+  const removed = removedWardrobeLayers(choice);
+  const removedClothing = !outfitRemovals.length ? removed : !removed.length ? outfitRemovals
+    : [...new Set([...removed, ...outfitRemovals])];
+  const showCorset = character.id === VILLAGER_ID && !removedClothing.includes("corset");
   return {
-    character, outfit, appearance, female,
-    wardrobe: character.id === VILLAGER_ID ? resolveWardrobe(choice?.wardrobe) : undefined,
+    character, outfit, appearance, female, removedClothing,
+    wardrobe, outfitRemovals,
+    corset: showCorset ? resolveWardrobe(choice?.wardrobeTrial, { includeRetired: true }) : undefined,
+    overEase: showCorset ? wardrobeOverEase(choice) : 0 as const,
+    garments: wearsOutfitGarment ? { ...trials, dress: outfitGarment.id } : trials,
     fabric: /^#[\da-f]{6}$/i.test(appearance.color) ? appearance.color : color("color") ?? outfit.jacket,
     trim: appearance.accent ?? outfit.trim,
     hair: color("hair_color") ?? (female ? "#7c573c" : "#2b2127"),

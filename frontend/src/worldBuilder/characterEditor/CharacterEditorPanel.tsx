@@ -2,8 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { SceneTabHeader } from "../../components/menus/SceneTabHeader";
 import { CHARACTER_TABS, CharacterPage, type CharacterTab } from "../../game/characters/CharacterPage";
 import { useCharacterPreviewStore } from "../../game/characters/characterPreviewStore";
-import { FittingRotationControls } from "../../game/characters/FittingRotationControls";
 import { FittingCameraSelect } from "../../game/characters/FittingCameraSelect";
+import { FittingCameraToolbar } from "../../game/characters/FittingCameraToolbar";
 import { PreviewVisibilityToggle } from "../../game/preview/PreviewVisibilityToggle";
 import { navigateFormRows } from "../../game/social/formRows";
 import { useSelectionNavigation } from "../../game/alpha/useSelectionNavigation";
@@ -52,7 +52,7 @@ export function CharacterEditorPanel() {
       useCharacterPreviewStore.setState({ playbackPaused: false, automaticEmotes: true });
     };
   }, [back]);
-  useEffect(() => { frame(automaticCamera === "Face" ? "Face" : automaticCamera === "Selected item" ? "Selected item" : "Full body"); }, [automaticCamera, focusRevision, frame]);
+  useEffect(() => { frame(automaticCamera === "Whole car" ? "Full body" : automaticCamera); }, [automaticCamera, focusRevision, frame]);
   useSelectionNavigation(root, {
     back: () => void back(),
     confirm: () => { const active = document.activeElement as HTMLElement; if (root.current?.contains(active)) active.click(); },
@@ -69,6 +69,12 @@ export function CharacterEditorPanel() {
       setTab(CHARACTER_TABS[(index + step + CHARACTER_TABS.length) % CHARACTER_TABS.length].id);
     },
   });
+  const zoomBy = (step: number) => useCharacterEditorStore.setState(s => ({ zoomSteps: s.zoomSteps + step }));
+  const togglePose = () => useCharacterPreviewStore.setState({ playbackPaused: !paused });
+  const visibility = <PreviewVisibilityToggle hidden={panelsHidden} onToggle={() => useCharacterEditorStore.setState({ panelsHidden: !panelsHidden })} />;
+  const cameraSelect = <FittingCameraSelect choice={choice} views={CHARACTER_SHOTS} view={shot} onViewChange={frame} label="Character close-up" />;
+  const cameraTools = <FittingCameraToolbar key={tab} camera={cameraSelect} visibility={visibility} paused={paused} onPause={togglePose}
+    onZoomOut={() => zoomBy(-1)} onZoomIn={() => zoomBy(1)} onReframe={() => frame(shot)} />;
   return <section ref={root} tabIndex={-1} data-controller-form data-controller-rows
     className={`game-ui menu-surface character-editor${panelsHidden ? " character-editor--hidden" : ""}`} aria-label="Character editor">
     <div className="character-editor-header">
@@ -78,20 +84,6 @@ export function CharacterEditorPanel() {
         actions={<div data-controller-row><button type="button" className="menu-control controller-shortcut-back" disabled={busy}
           onClick={() => void back()}>{busy ? "Saving…" : "Back"}</button></div>} />
     </div>
-    <CharacterPage key={owner} inspection onPreview={preview} onReady={setReady} tab={tab} beforeClose={beforeClose} cameraControls={<footer className="character-editor-camera" aria-label="Character camera tools">
-      <div data-controller-row>
-        <FittingCameraSelect choice={choice} views={CHARACTER_SHOTS} view={shot} onViewChange={frame} label="Character close-up" />
-        <button type="button" className="menu-control" aria-label="Zoom character out"
-          onClick={() => useCharacterEditorStore.setState(s => ({ zoomSteps: s.zoomSteps - 1 }))}>−</button>
-        <button type="button" className="menu-control" aria-label="Zoom character in"
-          onClick={() => useCharacterEditorStore.setState(s => ({ zoomSteps: s.zoomSteps + 1 }))}>+</button>
-        <button type="button" className="menu-control" onClick={() => frame(shot)}>Reframe</button>
-        <button type="button" className="menu-control" aria-pressed={paused}
-          onClick={() => useCharacterPreviewStore.setState({ playbackPaused: !paused })}>{paused ? "Resume pose" : "Hold pose"}</button>
-        <PreviewVisibilityToggle hidden={panelsHidden} onToggle={() => useCharacterEditorStore.setState({ panelsHidden: !panelsHidden })} />
-      </div>
-      <FittingRotationControls />
-      <small>Drag character to turn · Drag background to orbit · Right-drag to pan · Scroll to zoom</small>
-    </footer>} />
+    <CharacterPage key={owner} inspection onPreview={preview} onReady={setReady} tab={tab} beforeClose={beforeClose} cameraControls={cameraTools} />
   </section>;
 }

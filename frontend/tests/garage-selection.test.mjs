@@ -13,14 +13,20 @@ function garageTestServer() {
     plugins:[{name:'garage-surface',enforce:'pre',
       transform(source,id){
         if(id.endsWith('/game/preview/VehiclePreview.tsx'))
-          return source.replace(/from "(?:@react-three\/(?:fiber|drei)|\.\/(?:VehiclePreviewModel|GarageEnvironment|PreviewTurntable|PreviewLoadingSeal|PreviewContactShadow)|\.\.\/characters\/GarageDriver)"/g,'from "virtual:garage-surface"');
+          return source.replace(/from "(?:@react-three\/(?:fiber|drei)|\.\/(?:VehiclePreviewModel|GarageEnvironment|PreviewTurntable|PreviewLoadingSeal|PreviewContactShadow)|\.\.\/characters\/GarageDriver)"/g,'from "virtual:garage-surface"')
+            .replace('import { Html, PerspectiveCamera }','import { Html, PerspectiveCamera, useCharacterActor }')
+            .replace('const characterActor = useRef<Group>(null);','const characterActor = useCharacterActor();')
+            .replaceAll(' ref={characterActor}', '');
       },
       resolveId(id){if(id==='virtual:garage-surface')return '\0garage-test-surface';},
       load(id){if(id==='\0garage-test-surface')return `
         import {createElement as h, useLayoutEffect, useRef} from 'react';
         import {Group, PerspectiveCamera as Camera} from 'three';
-        export const camera = new Camera();
+        export const camera = new Camera(), characterCamera = new Camera();
         const turntable = new Group(), scene = new Group(), invalidate = () => {};
+        const characterActor = new Group(), characterTurn = new Group(), character = new Group();
+        character.name = 'garage-driver'; characterTurn.add(character); characterActor.add(characterTurn);
+        export const useCharacterActor = () => useRef(characterActor);
         let renderFrame, pending;
         export function waitForModel(model) {
           let ready;
@@ -32,8 +38,8 @@ function garageTestServer() {
         export const useFrame = callback => useLayoutEffect(() => { renderFrame = callback; }, [callback]);
         export const useThree = selector => selector({ size: { width: 1000, height: 500 }, invalidate });
         export const Html = () => null, PreviewContactShadow = () => null;
-        export function PerspectiveCamera({ref}) {
-          useLayoutEffect(() => { ref.current = camera; }, [ref]);
+        export function PerspectiveCamera({ref, name}) {
+          useLayoutEffect(() => { ref.current = name === 'character-preview-camera' ? characterCamera : camera; }, [ref, name]);
           return null;
         }
         export function GarageEnvironment({onSettled}) {
@@ -45,8 +51,10 @@ function garageTestServer() {
           return h('div',null,children);
         }
         export const PreviewLoadingStatus=({label})=>h('span',{'data-summoning':label});
-        export const GarageDriver = ({choice}) => h('span', {'data-driver': choice.id});
-        export function VehiclePreviewModel({model, garageOpen, allowDriver, onSettled, onDriverFit, summon}) {
+        export const GarageDriver = ({choice, previewPacks, paused, upright}) => h('span', {
+          'data-driver': choice.id, 'data-character-actor': previewPacks, 'data-paused': paused, 'data-upright': upright,
+        });
+        export function VehiclePreviewModel({model, garageOpen, allowDriver, onSettled, onDriverFit, summon, active, diagnostics}) {
           if (pending?.model === model) throw pending.promise;
           const materialized = useRef(summon);
           useLayoutEffect(() => {
@@ -63,7 +71,7 @@ function garageTestServer() {
             if (allowDriver) onDriverFit({model,position:[model === 'brz' ? 2 : 9,0,1],scale:1,yaw:0});
             return () => markers.forEach(marker => marker.removeFromParent());
           }, [model, allowDriver, onSettled, onDriverFit]);
-          return h('span',{'data-model':model,'data-garage-open':garageOpen,'data-materializes':materialized.current});
+          return h('span',{'data-model':model,'data-garage-open':garageOpen,'data-materializes':materialized.current,'data-active':active,'data-diagnostics':diagnostics});
         }
       `;}
     }]});
@@ -97,7 +105,7 @@ test('the garage falls back to the favorite while keeping the Abilities preview 
         preview.insideCar=true;
         const wardrobe=renderToString(createElement(VehiclePreview,{awaitingHero:true,wardrobeOpen:true}));
         assert.match(wardrobe,/data-model="mini"/);
-        assert.match(wardrobe,/data-garage-open="false"/);
+        assert.match(wardrobe,/data-diagnostics="false"/);
         assert.match(render(),/data-model="mini"/);
       } finally { preview.insideCar=false;studio.activeTab=previousTab; }
     }finally{Object.assign(current,saved);screen.screen=original;}
@@ -118,12 +126,13 @@ test('a delayed vehicle swap retains the camera and mounted driver until a new s
     const {useAlphaStore} = await load('store/alpha/alphaStore.ts');
     const {usePreferencesStore} = await load('store/preferences/preferencesStore.ts');
     const {useGarageDrive} = await load('game/preview/garageDriveStore.ts');
+    const {useCharacterPreviewStore} = await load('game/characters/characterPreviewStore.ts');
     const {useVehicleStudioStore} = await load('game/heroes/vehicleStudioStore.ts');
-    const {camera,stepCamera,waitForModel} = await vite.ssrLoadModule('virtual:garage-surface');
+    const {camera,characterCamera,stepCamera,waitForModel} = await vite.ssrLoadModule('virtual:garage-surface');
     useUIStore.setState({screen:'heroes'});
     useAlphaStore.setState({previewHero:'brz'});
     useVehicleStudioStore.getState().setActiveTab('performance');
-    useGarageDrive.setState({camera:'High Angle'});
+    useGarageDrive.setState({camera:'High Angle', stage:'station'});
     await act(async()=>root.render(createElement(VehiclePreview,{awaitingHero:true})));
     stepCamera();
     assert.equal(camera.position.x,3);
@@ -131,6 +140,25 @@ test('a delayed vehicle swap retains the camera and mounted driver until a new s
     const driver = document.querySelector('[data-driver]');
     assert(driver);
     const stance = driver.parentElement.getAttribute('position');
+    const vehicle = document.querySelector('[data-model="brz"]');
+    await act(async()=>root.render(createElement(VehiclePreview,{awaitingHero:true,wardrobeOpen:true,characterOnly:true})));
+    stepCamera();
+    assert.equal(document.querySelector('[data-model="brz"]'),vehicle,'the vehicle stays mounted');
+    assert.equal(vehicle.dataset.active,'false','the fitting room suspends the vehicle');
+    assert.equal(driver.dataset.paused,'true');
+    assert(document.querySelector('[data-character-actor="true"][data-upright="true"]'));
+    assert(characterCamera.position.distanceTo(position)>.5,'the fitting room uses a separate centered camera');
+    assert.equal(useCharacterPreviewStore.getState().cockpitVehicle,null);
+    await act(async()=>root.render(createElement(VehiclePreview,{awaitingHero:true,wardrobeOpen:true})));
+    stepCamera();
+    assert.equal(vehicle.dataset.active,'true','the Emotes tab keeps its vehicle');
+    assert.equal(useCharacterPreviewStore.getState().cockpitVehicle,'brz');
+    await act(async()=>root.render(createElement(VehiclePreview,{awaitingHero:true})));
+    stepCamera();
+    assert.equal(driver.dataset.paused,'false');
+    assert.equal(useGarageDrive.getState().stage,'station');
+    assert(camera.position.distanceTo(position)<1e-8);
+    assert(camera.quaternion.angleTo(rotation)<1e-6);
     const finish = waitForModel('mini');
     await act(async()=>useAlphaStore.setState({previewHero:'mini'}));
     stepCamera();
