@@ -49,12 +49,14 @@ export function fitSweetheartCorset(root: Object3D, body: BufferGeometry) {
         // Ease the inner cup edges outward while keeping the center opening.
         const innerCup = overSkirt ? MathUtils.smoothstep(side, .010, .019) * (1 - MathUtils.smoothstep(side, .038, .060))
           * MathUtils.smoothstep(y, 1.243, 1.270) * MathUtils.smoothstep(z, .074, .096) : 0;
+        const rightInnerEase = MathUtils.smoothstep(-x, .012, .026) * (1 - MathUtils.smoothstep(-x, .048, .068))
+          * MathUtils.smoothstep(y, 1.247, 1.270) * MathUtils.smoothstep(z, .072, .094);
         if (!fabric) {
           // Keep the eyelets and laces sitting on the adjusted cup edges.
-          if (innerCup > 0) position.setZ(i, z + .006 * innerCup);
+          if (overSkirt && (innerCup > 0 || rightInnerEase > 0)) position.setZ(i, z + .006 * innerCup + .0025 * rightInnerEase);
           continue;
         }
-        let depth = z;
+        let depth = z + .0025 * rightInnerEase;
         if (x > -.132 && x < -.023 && z > .025 && y > 1.266) {
           ray.origin.set(x, y, .25);
           let surfaceDepth = z - .009;
@@ -78,6 +80,12 @@ export function fitSweetheartCorset(root: Object3D, body: BufferGeometry) {
           width -= .007 * underarm + Math.sign(x) * .002 * innerCup;
           height += .009 * lift + .005 * underarm + .004 * innerCup;
           depth += .002 * lift + .009 * underarm + .006 * innerCup;
+        } else {
+          // The tucked cup crest can graze the skin as the arms raise.
+          const crest = MathUtils.smoothstep(side, .039, .053) * (1 - MathUtils.smoothstep(side, .089, .108))
+            * MathUtils.smoothstep(y, 1.279, 1.302) * MathUtils.smoothstep(z, .049, .074);
+          height += .0025 * crest;
+          depth += .009 * crest;
         }
         if (width !== x || height !== y || depth !== z) position.setXYZ(i, width, height, depth);
       }

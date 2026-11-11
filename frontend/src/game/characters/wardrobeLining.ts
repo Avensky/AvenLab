@@ -3,8 +3,7 @@ import { fitHighCollarShoulders, fitHighCollarSurface } from "./highCollarFit";
 import { fitLacedBodiceStraps } from "./lacedStrapFit";
 import { fitSweetheartCorset } from "./sweetheartTuck";
 import { prepareUnderbustColors } from "./underbustColors";
-import { fitUnderbustVest } from "./underbustFit";
-import { prepareUnderbustShirt } from "./underbustShirt";
+import { fitUnderbustVest, UNDERBUST_FIT_VERSION } from "./underbustFit";
 import { fitWardrobeSurface } from "./wardrobeSurface";
 
 type CorsetStyle = "01" | "02" | "03" | "04" | "05";
@@ -66,10 +65,11 @@ export function prepareWardrobeLining(root: Object3D) {
       disposeFit = fitSweetheartCorset(root, body.geometry);
       break;
     case "04": {
-      const disposeVest = fitUnderbustVest(root);
+      const baked = [corset, root.getObjectByName("CLOTH_CORSET_OVER")].every(part =>
+        part?.userData.underbustFitVersion === UNDERBUST_FIT_VERSION);
+      const disposeVest = baked ? undefined : fitUnderbustVest(root, body.geometry);
       const disposeColors = prepareUnderbustColors(root);
-      const disposeShirt = prepareUnderbustShirt(body);
-      return () => { disposeShirt?.(); disposeColors?.(); disposeVest?.(); };
+      return () => { disposeColors?.(); disposeVest?.(); };
     }
     case "05":
       geometry = fitHighCollarSurface(body.geometry);

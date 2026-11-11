@@ -156,8 +156,8 @@ on the same character.
 Each set has a `garage.glb` and `mobile.glb` in
 `public/models/characters/wardrobe/`. Both must be installed before the set can be equipped. Portraits and compact garage/victory views use the mobile model. A
 missing or retired saved set falls back to the original clothed character model.
-The Underbust Vest uses its original Thin Weld mesh with extra room over a
-dedicated blouse in the fitting room.
+The Underbust Vest uses its original Thin Weld mesh as a separate corset with
+room for a fitted top.
 
 Garment nodes carry `wardrobeRole` extras. Fitted variants provide tucked and
 long hems. The runtime uses the first two `_AVEN_COVERAGE` bits in older GLBs
@@ -198,20 +198,29 @@ An outfit's details open close-ups for its individual pieces, with waist
 layering controls for the selected Gothic set.
 
 Corsets includes all five Gothic designs as individual try-ons. Choose any
-skirt independently and use the corset's waist controls to compare fits. Tops
-and corsets use the same garment slot. Underbust Vest + Blouse starts in Over
-skirt and includes its blouse for both fits. The vest and blouse take separate
-colors. Try-ons carry into Emotes for the session.
+skirt independently and use the corset's waist controls to compare fits.
+Underbust Vest starts in Over skirt and can be worn on its own or over a
+separately chosen top. The vest and top take separate colors. Try-ons carry
+into Emotes for the session.
+
+Roomy and Wide Over skirt add 12 and 24 mm of clearance at the corset hem for
+fuller skirts. Tucked and standard Over keep their original fit. Save a named
+look in Wardrobe > Saved outfits to store its pieces, waist fit, hair, and
+colors on the player profile. Opening a saved look starts a fitting preview.
+The × cards toggle individual layers and retain the selected piece so it can
+be restored. Saved looks also keep those layer settings.
+Headwear has separate controls for the Village bonnet and its chin bow.
 
 The dev and production builds extract separate garage and mobile corset GLBs
 from the installed Gothic assets. Each file contains the two corset fits and
-their rig. The picker uses either tier when only one is available. The fitting
-room binds the selected garments to Vesper's animated
-rig and uses a shared full-skin donor for areas that the original outfit cuts
-away. Run `node frontend/scripts/build-wardrobe-pieces.mjs` from the repo root
+their rig. Corset 04's strap and shell fit is baked into both generated model
+tiers. If the separate files are missing, the fitting room reads the corset
+from an installed Gothic bundle. The fitting room binds the selected garments
+to Vesper's animated rig and uses a shared full-skin donor for areas that the
+original outfit cuts away. Run `node frontend/scripts/build-wardrobe-pieces.mjs` from the repo root
 to generate the files in `frontend/public/models/characters/female/wardrobe/`.
 
-`dressingRoomImports.json` inventories 41 separate female garments under
+`avenlab-server/src/assets/character-garments.json` inventories 41 separate female garments under
 `frontend/public/models/characters/female/wardrobe/`. It includes 14 bows,
 nine skirts, five tops, five harnesses, four pairs of socks, two hats, a coat,
 and a dress. Coat 01 and Dress 01 are archived, leaving 39 active imports.
@@ -224,10 +233,11 @@ current category.
 
 Gothic Skirts 02 and 03 can use optional authored revisions in
 `frontend/public/models/characters/female/wardrobe/corsettes/`. Use
-`gothic-skirt-02-update.glb` and `gothic-skirt-03-update.glb` with the same
-ordered Vesper skin joints as the originals. Restart Vite after adding them.
-The originals stay available and use the automatic waistband fit. An
-installed revision with the expected rig keeps its authored shape.
+`gothic-skirt-02-update.glb` and `gothic-skirt-03-update.glb` for separate skirt
+exports. Keep the matching `CLOTH_GOTHIC_SKIRT_02` or `CLOTH_GOTHIC_SKIRT_03`
+mesh name and ordered Vesper skin joints. Restart Vite after adding them.
+Compatible revisions keep their authored shape. Missing or mismatched
+revisions use the original skirt and its automatic waistband fit.
 
 Equipping a complete outfit uses the existing autosave. Keyboard and controller
 navigation work in the catalog and outfit details.

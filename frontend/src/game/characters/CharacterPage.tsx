@@ -48,6 +48,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
   const reducedMotion = usePreferencesStore(state => state.reducedMotion);
   const [choice, setChoice] = useState(() => characterLook(saved) ? saved! : DEFAULT_CHARACTER);
   const [trial, setTrial] = useState<CharacterChoice>();
+  const [loadedOutfit, setLoadedOutfit] = useState(false);
   const activeTrial = trial?.id === choice.id ? trial : undefined;
   const previewChoice = activeTrial ?? choice;
   const [locked, setLocked] = useState(() => Boolean(characterLook(saved)));
@@ -135,6 +136,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
   }, [onPreview, onReady]);
 
   function update(next: CharacterChoice) {
+    setLoadedOutfit(false);
     setTrial(undefined);
     setChoice(next);
     setMessage("");
@@ -148,12 +150,27 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
   }
 
   function tryOn(next: CharacterChoice) {
-    setTrial(next.garments || next.wardrobeTrial ? next : undefined);
+    setTrial(loadedOutfit || next.garments || next.wardrobeTrial || next.wardrobeEase || next.removedClothing?.length ? next : undefined);
+  }
+
+  function loadOutfit(next: CharacterChoice) {
+    setLoadedOutfit(true);
+    setTrial(next);
+    useCharacterPreviewStore.setState({ camera: "Full body", zoom: 1 });
+  }
+
+  function endOutfitPreview() {
+    setLoadedOutfit(false);
+    setTrial(undefined);
   }
 
   function editPreviewAppearance(next: CharacterChoice) {
-    if (next.garments || next.wardrobeTrial) tryOn(next);
-    else update(activeTrial ? { ...choice, outfit: next.outfit, wardrobe: next.wardrobe } : next);
+    if (loadedOutfit || next.garments || next.wardrobeTrial || next.wardrobeEase || next.removedClothing?.length) tryOn(next);
+    else equipOutfit(next);
+  }
+
+  function equipOutfit(next: CharacterChoice) {
+    update(activeTrial ? { ...choice, outfit: next.outfit, wardrobe: next.wardrobe } : next);
   }
 
   const modelPicker = <div className={locked ? "character-outfits" : "character-cast"} role="group"
@@ -287,7 +304,8 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
       onFocus={revealCharacterControl}>
       <div className="character-stage" data-character-viewport data-character-preview={choice.id} data-outfit-preview={choice.outfit}
         aria-label={`Preview of ${character.name}`} />
-      {fitting && <DressingRoom choice={previewChoice} onChange={editPreviewAppearance} onTryOn={tryOn} cameraTools={cameraTools} />}
+      {fitting && <DressingRoom choice={previewChoice} onChange={editPreviewAppearance} onEquip={equipOutfit} onTryOn={tryOn} onLoad={loadOutfit}
+        onEndPreview={loadedOutfit ? endOutfitPreview : undefined} cameraTools={cameraTools} />}
       {tab !== "appearance" && <section className="character-controls menu-panel-frame character-controls--left" aria-label={tab}>
         {tab === "identity" && <>
           <header className="character-description"><h2>Identity</h2><p>Choose how your character identifies and which model they use.</p></header>

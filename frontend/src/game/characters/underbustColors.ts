@@ -30,11 +30,12 @@ function splitVestLining(geometry: BufferGeometry) {
   }
 
   const lining: number[] = [], piping: number[] = [];
+  const crownStart = geometry.userData.underbustCrownStart ?? Infinity;
   for (let i = start; i < end; i += 3) {
     const first = index.getX(i);
     const { min, max } = bounds.get(island(first))!;
     // The three wide lining islands are on the right side of both vest UV atlases.
-    const layer = min > .60 && max - min >= .20 ? lining : piping;
+    const layer = first < crownStart && min > .60 && max - min >= .20 ? lining : piping;
     layer.push(first, index.getX(i + 1), index.getX(i + 2));
   }
   if (lining.length && piping.length) return { lining, piping };

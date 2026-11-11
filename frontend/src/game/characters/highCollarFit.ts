@@ -36,12 +36,21 @@ function easeFrontFold(x: number, y: number, z: number) {
   return x + Math.sign(x) * .0015 * fold;
 }
 
+function keyholeEdge(point: Vector3) {
+  // Keep the pointed front opening from the original corset. The fitted
+  // facing narrows its sides around the bust without filling the center.
+  const halfWidth = .040 * MathUtils.smoothstep(point.y, 1.205, 1.279)
+    * (1 - MathUtils.smoothstep(point.y, 1.279, 1.371));
+  return Math.max(Math.abs(point.x) - halfWidth, .045 - point.z);
+}
+
 /** Fit the High Collar's inset to the skinned torso, including the shoulder caps. */
 export function fitHighCollarSurface(body: BufferGeometry) {
   const fabric = fitWardrobeSurface(body, [
     point => point.y - 1.174,
     point => capSide(point) - Math.abs(point.x),
     point => capHeight(point) - point.y,
+    keyholeEdge,
   ], capClearance);
   if (!fabric) return;
 

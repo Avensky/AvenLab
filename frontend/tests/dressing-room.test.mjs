@@ -28,7 +28,7 @@ test('the fitting camera orbits a close-up without changing its target or crossi
 });
 
 test('dressing room keeps fitted presets and lets imported garments be tried on independently', async () => {
-  const inventory = JSON.parse(await readFile('src/game/characters/dressingRoomImports.json', 'utf8'));
+  const inventory = JSON.parse(await readFile(new URL('../../avenlab-server/src/assets/character-garments.json', import.meta.url), 'utf8'));
   const imports = inventory.filter(item => !item.retired);
   const missingImport = 'bowtie-13';
   const revisedImport = 'gothic-skirt-02';
@@ -70,7 +70,7 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     preview.setState({ camera: 'Hands', zoom: 1.2 });
     await act(async () => root.render(h(Harness, { initial: DEFAULT_CHARACTER })));
     assert.deepEqual([...document.querySelectorAll('[data-category]')].map(button => button.dataset.category),
-      ['outfits', 'layers', 'corsets', 'tops', 'bottoms', 'footwear', 'headwear', 'bows', 'accessories', 'props', 'hair', 'face', 'skin']);
+      ['outfits', 'saved', 'layers', 'corsets', 'tops', 'bottoms', 'footwear', 'headwear', 'bows', 'accessories', 'props', 'hair', 'face', 'skin']);
     assert.equal(find('[data-category=colors]'), null, 'presets live in the color toolbar');
     assert.deepEqual([...find('.dressing-room-title').children].map(label => label.textContent), ['Fitting room', 'Vesper Vega']);
     assert.equal(find('.dressing-catalog').hidden, true);
@@ -147,7 +147,8 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
 
     await open('footwear');
     await click('[aria-label="Item availability"] button:last-child');
-    assert.deepEqual([...document.querySelectorAll('[data-wardrobe-item]')].map(button => button.dataset.wardrobeItem), ['outfit-shoes']);
+    assert.deepEqual([...document.querySelectorAll('[data-wardrobe-item]')].map(button => button.dataset.wardrobeItem),
+      ['remove-shoes', 'outfit-shoes', 'remove-socks']);
     await click('[aria-label="Item availability"] button:first-child');
     await open('bows');
     const search = find('input[type=search]');

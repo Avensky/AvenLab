@@ -76,14 +76,14 @@ const person = (value: unknown) => {
   );
 };
 
-type Cosmetics = Pick<Progression, "character" | "character_presets" | "default_hero" | "hero_loadouts" | "cosmetics_revision">;
+type Cosmetics = Pick<Progression, "character" | "character_presets" | "character_outfits" | "default_hero" | "hero_loadouts" | "cosmetics_revision">;
 
 export function selectEquippedCharacter(state: { view: SocialView | null; cachedCosmetics: Cosmetics | null }) {
   return state.view ? state.view.profile.progression?.character : state.cachedCosmetics?.character;
 }
 
-function cosmeticsFrom({ character, character_presets, default_hero, hero_loadouts, cosmetics_revision }: Cosmetics): Cosmetics {
-  return { character, character_presets, default_hero, hero_loadouts, cosmetics_revision };
+function cosmeticsFrom({ character, character_presets, character_outfits, default_hero, hero_loadouts, cosmetics_revision }: Cosmetics): Cosmetics {
+  return { character, character_presets, character_outfits, default_hero, hero_loadouts, cosmetics_revision };
 }
 
 function hasCosmeticsRevision(cosmetics: unknown): cosmetics is Cosmetics & { cosmetics_revision: number } {

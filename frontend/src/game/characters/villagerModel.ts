@@ -12,9 +12,10 @@ import { corsetModelUrl, prepareWardrobe, wardrobeModelUrl } from "./wardrobe";
 import { prepareWardrobeLining } from "./wardrobeLining";
 import { prepareWardrobeSkirt } from "./wardrobeSkirt";
 import { prepareVillageShoes } from "./wardrobeShoes";
+import { prepareVillageBonnet } from "./villageBonnet";
 import { prepareWardrobeGarments, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
 import { prepareStandaloneCorset, type StandaloneCorsetSource } from "./standaloneCorset";
-import { getWardrobeGarment, wardrobeGarmentModelUrl } from "./wardrobeGarments";
+import { getWardrobeGarment, wardrobeGarmentModelUrl, type WardrobeRemoval } from "./wardrobeGarments";
 
 export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait" = "garage") {
   if (look.character.id === ROOK_ID) return kind === "portrait" ? __ROOK_PORTRAIT_URL__ : __ROOK_MODEL_URL__;
@@ -27,15 +28,17 @@ export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait
 }
 
 export function prepareVillager(scene: Object3D, { female = true, animateFace = false, bag = false, wetEyes = false, fitted = false,
-  garments = [], garmentBody, corsetSource,
+  garments = [], garmentBody, corsetSource, removedClothing = [],
 }: { female?: boolean; animateFace?: boolean; bag?: boolean; wetEyes?: boolean; fitted?: boolean;
-  garments?: WardrobeGarmentSource[]; garmentBody?: Object3D; corsetSource?: StandaloneCorsetSource;
+  garments?: WardrobeGarmentSource[]; garmentBody?: Object3D; corsetSource?: StandaloneCorsetSource; removedClothing?: readonly WardrobeRemoval[];
 } = {}) {
   const root = clone(scene);
   root.name = female ? "garage-villager-female" : "garage-villager-male";
   const disposeLining = prepareWardrobeLining(root);
   const disposeSkirt = prepareWardrobeSkirt(root);
   const disposeShoes = female ? prepareVillageShoes(root) : undefined;
+  const hat = root.getObjectByName("ACC_HAT");
+  const bonnet = female ? prepareVillageBonnet(hat) : undefined;
   const fullBody = scene.getObjectByName("BODY_WARDROBE") ?? garmentBody;
   const actorBody = root.getObjectByName("BODY_WARDROBE") ?? root.getObjectByName("BODY_OUTFIT_CUT");
   const detachedCorset = female && corsetSource && actorBody instanceof SkinnedMesh
@@ -73,11 +76,12 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
     // The authored culling bounds describe the original rest pose.
     object.frustumCulled = false;
   });
-  const skirtRoom = skirtRadius === undefined ? undefined : MathUtils.clamp(skirtRadius - .23, 0, .12);
+  const skirtRoom = skirtRadius === undefined || (fullBody && removedClothing.includes("skirt"))
+    ? undefined : MathUtils.clamp(skirtRadius - .23, 0, .12);
   root.userData.skirtHandRoom = skirtRoom;
   const faceGeometry = animateFace ? addVillagerFaceShapes(root, female) : [];
   const wardrobe = prepareWardrobe(root);
-  const trialGarments = female ? prepareWardrobeGarments(root, garments, fullBody, detachedCorset) : undefined;
+  const trialGarments = female ? prepareWardrobeGarments(root, garments, fullBody, detachedCorset, removedClothing) : undefined;
   const applyFaceColors = prepareVillagerFaceColors(materials.values(), female);
   const faceAccessories = prepareVillagerFaceAccessories(root, female, wetEyes);
   for (const side of ["l", "r"] as const) {
@@ -115,10 +119,11 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
   cockpitWardrobe(root);
   root.updateMatrixWorld(true);
   const shoes = root.getObjectByName(female ? "CLOTH_FEET_SHOES" : "CLOTH_FEET_BOOTS");
-  if (shoes) root.position.y = -new Box3().setFromObject(shoes, true).min.y;
+  const grounded = removedClothing.includes("shoes") ? root.getObjectByName("fitting-room-body") ?? shoes : shoes;
+  if (grounded) root.position.y = -new Box3().setFromObject(grounded, true).min.y;
   return {
     root, materials, pieceMaterials, crop, applyFaceColors, faceAccessories, wardrobe, trialGarments, detachedCorset,
-    hat: root.getObjectByName("ACC_HAT"),
+    hat, bonnet,
     longHair: root.getObjectByName("HAIR_HAIR20"),
     bow: root.getObjectByName("ACC_BOW"),
     dispose() {
@@ -128,6 +133,7 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
       disposeLining?.();
       disposeSkirt?.();
       disposeShoes?.();
+      bonnet?.dispose();
       faceGeometry.forEach(geometry => geometry.dispose());
       faceAccessories.dispose();
       materials.forEach(material => material.dispose());
@@ -142,7 +148,7 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
 export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, look: CharacterLook) {
   const savedWardrobe = look.wardrobe && model.detachedCorset && look.corset
     ? { ...look.wardrobe, waist: look.corset.waist } : look.wardrobe;
-  model.wardrobe.apply(savedWardrobe);
+  model.wardrobe.apply(savedWardrobe, model.detachedCorset ? 0 : look.overEase);
   model.applyFaceColors(look);
   model.faceAccessories.setGlasses(look.appearance.glasses);
   model.faceAccessories.setColors(clothingColors(look, "glasses"));
@@ -198,6 +204,7 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
   }
   const cropped = look.appearance.hair === "cropped";
   if (model.hat) model.hat.visible = true;
+  model.bonnet?.setBowVisible(!look.removedClothing.includes("bonnet-bow"));
   if (model.longHair) model.longHair.visible = !cropped;
   if (model.bow) model.bow.visible = Boolean(look.appearance.accent) || look.outfit.id === "shop-crew";
   if (model.crop) {

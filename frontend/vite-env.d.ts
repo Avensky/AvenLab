@@ -20,3 +20,4 @@ declare const __DRESSING_ROOM_IMPORTED_IDS__: string[];
 declare const __DRESSING_ROOM_MOBILE_IDS__: string[];
 declare const __DRESSING_ROOM_REVISION_IDS__: string[];
 declare const __STANDALONE_CORSET_LODS__: Record<string, { garage: boolean; mobile: boolean }>;
+declare const __BUNDLED_WARDROBE_LODS__: Record<string, { garage: boolean; mobile: boolean }>;

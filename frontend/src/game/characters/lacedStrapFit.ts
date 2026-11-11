@@ -1,4 +1,6 @@
 import { MathUtils, SkinnedMesh, Vector3, type BufferGeometry, type Object3D } from "three";
+import type { MeshBVH } from "three-mesh-bvh";
+import { prepareWardrobeCoverage, wardrobeCoverageSurface } from "./wardrobeCoverage";
 import { fitWardrobeSurface } from "./wardrobeSurface";
 
 /** Trace simple ribbons along the shoulder surface, with each end inside the bodice seam. */
@@ -15,6 +17,7 @@ export function fitLacedBodiceStraps(root: Object3D, body: BufferGeometry) {
     },
   ], .0045);
   if (!geometry) return;
+  root.userData.lacedBodiceStraps = true;
 
   const cropped: { mesh: SkinnedMesh; source: BufferGeometry; owned: BufferGeometry }[] = [];
   const a = new Vector3(), b = new Vector3(), c = new Vector3();
@@ -50,4 +53,32 @@ export function fitLacedBodiceStraps(root: Object3D, body: BufferGeometry) {
       owned.dispose();
     }
   } };
+}
+
+export function prepareLacedShoulderMask(root: Object3D, waist: "tucked" | "over") {
+  if (!root.userData.lacedBodiceStraps) return;
+  const surfaces: MeshBVH[] = [];
+  for (const name of [`CLOTH_CORSET_${waist.toUpperCase()}`, "CLOTH_CORSET_FACING"]) {
+    root.getObjectByName(name)?.traverse(mesh => {
+      if (!(mesh instanceof SkinnedMesh) || Array.isArray(mesh.material) || mesh.material.transparent
+        || mesh.material.userData.color_slot === "hardware") return;
+      const surface = wardrobeCoverageSurface(mesh.geometry);
+      if (surface) surfaces.push(surface);
+    });
+  }
+  if (!surfaces.length) return;
+  const covered = prepareWardrobeCoverage(surfaces);
+  const a = new Vector3(), b = new Vector3(), c = new Vector3(), center = new Vector3();
+  return {
+    retainsFace(position: ReturnType<BufferGeometry["getAttribute"]>, first: number, second: number, third: number) {
+      a.fromBufferAttribute(position, first);
+      b.fromBufferAttribute(position, second);
+      c.fromBufferAttribute(position, third);
+      center.copy(a).add(b).add(c).multiplyScalar(1 / 3);
+      const side = Math.abs(center.x);
+      // The baked mask was authored for wider tabs. Restore skin at the new ribbons and armholes.
+      return center.y > 1.267 && side > .058 && side < .19 && !covered(center, a, b, c, true);
+    },
+    dispose() { for (const { geometry } of surfaces) geometry.dispose(); },
+  };
 }

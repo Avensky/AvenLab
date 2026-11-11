@@ -7,7 +7,12 @@ import { createServer } from "vite";
 
 function wardrobePreviewServer() {
   return createServer({
-    define: { __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(["skirt-01", "skirt-02", "skirt-03", "skirt-04", "bowtie-01"]) },
+    define: {
+      __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(["skirt-01", "skirt-02", "skirt-03", "skirt-04", "gothic-skirt-02", "gothic-skirt-03", "bowtie-01"]),
+      __DRESSING_ROOM_REVISION_IDS__: JSON.stringify(["gothic-skirt-02", "gothic-skirt-03"]),
+      __STANDALONE_CORSET_LODS__: JSON.stringify({ "gothic-05": { garage: true, mobile: false } }),
+      __BUNDLED_WARDROBE_LODS__: JSON.stringify({ "gothic-05": { garage: true, mobile: false } }),
+    },
     server: { middlewareMode: true, hmr: false, ws: false },
     appType: "custom",
     logLevel: "error",
@@ -24,10 +29,10 @@ function wardrobePreviewServer() {
         if (id !== "\0wardrobe-preview-test") return;
         return `
           import { createElement, useLayoutEffect } from "react";
-          import { Group } from "three";
+          import { Group, SkinnedMesh } from "three";
 
           const assets = new Map(), invalidate = () => {};
-          export const prepared = [], committed = [];
+          export const prepared = [], committed = [], loadedGarments = [], loadedBodies = [];
           export const useThree = selector => selector({ size: { width: 1200 }, invalidate });
           export const Html = ({ children }) => children;
           export const CharacterTurntable = ({ children }) => children;
@@ -37,11 +42,16 @@ function wardrobePreviewServer() {
           export const villagerModelUrl = look => look.wardrobe?.set ?? "village";
           export const applyVillagerLook = () => {};
 
-          export function makeAssetAvailable(url) {
+          export function makeAssetAvailable(url, meshName, fullBody = true) {
             const scene = new Group(), body = new Group();
             body.name = "BODY_WARDROBE";
             scene.name = url;
-            scene.add(body);
+            if (fullBody) scene.add(body);
+            if (meshName) {
+              const mesh = new SkinnedMesh();
+              mesh.name = meshName;
+              scene.add(mesh);
+            }
             assets.set(url, { scene });
           }
           export function delayAsset(url) {
@@ -61,9 +71,11 @@ function wardrobePreviewServer() {
             if (asset.promise) throw asset.promise;
             return asset;
           }
-          export function prepareVillager(scene, { garments }) {
+          export function prepareVillager(scene, { garments, garmentBody, corsetSource }) {
             const root = new Group();
             root.userData.outfit = [scene.name, ...garments.map(({ item }) => item.id)].join(" ");
+            loadedGarments.push(garments.map(garment => [garment.scene.name, garment.authoredFit]));
+            loadedBodies.push([garmentBody?.parent?.name, corsetSource?.scene.name]);
             prepared.push(root.userData.outfit);
             return { root, dispose() {} };
           }
@@ -91,7 +103,8 @@ test("the fitting room keeps the last complete outfit until the latest selection
     const { DEFAULT_CHARACTER } = await vite.ssrLoadModule("/src/game/characters/characterCatalog.ts");
     const { getWardrobeGarment } = await vite.ssrLoadModule("/src/game/characters/wardrobeGarments.ts");
     const { useCharacterPreviewStore: preview } = await vite.ssrLoadModule("/src/game/characters/characterPreviewStore.ts");
-    const { committed, prepared, makeAssetAvailable, delayAsset } = await vite.ssrLoadModule("virtual:wardrobe-preview");
+    const { committed, prepared, loadedGarments, loadedBodies, makeAssetAvailable, delayAsset } =
+      await vite.ssrLoadModule("virtual:wardrobe-preview");
     const url = id => getWardrobeGarment(id).url;
     makeAssetAvailable("village");
     makeAssetAvailable(url("skirt-01"));
@@ -134,6 +147,40 @@ test("the fitting room keeps the last complete outfit until the latest selection
     assert.deepEqual(prepared, ["village skirt-01 bowtie-01", "village skirt-03 bowtie-01"]);
     assert.deepEqual(committed, prepared, "only one complete replacement commits");
 
+    const secondGothic = getWardrobeGarment("gothic-skirt-02");
+    const thirdGothic = getWardrobeGarment("gothic-skirt-03");
+    makeAssetAvailable(secondGothic.url);
+    makeAssetAvailable(thirdGothic.url);
+    makeAssetAvailable(secondGothic.revisionUrl, "CLOTH_CORSET_OVER");
+    const thirdRevision = delayAsset(thirdGothic.revisionUrl);
+    await choose(secondGothic.id);
+    assert.deepEqual(rendered(), ["village gothic-skirt-02 bowtie-01"]);
+    assert.deepEqual(loadedGarments.at(-1)[0], [secondGothic.url, false],
+      "an override containing a corset never reaches the renderer");
+    await choose(thirdGothic.id);
+    await act(async () => thirdRevision(true));
+    assert.deepEqual(rendered(), ["village gothic-skirt-03 bowtie-01"]);
+    assert.deepEqual(loadedGarments.at(-1)[0], [thirdGothic.url, false],
+      "a missing override falls back to the fitted original");
+    assert.equal(status(), undefined);
+
+    // A failed standalone corset can use the bundled garment and body.
+    await act(async () => renderer.render(null));
+    makeAssetAvailable("village", undefined, false);
+    const standaloneUrl = "/models/characters/female/wardrobe/corsets/gothic-05.garage.glb";
+    const standalone = delayAsset(standaloneUrl);
+    delayAsset("/models/characters/female/wardrobe/vesper-body.glb");
+    const bundleUrl = "/models/characters/wardrobe/gothic-05.garage.glb";
+    const bundle = delayAsset(bundleUrl);
+    const wardrobeTrial = { set: "gothic-05", shirt: "none", waist: "over" };
+    await choose(undefined, undefined, { choice: { ...DEFAULT_CHARACTER, wardrobeTrial } });
+    assert.equal(status(), "Loading garments");
+    await act(async () => standalone(true));
+    assert.equal(status(), "Loading garments");
+    await act(async () => bundle());
+    assert.deepEqual(loadedBodies.at(-1), [bundleUrl, bundleUrl]);
+    assert.equal(status(), undefined);
+
     // Fresh mounts use their original context-specific loading and error states.
     await act(async () => renderer.render(null));
     const victoryBase = delayAsset("village");
@@ -151,7 +198,8 @@ test("the fitting room keeps the last complete outfit until the latest selection
     assert.deepEqual(rendered(), []);
     assert.equal(preview.getState().insideCar, false);
     assert.equal(preview.getState().cockpitError, "The character model is unavailable.");
-    assert.deepEqual(caught, ["Unavailable " + url("skirt-04"), "Unavailable gothic-02", "Unavailable village"]);
+    assert.deepEqual(caught, ["Unavailable " + url("skirt-04"), "Unavailable gothic-02",
+      "Unavailable " + thirdGothic.revisionUrl, "Unavailable " + standaloneUrl, "Unavailable village"]);
   } finally {
     await act(async () => renderer.unmount());
     await vite?.close();

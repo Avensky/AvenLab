@@ -12,7 +12,7 @@ export function hasCharacterModel(path: URL) {
   return Boolean(info?.isFile() && info.size >= 256);
 }
 
-function garmentJointNames(path: URL) {
+function wardrobeRevisionSignature(path: URL) {
   if (!hasCharacterModel(path)) return;
   try {
     const bytes = readFileSync(path);
@@ -23,27 +23,43 @@ function garmentJointNames(path: URL) {
       nodes: { name?: string; mesh?: number; skin?: number }[];
       skins: { joints: number[]; inverseBindMatrices?: number }[];
       meshes: { primitives: { attributes: Record<string, number> }[] }[];
+      accessors: { min?: number[]; max?: number[] }[];
     } = JSON.parse(bytes.toString("utf8", 20, jsonEnd));
-    const rigs = model.nodes.filter(node => node.mesh !== undefined).map(({ mesh, skin }) => {
+    const garments = model.nodes.filter(node => node.mesh !== undefined).map(({ name, mesh, skin }) => {
       const primitives = mesh === undefined ? undefined : model.meshes[mesh]?.primitives;
       const rig = skin === undefined ? undefined : model.skins?.[skin];
-      if (!rig || rig.inverseBindMatrices === undefined || !primitives?.length || primitives.some(({ attributes }) =>
+      if (!name || !rig || rig.inverseBindMatrices === undefined || !primitives?.length || primitives.some(({ attributes }) =>
         attributes.POSITION === undefined || attributes.JOINTS_0 === undefined || attributes.WEIGHTS_0 === undefined)) return;
-      return rig.joints.map(joint => model.nodes[joint]?.name);
+      const positions = primitives.map(({ attributes }) => model.accessors[attributes.POSITION]);
+      const bottom = Math.min(...positions.map(accessor => accessor?.min?.[1] ?? NaN));
+      const top = Math.max(...positions.map(accessor => accessor?.max?.[1] ?? NaN));
+      if (!Number.isFinite(bottom) || !Number.isFinite(top) || top <= bottom) return;
+      const joints = rig.joints.map(joint => model.nodes[joint]?.name);
+      return { name: name.replace(/\.\d{3}$/, ""), joints, bottom, top };
     });
-    const first = rigs[0];
-    if (first?.length && first.every(Boolean) && rigs.every(rig => rig?.length === first.length
-      && rig.every((joint, i) => joint === first[i]))) return first;
+    const joints = garments[0]?.joints;
+    if (joints?.length && joints.every(Boolean) && garments.every(garment => garment?.joints.length === joints.length
+      && garment.joints.every((joint, i) => joint === joints[i]))) return { garments, joints };
   } catch {
     // A revision can be missing its rig or be an incomplete export.
   }
 }
 
 export function hasCompatibleWardrobeRevision(revision: URL, original: URL) {
-  const updated = garmentJointNames(revision);
+  const updated = wardrobeRevisionSignature(revision);
   if (!updated) return false;
-  const expected = garmentJointNames(original);
-  return Boolean(expected?.length === updated.length && updated.every((joint, i) => joint === expected[i]));
+  const expected = wardrobeRevisionSignature(original);
+  if (!expected || expected.joints.length !== updated.joints.length
+    || !updated.joints.every((joint, i) => joint === expected.joints[i])) return false;
+
+  // A corset or a full outfit can use the same rig as a skirt. Validate the
+  // garment nodes and their bind-space coverage before selecting the override.
+  if (expected.garments.length !== updated.garments.length) return false;
+  return updated.garments.every((garment, i) => {
+    const baseline = expected.garments[i];
+    return garment && baseline && garment.name === baseline.name
+      && garment.top <= baseline.top + .05 && garment.bottom < (baseline.top + baseline.bottom) / 2;
+  });
 }
 
 export function findVillagerModel(gender: "female" | "male") {

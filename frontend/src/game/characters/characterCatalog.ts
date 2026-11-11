@@ -2,8 +2,9 @@ import type { PieceColors } from "./clothingPieces";
 import type { AnimationFit, CharacterPersonality } from "./characterPersonality";
 import catalog from "../../../../avenlab-server/src/assets/characters.json";
 import appearanceOptions from "../../../../avenlab-server/src/assets/character-appearance.json";
-import { resolveWardrobe, type WardrobeChoice } from "./wardrobe";
-import type { WardrobeGarmentChoice } from "./wardrobeGarments";
+import { resolveWardrobe, wardrobeOverEase, type WardrobeChoice } from "./wardrobe";
+import type { OverSkirtEase } from "./overSkirtEase";
+import { removedWardrobeLayers, visibleWardrobeGarments, type WardrobeGarmentChoice, type WardrobeRemoval } from "./wardrobeGarments";
 
 export const CHARACTERS = catalog.filter(item => item.id !== "niko-park");
 export const CHARACTER_APPEARANCE_OPTIONS = appearanceOptions;
@@ -39,6 +40,8 @@ export type CharacterChoice = {
   /** Session-only fitting room selections. */
   garments?: WardrobeGarmentChoice;
   wardrobeTrial?: WardrobeChoice;
+  wardrobeEase?: Exclude<OverSkirtEase, 0>;
+  removedClothing?: WardrobeRemoval[];
 };
 
 export const VILLAGER_ID = "mara-vega";
@@ -65,11 +68,14 @@ export function characterLook(choice: CharacterChoice | null | undefined) {
     return option && "color" in option ? option.color : undefined;
   };
   const female = character.id !== ROOK_ID;
+  const removedClothing = removedWardrobeLayers(choice);
+  const showCorset = character.id === VILLAGER_ID && !removedClothing.includes("corset");
   return {
-    character, outfit, appearance, female,
+    character, outfit, appearance, female, removedClothing,
     wardrobe: character.id === VILLAGER_ID ? resolveWardrobe(choice?.wardrobe) : undefined,
-    corset: character.id === VILLAGER_ID ? resolveWardrobe(choice?.wardrobeTrial, { includeRetired: true }) : undefined,
-    garments: character.id === VILLAGER_ID ? choice?.garments : undefined,
+    corset: showCorset ? resolveWardrobe(choice?.wardrobeTrial, { includeRetired: true }) : undefined,
+    overEase: showCorset ? wardrobeOverEase(choice) : 0 as const,
+    garments: character.id === VILLAGER_ID ? visibleWardrobeGarments(choice) : undefined,
     fabric: /^#[\da-f]{6}$/i.test(appearance.color) ? appearance.color : color("color") ?? outfit.jacket,
     trim: appearance.accent ?? outfit.trim,
     hair: color("hair_color") ?? (female ? "#7c573c" : "#2b2127"),

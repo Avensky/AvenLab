@@ -1,7 +1,7 @@
 import type { CharacterChoice } from "./characterCatalog";
 import { useSocialStore } from "../../store/social/socialStore";
 import { FIT_CHECKS, fitReviewKey, fitReviewStatus, useFitReviewStore } from "./fitReviewStore";
-import { resolveCharacterWardrobe, withWardrobeWaist } from "./wardrobe";
+import { resolveCharacterWardrobe, wardrobeOverEase, WARDROBE_WAIST_OPTIONS, withWardrobeWaist } from "./wardrobe";
 export function FitBadge({ choice, piece = "outfit", pose }: { choice: CharacterChoice; piece?: string; pose?: string }) {
  const owner = useSocialStore(s => s.view?.profile.id), key = fitReviewKey(owner, choice, piece, pose);
  const status = useFitReviewStore(s => fitReviewStatus(s.reviews[key]));
@@ -10,12 +10,13 @@ export function FitBadge({ choice, piece = "outfit", pose }: { choice: Character
 export function FitReview({ choice, piece = "outfit", pose = "standing", poseLabel = pose }: { choice: CharacterChoice; piece?: string; pose?: string; poseLabel?: string }) {
  const owner = useSocialStore(s => s.view?.profile.id), key = fitReviewKey(owner, choice, piece, pose);
  const { reviews, check, note, reset } = useFitReviewStore(), review = reviews[key];
- const w = resolveCharacterWardrobe(choice);
- const combinations = w ? (["tucked", "over"] as const).map(waist => fitReviewKey(owner, withWardrobeWaist(choice, waist), piece, pose)) : [key];
+ const w = choice.removedClothing?.includes("corset") ? undefined : resolveCharacterWardrobe(choice);
+ const fit = WARDROBE_WAIST_OPTIONS.find(option => option.waist === w?.waist && option.ease === wardrobeOverEase(choice));
+ const combinations = w ? WARDROBE_WAIST_OPTIONS.map(({ waist, ease }) => fitReviewKey(owner, withWardrobeWaist(choice, waist, ease), piece, pose)) : [key];
  const count = combinations.filter(key => fitReviewStatus(reviews[key]) === "passed").length;
  return <section className="fit-review" aria-label="In-game fit checks">
   <h3>Fit checks <FitBadge choice={choice} piece={piece} pose={pose} /></h3>
-  <p>{piece} · {w?.waist ?? "original outfit"} · {poseLabel}</p>
+  <p>{piece} · {fit?.label ?? "original outfit"} · {poseLabel}</p>
   <div className="fit-checks" data-controller-row>{FIT_CHECKS.map(item => <label key={item}><input type="checkbox" checked={Boolean(review?.checks[item])} onChange={e => check(key, item, e.target.checked)} />{item === "movement" ? "Animation" : item === "front" ? "Front" : "Back"}</label>)}</div>
   <div data-controller-row data-controller-columns="1">
    <textarea className="menu-control" aria-label="Fit issue notes" placeholder="Clipping, loose straps, or other issues…" maxLength={500} value={review?.issue ?? ""} onChange={e => note(key, e.target.value)} />

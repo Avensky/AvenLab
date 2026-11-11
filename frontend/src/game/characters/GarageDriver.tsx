@@ -17,8 +17,8 @@ import type { GarageCockpit } from "../preview/garageCockpit";
 import { PreviewLoadingStatus } from "../preview/PreviewLoadingSeal";
 import { isCompactPreview } from "../preview/previewBudget";
 import { failCockpitPreview, useCharacterPreviewStore } from "./characterPreviewStore";
-import { replacesVillagerBody, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
-import { getWardrobeGarment, wardrobeGarmentModelUrl } from "./wardrobeGarments";
+import { removalNeedsVillagerBody, replacesVillagerBody, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
+import { getWardrobeGarment, hasWardrobeRevisionMesh, wardrobeGarmentModelUrl } from "./wardrobeGarments";
 import { corsetModelUrl } from "./wardrobe";
 import { FITTING_BODY_URL } from "./standaloneCorset";
 
@@ -60,33 +60,48 @@ function VillagerDriver({ url, look, compact, fallback, ...playback }: VillagerP
   const [sources, setSources] = useState<Partial<Record<string, Object3D | null>>>({});
   const onReady = useCallback<WardrobeAssetListener>((asset, loaded) => setSources(current => current[asset] === loaded
     ? current : { ...current, [asset]: loaded }), []);
-  const corsetUrl = corsetModelUrl(look.corset, compact ? "portrait" : "garage");
+  const kind = compact ? "portrait" : "garage";
+  const preferredCorset = corsetModelUrl(look.corset, kind);
+  const corsetUrl = preferredCorset && sources[preferredCorset] === null
+    ? corsetModelUrl(look.corset, kind, { useStandalone: false }) ?? preferredCorset
+    : preferredCorset;
   const requested = useMemo(() => Object.values(look.garments ?? {}).flatMap(id => {
     const item = getWardrobeGarment(id);
-    const url = item && wardrobeGarmentModelUrl(item, compact ? "portrait" : "garage");
-    return item && url ? [{ item, url }] : [];
-  }), [look.garments, compact]);
+    if (!item) return [];
+    const preferred = wardrobeGarmentModelUrl(item, kind);
+    if (!preferred) return [];
+    const loaded = sources[preferred];
+    const brokenRevision = preferred === item.revisionUrl && loaded !== undefined
+      && (!loaded || !hasWardrobeRevisionMesh(item, loaded));
+    const url = brokenRevision ? wardrobeGarmentModelUrl(item, kind, { useRevision: false }) : preferred;
+    return url ? [{ item, url }] : [];
+  }), [look.garments, kind, sources]);
   const scene = sources[url];
   // The Village outfit cuts away skin under its clothes. Use the full skin only
   // for replacements that expose a different part of the body.
   const needsBody = Boolean(scene && !scene.getObjectByName("BODY_WARDROBE")
-    && (corsetUrl || requested.some(({ item }) => replacesVillagerBody(item.slot))));
+    && (corsetUrl || requested.some(({ item }) => replacesVillagerBody(item.slot)) || look.removedClothing.some(removalNeedsVillagerBody)));
+  // A bundled fallback can supply the full body without a separate request.
+  const loadedCorset = corsetUrl ? sources[corsetUrl] : undefined;
+  const bundledCorset = corsetUrl?.startsWith("/models/characters/wardrobe/");
+  const bundledBody = bundledCorset ? loadedCorset?.getObjectByName("BODY_WARDROBE") : undefined;
+  const needsSeparateBody = needsBody && !bundledBody && !(bundledCorset && loadedCorset === undefined);
   const fittingBody = sources[FITTING_BODY_URL];
   const bodyUrl = fittingBody !== undefined && !fittingBody?.getObjectByName("BODY_WARDROBE")
     ? LEGACY_FITTING_BODY_URL : FITTING_BODY_URL;
   const urls = new Set([url, ...requested.map(item => item.url)]);
-  if (needsBody) urls.add(bodyUrl);
+  if (needsSeparateBody) urls.add(bodyUrl);
   if (corsetUrl) urls.add(corsetUrl);
   const assetUrls = [...urls];
-  const garmentBody = needsBody ? sources[bodyUrl]?.getObjectByName("BODY_WARDROBE") : undefined;
+  const garmentBody = needsBody ? bundledBody ?? sources[bodyUrl]?.getObjectByName("BODY_WARDROBE") : undefined;
   const loading = assetUrls.some(asset => sources[asset] === undefined);
   const unavailable = assetUrls.some(asset => sources[asset] === null)
-    || (needsBody && sources[bodyUrl] !== undefined && !garmentBody);
+    || (needsSeparateBody && sources[bodyUrl] !== undefined && !garmentBody);
 
   // Keep the visible outfit mounted until the latest selection can replace it as a unit.
   // Resolutions for earlier selections can fill the cache without changing the preview.
   if (scene && !loading && (!unavailable || !active)) {
-    const corsetScene = corsetUrl && (!needsBody || garmentBody) ? sources[corsetUrl] ?? undefined : undefined;
+    const corsetScene = !needsBody || garmentBody ? loadedCorset ?? undefined : undefined;
     const corsetSet = corsetScene ? look.corset?.set : undefined;
     const garments = requested.flatMap(({ item, url }): WardrobeGarmentSource[] => {
       const source = sources[url];
@@ -125,9 +140,9 @@ function ReadyVillager({ preview, bag, previewPacks, leanFit, mirrorFit, victory
   const wetEyes = !victory;
   const fitted = usesFittedAnimation(look);
   const model = useMemo(() => prepareVillager(scene, {
-    female: look.female, animateFace: true, bag: femaleWithBag, wetEyes, fitted, garments, garmentBody,
+    female: look.female, animateFace: true, bag: femaleWithBag, wetEyes, fitted, garments, garmentBody, removedClothing: look.removedClothing,
     corsetSource: corsetScene && corsetSet ? { set: corsetSet, scene: corsetScene } : undefined,
-  }), [scene, look.female, femaleWithBag, wetEyes, fitted, garments, garmentBody, corsetScene, corsetSet]);
+  }), [scene, look.female, look.removedClothing, femaleWithBag, wetEyes, fitted, garments, garmentBody, corsetScene, corsetSet]);
   const invalidate = useThree(s => s.invalidate);
   useEffect(() => model.dispose, [model]);
   useLayoutEffect(() => {

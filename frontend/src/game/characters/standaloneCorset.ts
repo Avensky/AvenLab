@@ -2,6 +2,7 @@ import { Group, Mesh, SkinnedMesh, type Object3D, type Skeleton } from "three";
 import { prepareWardrobeLining } from "./wardrobeLining";
 import { bindWardrobeGarmentMesh } from "./wardrobeGarmentFit";
 import { prepareWardrobe, type WardrobeChoice } from "./wardrobe";
+import type { OverSkirtEase } from "./overSkirtEase";
 
 export const FITTING_BODY_URL = "/models/characters/female/wardrobe/vesper-body.glb";
 
@@ -37,8 +38,8 @@ export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton
   const wardrobe = prepareWardrobe(group);
   return {
     group,
-    apply(waist: WardrobeChoice["waist"]) {
-      wardrobe.apply({ set: source.set, shirt: "none", waist });
+    apply(waist: WardrobeChoice["waist"], ease: OverSkirtEase = 0) {
+      wardrobe.apply({ set: source.set, shirt: "none", waist }, ease);
     },
     dispose() {
       group.removeFromParent();

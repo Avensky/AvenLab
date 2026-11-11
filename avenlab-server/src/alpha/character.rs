@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::sync::LazyLock;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -14,7 +15,19 @@ pub struct CharacterChoice {
     pub prop: Option<CharacterProp>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wardrobe: Option<WardrobeChoice>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub garments: Option<BTreeMap<String, String>>,
+    #[serde(rename = "wardrobeTrial", default, skip_serializing_if = "Option::is_none")]
+    pub wardrobe_trial: Option<WardrobeChoice>,
+    #[serde(rename = "wardrobeEase", default, skip_serializing_if = "Option::is_none")]
+    pub wardrobe_ease: Option<u8>,
+    #[serde(rename = "removedClothing", default, skip_serializing_if = "Option::is_none")]
+    pub removed_clothing: Option<Vec<WardrobeRemoval>>,
 }
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum WardrobeRemoval { Top, Corset, Skirt, Shoes, Socks, Hat, Bow, BonnetBow, Harness }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -40,11 +53,29 @@ impl ShirtLayer {
 pub enum WaistLayer { Tucked, Over }
 
 #[derive(Deserialize)]
-struct WardrobeSet { id: String }
+struct WardrobeSet {
+    id: String,
+    #[serde(default)]
+    retired: bool,
+}
 
 static WARDROBE: LazyLock<Vec<WardrobeSet>> = LazyLock::new(|| {
     serde_json::from_str(include_str!("../assets/character-wardrobe.json"))
         .expect("the built-in wardrobe catalog is valid")
+});
+
+#[derive(Deserialize)]
+struct Garment {
+    id: String,
+    slot: String,
+    piece: String,
+    #[serde(default)]
+    retired: bool,
+}
+
+static GARMENTS: LazyLock<Vec<Garment>> = LazyLock::new(|| {
+    serde_json::from_str(include_str!("../assets/character-garments.json"))
+        .expect("the built-in garment catalog is valid")
 });
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -126,6 +157,45 @@ fn hex_color(value: &str) -> bool {
 }
 
 impl CharacterChoice {
+    pub fn is_equippable(&self) -> bool {
+        self.garments.is_none() && self.wardrobe_trial.is_none() && self.wardrobe_ease.is_none()
+            && self.removed_clothing.is_none() && self.is_available()
+    }
+
+    fn has_valid_garments(&self) -> bool {
+        let top = self.garments.as_ref().is_some_and(|garments| garments.contains_key("top"));
+        let dress = self.garments.as_ref().is_some_and(|garments| garments.contains_key("dress"));
+        let skirt = self.garments.as_ref().is_some_and(|garments| garments.contains_key("skirt"));
+        if dress && (top || skirt || self.wardrobe_trial.is_some()) {
+            return false;
+        }
+        if !self.garments.as_ref().is_none_or(|garments| {
+            self.id == "mara-vega" && garments.iter().all(|(slot, id)| {
+                GARMENTS.iter().any(|garment| !garment.retired && &garment.id == id && &garment.slot == slot)
+            })
+        }) {
+            return false;
+        }
+        if !self.wardrobe_trial.as_ref().is_none_or(|trial| {
+            self.id == "mara-vega" && WARDROBE.iter().any(|set| set.id == trial.set)
+        }) {
+            return false;
+        }
+        if !self.removed_clothing.as_ref().is_none_or(|removed| {
+            (removed.is_empty() || self.id == "mara-vega")
+                && removed.iter().enumerate().all(|(i, slot)| !removed[..i].contains(slot))
+        }) {
+            return false;
+        }
+        self.wardrobe_ease.is_none_or(|ease| {
+            matches!(ease, 1 | 2) && self.wardrobe_trial.as_ref().or_else(|| {
+                self.wardrobe.as_ref().filter(|wardrobe| {
+                    WARDROBE.iter().any(|set| !set.retired && set.id == wardrobe.set)
+                })
+            }).is_some_and(|wardrobe| wardrobe.waist == WaistLayer::Over)
+        })
+    }
+
     pub fn is_available(&self) -> bool {
         CAST.iter().any(|character| {
             character.id == self.id
@@ -135,7 +205,7 @@ impl CharacterChoice {
                     .any(|outfit| outfit.id == self.outfit)
         }) && self.wardrobe.as_ref().is_none_or(|wardrobe| {
             self.id == "mara-vega" && WARDROBE.iter().any(|set| set.id == wardrobe.set)
-        }) && self.appearance.as_ref().is_none_or(|appearance| {
+        }) && self.has_valid_garments() && self.appearance.as_ref().is_none_or(|appearance| {
             if !appearance.personality.as_deref().is_none_or(|value| ["friendly", "playful", "shy", "tsundere", "stoic", "elegant", "racer", "scientist"].contains(&value))
                 || !appearance.animation_fit.as_deref().is_none_or(|value| ["auto", "full", "fitted"].contains(&value)) {
                 return false;
@@ -145,6 +215,7 @@ impl CharacterChoice {
                 let known_piece = CLOTHING_PIECES.iter().any(|entry| entry.id == piece);
                 let known_variant = CAST.iter().filter(|entry| entry.id == self.id).any(|entry| entry.outfits.iter().any(|outfit| outfit.id == variant))
                     || (self.id == "mara-vega" && WARDROBE.iter().any(|set| set.id == variant))
+                    || (self.id == "mara-vega" && GARMENTS.iter().any(|garment| garment.id == variant && garment.piece == piece))
                     || (piece == "glasses" && ["round", "aviator"].contains(&variant))
                     || (piece == "bag" && variant == "shop-bag");
                 known_piece && known_variant && colors.color.as_deref().is_none_or(hex_color) && colors.accent.as_deref().is_none_or(hex_color)

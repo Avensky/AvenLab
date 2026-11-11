@@ -1,12 +1,19 @@
 import { Mesh, type BufferGeometry, type Object3D } from "three";
 import catalog from "../../../../avenlab-server/src/assets/character-wardrobe.json";
+import { prepareLacedShoulderMask } from "./lacedStrapFit";
+import { prepareOverSkirtEase, type OverSkirtEase } from "./overSkirtEase";
 
 export const WARDROBE_SETS = catalog.filter(set => !set.retired);
 export const WARDROBE_CORSETS = catalog;
 export const UNDERBUST_WARDROBE_SET = "gothic-04";
-export const UNDERBUST_SHIRT_COLORS = { color: "#e6d8be", accent: "#a18a70" } as const;
 export type WardrobeChoice = { set: string; shirt: "none" | "under" | "over"; waist: "tucked" | "over" };
-type WardrobeSelection = { wardrobe?: WardrobeChoice; wardrobeTrial?: WardrobeChoice };
+type WardrobeSelection = { wardrobe?: WardrobeChoice; wardrobeTrial?: WardrobeChoice; wardrobeEase?: Exclude<OverSkirtEase, 0> };
+export const WARDROBE_WAIST_OPTIONS = [
+  { waist: "tucked", ease: 0, label: "Tucked into skirt" },
+  { waist: "over", ease: 0, label: "Over skirt" },
+  { waist: "over", ease: 1, label: "Roomy over skirt" },
+  { waist: "over", ease: 2, label: "Wide over skirt" },
+] as const;
 
 /** Preserve the set and waist fit of older outfits that saved a separate shirt. */
 export function resolveWardrobe(choice?: WardrobeChoice, { includeRetired = false } = {}): WardrobeChoice | undefined {
@@ -19,12 +26,18 @@ export function resolveCharacterWardrobe(choice: WardrobeSelection | null | unde
   return resolveWardrobe(choice?.wardrobeTrial, { includeRetired: true }) ?? resolveWardrobe(choice?.wardrobe);
 }
 
-export function withWardrobeWaist<T extends WardrobeSelection>(choice: T, waist: WardrobeChoice["waist"]): T {
+export function withWardrobeWaist<T extends WardrobeSelection>(choice: T, waist: WardrobeChoice["waist"], ease: OverSkirtEase = 0): T {
   const selected = resolveCharacterWardrobe(choice);
   if (!selected) return choice;
+  const wardrobeEase = waist === "over" && ease ? ease : undefined;
   return choice.wardrobeTrial?.set === selected.set
-    ? { ...choice, wardrobeTrial: { ...selected, waist } }
-    : { ...choice, wardrobe: { ...selected, waist } };
+    ? { ...choice, wardrobeTrial: { ...selected, waist }, wardrobeEase }
+    : { ...choice, wardrobe: { ...selected, waist }, wardrobeEase };
+}
+
+export function wardrobeOverEase(choice?: WardrobeSelection | null): OverSkirtEase {
+  const ease = choice?.wardrobeEase;
+  return (ease === 1 || ease === 2) && resolveCharacterWardrobe(choice)?.waist === "over" ? ease : 0;
 }
 
 export function wardrobeModelUrl(choice: WardrobeChoice | undefined, kind: "garage" | "portrait") {
@@ -33,13 +46,16 @@ export function wardrobeModelUrl(choice: WardrobeChoice | undefined, kind: "gara
     ? `/models/characters/wardrobe/${resolved.set}.${kind === "portrait" ? "mobile" : "garage"}.glb` : null;
 }
 
-export function corsetModelUrl(choice: WardrobeChoice | undefined, kind: "garage" | "portrait") {
+export function corsetModelUrl(choice: WardrobeChoice | undefined, kind: "garage" | "portrait", { useStandalone = true } = {}) {
   const resolved = resolveWardrobe(choice, { includeRetired: true });
   if (!resolved) return null;
-  const available = __STANDALONE_CORSET_LODS__[resolved.set];
+  const standalone = __STANDALONE_CORSET_LODS__[resolved.set];
+  const hasStandalone = useStandalone && (standalone?.garage || standalone?.mobile);
+  const available = hasStandalone ? standalone : __BUNDLED_WARDROBE_LODS__[resolved.set];
   if (!available?.garage && !available?.mobile) return null;
   const tier = available.mobile && (kind === "portrait" || !available.garage) ? "mobile" : "garage";
-  return `/models/characters/female/wardrobe/corsets/${resolved.set}.${tier}.glb`;
+  const directory = hasStandalone ? "female/wardrobe/corsets" : "wardrobe";
+  return `/models/characters/${directory}/${resolved.set}.${tier}.glb`;
 }
 
 /** A garment swap changes visibility and indices once, never vertex positions per frame. */
@@ -51,7 +67,7 @@ export function prepareWardrobe(root: Object3D) {
     if (typeof part.userData.wardrobeRole === "string") {
       parts.push(part);
       // Keep unconfigured or failed loads covered until apply() selects a complete outfit.
-      part.visible = ["bottom", "bottom-seam-tucked", "bottom-trim-tucked", "corset-tucked", "corset-facing", "underbust-shirt"].includes(part.userData.wardrobeRole);
+      part.visible = ["bottom", "bottom-seam-tucked", "bottom-trim-tucked", "corset-tucked", "corset-facing"].includes(part.userData.wardrobeRole);
     }
     if (!(part instanceof Mesh)) return;
     const coverage = part.geometry.getAttribute("_aven_coverage");
@@ -63,6 +79,7 @@ export function prepareWardrobe(root: Object3D) {
     const body = part.userData.wardrobeRole === "body" ? geometry.getAttribute("position") : undefined;
     const indices = Array.from({ length: 2 }, (_, mode) => {
       const visible: number[] = [], bit = 1 << mode;
+      const lacedMask = body && prepareLacedShoulderMask(root, mode === 1 ? "over" : "tucked");
       for (let i = 0; i < index.count; i += 3) {
         const a = index.getX(i), b = index.getX(i + 1), c = index.getX(i + 2);
         if (body && skirtCoversHips && Math.max(Math.abs(body.getX(a)), Math.abs(body.getX(b)), Math.abs(body.getX(c))) < .203) {
@@ -72,33 +89,38 @@ export function prepareWardrobe(root: Object3D) {
           if (bottom < .736 && top < .758) { visible.push(a, b, c); continue; }
           if (bottom < 1.02 && top > .736) continue;
         }
-        if ((coverage.getX(a) & coverage.getX(b) & coverage.getX(c) & bit) === 0) visible.push(a, b, c);
+        if ((coverage.getX(a) & coverage.getX(b) & coverage.getX(c) & bit) === 0
+          || (body && lacedMask?.retainsFace(body, a, b, c))) visible.push(a, b, c);
       }
+      lacedMask?.dispose();
       return Uint32Array.from(visible);
     });
     part.geometry = geometry;
     masked.push({ mesh: part, source, geometry, indices });
   });
+  const overSkirt = prepareOverSkirtEase(root);
   let lastMode = -1;
   return {
-    apply(choice?: WardrobeChoice) {
+    apply(choice?: WardrobeChoice, ease: OverSkirtEase = 0) {
       const selected = resolveWardrobe(choice, { includeRetired: true });
       if (!parts.length || !selected) return;
       const visible = new Set(["body", "bottom", "corset-facing", `corset-${selected.waist}`, `bottom-seam-${selected.waist}`, `bottom-trim-${selected.waist}`]);
-      if (selected.set === UNDERBUST_WARDROBE_SET) visible.add("underbust-shirt");
       parts.forEach(part => { part.visible = visible.has(part.userData.wardrobeRole); });
       const mode = selected.waist === "over" ? 1 : 0;
-      if (mode === lastMode) return;
-      lastMode = mode;
-      for (const { geometry, indices } of masked) {
-        const index = geometry.getIndex()!;
-        index.array.set(indices[mode]);
-        index.needsUpdate = true;
-        geometry.clearGroups();
-        geometry.setDrawRange(0, indices[mode].length);
+      if (mode !== lastMode) {
+        lastMode = mode;
+        for (const { geometry, indices } of masked) {
+          const index = geometry.getIndex()!;
+          index.array.set(indices[mode]);
+          index.needsUpdate = true;
+          geometry.clearGroups();
+          geometry.setDrawRange(0, indices[mode].length);
+        }
       }
+      overSkirt.apply(mode ? ease : 0);
     },
     dispose() {
+      overSkirt.dispose();
       for (const { mesh, source, geometry } of masked) {
         mesh.geometry = source;
         geometry.dispose();

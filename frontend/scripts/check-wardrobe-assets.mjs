@@ -32,24 +32,38 @@ function triangleKeys(index) {
 }
 function verifyWiderVestShell(source, target, splitLining) {
  const original=source.geometry.attributes.position, fitted=target.geometry.attributes.position;
- assert.equal(fitted.count,original.count,'Underbust keeps its authored vertex layout');
- if(source.material.name==='MAT_CORSET_04_00.001'){
-  assert(splitLining?.isSkinnedMesh,'Underbust keeps the lining in its own color slot');
-  assert.deepEqual([...triangleKeys(target.geometry.index),...triangleKeys(splitLining.geometry.index)].sort(),
-   triangleKeys(source.geometry.index).sort(),'Underbust keeps every authored piping and lining triangle');
- }else{
-  assert.deepEqual(Array.from(target.geometry.index.array),Array.from(source.geometry.index.array),
-   'Underbust keeps the original fabric, placket, and hardware cuts');
+ const trim=source.material.name==='MAT_CORSET_04_00.001', fabric=source.material.name==='MAT_CORSET_04_05.001';
+ if(trim)assert(splitLining?.isSkinnedMesh,'Underbust keeps the lining in its own color slot');
+ const targetFaces=triangleKeys(target.geometry.index);
+ if(trim)targetFaces.push(...triangleKeys(splitLining.geometry.index));
+ const faces=new Set(targetFaces), originalIndex=source.geometry.index;
+ for(let i=0;i<originalIndex.count;i+=3){
+  const a=originalIndex.getX(i), b=originalIndex.getX(i+1), c=originalIndex.getX(i+2);
+  if((original.getY(a)+original.getY(b)+original.getY(c))/3<=1.339){
+   assert(faces.has(`${a},${b},${c}`),'Underbust keeps every lower shell, placket and trim triangle');
+  }
+ }
+ if(trim||fabric){
+  assert(fitted.count>original.count,'Underbust appends reconstructed shoulder faces');
+  assert(target.geometry.index.array.some(vertex=>vertex>=original.count),'Underbust draws the reconstructed shoulder faces');
+  const sides=[0,0];
+  for(let i=original.count;i<fitted.count;i++){
+   if(fitted.getY(i)>1.37)sides[fitted.getX(i)<0?0:1]++;
+  }
+  assert(sides.every(count=>count>4),'Underbust reconstructs both shoulder crowns');
+ }else assert.equal(fitted.count,original.count,'Underbust keeps the placket and hardware vertex layout');
+ const weights=target.geometry.attributes.skinWeight;
+ for(let i=0;i<fitted.count;i++){
+  assert(Math.abs(weights.getX(i)+weights.getY(i)+weights.getZ(i)+weights.getW(i)-1)<1e-4,
+   'Underbust vest weights remain normalized');
  }
  const ease=[0,0];
  for(let i=0;i<original.count;i++){
   const x=original.getX(i), y=original.getY(i), z=original.getZ(i);
-  assert(Math.hypot(fitted.getX(i)-x,fitted.getY(i)-y,fitted.getZ(i)-z)<.037,
-   'Underbust clearance remains a close fit over the blouse');
-  const weights=target.geometry.attributes.skinWeight;
-  assert(Math.abs(weights.getX(i)+weights.getY(i)+weights.getZ(i)+weights.getW(i)-1)<1e-4,
-   'Underbust vest weights remain normalized');
-  if(y<=1.30||Math.abs(x)<=.045)for(const attr of ['skinIndex','skinWeight']){
+  const limit=y>1.338&&Math.abs(x)>.090?.075:.040;
+  assert(Math.hypot(fitted.getX(i)-x,fitted.getY(i)-y,fitted.getZ(i)-z)<limit,
+   'Underbust keeps a close fit around the torso and shoulders');
+  if(y<=1.294||Math.abs(x)<=.047)for(const attr of ['skinIndex','skinWeight']){
    const before=source.geometry.attributes[attr], after=target.geometry.attributes[attr];
    for(let c=0;c<before.itemSize;c++)assert.equal(after.getComponent(i,c),before.getComponent(i,c),
     'Underbust weight edits stay at the upper straps and back');
@@ -60,7 +74,7 @@ function verifyWiderVestShell(source, target, splitLining) {
   }
  }
  if(source.material.name==='MAT_CORSET_04_05.001')assert(ease.every(width=>width>.007),
-  'Underbust fabric has room on both sides for the blouse');
+  'Underbust fabric has room on both sides for a separate top');
 }
 const rows=[];
 try{
@@ -94,30 +108,14 @@ try{
   const bytes=Buffer.concat([header,padded,bin]);const {scene}=await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
   const model=prepareVillager(scene,{female:true,fitted:true});const counts=[];
   const facing=model.root.getObjectByName('CLOTH_CORSET_FACING');
-  const blouse=model.root.getObjectByName('CLOTH_UNDERBUST_BLOUSE');
-  const blouseBinding=model.root.getObjectByName('CLOTH_UNDERBUST_BLOUSE_BINDING');
-  const blouseColors=blouse&&blouseBinding&&[blouse.material.color.getHexString(),blouseBinding.material.color.getHexString()];
   const shorts=model.root.getObjectByName('CLOTH_UNDER_MODESTY_SHORTS');
   const shoes=model.root.getObjectByName('CLOTH_FEET_SHOES');
   model.root.traverse(part=>assert(!['shirt-under','shirt-over-tucked','shirt-over-over'].includes(part.userData.wardrobeRole),'legacy shirts are removed by role'));
+  assert.equal(model.root.getObjectByName('CLOTH_UNDERBUST_BLOUSE'),undefined,'bundled outfits have no default blouse');
   if(n===4){
-   const body=model.root.getObjectByName('BODY_WARDROBE');
    assert.equal(facing,undefined,'the Underbust neckline stays open above the authored bodice');
-   for(const layer of [blouse,blouseBinding]){
-    assert(layer?.isSkinnedMesh&&layer.geometry.index.count>0,'Underbust has a dedicated rigged blouse');
-    assert.equal(layer.skeleton,body.skeleton,'the blouse and torso share their pose');
-    assert.equal(layer.userData.wardrobeRole,'underbust-shirt');
-    assert.equal(layer.userData.clothingPiece,'shirt');
-    assert.equal(layer.material.transparent,false,'the blouse stays opaque');
-    assert.equal(layer.material.opacity,1,'the blouse stays opaque');
-    assert.equal(layer.material.alphaTest,0,'the blouse has no transparency cutouts');
-    const weights=layer.geometry.attributes.skinWeight;
-    for(let i=0;i<weights.count;i++)assert(Math.abs(weights.getX(i)+weights.getY(i)+weights.getZ(i)+weights.getW(i)-1)<1e-4);
-   }
-   assert(blouse.material.color.r>.35,'the Underbust defaults to a light blouse');
   }else{
    assert(facing?.isSkinnedMesh,'fitted corset coverage uses the body rig');
-   assert(!blouse&&!blouseBinding,'only the Underbust has a separate blouse');
   }
   if(n===2){
    const skirt=model.root.getObjectByName('CLOTH_BOTTOM_SKIRT');
@@ -157,7 +155,14 @@ try{
     const sweetheartOver=n===2&&!tuckRefit;
     for(const attribute of ['position','normal','uv','skinIndex','skinWeight']){
      if((tuckRefit||cupRefit||sweetheartOver)&&attribute==='position')continue;
-     if(n===4&&attribute!=='uv')continue;
+     if(n===4){
+      if(attribute==='uv'){
+       const authored=source.geometry.getAttribute(attribute)?.array;
+       assert.deepEqual(target.geometry.getAttribute(attribute)?.array.subarray(0,authored?.length),authored,
+        'Underbust retains the authored UVs at the original vertices');
+      }
+      continue;
+     }
      if(n===5&&['position','skinIndex','skinWeight'].includes(attribute))continue;
      assert.deepEqual(target.geometry.getAttribute(attribute)?.array,source.geometry.getAttribute(attribute)?.array,`${set} ${lod} ${source.name} ${attribute} stays authored`);
     }
@@ -202,9 +207,11 @@ try{
       const overCup=sweetheartOver&&cupRefit&&side>.038&&side<.132&&y>1.259&&z>.036;
       const underarm=sweetheartOver&&cupRefit&&x>-.144&&x<-.084&&y>1.255&&z>.018;
       const innerCup=sweetheartOver&&side>.010&&side<.060&&y>1.243&&z>.074;
+      const innerEase=n===2&&(cupRefit||sweetheartOver)&&x>-.068&&x<-.012&&y>1.247&&z>.072;
+      const crest=cupRefit&&!sweetheartOver&&side>.039&&side<.108&&y>1.279&&z>.049;
       const rightCup=cupRefit&&x>-.132&&x<-.023&&z>.025&&y>1.266;
-      const height=(overCup?.009001:0)+(underarm?.005001:0)+(innerCup&&cupRefit?.004001:0);
-      const depth=(rightCup?.045:0)+(overCup?.002001:0)+(underarm?.009001:0)+(innerCup?.006001:0);
+      const height=(overCup?.009001:0)+(underarm?.005001:0)+(innerCup&&cupRefit?.004001:0)+(crest?.002501:0);
+      const depth=(rightCup?.045:0)+(overCup?.002001:0)+(underarm?.009001:0)+(innerCup?.006001:0)+(innerEase?.002501:0)+(crest?.009001:0);
       const width=(after.getX(i)-x)*Math.sign(x);
       assert(width>=(innerCup&&cupRefit?-.002001:0)&&width<=(underarm?.007001:0),'Sweetheart width changes stay local to the cup edges');
       if(x===0)assert.equal(after.getX(i),0,'the refit preserves the centerline');
@@ -272,13 +279,8 @@ try{
   const tuckedChoice={set,shirt:'none',waist:'tucked'};
   const dyeChoice=n===4?{...DEFAULT_CHARACTER,wardrobeTrial:tuckedChoice}:{...DEFAULT_CHARACTER,wardrobe:tuckedChoice};
   const dyed=withClothingColors(dyeChoice,'corset',{color:'#ff0066',accent:'#ff0066'});
-  const colored=n===4?withClothingColors(dyed,'shirt',{color:'#dde6ea',accent:'#41576a'}):dyed;
-  applyVillagerLook(model,assetLook(colored));
+  applyVillagerLook(model,assetLook(dyed));
   let dyedMeshes=0;model.root.traverse(o=>{if(o.isMesh&&o.userData.clothingPiece==='corset'){for(const m of(Array.isArray(o.material)?o.material:[o.material]))assert.equal(m.color.getHexString(),'ff0066');dyedMeshes++;}});assert(dyedMeshes>2,'multi-material corsets all receive the piece dye');
-  if(n===4){
-   assert.equal(blouse.material.color.getHexString(),'dde6ea','the blouse keeps its own fabric dye');
-   assert.equal(blouseBinding.material.color.getHexString(),'41576a','the blouse keeps its own binding dye');
-  }
   for(const node of doc.getRoot().listNodes().filter(n=>String(n.getExtras().wardrobeRole).startsWith('corset')&&n.getExtras().fit_version===5))for(const p of node.getMesh().listPrimitives()){
    const joints=p.getAttribute('JOINTS_0').getArray(),weights=p.getAttribute('WEIGHTS_0').getArray();
    for(let i=0;i<joints.length;i++)if(weights[i]>1e-5)assert(joints[i]<=5,'v5 corset straps never follow arm or twist joints');
@@ -301,9 +303,6 @@ try{
     assert.equal(seam.material.color.getHexString(),gothicPink.color.slice(1),'the Ruffled waist seam takes the main dye');
    }
    if(n===4){
-    assert(blouse.visible&&blouseBinding.visible,'both Underbust waist fits keep the opaque shirt on');
-    assert.deepEqual([blouse.material.color.getHexString(),blouseBinding.material.color.getHexString()],blouseColors,
-     'outfit colors leave the blouse fabric and binding palette intact');
     const fit=waist.toUpperCase(),vest=model.root.getObjectByName(`CLOTH_CORSET_${fit}`);
     const lining=vest.getObjectByName(`CLOTH_CORSET_04_LINING_${fit}`);
     assert(lining?.isSkinnedMesh&&lining.geometry.index.count>0,'the Underbust lining has its own draw');
