@@ -40,8 +40,20 @@ try{
   const facing=model.root.getObjectByName('CLOTH_CORSET_FACING');
   const shorts=model.root.getObjectByName('CLOTH_UNDER_MODESTY_SHORTS');
   const shoes=model.root.getObjectByName('CLOTH_FEET_SHOES');
-  for(const name of ['CLOTH_SHIRT_UNDER','CLOTH_SHIRT_OVER_TUCKED','CLOTH_SHIRT_OVER_OVER'])assert.equal(model.root.getObjectByName(name),undefined);
+  model.root.traverse(part=>assert(!['shirt-under','shirt-over-tucked','shirt-over-over'].includes(part.userData.wardrobeRole),'legacy shirts are removed by role'));
   assert(facing?.isSkinnedMesh,'fitted corset coverage uses the body rig');
+  if(n===2){
+   const skirt=model.root.getObjectByName('CLOTH_BOTTOM_SKIRT');
+   const materials=[];
+   skirt.traverse(part=>{if(part.isMesh)materials.push(part.material.name);});
+   assert.deepEqual(materials,['MAT_GOTHIC_02_Fabric_0','MAT_GOTHIC_02_WaistSeam'],'Sweetheart skirt keeps its fabric and a narrow matching waist seam');
+   const seam=skirt.getObjectByName('CLOTH_GOTHIC_02_WAIST_SEAM');
+   seam.geometry.computeBoundingBox();
+   assert(seam.geometry.boundingBox.max.y<1.11,'the waist seam cannot cover the corset midsection');
+   facing.geometry.computeBoundingBox();
+   assert(facing.geometry.boundingBox.min.y>1.25,'Sweetheart cup backing stops above the waist');
+   assert(facing.geometry.boundingBox.min.z>.06,'Sweetheart cup backing stays in front');
+  }
   // Changing an individual panel pulled welded seams out of shape. The fitted
   // coverage belongs to a separate primitive, with the authored shell intact.
   for(const name of ['CLOTH_CORSET_TUCKED','CLOTH_CORSET_OVER']){
@@ -67,6 +79,13 @@ try{
   assert(Math.abs(shoeBounds.min.y-sourceSole)<1e-6,'larger shoes keep the original sole height');
   assert(shoeBounds.max.x>.197&&shoeBounds.min.x<-.197&&shoeBounds.min.z<-.098,'shoes cover both heels and outer feet');
   const {withClothingColors}=await vite.ssrLoadModule('/src/game/characters/clothingPieces.ts');
+  if(n===2){
+   const pinkAccent=withClothingColors({...DEFAULT_CHARACTER,wardrobe:{set,shirt:'none',waist:'tucked'}},'skirt',{color:'#335577',accent:'#ff2d95'});
+   applyVillagerLook(model,characterLook(pinkAccent));
+   model.root.getObjectByName('CLOTH_BOTTOM_SKIRT').traverse(part=>{
+    if(part.isMesh)assert.equal(part.material.color.getHexString(),'335577','pink trim cannot color the Sweetheart waist seam');
+   });
+  }
   const dyed=withClothingColors({...DEFAULT_CHARACTER,wardrobe:{set,shirt:'none',waist:'tucked'}},'corset',{color:'#ff0066',accent:'#ff0066'});
   applyVillagerLook(model,characterLook(dyed));
   let dyedMeshes=0;model.root.traverse(o=>{if(o.isMesh&&o.userData.clothingPiece==='corset'){for(const m of(Array.isArray(o.material)?o.material:[o.material]))assert.equal(m.color.getHexString(),'ff0066');dyedMeshes++;}});assert(dyedMeshes>2,'multi-material corsets all receive the piece dye');
@@ -79,7 +98,7 @@ try{
    const look=characterLook({...DEFAULT_CHARACTER,wardrobe:{set,shirt:'none',waist}});applyVillagerLook(model,look);
    assert.equal(shorts.visible,false,'complete Gothic outfits hide the standalone shorts');
    if(facing)assert(facing.visible);
-   if(n===1||n===4||n===5)verifyCorsetCoverage(model.root,`${set} ${lod} ${waist}`,n,buildEmoteClips,findGaragePreviewEmote);
+   if(n!==3)verifyCorsetCoverage(model.root,`${set} ${lod} ${waist}`,n,buildEmoteClips,findGaragePreviewEmote);
    let triangles=0,draws=0;
    model.root.traverse(o=>{if(!o.isMesh)return;for(let a=o;a;a=a.parent)if(!a.visible)return;const g=o.geometry;triangles+=Math.min(g.drawRange.count,g.index?.count??g.attributes.position.count)/3;draws+=Array.isArray(o.material)?g.groups.length:1;});
    counts.push({shirt:look.wardrobe.shirt,waist,triangles,draws});

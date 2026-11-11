@@ -3,12 +3,7 @@ import { fitHighCollarSurface } from "./highCollarFit";
 import { fitUnderbustChest } from "./underbustFit";
 import { fitWardrobeSurface } from "./wardrobeSurface";
 
-// Neckline and back-edge heights in the shared Vesper wardrobe bind space.
-const fits = {
-  "02": { front: 1.266, back: 1.255 },
-  "03": { front: 1.270, back: 1.253 },
-} as const;
-type CorsetStyle = keyof typeof fits | "01" | "04" | "05";
+type CorsetStyle = "01" | "02" | "03" | "04" | "05";
 
 /** Back the small spot where skin crosses the original left rear strap in motion. */
 function fitLacedRearStrap(body: BufferGeometry) {
@@ -23,14 +18,25 @@ function fitLacedRearStrap(body: BufferGeometry) {
   ], .0035);
 }
 
-function fitLowNeckline(body: BufferGeometry, { front, back }: { front: number; back: number }) {
+/** Back the two cups while leaving the lace opening, waist, and back clear. */
+function fitSweetheartCups(body: BufferGeometry) {
+  return fitWardrobeSurface(body, [
+    point => point.y - 1.255,
+    point => point.z - .065,
+    point => .111 - Math.abs(point.x),
+    point => Math.abs(point.x) - .023,
+    point => 1.270 + .028 * MathUtils.smoothstep(Math.abs(point.x), .022, .069) - point.y,
+  ], .0015);
+}
+
+function fitRuffledNeckline(body: BufferGeometry) {
   return fitWardrobeSurface(body, [
     point => point.y - 1.174,
     point => .153 - Math.abs(point.x),
     point => {
       const x = Math.abs(point.x);
-      const frontEdge = front + .028 * MathUtils.smoothstep(x, .022, .069);
-      const backEdge = back - .081 * MathUtils.smoothstep(x, .104, .153);
+      const frontEdge = 1.270 + .028 * MathUtils.smoothstep(x, .022, .069);
+      const backEdge = 1.253 - .081 * MathUtils.smoothstep(x, .104, .153);
       return MathUtils.lerp(backEdge, frontEdge, MathUtils.smoothstep(point.z, -.014, .066)) - point.y;
     },
   ], .003);
@@ -41,9 +47,12 @@ export function prepareWardrobeLining(root: Object3D) {
   const body = root.getObjectByName("BODY_WARDROBE");
   const corset = root.getObjectByName("CLOTH_CORSET_TUCKED");
   if (!(body instanceof SkinnedMesh) || !body.parent || !corset) return;
-  for (const name of ["CLOTH_SHIRT_UNDER", "CLOTH_SHIRT_OVER_TUCKED", "CLOTH_SHIRT_OVER_OVER"]) {
-    root.getObjectByName(name)?.removeFromParent();
-  }
+  const retiredShirts: Object3D[] = [];
+  root.traverse(part => {
+    const role = part.userData.wardrobeRole;
+    if (typeof role === "string" && role.startsWith("shirt-")) retiredShirts.push(part);
+  });
+  for (const shirt of retiredShirts) shirt.removeFromParent();
   let fabric: MeshStandardMaterial | undefined;
   corset.traverse(part => {
     if (fabric || !(part instanceof Mesh)) return;
@@ -54,13 +63,14 @@ export function prepareWardrobeLining(root: Object3D) {
   if (!fabric || !style) return;
   if (style === "04") body.userData.wardrobeBackOpening = true;
   const geometry = style === "01" ? fitLacedRearStrap(body.geometry)
+    : style === "02" ? fitSweetheartCups(body.geometry)
     : style === "04" ? fitUnderbustChest(body)
     : style === "05" ? fitHighCollarSurface(body.geometry)
-    : fitLowNeckline(body.geometry, fits[style]);
+    : fitRuffledNeckline(body.geometry);
   if (!geometry) return;
 
   const material = new MeshStandardMaterial({
-    name: "MAT_CORSET_FACING", color: fabric.color, roughness: style === "02" || style === "03" ? .91 : fabric.roughness, side: DoubleSide,
+    name: "MAT_CORSET_FACING", color: fabric.color, roughness: style === "03" ? .91 : fabric.roughness, side: DoubleSide,
   });
   material.userData.color_slot = "fabric";
   const facing = body.clone(false);
