@@ -7,7 +7,7 @@ import { characterLook, DEFAULT_CHARACTER, type CharacterChoice } from "../../ga
 import { useFittingTurnStore } from "../../game/characters/fittingControlsStore";
 import { useCharacterPreviewStore } from "../../game/characters/characterPreviewStore";
 
-export const CHARACTER_SHOTS = ["Full body", "Selected item", "Face", "Upper body", "Waist", "Feet", "Back", "Left", "Right"] as const;
+export const CHARACTER_SHOTS = ["Full body", "Selected item", "Face", "Upper body", "Waist", "Hands", "Feet", "Back", "Left", "Right"] as const;
 export type CharacterShot = typeof CHARACTER_SHOTS[number];
 type ReturnContext = {
   screen: MenuScreen; overlay: UIOverlay;

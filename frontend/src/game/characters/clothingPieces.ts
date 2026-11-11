@@ -28,6 +28,7 @@ export function wornClothing(choice: CharacterChoice): ClothingPiece[] {
     ? ["corset", ...(choice.wardrobe.shirt !== "none" ? ["shirt" as const] : []), "skirt", "shorts", "shoes", "hat"]
     : ["corset", "skirt", "sleeves", "underskirt", "shoes", "hat", "belt", ...((choice.appearance?.accent || choice.outfit === "shop-crew") ? ["bow" as const] : [])]
     : ["coat", "pants", "shoes", "gloves", "collar", "belt", "pouches"];
+  if (!female && choice.appearance?.headwear === "hat") pieces.push("hat");
   if (choice.appearance?.glasses && choice.appearance.glasses !== "none") pieces.push("glasses");
   if (choice.prop === "shop-bag") pieces.push("bag");
   return pieces;

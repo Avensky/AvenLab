@@ -22,7 +22,7 @@ test('dressing room separates browsing from equipping, filters fitting work, and
       __WARDROBE_SET_IDS__: JSON.stringify(['gothic-01', 'gothic-04']),
     }, server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
     const { DressingRoom } = await vite.ssrLoadModule('/src/game/characters/DressingRoom.tsx');
-    const { DEFAULT_CHARACTER } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { CHARACTERS, DEFAULT_CHARACTER, ROOK_ID } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
     const { useCharacterPreviewStore: preview } = await vite.ssrLoadModule('/src/game/characters/characterPreviewStore.ts');
     const { navigateFormRows } = await vite.ssrLoadModule('/src/game/social/formRows.ts');
     const changes = [];
@@ -41,6 +41,16 @@ test('dressing room separates browsing from equipping, filters fitting work, and
     assert.equal(find('.dressing-room-labels div:last-child small').textContent, 'Outfits');
     assert.equal(find('[data-wardrobe-item=gothic-02]').disabled, true, 'missing pack cannot be equipped');
     assert.match(find('[data-wardrobe-item=gothic-02]').textContent, /Pack not installed/);
+    assert.equal(preview.getState().camera, 'Full body');
+    const assertPiece = piece => {
+      assert.equal(preview.getState().camera, 'Selected item');
+      assert.equal(preview.getState().selectedPiece, piece);
+    };
+    await click('[data-category=outfits]');
+    assertPiece('corset');
+    const revision = preview.getState().focusRevision;
+    await click('[data-category=outfits]');
+    assert(preview.getState().focusRevision > revision, 're-clicking a category restores its close-up');
 
     const found = new Set();
     for (const category of new Set(imports.map(item => item.category))) {
@@ -53,6 +63,10 @@ test('dressing room separates browsing from equipping, filters fitting work, and
       }
     }
     assert.equal(found.size, imports.length, 'every imported item has a category');
+    for (const [category, piece] of [['bottoms', 'skirt'], ['footwear', 'shoes'], ['headwear', 'hat']]) {
+      await click(`[data-category=${category}]`);
+      assertPiece(piece);
+    }
     assert.equal(changes.length, 0, 'category and camera changes never alter the outfit');
 
     await click('[data-category=outerwear]');
@@ -73,7 +87,13 @@ test('dressing room separates browsing from equipping, filters fitting work, and
     assert.equal(document.activeElement.dataset.wardrobeItem, 'gothic-01', 'keyboard activation moves into the catalog');
     await click('[data-wardrobe-item=gothic-04]');
     assert.equal(changes.at(-1).wardrobe.shirt, 'under');
+    assertPiece('corset');
+    await click('[data-category=bottoms]');
+    await click('[data-wardrobe-item=gothic-04]');
+    assertPiece('skirt');
     await click('[data-category=outfits]');
+    await click('[data-wardrobe-item=gothic-04]');
+    assertPiece('corset');
     const first = find('[aria-label="Complete outfits"] [data-wardrobe-item]');
     first.focus();
     const memory = new WeakMap();
@@ -83,12 +103,21 @@ test('dressing room separates browsing from equipping, filters fitting work, and
     assert.equal(document.activeElement.dataset.wardrobeItem, 'gothic-04', 'down enters the next section at its equipped item');
     await click('[data-wardrobe-item=shop-crew]');
     assert.equal(changes.at(-1).wardrobe, undefined, 'complete outfit replaces the corset set');
+    assertPiece('corset');
 
     await click('[data-category=face]');
     assert.equal(preview.getState().camera, 'Face');
     await act(async () => root.unmount()); root = null;
     assert.equal(preview.getState().camera, 'Hands', 'leaving restores the previous camera');
     assert.equal(preview.getState().zoom, 1.2);
+
+    const rook = CHARACTERS.find(character => character.id === ROOK_ID);
+    root = createRoot(find('#root'));
+    await act(async () => root.render(h(Harness, { initial: { id: rook.id, outfit: rook.outfits[0].id } })));
+    await click('[data-category=outfits]');
+    assertPiece('coat');
+    await click('[data-category=bottoms]');
+    assertPiece('pants');
   } finally {
     if (root) await act(async () => root.unmount());
     await vite?.close(); dom.window.close();

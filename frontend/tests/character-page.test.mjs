@@ -208,6 +208,8 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(preview.getState().emote, null);
     await click(cockpitToggle);
     await click('#character-editor-tab-appearance');
+    await click('[data-category=outfits]');
+    assert.equal(find('[aria-label="Preview camera"]').value, 'piece:coat');
     await click('[data-category=face]');
     assert(find('.character-controls--bottom .character-camera button[aria-label="Hide interface"]'), 'dressing room keeps the eye beside its camera');
     assert.equal(preview.getState().camera, 'Face');
@@ -243,9 +245,11 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(preview.getState().camera, 'Selected item', 'applying color keeps the current close-up');
     await click('[data-category=outfits]');
     await click('[data-wardrobe-item=race-crew]');
+    assert.equal(find('[aria-label="Preview camera"]').value, 'piece:coat');
     await chooseColor('Gothic Pink');
     assert.equal(find('[data-outfit-preview]').dataset.outfitPreview, 'race-crew');
-    assert.equal(drafts.at(-1).appearance.item_colors['aviator:glasses'].color, '#101015');
+    assert.equal(drafts.at(-1).appearance.item_colors['aviator:glasses'].color, '#293953');
+    assert.equal(drafts.at(-1).appearance.item_colors['race-crew:coat'].color, '#101015');
     assert.equal(drafts.at(-1).appearance.color, 'original', 'piece dye leaves the overall outfit palette unchanged');
     assert.equal(find('input[aria-label="Selected item trim color"]').value, '#ff2d95');
     await click('[aria-label="Close clothing colors"]');

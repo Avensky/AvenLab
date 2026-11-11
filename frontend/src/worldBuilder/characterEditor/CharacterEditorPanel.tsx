@@ -52,7 +52,7 @@ export function CharacterEditorPanel() {
       useCharacterPreviewStore.setState({ playbackPaused: false, automaticEmotes: true });
     };
   }, [back]);
-  useEffect(() => { frame(automaticCamera === "Face" ? "Face" : automaticCamera === "Selected item" ? "Selected item" : "Full body"); }, [automaticCamera, focusRevision, frame]);
+  useEffect(() => { frame(automaticCamera === "Whole car" ? "Full body" : automaticCamera); }, [automaticCamera, focusRevision, frame]);
   useSelectionNavigation(root, {
     back: () => void back(),
     confirm: () => { const active = document.activeElement as HTMLElement; if (root.current?.contains(active)) active.click(); },
