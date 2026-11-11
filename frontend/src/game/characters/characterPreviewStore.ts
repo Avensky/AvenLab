@@ -7,6 +7,8 @@ export const CHARACTER_ZOOM_MAX = 1.25;
 type Camera = typeof CHARACTER_CAMERAS[number];
 
 export const useCharacterPreviewStore = create<{
+  playbackPaused: boolean;
+  automaticEmotes: boolean;
   camera: Camera;
   zoom: number;
   emote: { id: string } | null;
@@ -15,7 +17,7 @@ export const useCharacterPreviewStore = create<{
   cockpitError: string | null;
   insideCar: boolean;
   leanAvailable: boolean;
-}>(() => ({ camera: "Full body", zoom: 1, emote: null, cockpitVehicle: null, cockpitAvailable: false, cockpitError: null, insideCar: false, leanAvailable: false }));
+}>(() => ({ playbackPaused: false, automaticEmotes: true, camera: "Full body", zoom: 1, emote: null, cockpitVehicle: null, cockpitAvailable: false, cockpitError: null, insideCar: false, leanAvailable: false }));
 
 export function failCockpitPreview(message: string) {
   if (useCharacterPreviewStore.getState().insideCar) {

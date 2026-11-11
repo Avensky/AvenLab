@@ -26,7 +26,8 @@ function revealCharacterControl(event: FocusEvent<HTMLElement>) {
   event.target.scrollIntoView?.({ block: "nearest", inline: "nearest" });
 }
 
-export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
+export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection = false }: {
+  inspection?: boolean;
   onPreview?: (choice: CharacterChoice | null) => void;
   onReady: (ready: boolean) => void;
   tab: CharacterTab;
@@ -164,14 +165,14 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
         disabled={reducedMotion || cockpitPending}
         aria-pressed={emote?.id === item.id} onClick={() => {
           if (item.id === "drive-honk") unlockVehicleAudio();
-          useCharacterPreviewStore.setState({ emote: { id: item.id } });
+          useCharacterPreviewStore.setState({ emote: { id: item.id }, playbackPaused: false });
         }}>{item.name}</button>)}
     </div>
   </>;
 
   if (!locked) return (
     <div className="character-page character-page--setup" aria-label="Choose character gender" onFocus={revealCharacterControl}>
-      <div className="character-stage" data-character-preview={character.id} data-outfit-preview={outfit.id} />
+      <div className="character-stage" data-character-viewport={inspection || undefined} data-character-preview={character.id} data-outfit-preview={outfit.id} />
       <section className="character-controls menu-panel-frame">
         <header className="character-description"><h2>Choose gender</h2><p>This choice is permanent for your profile.</p></header>
         {genderPicker}
@@ -191,7 +192,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
   return (
     <div className={`character-page character-page--editor${tab === "appearance" ? " character-page--dressing" : ""}`} role="tabpanel" id="character-editor-panel" aria-labelledby={"character-editor-tab-" + tab}
       onFocus={revealCharacterControl}>
-      <div className="character-stage" data-character-preview={previewChoice.id} data-outfit-preview={previewChoice.outfit}
+      <div className="character-stage" data-character-viewport={inspection || undefined} data-character-preview={previewChoice.id} data-outfit-preview={previewChoice.outfit}
         aria-label={`Preview of ${characterLook(previewChoice)!.character.name}`} />
       {tab === "appearance" && <DressingRoom choice={choice} onChange={update} />}
       {tab !== "appearance" && <section className="character-controls menu-panel-frame character-controls--left" aria-label={tab}>
@@ -210,7 +211,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
         </>}
       </section>}
       <section className="character-controls menu-panel-frame character-controls--bottom" aria-label="Camera and save status">
-        {insideCar ? <div className="character-camera" data-controller-row>
+        {!inspection && (insideCar ? <div className="character-camera" data-controller-row>
           <label>Camera<select className="menu-control" aria-label="Preview camera" value={camera === "Whole car" ? "Whole car" : "Full body"}
             onChange={event => useCharacterPreviewStore.setState({ camera: event.target.value as typeof camera, zoom: 1 })}>
             <option value="Full body">Driver</option><option value="Whole car">Whole vehicle</option>
@@ -232,7 +233,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
               onClick={() => useCharacterPreviewStore.setState({ zoom: Math.min(CHARACTER_ZOOM_MAX, +(zoom + .05).toFixed(2)) })}>+</button>
           </div>
           <PreviewVisibilityToggle />
-        </div>}
+        </div>)}
         <div className="character-equip" data-controller-row>
           <p role="status">{status === "error" ? message : status === "saving" || status === "pending" ? "Saving…" : "Changes save automatically."}</p>
           {status === "error" && <>

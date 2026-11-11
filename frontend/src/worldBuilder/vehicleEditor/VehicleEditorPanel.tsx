@@ -1,3 +1,4 @@
+import { openCharacterEditor } from "../characterEditor/characterEditorStore";
 import { WeaponEditor } from "../../combat/WeaponEditor";
 import type { MenuAction } from "../../controls/inputRouting";
 import { useEffect, useRef, useState } from 'react';
@@ -28,7 +29,7 @@ type Reply = {
     current: Tuning;
 };
 /** One panel owns draft settings. Only Apply sends physics to the server. */
-export function VehicleEditorPanel() {
+export function VehicleEditorPanel({ suspended = false }: { suspended?: boolean }) {
     const root = useRef<HTMLElement>(null);
     const active = useSocialStore(s => s.view?.alpha?.active);
     const [reply, setReply] = useState<Reply | null>(null);
@@ -95,6 +96,7 @@ export function VehicleEditorPanel() {
     });
     const test = () => { useInputStore.getState().releaseControls(); useUIStore.getState().closeOverlay(); };
     useEffect(() => {
+        if (suspended) return;
         const navigate = (event: Event) => {
             const action = (event as CustomEvent<MenuAction>).detail;
             if (action === 'back') {
@@ -128,7 +130,7 @@ export function VehicleEditorPanel() {
         };
         window.addEventListener('avenlab:panel-action', navigate);
         return () => window.removeEventListener('avenlab:panel-action', navigate);
-    }, []);
+    }, [suspended]);
     const stopKeys = (e: React.KeyboardEvent) => {
         e.stopPropagation();
         if (e.key === 'Escape') {
@@ -138,7 +140,7 @@ export function VehicleEditorPanel() {
         }
     };
     return <section ref={root} className="ve-panel menu-surface" aria-label="Vehicle editor" onKeyDown={stopKeys}>
-    <header><button onClick={() => { editor.setView('chase'); useBuilderStore.setState({ workspace: 'layout' }); }}>← WORLD EDITOR</button><strong>EDIT VEHICLE</strong><button disabled={!reply || busy} onClick={test}>TEST DRIVE</button></header>
+    <header><button onClick={() => { editor.setView('chase'); useBuilderStore.setState({ workspace: 'layout' }); }}>← WORLD EDITOR</button><strong>EDIT VEHICLE</strong><button disabled={busy} onClick={openCharacterEditor}>EDIT CHARACTER</button><button disabled={!reply || busy} onClick={test}>TEST DRIVE</button></header>
     {!live ? <p>Deploy a vehicle through World Editor to tune its physics.</p> : <>
       <label className="ve-vehicle">TEST VEHICLE<select disabled={busy} value={active?.hero ?? ''} onChange={e => {
                 const hero = e.target.value;

@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useLayoutEffect, useMemo } from "react";
-import { useGLTF } from "@react-three/drei";
+import { Html, useGLTF } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { AssetBoundary } from "../../components/debugger/AssetBoundary";
 import { ROOK_ID, VILLAGER_ID, characterLook, type CharacterChoice, type CharacterLook } from "./characterCatalog";
@@ -41,23 +41,25 @@ function VillagerDriver({ url, look, bag, previewPacks, leanFit, victory, cockpi
   return <GarageEmotePlayer root={model.root} bag={bag} previewPacks={previewPacks} leanFit={leanFit} victory={victory} cockpit={cockpit} />;
 }
 
-export function GarageDriver({ choice, previewPacks, leanFit, victory, cockpit }: {
-  choice: CharacterChoice; previewPacks?: boolean; leanFit?: GarageLeanFit; victory?: VictoryPlayback; cockpit?: GarageCockpit;
+export function GarageDriver({ choice, previewPacks, leanFit, victory, cockpit, upright = false }: {
+  choice: CharacterChoice; previewPacks?: boolean; leanFit?: GarageLeanFit; victory?: VictoryPlayback; cockpit?: GarageCockpit; upright?: boolean;
 }) {
   const look = useMemo(() => characterLook(choice), [choice]);
   const compact = useThree(s => isCompactPreview(s.size.width));
   if (!look) return null;
   const bag = choice.prop === "shop-bag";
   const coatFitsLean = choice.id === ROOK_ID && (choice.outfit === "night-run" || choice.outfit === "race-crew");
-  const fallback = choice.id === VILLAGER_ID ? <MissingVillager cockpit={cockpit} /> :
-    <group name="garage-driver" rotation={DRIVER_TILT}><StylizedDriver look={look} bag={bag} previewPacks={previewPacks} victory={victory} cockpit={cockpit} /></group>;
+  const fallback = choice.id === VILLAGER_ID ? upright
+    ? <Html center><p className="menu-control">Character model unavailable. Install the character assets with Git LFS.</p></Html>
+    : <MissingVillager cockpit={cockpit} /> :
+    <group name="garage-driver" rotation={upright ? [0, 0, 0] : DRIVER_TILT}><StylizedDriver look={look} bag={bag} previewPacks={previewPacks} victory={victory} cockpit={cockpit} /></group>;
   const url = villagerModelUrl(look, compact && choice.id === VILLAGER_ID ? "portrait" : "garage");
   return (
     <>
       {url
         ? <AssetBoundary key={url} fallback={fallback}>
             <Suspense fallback={victory ? <CharacterLoadingEffect /> : <PreviewLoadingStatus label="Loading driver" />}>
-              <group name="garage-driver" rotation={DRIVER_TILT}>
+              <group name="garage-driver" rotation={upright ? [0, 0, 0] : DRIVER_TILT}>
                 <VillagerDriver url={url} look={look} bag={bag} previewPacks={previewPacks}
                   leanFit={coatFitsLean ? leanFit : undefined} victory={victory} cockpit={cockpit} />
               </group>

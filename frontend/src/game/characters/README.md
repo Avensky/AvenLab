@@ -225,3 +225,23 @@ in through the door. It keeps the final seated pose and female entry unchanged.
 The stripped rig fixtures in tests/fixtures preserve the shipped joint transforms
 without including visual meshes; garage-entry.test.mjs checks both door sides
 and compares the female poses with the accepted 9bd8f49 sequence.
+# Character tools in Play and Explore
+
+The saved driver appears in Play and Explore mode selection, all vehicle pickers,
+and the queue preview. The profile portrait on Play/Explore opens the same
+Character editor used by Explore's Sandbox HUD and the World/Vehicle builders.
+
+The character workspace borrows the shared canvas and uses OrbitControls with
+character-scale clipping and zoom limits. Drag to orbit, right-drag to pan, scroll
+to zoom; touch uses one finger to orbit and two to pan/zoom. Presets frame the full
+body, face, upper body, waist, feet, back and sides against the loaded actor bounds.
+The bottom toolbar also has zoom, reframe, hold/resume pose, and the eye toggle.
+Appearance categories still save through CharacterPage's acknowledged save queue;
+failed saves keep the editor open. Editing uses the existing wardrobe choices,
+not vertex sculpting or independent garment fitting.
+
+World drafts and history stay in their stores; a suspended vehicle panel stays
+mounted to retain unsaved tuning. Its controller listener is disabled while the
+character editor owns input. Returning restores the original screen, overlay,
+workspace and builder presentation. Frozen poses render on demand. No extra
+canvas, world entity or server physics actor is created by this preview tool.

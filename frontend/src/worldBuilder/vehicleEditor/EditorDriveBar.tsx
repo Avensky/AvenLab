@@ -1,3 +1,4 @@
+import { openCharacterEditor } from "../characterEditor/characterEditorStore";
 import { useConnectionView } from "../../store/session/networkViews";
 import {useState} from 'react';
 import {useLayoutStore} from '../state/layoutStore';
@@ -12,7 +13,7 @@ import './vehicleEditor.css';
 export function EditorDriveBar(){
  const active=useSocialStore(s=>s.view?.alpha?.active),connected=useConnectionView(s => s.connected);
  const [open,setOpen]=useState(false);
- if(active?.mode!=='editor'||!connected)return null;
+ if(!['editor', 'sandbox'].includes(active?.mode ?? '')||!connected)return null;
  const show=(workspace:'layout'|'vehicle',presentation:'workspace'|'hud')=>{
   useInputStore.getState().releaseControls();
   useVehicleEditorStore.getState().setView('chase');
@@ -21,8 +22,10 @@ export function EditorDriveBar(){
   useUIStore.getState().setOverlay('world_builder');setOpen(false);
  };
  return <section className="world-edit-tools" aria-label="World editor HUD tools">
-  <button onClick={()=>show('vehicle','workspace')}>EDIT VEHICLE</button>
+  <button onClick={openCharacterEditor}>EDIT CHARACTER</button>
+  {active?.mode === 'editor' && <><button onClick={()=>show('vehicle','workspace')}>EDIT VEHICLE</button>
   <button aria-label="World tools" aria-expanded={open} onClick={()=>setOpen(!open)}>WORLD ▾</button>
   {open&&<div className="world-edit-tool-menu"><button onClick={()=>show('layout','workspace')}>WORLD EDITOR</button><button onClick={()=>show('layout','hud')}>BUILD IN WORLD</button></div>}
+ </>}
  </section>;
 }

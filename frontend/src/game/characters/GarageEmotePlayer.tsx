@@ -75,6 +75,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
       ? buildEmoteClips(root, celebration ? [garageBreathing(bag), celebration] : [garageBreathing(bag)])
       : buildGarageEmotes(root, bag);
     const idle = mixer.clipAction(breathing).play();
+    if (previewPacks && useCharacterPreviewStore.getState().playbackPaused) mixer.update(0);
     const actions = new Map(clips.map(clip => [clip.name.split(" ")[0], mixer.clipAction(clip).setLoop(LoopOnce, 1)]));
     actions.set("001", mixer.clipAction(breathing.clone()).setLoop(LoopOnce, 1));
     const automatic = [...AUTOMATIC_GARAGE_EMOTE_IDS, ...(bag ? ["bag-lift", "bag-check"] : [])]
@@ -96,7 +97,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
 
   useFrame((_, delta) => {
     const current = player.current;
-    if (!current) return;
+    if (!current || (previewPacks && useCharacterPreviewStore.getState().playbackPaused)) return;
     const step = Math.min(delta, .1);
     if (current.blink.length) {
       current.elapsed += step;
@@ -215,7 +216,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
         active.setEffectiveWeight(weight);
         current.idle.setEffectiveWeight(1 - weight);
       }
-    } else if (!victory && !inspectingFace) {
+    } else if (!victory && !inspectingFace && (!previewPacks || view.automaticEmotes)) {
       current.rest -= step;
       if (current.wave || current.rest <= 0) {
         const action = current.wave ? current.actions.get("010")! : current.automatic[current.next];
@@ -231,7 +232,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
   return <group>
     <primitive object={root} dispose={null}>
       {!victory && !reducedMotion && <mesh name="garage-driver-hit-area" position={[0, .84, 0]} onClick={event => {
-        if (!player.current || player.current.cabin || event.delta > 5) return;
+        if (!player.current || player.current.cabin || event.delta > 5 || (previewPacks && !useCharacterPreviewStore.getState().automaticEmotes)) return;
         event.stopPropagation();
         player.current.wave = true;
       }}>

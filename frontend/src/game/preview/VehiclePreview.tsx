@@ -72,7 +72,7 @@ export function VehiclePreview({
   const stationActive = useGarageDrive(s => garageOpen && s.stage !== "idle");
   const zoom = usePreviewZoom(s => !wardrobeOpen && (workshop || screen === "hero_select") ? PREVIEW_ZOOM_LEVELS[s.level] : 1);
   const sandboxPicker = screen === "hero_select" && mode === "sandbox";
-  const driverStage = workshop || sandboxPicker;
+  const driverStage = workshop || ["mode_select", "hero_select", "queue", "sandbox_setup", "signal_recon_setup"].includes(screen);
   const equipped = useSocialStore(s => driverStage ? s.view?.profile.progression?.character : null);
   const savedHero = useSocialStore(s => workshop ? s.view?.profile.progression?.default_hero : undefined);
   const driver = driverStage ? characterDraft ?? equipped ?? DEFAULT_CHARACTER : null;
