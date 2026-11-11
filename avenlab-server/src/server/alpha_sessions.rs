@@ -364,7 +364,7 @@ impl Server {
             }
             "character_equip" => {
                 let actor = self.actor(player).await?;
-                let choice: crate::alpha::character::CharacterChoice = serde_json::from_value(value["character"].clone())
+                let mut choice: crate::alpha::character::CharacterChoice = serde_json::from_value(value["character"].clone())
                     .map_err(|_| "Choose a character and outfit.")?;
                 if !choice.is_available() { return Err("Choose an available character outfit.".into()); }
                 let mut data = self.data.lock().await;
@@ -372,6 +372,9 @@ impl Server {
                 if profile.progression.character.as_ref().and_then(|current| current.gender())
                     .is_some_and(|gender| Some(gender) != choice.gender()) {
                     return Err("Your character gender is already set for this profile.".into());
+                }
+                if choice.identity.is_none() {
+                    choice.identity = profile.progression.character.as_ref().and_then(|current| current.identity);
                 }
                 if profile.progression.character.as_ref() == Some(&choice) {
                     return Ok(json!({"character":choice}));

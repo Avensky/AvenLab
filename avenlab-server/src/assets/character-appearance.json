@@ -7,7 +7,9 @@
     { "id": "original", "label": "Original", "color": "#ffffff" },
     { "id": "espresso", "label": "Espresso", "color": "#34262b" },
     { "id": "copper", "label": "Copper", "color": "#ae5837" },
-    { "id": "ash", "label": "Ash", "color": "#c0b3aa" }
+    { "id": "ash", "label": "Ash", "color": "#c0b3aa" },
+    { "id": "soft-black", "label": "Soft black", "color": "#211d23" },
+    { "id": "dark-auburn", "label": "Dark auburn", "color": "#582f26" }
   ],
   "skin": [
     { "id": "original", "label": "Original", "color": "#ffffff" },
@@ -19,10 +21,43 @@
     { "id": "none", "label": "None" },
     { "id": "hat", "label": "Hat" }
   ],
+  "eye_color": [
+    { "id": "original", "label": "Character default" },
+    { "id": "brown", "label": "Brown", "color": "#855031" },
+    { "id": "hazel", "label": "Hazel", "color": "#9b783e" },
+    { "id": "green", "label": "Green", "color": "#658847" },
+    { "id": "blue", "label": "Blue", "color": "#4c8db8" },
+    { "id": "gray", "label": "Gray", "color": "#8798a3" },
+    { "id": "dark-walnut", "label": "Dark walnut", "color": "#503321" },
+    { "id": "storm-blue", "label": "Storm blue", "color": "#35596a" },
+    { "id": "obsidian", "label": "Obsidian black", "color": "#101014" },
+    { "id": "espresso", "label": "Espresso brown", "color": "#332017" },
+    { "id": "charcoal", "label": "Charcoal gray", "color": "#36383e" },
+    { "id": "pine", "label": "Deep pine", "color": "#293d2b" },
+    { "id": "midnight", "label": "Midnight blue", "color": "#243550" },
+    { "id": "plum", "label": "Black plum", "color": "#403040" }
+  ],
+  "brow_color": [
+    { "id": "original", "label": "Match hair" },
+    { "id": "espresso", "label": "Espresso", "color": "#34231e" },
+    { "id": "copper", "label": "Copper", "color": "#965032" },
+    { "id": "ash", "label": "Ash", "color": "#82736d" },
+    { "id": "blond", "label": "Blond", "color": "#ad8b60" }
+  ],
+  "glasses": [
+    { "id": "none", "label": "None" },
+    { "id": "round", "label": "Graphite round" },
+    { "id": "aviator", "label": "Gold aviator" }
+  ],
   "color": [
     { "id": "original", "label": "Outfit colors", "color": "#ffffff" },
     { "id": "navy", "label": "Navy", "color": "#4b79a4" },
     { "id": "forest", "label": "Forest", "color": "#5f8962" },
-    { "id": "crimson", "label": "Crimson", "color": "#ad444d" }
+    { "id": "crimson", "label": "Crimson", "color": "#ad444d" },
+    { "id": "ink", "label": "Ink", "color": "#262630" },
+    { "id": "deep-navy", "label": "Deep navy", "color": "#293953" },
+    { "id": "pine-shadow", "label": "Pine shadow", "color": "#2b453b" },
+    { "id": "oxblood", "label": "Oxblood", "color": "#552c36" },
+    { "id": "aubergine", "label": "Aubergine", "color": "#453049" }
   ]
 }

@@ -1,0 +1,74 @@
+{
+  "master": "pack7-tops-master.blend",
+  "masterSha256": "beb868c09b904ba4e97f81449d969a263ad830dfdb18d540b9deb7de2ec3d6cb",
+  "rigId": "avenlab-humanoid-villager-v1",
+  "bodyFitId": "villager-female-v1",
+  "rigSignature": "sha256:d4d3b9c42fd451b50196d1ba39a3271ac0e47c0ea13b6d068fa14911b9fc12c2",
+  "jointCount": 88,
+  "maxRestMatrixErrorAgainstRoundedProfile": 5.066394805908203e-07,
+  "originalMasterSaved": false,
+  "animationClipsExported": 0,
+  "tops": [
+    {
+      "id": "pack7-top-01",
+      "node": "CLOTH_TOP_PACK7_01",
+      "slot": "top",
+      "file": "pack7-top-01.glb",
+      "triangles": 52090,
+      "vertices": 26843,
+      "omittedInvisibleCarrierTriangles": 0,
+      "sourceWeightSumMaxError": 4.842877388000488e-08,
+      "bytes": 2543916,
+      "sha256": "cbbc700cd41318f50b54d2013244c41a3f7862dfdfc99f4ab43b1e3a8f3ab6e9"
+    },
+    {
+      "id": "pack7-top-02",
+      "node": "CLOTH_TOP_PACK7_02",
+      "slot": "top",
+      "file": "pack7-top-02.glb",
+      "triangles": 33236,
+      "vertices": 17203,
+      "omittedInvisibleCarrierTriangles": 0,
+      "sourceWeightSumMaxError": 4.7497451305389404e-08,
+      "bytes": 1862988,
+      "sha256": "a75f6d20913a3ac980c222a9908b9b233fe74307bc56c56ce8f596f4f8a66e17"
+    },
+    {
+      "id": "pack7-top-03",
+      "node": "CLOTH_TOP_PACK7_03",
+      "slot": "top",
+      "file": "pack7-top-03.glb",
+      "triangles": 67210,
+      "vertices": 34215,
+      "omittedInvisibleCarrierTriangles": 0,
+      "sourceWeightSumMaxError": 4.6566128730773926e-08,
+      "bytes": 3072456,
+      "sha256": "6ac0c41c78744a16f84c2a66169769b7c7bfbc815cf6fe4367640c92f2213ff3"
+    },
+    {
+      "id": "pack7-top-04",
+      "node": "CLOTH_TOP_PACK7_04",
+      "slot": "top",
+      "file": "pack7-top-04.glb",
+      "triangles": 63218,
+      "vertices": 34436,
+      "omittedInvisibleCarrierTriangles": 660,
+      "sourceWeightSumMaxError": 4.98257577419281e-08,
+      "bytes": 3046416,
+      "sha256": "8ce4bd3e7ac767b78a9d7ce11c1cdb7deaa1356545cbcbf03c5bd4fb36e93efe"
+    },
+    {
+      "id": "pack7-top-05",
+      "node": "CLOTH_TOP_PACK7_05",
+      "slot": "top",
+      "file": "pack7-top-05.glb",
+      "triangles": 12836,
+      "vertices": 6839,
+      "omittedInvisibleCarrierTriangles": 0,
+      "sourceWeightSumMaxError": 4.470348358154297e-08,
+      "bytes": 1022556,
+      "sha256": "9d7c3a8936a1dbb69f5eedc0c5b8b486d82c4de674c5b1af25ee7e88a1b6d76c"
+    }
+  ],
+  "validationNote": "File/rig checks do not certify garment fit or the game emotes."
+}

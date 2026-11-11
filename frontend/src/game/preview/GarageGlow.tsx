@@ -7,14 +7,21 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 import { configureGarageBloom } from "./garagePostprocessing";
+import { isCompactPreview } from "./previewBudget";
 
 // Selection only: HDR emission -> bloom -> tone mapping/sRGB. Keep the effect
 // at at most one pixel per CSS pixel so phone DPR does not multiply its cost.
 export function GarageGlow() {
   const contrast = usePreferencesStore((s) => s.highContrast);
   const settings = usePreferencesStore((s) => s.garageEffects);
-  const { gl, scene, camera, size, viewport } = useThree();
+  const gl = useThree(s => s.gl);
+  const scene = useThree(s => s.scene);
+  const camera = useThree(s => s.camera);
+  const size = useThree(s => s.size);
+  const dpr = useThree(s => s.viewport.dpr);
+  const bloomEnabled = !isCompactPreview(size.width) && settings.bloom && settings.bloomStrength > 0 && !contrast;
   const effects = useMemo(() => {
+    if (!bloomEnabled) return null;
     const target = new WebGLRenderTarget(1, 1, { type: HalfFloatType });
     const composer = new EffectComposer(gl, target);
     const render = new RenderPass(scene, camera);
@@ -25,20 +32,20 @@ export function GarageGlow() {
     composer.addPass(bloom);
     composer.addPass(output);
     return { composer, render, bloom, output };
-  }, [gl, scene, camera]);
+  }, [bloomEnabled, gl, scene, camera]);
   useLayoutEffect(() => {
-    configureGarageBloom(effects.bloom, settings, contrast);
+    if (effects) configureGarageBloom(effects.bloom, settings, contrast);
   }, [effects, settings, contrast]);
   useEffect(() => {
-    effects.composer.setPixelRatio(Math.min(1, viewport.dpr));
-    effects.composer.setSize(size.width, size.height);
-  }, [effects, size.width, size.height, viewport.dpr]);
+    effects?.composer.setPixelRatio(Math.min(1, dpr));
+    effects?.composer.setSize(size.width, size.height);
+  }, [effects, size.width, size.height, dpr]);
   useEffect(
     () => () => {
-      effects.render.dispose();
-      effects.bloom.dispose();
-      effects.output.dispose();
-      effects.composer.dispose();
+      effects?.render.dispose();
+      effects?.bloom.dispose();
+      effects?.output.dispose();
+      effects?.composer.dispose();
     },
     [effects],
   );
@@ -46,7 +53,8 @@ export function GarageGlow() {
     const exposure = gl.toneMappingExposure;
     try {
       gl.toneMappingExposure = exposure * settings.exposure;
-      effects.composer.render(delta);
+      if (effects?.bloom.enabled) effects.composer.render(delta);
+      else gl.render(scene, camera);
     } finally {
       gl.toneMappingExposure = exposure;
     }

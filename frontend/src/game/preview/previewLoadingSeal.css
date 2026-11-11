@@ -1,0 +1,11 @@
+.preview-loading-seal {
+  color: var(--app-accent, #8ce3ff);
+  padding: 3px 8px;
+  border: 1px solid color-mix(in srgb, currentColor 65%, transparent);
+  background: color-mix(in srgb, var(--app-background, #111822) 90%, transparent);
+  font: 750 10px/1.2 system-ui, sans-serif;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}

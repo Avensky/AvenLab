@@ -1,4 +1,4 @@
-import type { Emote } from "./garageEmotes";
+import type { Emote, XYZ } from "./garageEmotes";
 
 const leftStep = { leftHand: [1.6, -.65, .22], rightHand: [-1.46, -.54, .48], torso: [.03, -.062, .016] } as const;
 const rightStep = { leftHand: [1.46, -.54, .48], rightHand: [-1.6, -.65, .22], torso: [.03, .062, -.016] } as const;
@@ -23,21 +23,96 @@ export const walkReturn = [
   [.96, { travel: .012, rise: -.012 }],
 ] as const satisfies Emote["keys"];
 
+type Plant = readonly [across: number, forward: number, yaw: number];
+const phases = [.15, .3, .46, .64, .82, 1];
+const softPhases = [.15, .3, .46, .64, .82, .93, 1];
+const fullTurn = Math.PI * 2;
+const mix = (from: number, to: number, amount: number) => from + (to - from) * amount;
+
+function garageWalk(heading: number, stride: number, glance: number, soft = false, markPause = 0): Emote["keys"] {
+  // Successive foot contacts and pelvis positions in the floor frame.
+  const stops = [
+    [[-.012, .19, heading], [0, .084, heading * .68]],
+    [[0, .43, heading + .08], [0, .29, heading + .04]],
+    [[.035, .51, heading + .92], [.026, .427, heading + .64]],
+    [[.105, .44, heading + 2.16], [.074, .447, heading + 1.78]],
+    [[.085, .27, heading + 3.08], [.085, .359, heading + 2.87]],
+    [[.068, .13, heading + 3.29], [.067, .204, heading + 3.16]],
+    [[.026, .019, heading + 4.54], [.035, .079, heading + 4.21]],
+    [[0, 0, fullTurn], [.008, .014, 5.51 + heading * .35]],
+    [[0, 0, fullTurn], [0, 0, fullTurn]],
+  ] as const satisfies readonly (readonly [Plant, Plant])[];
+  const cos = Math.cos(heading), sin = Math.sin(heading);
+  const onFloor = ([across, forward, yaw]: Plant): Plant => [
+    (cos * across + sin * forward) * stride, (cos * forward - sin * across) * stride, yaw,
+  ];
+  const origin = [0, 0, 0] as const;
+  const plants = { l: origin as Plant, r: origin as Plant };
+  let pelvis: Plant = origin;
+  const keys: Emote["keys"][number][] = [];
+
+  for (const [index, [nextContact, nextPelvis]] of stops.entries()) {
+    const stepping = index % 2 === 0 ? "l" : "r";
+    const stance = stepping === "l" ? "r" : "l";
+    const side = stepping === "l" ? 1 : -1;
+    const from = plants[stepping];
+    const to = onFloor(nextContact);
+    const next = onFloor(nextPelvis);
+    const planted = plants[stance];
+    for (const phase of soft ? softPhases : phases) {
+      const progress = (index + phase) / stops.length * (1 - markPause) + (index >= 2 ? markPause : 0);
+      const roll = phase * phase * (3 - 2 * phase);
+      const lift = Math.sin(phase * Math.PI);
+      const activity = Math.min(index + phase, stops.length - index - phase, 1);
+      const yaw = mix(pelvis[2], next[2], phase);
+      const weight = -side * .026 * lift * activity;
+      const counter = -side * Math.cos(phase * Math.PI) * activity;
+      const arm = (sign: number): readonly [XYZ, XYZ] => [
+        [.25 * sign, -1, counter * sign * .25 + .04], [.12 * sign, -1, .25 + counter * sign * .19],
+      ];
+      const look = Math.max(0, 1 - Math.abs(progress - .25) / .19);
+      const shoeLift = soft ? .034 * lift * lift : .054 * lift;
+      const toeRoll = (soft ? .095 * lift : .14) * Math.sin(2 * Math.PI * phase);
+      keys.push([progress, {
+        left: arm(1), right: arm(-1),
+        sway: mix(pelvis[0], next[0], phase) + weight * Math.cos(yaw),
+        travel: mix(pelvis[1], next[1], phase) - weight * Math.sin(yaw),
+        rise: (soft ? -.033 + .015 * lift : -.043 + .026 * lift) * activity,
+        turn: yaw,
+        feet: {
+          [stepping]: [mix(from[0], to[0], roll), shoeLift, mix(from[1], to[1], roll), mix(from[2], to[2], roll), toeRoll],
+          [stance]: [planted[0], 0, planted[1], planted[2]],
+        },
+        torso: [.039 * activity, counter * .095, weight * 2.35],
+        head: [-.018 * lift * activity, glance * look - counter * .04, weight * -.6],
+        face: [.2 * activity, look * Math.abs(glance) * .53],
+      }]);
+    }
+    plants[stepping] = to;
+    pelvis = next;
+    if (index === 1 && markPause) {
+      const [time, stancePose] = keys[keys.length - 1];
+      keys.push(
+        [time + markPause * .46, { ...stancePose, left: undefined, right: undefined,
+          torso: [.029, -.039, .018], head: [.097, -.181, .027], face: [.37, .43] }],
+        [time + markPause, { ...stancePose, left: undefined, right: undefined,
+          torso: [-.032, .034, -.013], head: [-.067, .088, -.025], face: [.66, .51] }],
+      );
+    }
+  }
+  // Leave the final shoe contacts in place until the idle stance takes over.
+  keys[keys.length - 1] = [1, {}];
+  return keys;
+}
+
+export const SIDEWAYS_CHECK: Emote = {
+  id: "042", name: "Sideways check", duration: 4.9, keys: garageWalk(.57, .86, -.86),
+};
+
+export const WALK_TO_MARK: Emote = {
+  id: "171", name: "Walk to the mark", duration: 6.35, keys: garageWalk(0, 1, .08, true, .15),
+};
+
 export const WALK_EMOTES = [
-  { id: "walk-casual", name: "Casual walk", duration: 4.5, keys: [
-    ...walkForward,
-    [.56, { ...walkPause, head: [-.032, .07, -.03], face: [.22, .08] }],
-    ...walkReturn,
-  ] },
-  { id: "walk-glance", name: "Side step and glance", duration: 4, keys: [
-    [.12, { ...leftStep, sway: .035, travel: .024, rise: -.023, feet: { r: [-.10, .034, .044, -.075, .09] } }],
-    [.25, { ...leftStep, sway: -.098, travel: .039, rise: -.038, feet: { r: [-.177, 0, .065, -.15] } }],
-    [.36, { ...rightStep, sway: -.159, travel: .047, rise: -.027, feet: { r: [-.177, 0, .065, -.15], l: [-.095, .041, .016, -.1, .1] }, head: [-.04, -.26, .04] }],
-    [.46, { sway: -.185, travel: .038, rise: -.032, turn: -.18, feet: { r: [-.177, 0, .065, -.15], l: [-.166, 0, .02, -.16] }, head: [-.025, -.19, .07] }],
-    [.57, { sway: -.183, travel: .038, rise: -.028, turn: -.18, feet: { r: [-.177, 0, .065, -.15], l: [-.166, 0, .02, -.16] }, head: [.035, -.13, .03], face: [.34, .12] }],
-    [.69, { ...rightStep, sway: -.149, travel: .03, rise: -.026, feet: { r: [-.177, 0, .065, -.15], l: [-.076, .038, .012, -.07, -.11] } }],
-    [.77, { ...rightStep, sway: -.091, travel: .023, rise: -.038, feet: { r: [-.177, 0, .065, -.15] } }],
-    [.88, { ...leftStep, sway: -.035, travel: .013, rise: -.027, feet: { r: [-.082, .034, .028, -.06, -.08] } }],
-    [.96, { rise: -.01 }],
-  ] },
+  { id: "walk-casual", name: "Casual walk", duration: 5.3, keys: garageWalk(0, 1, .12, true) },
 ] as const satisfies readonly Emote[];

@@ -1,19 +1,93 @@
-import { Float32BufferAttribute, MathUtils, SkinnedMesh, type BufferGeometry, type Object3D } from "three";
+import { Color, Float32BufferAttribute, MathUtils, SkinnedMesh, Vector2, type BufferGeometry, type MeshStandardMaterial, type Object3D } from "three";
+import type { CharacterLook } from "./characterCatalog";
 
 const FACE_SHAPES = ["smile", "brow", "blink"] as const;
 type FaceShape = typeof FACE_SHAPES[number];
 
 const softBand = (distance: number, inner: number, outer: number) => 1 - MathUtils.smoothstep(distance, inner, outer);
+export const VILLAGER_EYES = {
+  female: { x: .0275, y: 1.5583, z: .0895, radius: .006, lip: 1.501 },
+  male: { x: .0282, y: 1.7219, z: .1105, radius: .0066, lip: 1.648 },
+};
+const faceMesh = (root: Object3D) => root.getObjectByName("HEAD_FACE4") ?? root.getObjectByName("HEAD_WARRIOR");
 
-/** These masks are authored in Village Lady's bind-pose coordinates, in meters. */
-export function addVillagerFaceShapes(root: Object3D) {
+/** Use bind-pose position so color follows the skinned eyes and brows. */
+export function prepareVillagerFaceColors(materials: Iterable<MeshStandardMaterial>, female: boolean) {
+  const fit = VILLAGER_EYES[female ? "female" : "male"];
+  const irisColor = { value: new Color() };
+  const irisDarkness = { value: 0 };
+  const browColor = { value: new Color() };
+  const browStrength = { value: 0 };
+  const corneas: { material: MeshStandardMaterial; opacity: number; env: number }[] = [];
+  for (const material of materials) {
+    if (material.name === "MAT_Cornea") {
+      corneas.push({ material, opacity: material.opacity, env: material.envMapIntensity });
+    }
+    const iris = material.name === (female ? "MAT_Details" : "MAT_Eyes");
+    if (!iris && material.name !== "MAT_LashBrow") continue;
+    material.customProgramCacheKey = () => iris ? "villager-iris" : "villager-brow";
+    material.onBeforeCompile = shader => {
+      shader.uniforms.faceTint = iris ? irisColor : browColor;
+      shader.uniforms.eyeCenter = { value: new Vector2(fit.x, fit.y) };
+      shader.uniforms.irisRadius = { value: fit.radius };
+      shader.uniforms.irisDarkness = irisDarkness;
+      shader.uniforms.browStrength = browStrength;
+      shader.vertexShader = "varying vec3 vFaceBind;\n" + shader.vertexShader.replace(
+        "#include <begin_vertex>", "#include <begin_vertex>\nvFaceBind = position;",
+      );
+      shader.fragmentShader = `varying vec3 vFaceBind;
+        uniform vec3 faceTint;
+        uniform vec2 eyeCenter;
+        uniform float irisRadius;
+        uniform float irisDarkness;
+        uniform float browStrength;
+        ` + shader.fragmentShader.replace("#include <map_fragment>", iris ? `
+          #include <map_fragment>
+          vec2 eye = (vec2(abs(vFaceBind.x), vFaceBind.y) - eyeCenter) / irisRadius;
+          float radial = length(eye);
+          float streak = sin(atan(eye.y, eye.x + 0.00001) * 31.0 + radial * 14.0);
+          vec3 pigment = faceTint * (0.78 + 0.14 * streak);
+          pigment *= 1.0 - 0.73 * smoothstep(0.78, 1.0, radial);
+          pigment = mix(vec3(0.0015), pigment, smoothstep(0.36, 0.44, radial));
+          float irisMask = 1.0 - smoothstep(0.95, 1.06, radial);
+          diffuseColor.rgb = mix(diffuseColor.rgb, pigment, irisMask);
+        ` : `
+          #include <map_fragment>
+          float brow = smoothstep(eyeCenter.y + 0.009, eyeCenter.y + 0.014, vFaceBind.y) * browStrength;
+          float detail = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+          diffuseColor.rgb = mix(diffuseColor.rgb, faceTint * (0.64 + 0.54 * detail), brow);
+        `);
+      if (iris) shader.fragmentShader = shader.fragmentShader.replace("#include <opaque_fragment>", `
+        // Cap highlights inside dark irises while preserving the whites and lids.
+        vec3 darkIris = min(outgoingLight, faceTint * 1.8 + vec3(0.003));
+        outgoingLight = mix(outgoingLight, darkIris, irisMask * irisDarkness);
+        #include <opaque_fragment>
+      `);
+    };
+  }
+  return (look: CharacterLook) => {
+    irisColor.value.set(look.iris);
+    const { r, g, b } = irisColor.value;
+    irisDarkness.value = 1 - MathUtils.smoothstep(.2126 * r + .7152 * g + .0722 * b, .045, .145);
+    for (const { material, opacity, env } of corneas) {
+      material.opacity = opacity * MathUtils.lerp(1, .13, irisDarkness.value);
+      material.envMapIntensity = env * MathUtils.lerp(1, .15, irisDarkness.value);
+    }
+    browStrength.value = look.brow ? 1 : 0;
+    if (look.brow) browColor.value.set(look.brow);
+  };
+}
+
+/** Masks follow the two villagers' bind-pose coordinates in meters. */
+export function addVillagerFaceShapes(root: Object3D, female = true) {
+  const fit = VILLAGER_EYES[female ? "female" : "male"];
   const owned: BufferGeometry[] = [];
-  root.getObjectByName("HEAD_FACE4")?.traverse(mesh => {
+  faceMesh(root)?.traverse(mesh => {
     if (!(mesh instanceof SkinnedMesh) || Array.isArray(mesh.material)) return;
     const material = mesh.material.name;
     const skin = material === "MAT_SkinFace";
     const lash = material === "MAT_LashBrow";
-    const eye = material === "MAT_Cornea";
+    const eye = material === "MAT_Cornea" || material === "MAT_Eyes";
     const details = material === "MAT_Details";
     const positions = mesh.geometry.getAttribute("position");
     if (!positions || !(skin || lash || eye || details) || mesh.geometry.morphAttributes.position?.length) return;
@@ -24,23 +98,24 @@ export function addVillagerFaceShapes(root: Object3D) {
     for (let i = 0; i < positions.count; i++) {
       const x = positions.getX(i), y = positions.getY(i), z = positions.getZ(i);
       const side = Math.abs(x), offset = i * 3;
-      const front = MathUtils.smoothstep(z, .065, .084);
-      const eyeWidth = softBand(Math.abs(side - .027), .011, .027);
+      const front = MathUtils.smoothstep(z, fit.z - .024, fit.z - .005);
+      const eyeWidth = softBand(Math.abs(side - fit.x), .011, .027);
       if (skin || details) {
-        const lip = softBand(Math.abs(y - 1.501), .006, .021) * softBand(side, .023, .045) * front;
+        const lip = softBand(Math.abs(y - fit.lip), .006, .021) * softBand(side, .023, .045) * front;
         const corner = MathUtils.smoothstep(side, .004, .024) * lip;
         smile[offset] = Math.sign(x) * (.0032 * lip);
         smile[offset + 1] = .009 * corner - .001 * lip;
       }
       if (skin || lash) {
-        const eyebrow = MathUtils.smoothstep(y, 1.563, 1.575) * softBand(Math.abs(y - 1.575), .005, .026);
+        const eyebrow = MathUtils.smoothstep(y, fit.y + .005, fit.y + .017)
+          * softBand(Math.abs(y - fit.y - .017), .005, .026);
         brow[offset + 1] = .008 * eyebrow * eyeWidth * front;
       }
-      const eyeball = eye || (details && y > 1.54);
-      const lid = eyeWidth * softBand(Math.abs(y - 1.555), .012, .024) * front;
+      const eyeball = eye || (details && y > fit.y - .018);
+      const lid = eyeWidth * softBand(Math.abs(y - fit.y + .003), .012, .024) * front;
       if (eyeball || skin || lash) {
-        const close = eyeball ? .94 : lid * (lash ? softBand(Math.abs(y - 1.552), .011, .021) : 1);
-        blink[offset + 1] = (1.553 + .07 * (side - .026) - y) * close;
+        const close = eyeball ? .94 : lid * (lash ? softBand(Math.abs(y - fit.y + .006), .011, .021) : 1);
+        blink[offset + 1] = (fit.y - .005 + .07 * (side - fit.x) - y) * close;
         if (eyeball) blink[offset + 2] = -.0025;
       }
     }
@@ -61,7 +136,7 @@ export function addVillagerFaceShapes(root: Object3D) {
 
 export function driverFaceTargets(root: Object3D, shape: FaceShape) {
   const targets: { mesh: SkinnedMesh; index: number }[] = [];
-  root.getObjectByName("HEAD_FACE4")?.traverse(mesh => {
+  faceMesh(root)?.traverse(mesh => {
     if (!(mesh instanceof SkinnedMesh)) return;
     const index = mesh.morphTargetDictionary?.[shape];
     if (index !== undefined && mesh.morphTargetInfluences) targets.push({ mesh, index });

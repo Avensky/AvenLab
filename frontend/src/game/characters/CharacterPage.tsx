@@ -3,19 +3,25 @@ import { ControllerAction } from "../../components/controller";
 import { requestSocial } from "../../net/socialClient";
 import { useSocialStore } from "../../store/social/socialStore";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
-import { CHARACTERS, CHARACTER_APPEARANCE_OPTIONS, DEFAULT_CHARACTER, OUTFIT_THEMES, ROOK_ID, VILLAGER_ID, characterLook, type CharacterStyleField, type CharacterChoice } from "./characterCatalog";
+import { CHARACTERS, CHARACTER_APPEARANCE_OPTIONS, CHARACTER_IDENTITIES, DEFAULT_CHARACTER, OUTFIT_THEMES, ROOK_ID, VILLAGER_ID, characterLook, type CharacterStyleField, type CharacterChoice } from "./characterCatalog";
 import { CharacterPortrait } from "./CharacterPortrait";
 import { CHARACTER_CAMERAS, CHARACTER_ZOOM_MIN, CHARACTER_ZOOM_MAX, useCharacterPreviewStore } from "./characterPreviewStore";
-import { EMOTE_GROUPS, emoteCollection, type EmoteGroup } from "./garageEmotes";
+import { EMOTE_GROUPS, garagePreviewCollection, type EmoteGroup } from "./garageEmotes";
+import { COCKPIT_TAKES } from "./cockpitEmotes";
+import { unlockVehicleAudio } from "../../audio/sharedAudio";
+import { GARAGE_STATIONS } from "../preview/garageStations";
+import { GARAGE_LEAN_ID, GARAGE_LEAN_NAME } from "./garageLean";
 
 export const CHARACTER_TABS = [
-  { id: "appearance", label: "Appearance" }, { id: "clothes", label: "Clothes" },
+  { id: "identity", label: "Identity" }, { id: "appearance", label: "Appearance" },
+  { id: "face", label: "Face" }, { id: "clothes", label: "Clothes" },
   { id: "props", label: "Props" }, { id: "emotes", label: "Emotes" },
 ] as const;
 export type CharacterTab = typeof CHARACTER_TABS[number]["id"];
 
 const LOOK_FIELDS: Record<CharacterStyleField, string> = {
   hair: "Hair", hair_color: "Hair color", skin: "Skin tone", headwear: "Headwear", color: "Outfit color",
+  eye_color: "Eye color", brow_color: "Eyebrow tint", glasses: "Glasses",
 };
 const PREVIEW_CAST = CHARACTERS.map(item => ({ gender: item.gender, choice: { id: item.id, outfit: item.outfits[0].id } }));
 
@@ -36,14 +42,14 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
   const [locked, setLocked] = useState(() => Boolean(characterLook(saved)));
   const [status, setStatus] = useState<"idle" | "pending" | "saving" | "saved" | "error">("idle");
   const [message, setMessage] = useState("");
-  const [emoteGroup, setEmoteGroup] = useState<EmoteGroup>("Garage");
+  const [emoteGroup, setEmoteGroup] = useState<EmoteGroup | "Best">("Garage");
   const [comparison, setComparison] = useState<CharacterChoice | null>(null);
   const acknowledged = useRef(locked ? choice : null);
   const queued = useRef<CharacterChoice | null>(null);
   const running = useRef<Promise<boolean> | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const { character, outfit, appearance, fabric, trim } = characterLook(choice)!;
-  const { camera, zoom, emote } = useCharacterPreviewStore();
+  const { camera, zoom, emote, cockpitVehicle, cockpitAvailable, cockpitError, insideCar, leanAvailable } = useCharacterPreviewStore();
   const previewChoice = useMemo(() => tab === "emotes" && comparison && comparison.id !== choice.id
     ? { ...comparison, prop: choice.prop } : choice, [tab, comparison, choice]);
 
@@ -58,8 +64,11 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
         queued.current = null;
         try {
           if (!owner || useSocialStore.getState().view?.profile.id !== owner) throw Error("Connect your player profile to save.");
-          await requestSocial("character_equip", { character: next });
-          acknowledged.current = next;
+          const result = await requestSocial("character_equip", { character: next });
+          const confirmed = (result.character as CharacterChoice | undefined) ?? next;
+          // The reliable reply can arrive before the replaceable social view.
+          useSocialStore.getState().acknowledgeProgression(owner, progression => ({ ...progression, character: confirmed }));
+          acknowledged.current = confirmed;
           setLocked(true);
         } catch (error) {
           queued.current ??= next;
@@ -78,11 +87,25 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
   useImperativeHandle(beforeClose, () => () => locked ? flush() : Promise.resolve(true), [flush, locked]);
   useLayoutEffect(() => { onPreview?.(previewChoice); }, [previewChoice, onPreview]);
   useLayoutEffect(() => { onReady(locked); }, [locked, onReady]);
+  useLayoutEffect(() => {
+    if (tab === "emotes") return () => useCharacterPreviewStore.setState({ emote: null, insideCar: false, cockpitError: null });
+  }, [tab]);
+  useLayoutEffect(() => {
+    if (insideCar && (reducedMotion || (locked && tab !== "emotes"))) {
+      useCharacterPreviewStore.setState({ insideCar: false, emote: null });
+    }
+  }, [locked, tab, reducedMotion, insideCar]);
+  useLayoutEffect(() => {
+    if (!locked || tab !== "face") return;
+    const { camera, zoom } = useCharacterPreviewStore.getState();
+    useCharacterPreviewStore.setState({ camera: "Face", zoom: 1, emote: null });
+    return () => useCharacterPreviewStore.setState({ camera, zoom });
+  }, [locked, tab]);
   useEffect(() => () => {
     clearTimeout(timer.current);
     onPreview?.(null);
     onReady(false);
-    useCharacterPreviewStore.setState({ camera: "Full body", zoom: 1, emote: null });
+    useCharacterPreviewStore.setState({ camera: "Full body", zoom: 1, emote: null, insideCar: false, cockpitError: null });
   }, [onPreview, onReady]);
 
   function update(next: CharacterChoice) {
@@ -107,7 +130,8 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
     return <label key={field}>
       {LOOK_FIELDS[field]}
       <select className="menu-control" aria-label={LOOK_FIELDS[field]} disabled={field === "headwear" && choice.id === VILLAGER_ID}
-        value={field === "color" && appearance.color.startsWith("#") ? "custom" : appearance[field]}
+        value={field === "color" && appearance.color.startsWith("#") ? "custom"
+          : appearance[field] ?? (field === "glasses" ? "none" : "original")}
         onChange={event => edit(field, event.target.value)}>
         {field === "color" && appearance.color.startsWith("#") && <option value="custom" disabled>Custom color</option>}
         {CHARACTER_APPEARANCE_OPTIONS[field]
@@ -130,22 +154,59 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
     aria-label={locked ? "Preview gender" : "Gender"} data-controller-row>
     {PREVIEW_CAST.map(({ gender, choice: next }) => <button key={next.id} type="button" className="menu-control"
       disabled={!locked && status === "saving"} data-character-option={next.id} aria-pressed={previewChoice.id === next.id}
-      onClick={() => locked ? setComparison(next) : update(next)}>
+      onClick={() => {
+        if (insideCar) useCharacterPreviewStore.setState({ emote: null });
+        if (locked) setComparison(next);
+        else update(next);
+      }}>
       {!locked && <CharacterPortrait choice={next} compact />}
       <span>{gender === "female" ? "Female" : "Male"}</span>
     </button>)}
   </div>;
-  const pickedEmotes = emoteCollection(emoteGroup, Boolean(previewChoice.prop));
+  const bag = Boolean(previewChoice.prop);
+  const canEnterCar = !reducedMotion;
+  const cockpitPending = insideCar && !cockpitAvailable;
+  const station = cockpitVehicle ? GARAGE_STATIONS[cockpitVehicle] : null;
+  const road = station?.kind === "wheel";
+  const stationName = station?.kind === "bridge" ? "bridge" : station?.kind === "levers" ? "driver station" : "cockpit";
+  const pickedEmotes = useMemo(() => {
+    if (!insideCar) return garagePreviewCollection(emoteGroup, bag);
+    if (!road) return COCKPIT_TAKES.filter(take => take.id === "086").map(take => ({ ...take, name: "Check surroundings" }));
+    return station.steeringParts ? COCKPIT_TAKES : COCKPIT_TAKES.filter(take => take.id !== "199" && take.id !== "200");
+  }, [insideCar, emoteGroup, bag, road, station]);
+  function toggleCockpit() {
+    useCharacterPreviewStore.setState({ insideCar: !insideCar, emote: null, cockpitError: null, camera: "Full body", zoom: 1 });
+  }
+  function chooseEmoteGroup(group: EmoteGroup | "Best") {
+    setEmoteGroup(group);
+    useCharacterPreviewStore.setState({ emote: null });
+  }
   const emotePicker = <>
-    <div className="character-outfits character-emote-packs" role="group" aria-label="Emote collection" data-controller-row>
+    {!insideCar && <div className="character-outfits" role="group" aria-label="Emote preview" data-controller-row>
+      <button type="button" className="menu-control" aria-pressed={emoteGroup === "Best"}
+        onClick={() => chooseEmoteGroup("Best")}>Best</button>
+      <button type="button" className="menu-control" data-cockpit-toggle disabled={!canEnterCar || !cockpitVehicle}
+        onClick={toggleCockpit}>Enter {stationName}</button>
+    </div>}
+    {!insideCar && <div className="character-outfits character-emote-packs" role="group" aria-label="Emote collection" data-controller-row>
       {EMOTE_GROUPS.map(group => <button key={group} type="button" className="menu-control"
-        aria-pressed={emoteGroup === group} onClick={() => setEmoteGroup(group)}>{group}</button>)}
-    </div>
+        aria-pressed={emoteGroup === group} onClick={() => chooseEmoteGroup(group)}>{group}</button>)}
+    </div>}
     {reducedMotion && <p>Emote playback is paused by Reduced Motion.</p>}
-    {emoteGroup !== "Garage" && previewChoice.prop && <p>Empty hands unlock the full {emoteGroup} set.</p>}
-    <div className="character-emotes">
-      {pickedEmotes.map(item => <button key={item.id} type="button" className="menu-control" data-controller-row disabled={reducedMotion}
-        aria-pressed={emote?.id === item.id} onClick={() => useCharacterPreviewStore.setState({ emote: { id: item.id } })}>{item.name}</button>)}
+    {cockpitError && <p role="status">{cockpitError}</p>}
+    {cockpitPending && <p role="status">Preparing the {stationName}…</p>}
+    {insideCar && !locked && <button type="button" className="menu-control" data-cockpit-toggle onClick={toggleCockpit}>Exit {stationName}</button>}
+    {insideCar && bag && <p>Handheld props are stowed while driving.</p>}
+    <div className="character-emotes" aria-label={insideCar ? (road ? "Driving emotes" : "Station emotes") : `${emoteGroup} emotes`}>
+      {!insideCar && emoteGroup === "Garage" && leanAvailable && <button type="button" className="menu-control" data-controller-row
+        disabled={reducedMotion} aria-pressed={emote?.id === GARAGE_LEAN_ID}
+        onClick={() => useCharacterPreviewStore.setState({ emote: { id: GARAGE_LEAN_ID } })}>{GARAGE_LEAN_NAME}</button>}
+      {pickedEmotes.map(item => <button key={item.id} type="button" className="menu-control" data-controller-row
+        disabled={reducedMotion || cockpitPending}
+        aria-pressed={emote?.id === item.id} onClick={() => {
+          if (item.id === "drive-honk") unlockVehicleAudio();
+          useCharacterPreviewStore.setState({ emote: { id: item.id } });
+        }}>{item.name}</button>)}
     </div>
   </>;
 
@@ -174,7 +235,16 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
       <div className="character-stage" data-character-preview={previewChoice.id} data-outfit-preview={previewChoice.outfit}
         aria-label={`Preview of ${characterLook(previewChoice)!.character.name}`} />
       <section className="character-controls menu-panel-frame character-controls--left" aria-label={tab}>
+        {tab === "identity" && <>
+          <header className="character-description"><h2>Identity</h2><p>Choose how your character identifies. Their model and outfit are separate.</p></header>
+          <div className="character-outfits" role="group" aria-label="Character identity" data-controller-row>
+            {CHARACTER_IDENTITIES.map(item => <button key={item.id} type="button" className="menu-control"
+              aria-pressed={(choice.identity ?? character.gender) === item.id}
+              onClick={() => update({ ...choice, identity: item.id })}>{item.label}</button>)}
+          </div>
+        </>}
         {tab === "appearance" && <header className="character-description"><small>{character.title}</small><h2>{character.name}</h2><p>{character.bio}</p></header>}
+        {tab === "face" && <header className="character-description"><h2>Face</h2><p>{character.name}</p></header>}
         {tab === "clothes" && <>
           <h2>Clothes</h2>
           <div className="character-outfits" role="group" aria-label="Outfits" data-controller-row>
@@ -200,22 +270,31 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
           <p>Equipping the shop bag unlocks bag emotes in this preview.</p>
         </>}
         {tab === "emotes" && <>
-          <h2>Preview emotes</h2>
+          <h2>{insideCar ? (road ? "Driving emotes" : "Station emotes") : "Preview emotes"}</h2>
           {genderPicker}
           {emotePicker}
         </>}
       </section>
-      {(tab === "appearance" || tab === "clothes") && <section className="character-controls menu-panel-frame character-controls--right" aria-label="Appearance controls">
+      {(tab === "appearance" || tab === "face" || tab === "clothes") && <section className="character-controls menu-panel-frame character-controls--right" aria-label="Appearance controls">
         {tab === "appearance"
           ? <div className="character-appearance" data-controller-row>
               {(choice.id !== ROOK_ID || !__ROOK_MODEL_URL__) && field("hair")}{field("hair_color")}{field("skin")}
               {(choice.id !== ROOK_ID || !__ROOK_MODEL_URL__) && field("headwear")}
             </div>
-          : <div className="character-appearance" data-controller-row>{field("color")}</div>}
+          : <div className="character-appearance" data-controller-row>
+              {tab === "face" ? [field("eye_color"), field("brow_color"), field("glasses")] : field("color")}
+            </div>}
       </section>}
       <section className="character-controls menu-panel-frame character-controls--bottom" aria-label="Color palette, camera and save status">
         {(tab === "appearance" || tab === "clothes") && palette}
-        <div className="character-camera" data-controller-row>
+        {insideCar ? <div className="character-camera" data-controller-row>
+          <label>Camera<select className="menu-control" aria-label="Preview camera" value={camera === "Whole car" ? "Whole car" : "Full body"}
+            onChange={event => useCharacterPreviewStore.setState({ camera: event.target.value as typeof camera, zoom: 1 })}>
+            <option value="Full body">Driver</option><option value="Whole car">Whole vehicle</option>
+          </select></label>
+          <button type="button" className="menu-control" data-cockpit-toggle
+            onClick={toggleCockpit}>Exit {stationName}</button>
+        </div> : <div className="character-camera" data-controller-row>
           <label>Camera<select className="menu-control" aria-label="Preview camera" value={camera}
             onChange={event => useCharacterPreviewStore.setState({ camera: event.target.value as typeof camera, zoom: 1 })}>
             {CHARACTER_CAMERAS.map(view => <option key={view}>{view}</option>)}
@@ -228,7 +307,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
             <button type="button" className="menu-control" aria-label="Zoom in" disabled={zoom >= CHARACTER_ZOOM_MAX}
               onClick={() => useCharacterPreviewStore.setState({ zoom: Math.min(CHARACTER_ZOOM_MAX, +(zoom + .05).toFixed(2)) })}>+</button>
           </div>
-        </div>
+        </div>}
         <div className="character-equip" data-controller-row>
           <p role="status">{status === "error" ? message : status === "saving" || status === "pending" ? "Saving…" : "Changes save automatically."}</p>
           {status === "error" && <>

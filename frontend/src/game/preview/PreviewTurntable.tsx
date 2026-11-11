@@ -1,18 +1,21 @@
 import { useCallback, useRef, type ReactNode } from "react";
-import { useFrame, type ThreeEvent } from "@react-three/fiber";
-import { DoubleSide, Group } from "three";
+import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
+import { DoubleSide, Group, MathUtils } from "three";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 
 export function PreviewTurntable({
   children,
   onReady,
   spin = true,
+  locked = false,
 }: {
   children: ReactNode;
   onReady: (group: Group | null) => void;
   spin?: boolean;
+  locked?: boolean;
 }) {
   const group = useRef<Group>(null);
+  const angle = useRef(0);
   const drag = useRef<{ pointerId: number; clientX: number } | null>(null);
   const attach = useCallback(
     (object: Group | null) => {
@@ -23,22 +26,33 @@ export function PreviewTurntable({
   );
   const reducedMotion = usePreferencesStore((s) => s.reducedMotion);
   const cameraSensitivity = usePreferencesStore((s) => s.cameraSensitivity);
+  const invalidate = useThree(s => s.invalidate);
 
-  useFrame((_, delta) => {
-    if (group.current && spin && !reducedMotion && !drag.current)
-      group.current.rotation.y += Math.min(delta, 0.1) * 0.035;
+  useFrame(({ frameloop }, delta) => {
+    if (!group.current) return;
+    const step = Math.min(delta, 0.1);
+    if (locked) return;
+    if (spin && !reducedMotion && !drag.current && frameloop !== "never") angle.current += step * 0.035;
+    const rotation = group.current.rotation;
+    if (reducedMotion || Math.abs(rotation.y - angle.current) < .0005) rotation.y = angle.current;
+    else {
+      rotation.y = MathUtils.damp(rotation.y, angle.current, 22, step);
+      if (frameloop === "demand" && Math.abs(rotation.y - angle.current) > .004) invalidate();
+    }
   }, -1);
 
   const beginDrag = (event: ThreeEvent<PointerEvent>) => {
+    if (locked) return;
     event.stopPropagation();
     drag.current = { pointerId: event.pointerId, clientX: event.clientX };
     (event.target as EventTarget & { setPointerCapture(pointerId: number): void }).setPointerCapture(event.pointerId);
   };
   const continueDrag = (event: ThreeEvent<PointerEvent>) => {
-    if (!drag.current || drag.current.pointerId !== event.pointerId) return;
+    if (locked || !drag.current || drag.current.pointerId !== event.pointerId) return;
     const deltaX = event.clientX - drag.current.clientX;
     drag.current.clientX = event.clientX;
-    if (group.current) group.current.rotation.y += deltaX * cameraSensitivity * 0.006;
+    angle.current += deltaX * cameraSensitivity * 0.006;
+    invalidate();
   };
   const endDrag = (event: ThreeEvent<PointerEvent>) => {
     if (drag.current?.pointerId !== event.pointerId) return;
@@ -62,7 +76,7 @@ export function PreviewTurntable({
         onPointerCancel={endDrag}
       >
         <planeGeometry args={[40, 40]} />
-        <meshBasicMaterial transparent opacity={0} colorWrite={false} depthWrite={false} side={DoubleSide} />
+        <meshBasicMaterial visible={false} side={DoubleSide} />
       </mesh>
     </group>
   );

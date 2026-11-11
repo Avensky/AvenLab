@@ -10,7 +10,7 @@ async function buildCharacterLods(gender) {
   const script = await stat(fileURLToPath(import.meta.url));
   const modified = Math.max(info.mtimeMs, script.mtimeMs);
   const targets = [
-    { kind: "garage", size: 512, ratio: .65 },
+    ...(gender === "male" ? [{ kind: "garage", size: 512, ratio: .65 }] : []),
     { kind: "portrait", size: 768 },
   ];
   const pending = [];
@@ -47,8 +47,8 @@ async function buildCharacterLods(gender) {
   }
 }
 
-// Vesper shares the original GLB between the garage and the portrait. Sources
-// under src/public need to be copied into Vite's public directory verbatim.
+// Keep the full original available for the desktop garage. Compact previews
+// share the portrait's reduced textures and retain the original geometry.
 const vesper = findVillagerModel("female");
 if (vesper && !vesper.sourceUrl) {
   const output = vesper.output("full");
@@ -58,3 +58,4 @@ if (vesper && !vesper.sourceUrl) {
   await rename(temporary, output);
 }
 await buildCharacterLods("male");
+await buildCharacterLods("female");

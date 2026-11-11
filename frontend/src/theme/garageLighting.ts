@@ -46,6 +46,7 @@ export function applyGarageLighting(
   const luminance = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;
   const redFixture = (accentOverride ?? GARAGE_LIGHT_COLORS[theme]) === GARAGE_LIGHT_COLORS.scarlet;
   const gain = contrast ? 0.3 : accentOverride === SELECTION_CRIMSON ? 0.95 : Math.min(redFixture ? 1.5 : 4, 0.72 / Math.max(0.01, luminance));
+  const complement = color.clone().offsetHSL(.5, -.20, -.04);
   const visited = new Set<MeshStandardMaterial>();
   root.traverse((node) => {
     if (!(node instanceof Mesh)) return;
@@ -59,12 +60,13 @@ export function applyGarageLighting(
       )
         continue;
       visited.add(material);
-      material.emissive.copy(color);
+      const fixtureColor = !contrast && material.userData.garageAccentComplement ? complement : color;
+      material.emissive.copy(fixtureColor);
       material.emissiveIntensity =
         Number(material.userData.garageAccentIntensity) * brightness * gain;
       if (material.userData.garageAccentTintBase)
         material.color
-          .copy(color)
+          .copy(fixtureColor)
           .multiplyScalar(Number(material.userData.garageAccentBaseGain));
     }
   });

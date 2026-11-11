@@ -4,14 +4,22 @@ import appearanceOptions from "../../../../avenlab-server/src/assets/character-a
 export const CHARACTERS = catalog.filter(item => item.id !== "niko-park");
 export const CHARACTER_APPEARANCE_OPTIONS = appearanceOptions;
 export type CharacterStyleField = keyof typeof appearanceOptions;
-export type CharacterAppearance = Record<CharacterStyleField, string> & { accent?: string };
+type FaceField = "eye_color" | "brow_color" | "glasses";
+export type CharacterAppearance = Record<Exclude<CharacterStyleField, FaceField>, string>
+  & Partial<Record<FaceField, string>> & { accent?: string };
 
 export const OUTFIT_THEMES = [
   { name: "Gothic Pink", color: "#101015", accent: "#ff2d95" },
   { name: "Midnight Circuit", color: "#171d36", accent: "#56e9ff" },
   { name: "Harbor Crew", color: "#263a35", accent: "#efaf6a" },
+  { name: "Black Cherry", color: "#2d1d28", accent: "#a84a70" },
+  { name: "Night Harbor", color: "#1c2c39", accent: "#56868c" },
 ] as const;
-export type CharacterChoice = { id: string; outfit: string; appearance?: CharacterAppearance; prop?: "shop-bag" };
+export const CHARACTER_IDENTITIES = [
+  { id: "male", label: "Male" }, { id: "female", label: "Female" }, { id: "nonbinary", label: "Nonbinary" },
+] as const;
+export type CharacterIdentity = typeof CHARACTER_IDENTITIES[number]["id"];
+export type CharacterChoice = { id: string; outfit: string; identity?: CharacterIdentity; appearance?: CharacterAppearance; prop?: "shop-bag" };
 
 export const VILLAGER_ID = "mara-vega";
 export const ROOK_ID = "jules-okafor";
@@ -32,16 +40,19 @@ export function characterLook(choice: CharacterChoice | null | undefined) {
   const outfit = character?.outfits.find(item => item.id === choice?.outfit);
   if (!character || !outfit) return null;
   const appearance = characterAppearance(choice);
-  const color = (field: "color" | "hair_color" | "skin", fallback: string) =>
-    appearance[field] === "original" ? fallback
-      : appearanceOptions[field].find(option => option.id === appearance[field])?.color ?? fallback;
+  const color = (field: "color" | "hair_color" | "skin" | "eye_color" | "brow_color") => {
+    const option = appearanceOptions[field].find(option => option.id === appearance[field] && option.id !== "original");
+    return option && "color" in option ? option.color : undefined;
+  };
   const female = character.id !== ROOK_ID;
   return {
     character, outfit, appearance, female,
-    fabric: /^#[\da-f]{6}$/i.test(appearance.color) ? appearance.color : color("color", outfit.jacket),
+    fabric: /^#[\da-f]{6}$/i.test(appearance.color) ? appearance.color : color("color") ?? outfit.jacket,
     trim: appearance.accent ?? outfit.trim,
-    hair: color("hair_color", female ? "#7c573c" : "#2b2127"),
-    skin: color("skin", female ? "#d49673" : "#95553d"),
+    hair: color("hair_color") ?? (female ? "#7c573c" : "#2b2127"),
+    skin: color("skin") ?? (female ? "#d49673" : "#95553d"),
+    iris: color("eye_color") ?? (female ? "#8a7347" : "#68422b"),
+    brow: color("brow_color"),
   };
 }
 

@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useMemo,useRef,useState,type CSSProperties,type ReactNode} from "react";
+import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState,type CSSProperties,type ReactNode} from "react";
 import {VehicleMods} from "./VehicleMods";
 import {SceneTabHeader} from "../../components/menus/SceneTabHeader";
 import {HEROES,useAlphaStore,type HeroFilter} from "../../store/alpha/alphaStore";
@@ -16,6 +16,8 @@ import {HoldMainButton} from "./HoldMainButton";
 import {SelectionFooter,SelectionHeader} from "../alpha/SelectionChrome";
 import {CHARACTER_TABS,CharacterPage,type CharacterTab} from "../characters/CharacterPage";
 import {PreviewZoom} from "../preview/PreviewZoom";
+import {GaragePreviewControls} from "../preview/GaragePreviewControls";
+import {useGarageDrive} from "../preview/garageDriveStore";
 import {CharacterHeaderProfile} from "../characters/CharacterHeaderProfile";
 import type {CharacterChoice} from "../characters/characterCatalog";
 import {ControllerAction} from "../../components/controller";
@@ -51,8 +53,10 @@ const MARINE_LAMPS = [
 ] as const;
 
 export function HeroLoadoutSync(){
- const profile=useSocialStore(s=>s.view?.profile);
- useEffect(()=>{useHeroLoadouts.getState().adopt(profile?.id??null,profile?.progression?.default_hero,profile?.progression?.hero_loadouts);},[profile]);
+ const owner=useSocialStore(s=>s.view?.profile.id??null);
+ const main=useSocialStore(s=>s.view?.profile.progression?.default_hero);
+ const loadouts=useSocialStore(s=>s.view?.profile.progression?.hero_loadouts);
+ useEffect(()=>{useHeroLoadouts.getState().adopt(owner,main,loadouts);},[owner,main,loadouts]);
  return null;
 }
 
@@ -106,6 +110,8 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  const [vehicleModStages,setVehicleModStages]=useState<Record<string,Record<string,number>>>({});
  const availableParts=useVehicleStudioStore(s=>s.availableVehicle===definition?.vehicle?s.availableParts:NO_VEHICLE_PARTS);
  const openedParts=useVehicleStudioStore(s=>s.parts);
+ const panelsHidden=useGarageDrive(s=>s.panelsHidden);
+ const drivingOut=useGarageDrive(s=>s.stage!=="idle");
  const glassStyle=useVehicleStudioStore(s=>s.glassStyle);
  const setGlassStyle=useVehicleStudioStore(s=>s.setGlassStyle);
  const marineLights=useVehicleStudioStore(s=>s.marineLights);
@@ -118,9 +124,17 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  const queue=useMemo(()=>new HeroSaveQueue(async job=>{
   if(!owner||useSocialStore.getState().view?.profile.id!==owner)throw Error("Connect with your player profile to save.");
   await requestSocial("hero_loadout_save",{hero:job.hero,appearance:job.appearance,make_default:job.makeDefault});
- },job=>{if(useHeroLoadouts.getState().ownerId===owner)useHeroLoadouts.getState().save(job.hero,job.vehicle,job.appearance,job.makeDefault);},(next,error)=>{setStatus(next);setMessage(error??"");}),[owner]);
+ },job=>{
+  if(!owner||useHeroLoadouts.getState().ownerId!==owner)return;
+  useSocialStore.getState().acknowledgeProgression(owner,progression=>({
+   ...progression,
+   default_hero:job.makeDefault?job.hero:progression.default_hero,
+   hero_loadouts:{...progression.hero_loadouts,[job.vehicle]:job.appearance},
+  }));
+  useHeroLoadouts.getState().save(job.hero,job.vehicle,job.appearance,job.makeDefault);
+ },(next,error)=>{setStatus(next);setMessage(error??"");}),[owner]);
  useEffect(()=>()=>queue.dispose(),[queue]);
- useEffect(()=>{useAlphaStore.setState({previewHero:null});root.current?.focus();},[]);
+ useEffect(()=>{root.current?.focus();},[]);
  useEffect(()=>{if(!editing)useVehicleStudioStore.getState().closeParts();},[editing]);
  useEffect(()=>{
   if(!characterOpen)return;
@@ -133,14 +147,15 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
    : editing?root.current?.querySelector<HTMLElement>("[role=tab][aria-selected=true]"):root.current;
   target?.focus({preventScroll:true});
  },[characterOpen,characterReady,editing,role,studioTab,viewingReference]);
- useEffect(()=>{if(hero)useAlphaStore.getState().preview(hero);},[hero]);
+ useLayoutEffect(()=>{if(hero)useAlphaStore.getState().preview(hero);else useAlphaStore.setState({previewHero:null});},[hero]);
  useEffect(()=>{setStudioTab("performance");setStudioSummary(vehicle?getVehicleStockPerformance(vehicle):STOCK_VEHICLE_SUMMARY);setStudioFooter(null);},[vehicle]);
  useEffect(()=>{
   if(!editing)return;
   const savedFlags=useInputStore.getState().input.vehicleMask&lightingBits;
   return()=>{const current=useInputStore.getState().input.vehicleMask;useInputStore.getState().setInput({vehicleMask:(current&~lightingBits)|savedFlags});};
  },[editing,lightingBits]);
- useEffect(()=>{useHeroLoadouts.setState({draft:vehicle?{vehicle,appearance}:null});return()=>{useHeroLoadouts.setState({draft:null});};},[vehicle,appearance]);
+ useLayoutEffect(()=>{useHeroLoadouts.setState({draft:vehicle?{vehicle,appearance}:null});},[vehicle,appearance]);
+ useLayoutEffect(()=>()=>{useHeroLoadouts.setState({draft:null});},[]);
  const preview=(id:string)=>{
   const item=HEROES.find(value=>value.id===id)!;setHero(id);
   setAppearance(drafts.current[item.vehicle]??useHeroLoadouts.getState().loadouts[item.vehicle]??{...FACTORY_APPEARANCE});
@@ -161,6 +176,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
   queue.enqueue({hero,vehicle:definition.vehicle,appearance:next,makeDefault:false});
  };
  const back=async()=>{
+  if(useGarageDrive.getState().panelsHidden){useGarageDrive.setState({panelsHidden:false});return;}
   if(page==="character"){
    if(await beforeCharacterClose.current?.()!==false)setPage(previousCharacterPage.current);
    return;
@@ -170,9 +186,11 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
   try{if(await queue.flush())useUIStore.getState().setScreen("main");}finally{leaving.current=false;}
  };
  useSelectionNavigation(root,{confirm:()=>{
+  if(useGarageDrive.getState().panelsHidden){useGarageDrive.setState({panelsHidden:false});return;}
   const active=document.activeElement as HTMLElement;
   if(active===root.current&&page==="heroes"&&!viewingReference)openHero();else if(root.current?.contains(active))active.click();
  },back:()=>void back(),direction:action=>{
+  if(useGarageDrive.getState().panelsHidden)return;
   const active=document.activeElement;
   if(viewingConcepts&&(action==="up"||action==="down")){
    root.current?.querySelector(".hero-guide-scroll")?.scrollBy({top:action==="up"?-180:180,behavior:"smooth"});
@@ -188,6 +206,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
    active.dispatchEvent(new Event("change",{bubbles:true}));
   }else if(root.current)navigateFormRows(root.current,active as HTMLElement,action,remembered.current);
  },tab:direction=>{
+  if(useGarageDrive.getState().panelsHidden)return;
   if(characterOpen){
    if(characterReady){
     const index=CHARACTER_TABS.findIndex(item=>item.id===characterTab);
@@ -209,7 +228,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  const partOptions:VehicleStudioPart[]=["door-left","door-right","hood","trunk","headlights"];
  const renderPartButton=(part:VehicleStudioPart)=>{
   const supported=availableParts.includes(part),open=openedParts[part];
-  return <button key={part} type="button" className="vehicle-studio-feature" data-supported={supported} disabled={!supported} aria-pressed={supported?open:undefined} title={supported?`${open?"Close":"Open"} ${partLabels[part].toLowerCase()}`:`No separate movable ${partLabels[part].toLowerCase()} mesh in this vehicle model`} onClick={()=>useVehicleStudioStore.getState().setPart(part,!open)}>{partLabels[part]} · {supported?(open?"OPEN":"CLOSED"):"NOT RIGGED"}</button>;
+  return <button key={part} type="button" className="vehicle-studio-feature" data-supported={supported} disabled={!supported||drivingOut} aria-pressed={supported?open:undefined} title={supported?`${open?"Close":"Open"} ${partLabels[part].toLowerCase()}`:`No separate movable ${partLabels[part].toLowerCase()} mesh in this vehicle model`} onClick={()=>useVehicleStudioStore.getState().setPart(part,!open)}>{partLabels[part]} · {supported?(open?"OPEN":"CLOSED"):"NOT RIGGED"}</button>;
  };
  const bodyFooter=marine?null:<>{partOptions.map(renderPartButton)}</>;
  const lightingFooter=marine
@@ -221,7 +240,15 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
   <button type="button" aria-pressed={hasFlag(vehicleFlags,VehicleFlags.HAZARDS)} onClick={()=>useInputStore.getState().toggleVehicleFlag(VehicleFlags.HAZARDS)}>HAZARDS</button>
  </>;
  const currentFooter=studioTab==="performance"?studioFooter:studioTab==="body"?bodyFooter:studioTab==="lighting"?lightingFooter:null;
- return <section ref={root} className={`game-ui menu-surface alpha-selection hero-selection hero-workshop${viewingReference?" hero-ability-guide":""}`} data-character-page={characterOpen||undefined} inert={overlay!==null} tabIndex={-1} aria-label={characterOpen?"Character":"Heroes garage"} data-controller-form data-controller-rows>
+ return <section ref={root} className={`game-ui menu-surface alpha-selection hero-selection hero-workshop${panelsHidden?" hero-workshop--hidden":""}${viewingReference?" hero-ability-guide":""}`} data-character-page={characterOpen||undefined} inert={overlay!==null} tabIndex={-1} aria-label={characterOpen?"Character":"Heroes garage"} data-controller-form data-controller-rows>
+  <button type="button" className="menu-control garage-hide-toggle" aria-label={panelsHidden?"Show interface":"Hide interface"}
+    aria-pressed={panelsHidden} title={panelsHidden?"Show interface":"Hide interface"}
+    onClick={()=>useGarageDrive.setState({panelsHidden:!panelsHidden})}>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>
+      {panelsHidden&&<path d="m4 3 16 18"/>}
+    </svg>
+  </button>
   {characterOpen?characterReady?<SceneTabHeader title="CHARACTER" compact tabs={CHARACTER_TABS} activeTab={characterTab}
     onTabChange={id=>setCharacterTab(id as CharacterTab)} idPrefix="character-editor" panelId="character-editor-panel"/>
     :<SelectionHeader title="CHARACTER" compact/>:editing&&definition
@@ -347,7 +374,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
     {(!owner||status!=="idle")&&<p className="vehicle-studio-save-status" role="status" aria-live="polite">{!owner?"CONNECT YOUR PLAYER PROFILE":status==="pending"||status==="saving"?"SAVING YOUR STYLE…":status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER · SHARED IN GAME":"Appearance changes save automatically for this vehicle."}</p>}
     {status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}
    </VehicleStudio>}
-   {editing&&definition&&studioTab!=="abilities"&&<div className="hero-garage-zoom"><PreviewZoom/></div>}
+   {editing&&definition&&studioTab!=="abilities"&&<GaragePreviewControls vehicle={definition.vehicle}/>}
   </div>
   <SelectionFooter tabs={!characterOpen||characterReady} selectLabel={editing&&studioTab==="abilities"?"Toggle":undefined} hasPrimaryAction={!characterOpen&&(!editing||studioTab!=="abilities")} backAction={{onClick:()=>void back(),label:"Back"}}>{!characterOpen&&<div className="hero-workshop-actions">
    {!viewingReference&&<ControllerAction button="A" type="button" className="menu-control" disabled={!owner} tabIndex={-1} onClick={()=>editing?setPage("heroes"):openHero()}>{editing?"APPLY":"OPEN GARAGE"}</ControllerAction>}

@@ -11,15 +11,23 @@ const palmsIn = {
 const clapOpen = { ...palmsIn, leftHand: clapOpenLeft, rightHand: clapOpenRight } as const;
 const clapHit = { ...palmsIn, leftHand: [.105, -.16, .68], rightHand: [-.105, -.16, .68] } as const;
 const chestHeart = {
-  leftHand: [.71, -.3, .66], rightHand: [-.71, -.3, .66],
+  leftHand: [.62, -.3, .66], rightHand: [-.62, -.3, .66],
   leftPalm: [[-.61, .79, .04], [0, 0, 1]], rightPalm: [[.61, .79, .04], [0, 0, 1]],
   fingers: ["heart", "heart"],
 } as const;
 const fistUp: Palm = [[.02, 1, .23], [0, .23, -1]];
 const kissTouch = {
-  rightHand: [-.69, .13, .4], rightPalm: [[.84, .36, -.22], [0, .44, 1]], fingers: [null, "open"], rightAtLips: true,
+  rightHand: [-.69, .13, .4], rightPalm: [[.56, .81, -.16], [0, -.19, -1]], fingers: [null, "open"], rightAtLips: true,
 } as const;
-const kissRelease: Palm = [[.13, .30, .94], [0, 1, -.32]];
+const kissRelease: Palm = [[.16, .32, .94], [0, .95, -.32]];
+const danceHands = {
+  leftPalm: [[.33, -.46, .82], [0, -1, -.56]], rightPalm: [[-.33, -.46, .82], [0, -1, -.56]],
+  fingers: ["open", "open"],
+} as const;
+const danceLeft = { ...danceHands, leftHand: [1.92, -.33, .48], rightHand: [-1.53, -.51, .53] } as const;
+const danceRight = { ...danceHands, leftHand: [1.53, -.52, .54], rightHand: [-1.92, -.32, .49] } as const;
+const danceLead = [.114, 0, .041, .14] as const;
+const danceReturn = [-.04, 0, .022, -.12] as const;
 
 export const VICTORY_EMOTES = [
   { id: "011", name: "Small fist pump", duration: 2.15, keys: [
@@ -76,16 +84,19 @@ export const VICTORY_EMOTES = [
     [.16, { rightHand: [-1.35, -.28, .54], head: [.035, .04, -.08], face: [.46, .31] }],
     [.36, { ...kissTouch, sway: -.021, rise: -.026, torso: [.05, -.035, 0], head: [.095, -.055, -.045], face: [.15, .37] }],
     [.48, { ...kissTouch, sway: -.041, rise: -.031, torso: [.055, -.04, 0], head: [.095, -.055, -.045], face: [.36, .42] }],
-    [.63, { sway: -.056, rise: -.023, feet: { r: [-.031, 0, .046, -.13] }, rightHand: [-1.12, .3, .91], rightPalm: kissRelease, fingers: [null, "open"], torso: [-.05, .04, .075], head: [-.105, .09, .07], face: [1, .6] }],
+    [.55, { sway: -.05, rise: -.028, rightHand: [-.94, .15, .64], rightPalm: [[.33, .59, .74], [0, .72, -.58]], fingers: [null, "open"], head: [.04, .03, .025], face: [.69, .52] }],
+    [.65, { sway: -.056, rise: -.023, feet: { r: [-.031, 0, .046, -.13] }, rightHand: [-1.12, .28, .9], rightPalm: kissRelease, fingers: [null, "open"], torso: [-.05, .04, .075], head: [-.105, .09, .07], face: [1, .6] }],
     [.79, { sway: -.019, rise: -.013, feet: { r: [-.016, .027, .022] }, rightHand: [-1.45, -.08, .71], head: [-.035, .06, .095], face: [.82, .38] }],
   ] },
-  { id: "019", name: "Little victory dance", duration: 3.25, keys: [
-    [.16, { sway: -.032, rise: -.035, feet: { l: [.1, .079, .042, .23] }, leftHand: [1.75, -.36, .6], rightHand: [-.62, -.33, .61], torso: [.045, -.21, -.13], head: [-.04, .12, .12], face: [.8, .36] }],
-    [.31, { sway: .099, rise: -.051, feet: { l: [.17, 0, .07, .32] }, leftHand: [1.55, -.2, .55], rightHand: [-.74, -.48, .54], torso: [-.065, -.14, -.085], head: [-.09, .05, .07], face: [.96, .55] }],
-    [.45, { sway: .041, rise: -.031, feet: { l: [.17, 0, .07, .32], r: [-.092, .08, -.036, -.24] }, leftHand: [.62, -.23, .64], rightHand: [-1.72, -.3, .6], torso: [.055, .22, .12], head: [.05, -.12, -.12], face: [1, .49] }],
-    [.61, { sway: -.082, rise: -.05, feet: { l: [.17, 0, .07, .32], r: [-.12, 0, -.057, -.33] }, leftHand: [.73, -.42, .55], rightHand: [-1.54, -.25, .55], torso: [-.08, .16, .09], head: [-.09, -.05, -.07], face: [.97, .49] }],
-    [.77, { sway: -.069, rise: -.026, feet: { l: [.059, .083, .03, .13], r: [-.12, 0, -.057, -.33] }, leftHand: [1.34, -.28, .57], rightHand: [-1.34, -.28, .57], torso: [.065, 0, .03], face: [.9, .35] }],
-    [.89, { sway: .017, rise: -.024, feet: { r: [-.054, .047, -.027, -.16] }, torso: [-.025, 0, -.03], head: [-.06, .03, .04], face: [.64, .23] }],
+  { id: "019", name: "Little victory dance", duration: 3.55, keys: [
+    [.14, { ...danceLeft, sway: -.017, rise: -.025, feet: { l: [.064, .04, .026, .12] }, torso: [.025, -.095, -.044], head: [.018, .07, .064], face: [.68, .32] }],
+    [.26, { turn: -.10, ...danceRight, sway: .074, rise: -.042, feet: { l: danceLead }, torso: [.058, .07, -.075], head: [.08, -.05, .07], face: [.98, .44] }],
+    [.37, { turn: .16, ...danceLeft, sway: .105, rise: -.019, feet: { l: danceLead, r: [.07, .039, .02, .08, .11] }, torso: [-.058, -.11, -.06], head: [-.077, .06, .05], face: [1, .51] }],
+    [.47, { turn: -.13, ...danceRight, sway: .093, rise: -.039, feet: { l: danceLead, r: [.089, 0, .021, .08] }, torso: [.06, .09, -.033], head: [.065, -.065, .025], face: [.9, .36] }],
+    [.58, { turn: -.11, ...danceRight, sway: .045, rise: -.021, feet: { l: danceLead, r: [.025, .045, .024, -.045, .13] }, torso: [-.058, .11, .063], head: [-.075, -.08, -.06], face: [.97, .51] }],
+    [.69, { turn: .13, ...danceLeft, sway: -.046, rise: -.041, feet: { l: danceLead, r: danceReturn }, torso: [.063, -.095, .07], head: [.077, .063, -.055], face: [1, .52] }],
+    [.8, { turn: -.08, ...danceRight, sway: -.031, rise: -.02, feet: { l: [.048, .043, .022, .06, -.12], r: danceReturn }, torso: [-.043, .07, .033], head: [-.06, -.04, -.04], face: [.88, .45] }],
+    [.91, { ...danceHands, leftHand: [1.62, -.57, .55], rightHand: [-1.62, -.57, .55], sway: .008, rise: -.026, feet: { r: [-.021, .025, .012, -.05] }, torso: [.041, -.025, -.012], head: [.041, .023, .029], face: [.63, .31] }],
   ] },
   { id: "020", name: "Champion stance", duration: 3.15, keys: [
     [.16, { sway: -.027, rise: -.026, feet: { l: [.054, .04, .018, .15] }, leftHand: [2.08, -.37, .57], rightHand: [-2.08, -.37, .57], torso: [-.035, .1, -.035], face: [.45, .26] }],
@@ -96,27 +107,31 @@ export const VICTORY_EMOTES = [
 ] as const satisfies readonly Emote[];
 
 const overhead = {
-  left: [[.98, 1.25, .32], [-1, 1.28, .41]], right: [[-.98, 1.25, .32], [1, 1.28, .41]],
-  leftPalm: [[-.98, -.03, .15], [0, 0, 1]], rightPalm: [[.98, -.03, .15], [0, 0, 1]],
-  fingers: ["open", "open"],
+  left: [[.83, 1.25, .42], [-1.06, 1.3, .57]], right: [[-.83, 1.25, .42], [1.06, 1.3, .57]],
+  leftPalm: [[-.89, -.41, .16], [0, 0, 1]], rightPalm: [[.89, -.41, .16], [0, 0, 1]],
+  fingers: ["open", "open"], joinIndexTips: true,
 } as const;
 const tinyHeart = {
   rightHand: [-1.19, .26, .66], rightPalm: [[-.05, .99, .14], [0, 0, 1]], fingers: [null, "finger-heart"],
 } as const;
-const fingerGuns = {
-  rightHand: [-.87, -.06, .87], rightPalm: [[.035, .07, 1], [-1, .05, 0]],
-  fingers: [null, "finger-gun"], sway: -.033, rise: -.02,
+const gunPalms = {
+  leftPalm: [[.035, .105, 1], [-1, 0, .035]], rightPalm: [[-.035, .105, 1], [1, 0, .035]],
+  fingers: ["finger-gun", "finger-gun"],
+} as const;
+const rapPalms = {
+  leftPalm: [[-.28, .035, .96], [0, -1, 0]], rightPalm: [[.29, .03, .96], [0, -1, 0]],
+  fingers: ["open", "open"],
 } as const;
 
 const VICTORY_VARIATIONS = [
   { id: "rap-hands", name: "Rap hands", duration: 3.1, keys: [
-    [.14, { leftHand: [1.85, -.31, .62], rightHand: [-1.85, -.03, .62], face: [.55, .24] }],
-    [.25, { leftHand: [.35, -.39, .68], rightHand: [-.33, .07, .7], torso: [.08, .06, -.055], head: [.12, -.04, .075], sway: .029, rise: -.026, face: [.83, .34] }],
-    [.36, { leftHand: [1.7, -.19, .6], rightHand: [-1.7, -.26, .6], torso: [-.032, .07, -.04], head: [-.08, .03, .05], sway: .027, rise: -.016, face: [.91, .42] }],
-    [.47, { leftHand: [.34, .065, .7], rightHand: [-.38, -.39, .67], torso: [.07, -.06, .05], head: [.1, .02, -.05], sway: -.027, rise: -.027, face: [.88, .37] }],
-    [.57, { leftHand: [1.65, -.01, .61], rightHand: [-1.72, -.27, .6], torso: [-.035, -.055, .035], head: [-.075, 0, -.03], sway: -.032, rise: -.016, face: [.93, .43] }],
-    [.69, { leftHand: [.36, -.37, .72], rightHand: [-.32, .12, .66], torso: [.075, .05, -.035], head: [.08, -.04, .065], sway: .024, rise: -.025, face: [1, .5] }],
-    [.83, { leftHand: [1.49, -.35, .55], rightHand: [-1.56, -.13, .55], head: [-.025, .07, .05], face: [.72, .27] }],
+    [.14, { ...rapPalms, leftHand: [1.12, -.29, .59], rightHand: [-.92, -.08, .62], face: [.55, .24] }],
+    [.25, { turn: -.08, ...rapPalms, leftHand: [.68, -.32, .64], rightHand: [-.61, -.065, .67], torso: [.08, .06, -.055], head: [.12, -.04, .075], sway: .029, rise: -.026, face: [.83, .34] }],
+    [.36, { turn: -.06, ...rapPalms, leftHand: [.92, -.25, .59], rightHand: [-.97, -.16, .63], torso: [-.032, .07, -.04], head: [-.08, .03, .05], sway: .027, rise: -.016, face: [.91, .42] }],
+    [.47, { turn: .09, ...rapPalms, leftHand: [.59, -.06, .68], rightHand: [-.68, -.32, .64], torso: [.07, -.06, .05], head: [.1, .02, -.05], sway: -.027, rise: -.027, face: [.88, .37] }],
+    [.57, { turn: .055, ...rapPalms, leftHand: [.95, -.11, .63], rightHand: [-.91, -.27, .59], torso: [-.035, -.055, .035], head: [-.075, 0, -.03], sway: -.032, rise: -.016, face: [.93, .43] }],
+    [.69, { turn: -.09, ...rapPalms, leftHand: [.68, -.31, .67], rightHand: [-.56, -.035, .65], torso: [.075, .05, -.035], head: [.08, -.04, .065], sway: .024, rise: -.025, face: [1, .5] }],
+    [.83, { ...rapPalms, leftHand: [1.05, -.31, .57], rightHand: [-1.11, -.19, .56], head: [-.025, .07, .05], face: [.72, .27] }],
   ] },
   { id: "heart-overhead", name: "Overhead heart", duration: 3.45, keys: [
     [.17, { leftHand: [2.2, .05, .42], rightHand: [-2.2, .05, .42], rise: -.02, face: [.49, .35] }],
@@ -130,20 +145,21 @@ const VICTORY_VARIATIONS = [
     [.65, { ...tinyHeart, sway: -.021, rise: -.021, head: [.015, .06, .105], face: [1, .52] }],
     [.83, { rightHand: [-1.39, -.25, .59], rise: -.018, head: [.03, .045, .07], face: [.63, .25] }],
   ] },
-  { id: "finger-guns", name: "Finger guns", duration: 2.9, keys: [
-    [.17, { ...fingerGuns, rightHand: [-1.31, .21, .53], rightPalm: [[.03, .73, .69], [-1, 0, .05]], head: [.02, -.07, .11], face: [.48, .41] }],
-    [.35, { ...fingerGuns, head: [.11, .05, .06], torso: [.07, -.08, .032], face: [.86, .46] }],
-    [.4, { ...fingerGuns, rightHand: [-.87, .02, .77], rightPalm: [[.035, .34, .94], [-1, .05, 0]], head: [-.04, .04, .06], torso: [-.055, -.05, .021], face: [.98, .67] }],
-    [.51, { ...fingerGuns, head: [.075, .025, .067], torso: [.04, -.05, .027], face: [.89, .48] }],
-    [.56, { ...fingerGuns, rightHand: [-.85, .025, .77], rightPalm: [[.06, .32, .95], [-1, .05, 0]], head: [-.04, .06, .055], torso: [-.055, -.045, .025], face: [1, .68] }],
-    [.73, { ...fingerGuns, rightHand: [-1.17, -.21, .65], rightPalm: [[.02, .56, .83], [-1, .03, 0]], head: [.05, .065, -.045], face: [.78, .33] }],
+  { id: "finger-guns", name: "Finger guns", duration: 2.95, keys: [
+    [.16, { ...gunPalms, leftHand: [1.53, -.09, .47], rightHand: [-1.44, -.11, .47], sway: .018, rise: -.016, head: [.028, -.06, .055], face: [.47, .35] }],
+    [.32, { ...gunPalms, leftHand: [1.26, -.19, .73], rightHand: [-1.24, -.18, .75], sway: -.02, rise: -.028, torso: [.067, -.045, .045], head: [.09, .025, .051], face: [.82, .42] }],
+    [.41, { ...gunPalms, leftHand: [1.34, -.13, .67], rightHand: [-1.47, -.05, .51], rightPalm: [[-.055, .35, .93], [1, 0, .059]], sway: -.032, rise: -.021, torso: [-.05, -.09, .04], head: [-.036, .055, .049], face: [.98, .62] }],
+    [.51, { ...gunPalms, leftHand: [1.22, -.19, .76], rightHand: [-1.27, -.17, .74], sway: .009, rise: -.026, torso: [.043, .045, -.032], head: [.067, -.027, -.026], face: [.88, .45] }],
+    [.61, { ...gunPalms, leftHand: [1.48, -.045, .52], rightHand: [-1.37, -.13, .67], leftPalm: [[.058, .37, .93], [-1, 0, .062]], sway: .036, rise: -.019, torso: [-.054, .09, -.048], head: [-.043, -.065, -.052], face: [1, .62] }],
+    [.72, { ...gunPalms, leftHand: [1.34, -.21, .66], rightHand: [-1.33, -.2, .67], sway: .018, rise: -.024, head: [.043, .04, -.034], face: [.85, .42] }],
+    [.85, { ...gunPalms, leftHand: [1.44, -.4, .53], rightHand: [-1.43, -.4, .54], sway: .006, rise: -.016, head: [.04, .07, .034], face: [.65, .24] }],
   ] },
 ] as const satisfies readonly Emote[];
 
 export type VictoryEmoteId = typeof VICTORY_EMOTES[number]["id"];
 
 const VICTORY_COLLECTION = [...VICTORY_EMOTES, ...VICTORY_VARIATIONS];
-const BAG_COMPATIBLE = ["011", "018", "heart-fingers", "finger-guns"];
+const BAG_COMPATIBLE = ["011", "018", "heart-fingers"];
 
 export function availableVictoryEmotes(bag: boolean) {
   return bag ? VICTORY_COLLECTION.filter(emote => BAG_COMPATIBLE.includes(emote.id)) : VICTORY_COLLECTION;

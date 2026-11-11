@@ -4,24 +4,28 @@ import {
 import { clone } from "three/addons/utils/SkeletonUtils.js";
 import { aimDriverJoint, driverArm } from "./garageEmotes";
 import { ROOK_ID, VILLAGER_ID, type CharacterLook } from "./characterCatalog";
-import { addVillagerFaceShapes } from "./villagerFace";
+import { addVillagerFaceShapes, prepareVillagerFaceColors } from "./villagerFace";
+import { prepareVillagerFaceAccessories } from "./villagerFaceAccessories";
+import { cockpitWardrobe } from "./cockpitWardrobe";
 
 export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait" = "garage") {
   if (look.character.id === ROOK_ID) return kind === "portrait" ? __ROOK_PORTRAIT_URL__ : __ROOK_MODEL_URL__;
   if (look.character.id !== VILLAGER_ID) return null;
-  return __VILLAGER_MODEL_URL__;
+  return kind === "portrait" ? __VILLAGER_PORTRAIT_URL__ : __VILLAGER_MODEL_URL__;
 }
 
-export function prepareVillager(scene: Object3D, { female = true, animateFace = false, bag = false } = {}) {
+export function prepareVillager(scene: Object3D, { female = true, animateFace = false, bag = false, wetEyes = false } = {}) {
   const root = clone(scene);
   root.name = female ? "garage-villager-female" : "garage-villager-male";
   const materials = new Map<MeshStandardMaterial, MeshStandardMaterial>();
   const accentMaterials = new Map<MeshStandardMaterial, MeshStandardMaterial>();
+  const sleeveMaterials = new Map<MeshStandardMaterial, MeshStandardMaterial>();
   const skeletons = new Set<Skeleton>();
   root.traverse(object => {
     if (!(object instanceof Mesh)) return;
     if (object instanceof SkinnedMesh) skeletons.add(object.skeleton);
-    const palette = /^(ACC_BOW|ACC_BELT)/.test(object.name) ? accentMaterials : materials;
+    const palette = /^(ACC_BOW|ACC_BELT)/.test(object.name) ? accentMaterials
+      : female && object.name === "CLOTH_ARMS_SLEEVES" ? sleeveMaterials : materials;
     const owned = (material: MeshStandardMaterial) => {
       const existing = palette.get(material);
       if (existing) return existing;
@@ -33,7 +37,9 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
     // The authored culling bounds describe the original rest pose.
     object.frustumCulled = false;
   });
-  const faceGeometry = animateFace && female ? addVillagerFaceShapes(root) : [];
+  const faceGeometry = animateFace ? addVillagerFaceShapes(root, female) : [];
+  const applyFaceColors = prepareVillagerFaceColors(materials.values(), female);
+  const faceAccessories = prepareVillagerFaceAccessories(root, female, wetEyes);
   for (const side of ["l", "r"] as const) {
     const joints = driverArm(root, side);
     if (!joints) continue;
@@ -61,18 +67,21 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
     root.getObjectByName("head")?.attach(crop);
   }
 
+  cockpitWardrobe(root);
   root.updateMatrixWorld(true);
   const shoes = root.getObjectByName(female ? "CLOTH_FEET_SHOES" : "CLOTH_FEET_BOOTS");
   if (shoes) root.position.y = -new Box3().setFromObject(shoes, true).min.y;
   return {
-    root, materials, accentMaterials, crop,
+    root, materials, accentMaterials, sleeveMaterials, crop, applyFaceColors, faceAccessories,
     hat: root.getObjectByName("ACC_HAT"),
     longHair: root.getObjectByName("HAIR_HAIR20"),
     bow: root.getObjectByName("ACC_BOW"),
     dispose() {
       faceGeometry.forEach(geometry => geometry.dispose());
+      faceAccessories.dispose();
       materials.forEach(material => material.dispose());
       accentMaterials.forEach(material => material.dispose());
+      sleeveMaterials.forEach(material => material.dispose());
       skeletons.forEach(skeleton => skeleton.dispose());
       crop?.geometry.dispose();
       crop?.material.dispose();
@@ -81,18 +90,30 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
 }
 
 export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, look: CharacterLook) {
-  for (const [source, material] of [...model.materials, ...model.accentMaterials]) {
+  model.applyFaceColors(look);
+  model.faceAccessories.setGlasses(look.appearance.glasses);
+  for (const [source, material] of [...model.materials, ...model.accentMaterials, ...model.sleeveMaterials]) {
     material.color.copy(source.color);
     switch (material.name) {
       case "MAT_ClothUpper":
       case "MAT_ClothLower":
         if (look.appearance.color !== "original" || look.outfit.id === "shop-crew" || look.outfit.id === "race-crew") {
-          material.color.set(look.fabric).lerp(source.color, look.appearance.color.startsWith("#") ? 0 : .45);
+          const tint = material.color.set(look.fabric);
+          if (!look.appearance.color.startsWith("#")) {
+            // Keep a trace of the source on lighter dyes without washing out deep shades.
+            tint.lerp(source.color, .32 * Math.max(tint.r, tint.g, tint.b));
+          }
         }
+        material.color.multiplyScalar(.74);
+        material.roughness = Math.max(source.roughness, .82);
+        material.metalness = Math.min(source.metalness, .2);
         break;
       case "MAT_Hair":
       case "MAT_LashBrow":
-        if (look.appearance.hair_color !== "original") material.color.set(look.hair).lerp(source.color, .18);
+        if (look.appearance.hair_color !== "original") {
+          const tint = material.color.set(look.hair);
+          tint.lerp(source.color, .22 * Math.max(tint.r, tint.g, tint.b));
+        }
         break;
       case "MAT_SkinBody":
       case "MAT_SkinFace":

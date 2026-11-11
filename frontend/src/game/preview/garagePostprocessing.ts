@@ -14,7 +14,8 @@ export function configureGarageBloom(
   contrast: boolean,
 ) {
   pass.enabled = settings.bloom && settings.bloomStrength > 0 && !contrast;
-  pass.strength = contrast ? 0 : settings.bloomStrength;
-  pass.radius = settings.bloomRadius;
-  pass.threshold = settings.bloomThreshold;
+  // Keep the garage's bloom restrained with both new and previously saved settings.
+  pass.strength = contrast ? 0 : settings.bloomStrength * .45;
+  pass.radius = settings.bloomRadius * .6;
+  pass.threshold = settings.bloomThreshold + .22;
 }

@@ -1,18 +1,33 @@
 import {
-  AnimationClip, Bone, Euler, NumberKeyframeTrack, Quaternion, QuaternionKeyframeTrack, Vector3, VectorKeyframeTrack,
+  AnimationClip, Bone, BooleanKeyframeTrack, Euler, NumberKeyframeTrack, Quaternion, QuaternionKeyframeTrack, Vector3, VectorKeyframeTrack,
   type Object3D,
 } from "three";
 import { driverFaceTargets } from "./villagerFace";
 import { availableVictoryEmotes } from "./victoryEmotes";
 import { availablePlayfulEmotes } from "./playfulEmotes";
-import { availableShyEmotes } from "./shyEmotes";
+import { availableShyEmotes, QUIET_THANK_YOU } from "./shyEmotes";
 import { availableTsundereEmotes } from "./tsundereEmotes";
+import { availableExpressionEmotes } from "./expressionEmotes";
+import { availableRoadsideEmotes } from "./roadsideEmotes";
+import { availableRivalryEmotes } from "./rivalryEmotes";
+import { availablePitCrewEmotes } from "./pitCrewEmotes";
+import { availableAfterHoursEmotes } from "./afterHoursEmotes";
+import { availableShowroomEmotes } from "./showroomEmotes";
+import { availableElegantEmotes } from "./elegantEmotes";
+import { availablePerformerEmotes } from "./performerEmotes";
+import { availableStoicEmotes } from "./stoicEmotes";
+import { availableExplorerEmotes } from "./explorerEmotes";
+import { TECH_EMOTES } from "./techEmotes";
+import { availableWorkshopEmotes } from "./workshopEmotes";
+import { availableStarterEmotes } from "./starterEmotes";
+import { STARTER_COMEDY_EMOTES } from "./starterComedyEmotes";
+import { availableRaceReactions } from "./raceReactionEmotes";
+import { EMOTE_PROP_GRIPS, type EmoteProp, type EmotePropModel } from "./emoteProps";
 import { WALK_EMOTES } from "./walkingEmotes";
-import { garageLeanPose, type GarageLeanFit } from "./garageLean";
 
 export type XYZ = readonly [number, number, number];
 type Arm = readonly [upper: XYZ, lower: XYZ];
-type HandShape = "fist" | "peace" | "heart" | "open" | "paw" | "point" | "three" | "finger-heart" | "finger-gun" | "thumb-up";
+type HandShape = "fist" | "peace" | "heart" | "open" | "paw" | "cup" | "point" | "three" | "finger-heart" | "finger-gun" | "thumb-up" | "pinch" | "frame" | "shaka" | "pole-grip";
 export type Palm = readonly [fingerDirection: XYZ, normal: XYZ];
 // Offsets from the resting ankle in stage meters, with optional toe yaw.
 type Foot = readonly [across: number, lift: number, forward: number, pivot?: number, pitch?: number];
@@ -26,6 +41,7 @@ type Pose = {
   leftPalm?: Palm;
   rightPalm?: Palm;
   rightAtLips?: boolean;
+  joinIndexTips?: boolean;
   fingers?: readonly [HandShape | null, HandShape | null];
   wristLeft?: number;
   wrist?: number;
@@ -36,8 +52,13 @@ type Pose = {
   feet?: { l?: Foot; r?: Foot };
   elbowsBack?: boolean;
   face?: readonly [smile: number, brow: number];
+  blink?: number;
+  wetEyes?: number;
+  // Prop coordinates are meters from the shoulder midpoint or the head.
+  prop?: { offset: XYZ; angles?: XYZ; fold?: number; show?: number; atHead?: boolean; grip?: boolean; ripple?: number };
+  thumbs?: readonly [left: number, right: number];
 };
-export type Emote = { id: string; name: string; duration: number; keys: readonly (readonly [time: number, pose: Pose])[] };
+export type Emote = { id: string; name: string; duration: number; prop?: EmoteProp; keys: readonly (readonly [time: number, pose: Pose])[] };
 
 // Arm targets are model-space directions. Positive Z is forward. The same
 // poses are retargeted to the imported skeleton and the built-in driver rigs.
@@ -50,14 +71,35 @@ const claspLeft: Arm = [[1, -4, 1.2], [-2.4, 1.3, 3.5]];
 const claspRight: Arm = [[-1, -4, 1.2], [2.4, 1.3, 3.5]];
 const wave: Arm = [[-1, -.55, .28], [-.24, 1, .28]];
 
-export const EMOTE_GROUPS = ["Garage", "Victory", "Playful", "Shy", "Tsundere"] as const;
+export const EMOTE_GROUPS = [
+  "Garage", "Victory", "Playful", "Shy", "Tsundere", "Expressions", "Roadside", "Rivalry", "Pit Crew",
+  "After Hours", "Showroom", "Elegant", "Performer", "Stoic", "Explorer", "Tech", "Workshop", "Starter", "Starter Comedy", "Race Reactions",
+] as const;
 export type EmoteGroup = typeof EMOTE_GROUPS[number];
+export const AUTOMATIC_GARAGE_EMOTE_IDS = ["035", "002", "005", "009", "010"];
+const BEST_EMOTE_IDS = ["035", "090", "072", "051", "018", "094", "095", "100"];
+const GARAGE_PICK_IDS = ["005", "010", "002", "003", "009", "035", "090", "092", "093"];
+
+export function garageBreathing(bag = false): Emote {
+  return { id: "001", name: "Relaxed breathing", duration: 9.8, keys: [
+    [0, {}],
+    [.14, { torso: [-.025, -.016, .015], head: [-.019, -.074, .027],
+      rightHand: [-1.38, -.79, .31], fingers: [null, "cup"], face: [.16, .1] }],
+    [.31, { torso: [.014, -.033, .025], head: [.052, -.15, .045],
+      rightHand: [-1.23, -.7, .45], fingers: [null, "cup"], face: [.27, .15] }],
+    [.48, { torso: [-.018, .011, -.012], head: [-.012, .024, .011],
+      rightHand: [-1.41, -.82, .28], face: [.21, .12] }],
+    [.66, { torso: [.027, .039, -.022], head: [.056, .135, -.036],
+      ...(bag ? { rightHand: [-1.29, -.74, .37], fingers: [null, "cup"] }
+        : { leftHand: [1.26, -.72, .43], fingers: ["cup", null] }), face: [.18, .11] }],
+    [.84, { torso: [-.014, .023, -.013], head: [-.025, .06, -.018],
+      ...(bag ? { rightHand: [-1.42, -.83, .3] } : { leftHand: [1.4, -.83, .28] }), face: [.23, .08] }],
+    [1, {}],
+  ] };
+}
 
 export const GARAGE_EMOTES = [
-  { id: "001", name: "Relaxed breathing", duration: 3.6, keys: [
-    [0, {}], [.25, { torso: [-.018, 0, .012], head: [0, -.027, 0], face: [.12, .08] }],
-    [.5, {}], [.77, { torso: [.014, 0, -.012], head: [.012, .027, 0] }], [1, {}],
-  ] },
+  garageBreathing(),
   { id: "002", name: "Comfortable weight shift", duration: 2.7, keys: [
     [.23, { sway: -.043, rise: -.023, feet: { l: [.025, .035, .032] }, torso: [.018, -.07, .08] }],
     [.39, { sway: .068, rise: -.038, feet: { l: [.065, 0, .065, .16] }, torso: [.018, -.07, .115], head: [0, .06, -.072] }],
@@ -87,8 +129,8 @@ export const GARAGE_EMOTES = [
   { id: "006", name: "Inspect the wheel", duration: 3.2, keys: [
     [.13, { ...startPivot, head: [.1, .15, 0] }],
     [.25, { ...finishPivot, head: [.15, .1, 0] }],
-    [.47, { ...faceCar, rise: -.092, sway: .052, torso: [.32, .19, 0], head: [.26, .13, -.045], left: claspLeft, right: claspRight, face: [0, -.55] }],
-    [.67, { ...faceCar, rise: -.079, sway: .043, torso: [.28, .14, 0], head: [.2, -.03, .03], left: claspLeft, right: claspRight, face: [.15, -.4] }],
+    [.47, { ...faceCar, rise: -.034, sway: .029, torso: [.2, .12, 0], head: [.26, .13, -.045], face: [0, -.55] }],
+    [.67, { ...faceCar, rise: -.032, sway: .024, torso: [.16, .08, 0], head: [.2, -.03, .03], face: [.15, -.4] }],
     [.8, { ...finishPivot, torso: [.07, 0, 0], head: [.08, 0, 0] }],
     [.91, startPivot],
   ] },
@@ -152,7 +194,7 @@ export function aimDriverJoint(joint: Object3D, child: Object3D, direction: Vect
   joint.quaternion.copy(parent.multiply(new Quaternion().setFromUnitVectors(from, direction.normalize())).multiply(world));
 }
 
-function alignJointNormal(joint: Object3D, axis: Vector3, localNormal: Vector3, target: Vector3) {
+export function alignJointNormal(joint: Object3D, axis: Vector3, localNormal: Vector3, target: Vector3) {
   const world = joint.getWorldQuaternion(new Quaternion());
   const current = localNormal.clone().applyQuaternion(world);
   current.addScaledVector(axis, -current.dot(axis)).normalize();
@@ -161,7 +203,7 @@ function alignJointNormal(joint: Object3D, axis: Vector3, localNormal: Vector3, 
   joint.rotateOnAxis(axis.clone().applyQuaternion(world.invert()), twist);
 }
 
-function aimLimb(first: Object3D, second: Object3D, end: Object3D, goal: Vector3, pole: Vector3, hinge?: Vector3) {
+export function aimLimb(first: Object3D, second: Object3D, end: Object3D, goal: Vector3, pole: Vector3, hinge?: Vector3) {
   const start = first.getWorldPosition(new Vector3());
   const middle = second.getWorldPosition(new Vector3());
   const upper = start.distanceTo(middle);
@@ -182,14 +224,14 @@ function aimLimb(first: Object3D, second: Object3D, end: Object3D, goal: Vector3
   aimDriverJoint(second, end, lowerDirection);
 }
 
-function driverHand(root: Object3D, side: "l" | "r") {
+export function driverHand(root: Object3D, side: "l" | "r") {
   const bone = (name: string) => root.getObjectByName(`${name}_${side}`);
   const hand = bone("hand"), index = bone("index_01"), middle = bone("middle_01"), pinky = bone("pinky_01");
   if (!hand || !index || !middle || !pinky) return null;
   const across = index.getWorldPosition(new Vector3()).sub(pinky.getWorldPosition(new Vector3()));
   const palm = middle.getWorldPosition(new Vector3()).sub(hand.getWorldPosition(new Vector3()))
     .cross(across).normalize().multiplyScalar(side === "l" ? 1 : -1);
-  const fingers = ["index", "middle", "ring", "pinky", "thumb"].flatMap(name => {
+  const fingers = (["index", "middle", "ring", "pinky", "thumb"] as const).flatMap(name => {
     const chain = [1, 2, 3].map(segment => bone(`${name}_0${segment}`));
     return chain.flatMap((joint, segment) => {
       const adjacent = chain[segment + 1] ?? chain[segment - 1];
@@ -201,14 +243,16 @@ function driverHand(root: Object3D, side: "l" | "r") {
     });
   });
   const thumb = [bone("thumb_01"), bone("thumb_02"), bone("thumb_03")];
+  const indexChain = [index, bone("index_02"), bone("index_03")];
   return {
     hand, middle, fingers, thumb: thumb.every((joint): joint is Object3D => !!joint) ? thumb : null,
-    middleIndex: bone("index_02"), endIndex: bone("index_03"), fingertip: bone("middle_03"),
+    index: indexChain.every((joint): joint is Object3D => !!joint) ? indexChain : null,
+    fingertip: bone("middle_03"),
     palm: palm.applyQuaternion(hand.getWorldQuaternion(new Quaternion()).invert()),
   };
 }
 
-export function buildEmoteClips(root: Object3D, emotes: readonly Emote[]) {
+export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?: ReadonlyMap<EmoteProp, EmotePropModel>) {
   const torso = root.getObjectByName("spine_02");
   const head = root.getObjectByName("head");
   const left = driverArm(root, "l");
@@ -224,7 +268,7 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[]) {
   const body = [root, torso, head, left?.shoulder, left?.elbow, left?.hand,
     right?.shoulder, right?.elbow, right?.hand, ...legs.flatMap(({ thigh, calf, foot }) => [thigh, calf, foot])]
     .filter((joint): joint is Object3D => !!joint);
-  const handRigs = emotes.some(emote => emote.keys.some(([, pose]) => pose.fingers || pose.leftPalm || pose.rightPalm))
+  const handRigs = emotes.some(emote => emote.prop || emote.keys.some(([, pose]) => pose.fingers || pose.leftPalm || pose.rightPalm))
     ? [driverHand(root, "l"), driverHand(root, "r")] : [];
   const joints = [...body, ...handRigs.flatMap(hand => hand?.fingers.map(finger => finger.joint) ?? [])];
   const rest = joints.map(joint => joint.quaternion.clone());
@@ -242,6 +286,8 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[]) {
   const up = new Vector3(0, 1, 0);
   const across = new Vector3(1, 0, 0);
   const faceTargets = (["smile", "brow"] as const).map(shape => driverFaceTargets(root, shape));
+  const blinkTargets = emotes.some(emote => emote.keys.some(([, pose]) => pose.blink)) ? driverFaceTargets(root, "blink") : [];
+  const tears = root.getObjectByName("villager-tearline");
   const tilt = (joint: Object3D | undefined, angles: XYZ | undefined) => {
     if (!joint || !angles) return;
     // Imported bones and the procedural rig have different local axes.
@@ -256,7 +302,7 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[]) {
   };
   const hands = (limb: ReturnType<typeof driverArm>, opposite: ReturnType<typeof driverArm>, target: XYZ | undefined,
     side: number, behindBack?: boolean, articulated?: boolean, contact?: Vector3) => {
-    if (!limb || !opposite || !target) return;
+    if (!limb || !opposite || (!target && !contact)) return;
     const shoulder = limb.shoulder.getWorldPosition(new Vector3());
     const other = opposite.shoulder.getWorldPosition(new Vector3());
     const elbow = limb.elbow.getWorldPosition(new Vector3());
@@ -264,7 +310,7 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[]) {
     const reach = shoulder.distanceTo(elbow) + elbow.distanceTo(wrist);
     // Resolve the wrists against a shared shoulder frame so contact poses fit
     // the different arm lengths on the imported rigs and the built-in rig.
-    const goal = contact ?? new Vector3(target[0] * shoulder.distanceTo(other) * .5, target[1] * reach, target[2] * reach)
+    const goal = contact ?? new Vector3(target![0] * shoulder.distanceTo(other) * .5, target![1] * reach, target![2] * reach)
       .applyQuaternion(modelRotation).add(shoulder.clone().lerp(other, .5));
     const pole = new Vector3(side, -.8, behindBack ? -.57 : -.14).applyQuaternion(modelRotation);
     // The imported Villager elbows flex around local -Z on both mirrored bones.
@@ -273,12 +319,22 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[]) {
         .applyQuaternion(limb.shoulder.getWorldQuaternion(new Quaternion()).invert());
     aimLimb(limb.shoulder, limb.elbow, limb.hand, goal, pole, hinge);
   };
-  const orientPalm = (rig: ReturnType<typeof driverHand> | undefined, target: Palm | undefined) => {
+  const orientPalm = (rig: ReturnType<typeof driverHand> | undefined, target: Palm | undefined,
+    rotation = modelRotation, elbow?: Object3D) => {
     if (!rig || !target) return;
     const [fingers, normal] = target;
-    const direction = new Vector3(...fingers).applyQuaternion(modelRotation).normalize();
+    const direction = new Vector3(...fingers).applyQuaternion(rotation).normalize();
+    if (elbow) {
+      const forearm = rig.hand.getWorldPosition(new Vector3()).sub(elbow.getWorldPosition(new Vector3())).normalize();
+      const angle = forearm.angleTo(direction);
+      const limit = Math.PI * .4;
+      if (angle > limit) {
+        const bend = new Quaternion().setFromUnitVectors(forearm, direction);
+        direction.copy(forearm).applyQuaternion(new Quaternion().slerp(bend, limit / angle));
+      }
+    }
     aimDriverJoint(rig.hand, rig.middle, direction.clone());
-    alignJointNormal(rig.hand, direction, rig.palm, new Vector3(...normal).applyQuaternion(modelRotation));
+    alignJointNormal(rig.hand, direction, rig.palm, new Vector3(...normal).applyQuaternion(rotation));
   };
 
   const clips = emotes.map(emote => {
@@ -287,10 +343,15 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[]) {
       ...emote.keys,
       ...(emote.keys.at(-1)?.[0] === 1 ? [] : [[1, {}] as const]),
     ];
-    const animated = keys.some(([, pose]) => pose.fingers) ? joints : body;
+    const grips = emote.prop && EMOTE_PROP_GRIPS[emote.prop];
+    const prop = emote.prop && props?.get(emote.prop);
+    const animated = grips || keys.some(([, pose]) => pose.fingers) ? joints : body;
     const times = keys.map(([time]) => time * emote.duration);
     const rotations = animated.map((): number[] => []);
     const positions: number[] = [];
+    const propPositions: number[] = [], propRotations: number[] = [], propScales: number[] = [], panelRotations: number[][] = [[], []];
+    const firstPropPose = keys.find(([, pose]) => pose.prop)?.[1].prop;
+    let lastPropPose = firstPropPose;
     for (const [, pose] of keys) {
       joints.forEach((joint, index) => joint.quaternion.copy(rest[index]));
       root.position.copy(basePosition);
@@ -302,33 +363,83 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[]) {
       hands(right, left, pose.rightHand, -1, pose.elbowsBack, !!pose.rightPalm);
       orientPalm(handRigs[0], pose.leftPalm);
       orientPalm(handRigs[1], pose.rightPalm);
+      // Solve the wrists against the prop frame so the same hand grips fit
+      // the two Villager rigs and the fallback actor.
+      lastPropPose = pose.prop ?? lastPropPose;
+      const propPose = pose.prop ?? (prop ? lastPropPose : undefined);
+      if (propPose && grips && left && right) {
+        const anchor = propPose.atHead && head ? head.getWorldPosition(new Vector3())
+          : left.shoulder.getWorldPosition(new Vector3()).lerp(right.shoulder.getWorldPosition(new Vector3()), .5);
+        const origin = root.worldToLocal(anchor).add(new Vector3(...propPose.offset));
+        const [pitch, yaw, roll] = propPose.angles ?? [0, 0, 0];
+        const orientation = new Quaternion().setFromEuler(new Euler(pitch, yaw, roll));
+        // Fingers roll around the paper's edges as it turns between the palms.
+        const palmRotation = modelRotation.clone().multiply(emote.prop === "map"
+          ? new Quaternion().setFromEuler(new Euler(Math.max(-.3, Math.min(.25, pitch)), yaw, roll)) : orientation);
+        const fold = propPose.fold ?? 0;
+        if (prop) {
+          const scale = pose.prop ? (pose.prop.show ?? 1) : 0;
+          propPositions.push(...origin.toArray());
+          propRotations.push(...orientation.toArray());
+          propScales.push(scale, scale, scale);
+        }
+        grips.forEach((grip, side) => {
+          // Hold the left map panel still while the opposite leaf opens outward.
+          const angle = emote.prop === "map" && side === 0 ? 0 : fold;
+          const hinge = new Quaternion().setFromAxisAngle(up, angle);
+          if (prop?.panels.length) panelRotations[side].push(...hinge.toArray());
+          if (!grip || !pose.prop || pose.prop.grip === false) return;
+          const gripHinge = emote.prop === "map" ? hinge : new Quaternion();
+          const wrist = new Vector3(...grip.wrist).applyQuaternion(gripHinge).applyQuaternion(orientation).add(origin);
+          const [arm, other, sign] = side === 0 ? [left, right, 1] : [right, left, -1];
+          hands(arm, other, undefined, sign, false, true, root.localToWorld(wrist));
+          orientPalm(handRigs[side], grip.palm, palmRotation.clone().multiply(gripHinge), arm.elbow);
+        });
+      }
       tilt(left?.hand, pose.wristLeft === undefined ? undefined : [0, 0, pose.wristLeft]);
       tilt(right?.hand, pose.wrist === undefined ? undefined : [0, 0, pose.wrist]);
-      pose.fingers?.forEach((shape, side) => {
+      const propFingers: Pose["fingers"] = pose.prop && pose.prop.grip !== false && grips
+        ? [grips[0] ? "cup" : null, grips[1] ? (emote.prop === "flag" ? "pole-grip" : "cup") : null] : undefined;
+      (pose.fingers ?? propFingers)?.forEach((shape, side) => {
         if (!shape) return;
         const rig = handRigs[side];
         if (!rig) return;
         for (const { joint, axis, name, segment } of rig.fingers) {
-          const extended = shape === "open" || (name === "index" && ["point", "peace", "three", "finger-gun"].includes(shape))
-            || (name === "thumb" && (shape === "finger-gun" || shape === "thumb-up"))
-            || (name === "middle" && (shape === "peace" || shape === "three")) || (name === "ring" && shape === "three");
-          const curved = shape === "heart" || (shape === "finger-heart" && name === "index");
+          const extended = shape === "open" || (name === "index" && ["point", "peace", "three", "finger-gun", "frame"].includes(shape))
+            || (name === "thumb" && ["finger-gun", "thumb-up", "frame", "shaka"].includes(shape))
+            || (name === "middle" && (shape === "peace" || shape === "three")) || (name === "ring" && shape === "three")
+            || (name === "pinky" && shape === "shaka");
+          const curved = (shape === "heart" && (name === "index" || name === "thumb"))
+            || ((shape === "finger-heart" || shape === "pinch") && name === "index");
           const bend = extended ? -.16 : curved ? .39 : shape === "paw" ? .66 : .96;
-          joint.rotateOnAxis(axis, bend * [1, .95, .57][segment] * (name === "thumb" ? .36 : 1));
+          const curl = shape === "thumb-up" && name !== "thumb" ? [1.04, 1.34, .67][segment]
+            : shape === "pole-grip" ? [.83, 1.29, .84][segment]
+            : shape === "cup" ? [.49, .85, .51][segment]
+            : bend * [1, .95, .57][segment];
+          joint.rotateOnAxis(axis, name === "thumb" ? curl * .36 + (pose.thumbs?.[side] ?? (shape === "pole-grip" ? .22 : 0)) : curl);
         }
-        if (shape === "finger-heart" && rig.thumb && rig.middleIndex && rig.endIndex) {
-          const { thumb, middleIndex, endIndex } = rig;
+        if ((shape === "finger-heart" || shape === "pinch") && rig.thumb && rig.index) {
+          const { thumb, index: [indexBase, middleIndex, endIndex] } = rig;
           const mid = middleIndex.getWorldPosition(new Vector3());
           const tip = endIndex.getWorldPosition(new Vector3());
           const palm = rig.palm.clone().applyQuaternion(rig.hand.getWorldQuaternion(new Quaternion()));
-          const target = mid.lerp(tip, .7).addScaledVector(palm, .01 * rig.hand.getWorldScale(new Vector3()).x);
+          const scale = rig.hand.getWorldScale(new Vector3()).x;
+          const target = shape === "pinch" ? tip.clone().addScaledVector(palm, .006 * scale) : mid.lerp(tip, .7).addScaledVector(palm, .01 * scale);
           aimLimb(thumb[0], thumb[1], thumb[2], target, palm);
+          if (shape === "pinch") {
+            // Flex the index toward the thumb after accounting for its reach.
+            const contact = thumb[2].getWorldPosition(new Vector3()).lerp(tip, .17);
+            const arc = mid.sub(indexBase.getWorldPosition(new Vector3()));
+            aimLimb(indexBase, middleIndex, endIndex, contact, arc);
+          }
         }
-        if (shape === "thumb-up" && rig.thumb) {
+        if ((shape === "thumb-up" || shape === "finger-gun" || shape === "frame" || shape === "shaka") && rig.thumb) {
           const [base, middle, tip] = rig.thumb;
-          const up = new Vector3(side === 0 ? -.13 : .13, 1, .08).applyQuaternion(modelRotation);
-          aimDriverJoint(base, middle, up.clone());
-          aimDriverJoint(middle, tip, up);
+          const inward = side === 0 ? -1 : 1;
+          const direction = (shape === "shaka" ? new Vector3(inward, .62, .15)
+            : shape === "frame" ? new Vector3(inward, .19, .09) : new Vector3(inward * .13, 1, .08)).applyQuaternion(modelRotation);
+          aimDriverJoint(base, middle, direction.clone());
+          aimDriverJoint(middle, tip, direction);
         }
       });
       const [leftRig, rightRig] = handRigs;
@@ -337,6 +448,27 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[]) {
         for (const rig of [leftRig, rightRig]) {
           const [base, middle, end] = rig.thumb!;
           aimLimb(base, middle, end, meeting.clone(), rig.palm.clone().applyQuaternion(rig.hand.getWorldQuaternion(new Quaternion())));
+        }
+        if (leftRig.index && rightRig.index) {
+          const notch = leftRig.index[2].getWorldPosition(new Vector3())
+            .lerp(rightRig.index[2].getWorldPosition(new Vector3()), .5)
+            .addScaledVector(new Vector3().setFromMatrixColumn(modelMatrix, 1), -.021);
+          for (const [side, [base, middle, tip]] of [leftRig.index, rightRig.index].entries()) {
+            const curve = new Vector3(side === 0 ? .5 : -.5, 1, 0).applyQuaternion(modelRotation);
+            aimLimb(base, middle, tip, notch.clone(), curve);
+          }
+        }
+      }
+      if (pose.joinIndexTips && left && right && leftRig?.index && rightRig?.index) {
+        const leftTip = leftRig.index[2].getWorldPosition(new Vector3());
+        const rightTip = rightRig.index[2].getWorldPosition(new Vector3());
+        const meeting = leftTip.clone().lerp(rightTip, .5);
+        // Bring the fingertips together while keeping the authored elbow arc.
+        for (const [arm, rig, palm, tip] of [[left, leftRig, pose.leftPalm, leftTip], [right, rightRig, pose.rightPalm, rightTip]] as const) {
+          const goal = arm.hand.getWorldPosition(new Vector3()).add(meeting).sub(tip);
+          const pole = arm.elbow.getWorldPosition(new Vector3()).sub(arm.shoulder.getWorldPosition(new Vector3()));
+          aimLimb(arm.shoulder, arm.elbow, arm.hand, goal, pole);
+          orientPalm(rig, palm);
         }
       }
       if (pose.rightAtLips && head && lipAnchor && rightRig?.fingertip) {
@@ -369,6 +501,21 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[]) {
       ...faceTargets.flatMap((targets, channel) => targets.map(({ mesh, index }) =>
         new NumberKeyframeTrack(mesh.uuid + ".morphTargetInfluences[" + index + "]", times,
           keys.map(([, pose]) => pose.face?.[channel] ?? 0)))),
+      ...(keys.some(([, pose]) => pose.blink) ? blinkTargets.map(({ mesh, index }) =>
+        new NumberKeyframeTrack(mesh.uuid + ".morphTargetInfluences[" + index + "]", times, keys.map(([, pose]) => pose.blink ?? 0))) : []),
+      ...(prop && propPositions.length === times.length * 3 ? [
+        new VectorKeyframeTrack(prop.root.uuid + ".position", times, propPositions),
+        new QuaternionKeyframeTrack(prop.root.uuid + ".quaternion", times, propRotations),
+        new VectorKeyframeTrack(prop.root.uuid + ".scale", times, propScales),
+        new BooleanKeyframeTrack(prop.root.uuid + ".visible", times, keys.map(([, pose]) => Boolean(pose.prop))),
+        ...prop.panels.map((panel, side) => new QuaternionKeyframeTrack(panel.uuid + ".quaternion", times, panelRotations[side])),
+        ...(prop.flagCloth ? [new NumberKeyframeTrack(prop.flagCloth.uuid + ".morphTargetInfluences[0]", times,
+          keys.map(([, pose]) => pose.prop?.ripple ?? 0))] : []),
+        ...(prop.flagGrip ? [new NumberKeyframeTrack(prop.flagGrip.uuid + ".position[x]", times,
+          keys.map(([, pose]) => pose.prop && pose.prop.grip !== false ? 1 : 0))] : []),
+      ] : []),
+      ...(tears && keys.some(([, pose]) => pose.wetEyes) ? [new NumberKeyframeTrack(tears.uuid + ".material.opacity", times,
+        keys.map(([, pose]) => pose.wetEyes ?? 0))] : []),
     ]);
   });
   joints.forEach((joint, index) => joint.quaternion.copy(rest[index]));
@@ -382,11 +529,43 @@ export function emoteCollection(group: EmoteGroup, bag: boolean, includeWalks = 
   if (group === "Playful") return availablePlayfulEmotes(bag);
   if (group === "Shy") return availableShyEmotes(bag);
   if (group === "Tsundere") return availableTsundereEmotes(bag);
-  if (bag) return [...GARAGE_EMOTES.filter(item => compatibleGarageEmotes(item.id)), ...BAG_EMOTES];
+  if (group === "Expressions") return availableExpressionEmotes(bag);
+  if (group === "Roadside") return availableRoadsideEmotes(bag);
+  if (group === "Rivalry") return availableRivalryEmotes(bag);
+  if (group === "Pit Crew") return availablePitCrewEmotes(bag);
+  if (group === "After Hours") return availableAfterHoursEmotes(bag);
+  if (group === "Showroom") return availableShowroomEmotes(bag);
+  if (group === "Elegant") return availableElegantEmotes(bag);
+  if (group === "Performer") return availablePerformerEmotes(bag);
+  if (group === "Stoic") return availableStoicEmotes(bag);
+  if (group === "Explorer") return availableExplorerEmotes(bag);
+  if (group === "Tech") return bag ? [] : TECH_EMOTES;
+  if (group === "Workshop") return availableWorkshopEmotes(bag);
+  if (group === "Starter") return availableStarterEmotes(bag);
+  if (group === "Starter Comedy") return STARTER_COMEDY_EMOTES;
+  if (group === "Race Reactions") return availableRaceReactions(bag);
+  if (bag) return [garageBreathing(true), ...GARAGE_EMOTES.slice(1).filter(item => compatibleGarageEmotes(item.id)), ...BAG_EMOTES];
   return includeWalks ? [...GARAGE_EMOTES, ...WALK_EMOTES] : GARAGE_EMOTES;
 }
 
-export function buildGarageEmotes(root: Object3D, bag = false, previewPacks = false, leanFit?: GarageLeanFit) {
-  const emotes = previewPacks ? EMOTE_GROUPS.flatMap(group => emoteCollection(group, bag)) : emoteCollection("Garage", bag, false);
-  return buildEmoteClips(root, !bag && !previewPacks && leanFit ? [...emotes, garageLeanPose(leanFit)] : emotes);
+export function garagePreviewCollection(group: EmoteGroup | "Best", bag: boolean): readonly Emote[] {
+  if (group !== "Garage" && group !== "Best") return emoteCollection(group, false);
+  const library = new Map(EMOTE_GROUPS.flatMap(pack => emoteCollection(pack, false)).map(emote => [emote.id, emote]));
+  const picks = (group === "Best" ? BEST_EMOTE_IDS : GARAGE_PICK_IDS).flatMap(id => library.get(id) ?? []);
+  return group === "Best" ? picks : [...picks, ...emoteCollection("Garage", false).filter(emote => !GARAGE_PICK_IDS.includes(emote.id)),
+    ...(bag ? BAG_EMOTES : [])];
+}
+
+export function findGaragePreviewEmote(id: string, bag: boolean): Emote | undefined {
+  if (bag && id.startsWith("bag-")) return BAG_EMOTES.find(emote => emote.id === id);
+  for (const group of EMOTE_GROUPS) {
+    const emote = emoteCollection(group, false).find(item => item.id === id);
+    if (emote) return emote;
+  }
+}
+
+export function buildGarageEmotes(root: Object3D, bag = false, previewPacks = false) {
+  if (previewPacks) return buildEmoteClips(root, EMOTE_GROUPS.flatMap(group => emoteCollection(group, bag)));
+  const idle = GARAGE_EMOTES.filter(({ id }) => id !== "001" && (id === "010" || AUTOMATIC_GARAGE_EMOTE_IDS.includes(id)));
+  return buildEmoteClips(root, [garageBreathing(bag), ...idle, QUIET_THANK_YOU, ...(bag ? BAG_EMOTES : [])]);
 }

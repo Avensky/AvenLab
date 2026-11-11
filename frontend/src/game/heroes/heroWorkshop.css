@@ -3,8 +3,11 @@
 .hero-selection.hero-workshop:not(.hero-ability-guide){background:transparent!important;}
 .hero-workshop-body{position:relative;display:flex;flex:1;flex-direction:column;min-height:0;padding:0;pointer-events:none;}
 .hero-workshop-picker{flex:1;min-height:0;}
-.hero-garage-zoom{position:absolute;bottom:0;left:50%;z-index:11;}
-.hero-garage-zoom .hero-preview-zoom{right:auto;transform:translateX(-50%);}
+.hero-garage-zoom{position:absolute;bottom:6px;left:50%;z-index:11;display:flex;align-items:center;justify-content:center;gap:4px;max-width:calc(100% - 16px);transform:translateX(-50%);pointer-events:auto;}
+.hero-garage-zoom .hero-preview-zoom{position:static;flex:none;}
+.garage-preview-buttons{display:flex;justify-content:center;flex-wrap:wrap;gap:4px;}
+.garage-preview-buttons .menu-control{min-height:28px;padding:0 7px;font-size:clamp(9px,1.7vw,12px);white-space:nowrap;}
+.garage-drive-status{position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);white-space:nowrap;padding:3px 7px;background:var(--app-background);color:var(--app-text);font-size:11px;pointer-events:none;}
 .hero-workshop .hero-guide-scroll{pointer-events:auto;}
 .hero-workshop .hero-main-portrait-badge{position:absolute;right:3px;bottom:3px;display:flex;align-items:center;gap:3px;padding:0;background:transparent;color:white;font-size:7px;text-shadow:0 1px 3px #000,0 0 4px #000;pointer-events:none;}
 .hero-workshop .hero-main-portrait-badge :is(.controller-key,.keyboard-key){width:13px;min-width:13px;height:13px;min-height:13px;padding:0;font-size:9px;}
@@ -71,3 +74,7 @@
  .hero-workshop .alpha-selection-footer{flex-wrap:nowrap;}
 }
 @media(prefers-reduced-motion:reduce){.hero-main-halo{transform:none;}}
+
+.hero-workshop .garage-hide-toggle{position:fixed;right:10px;top:calc(var(--angled-tabs-height,44px) + 8px);z-index:42;width:32px;height:30px;display:grid;place-items:center;padding:0;pointer-events:auto;}
+.hero-workshop.hero-workshop--hidden{visibility:hidden;pointer-events:none;}
+.hero-workshop--hidden .garage-hide-toggle{visibility:visible;pointer-events:auto;}

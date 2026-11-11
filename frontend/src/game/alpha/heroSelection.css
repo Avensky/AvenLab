@@ -19,26 +19,34 @@
   font: calc(12px * var(--menu-text-scale, 1))/1.45 ui-sans-serif, system-ui, sans-serif;
 }
 .hero-pick-tabs.angled-header-tabs {
-  width: max-content;
   max-width: calc(100% + var(--angled-tab-cut));
 }
 .hero-pick-tabs .angled-header-tab {
-  flex: 0 1 auto;
+  --hero-tab-width: clamp(92px, 9vw, 132px);
+  flex: 0 1 var(--hero-tab-width);
   max-width: none;
   padding-inline: calc(var(--angled-tab-cut) / 2 + 9px);
 }
+.hero-pick-tabs .angled-header-tab:is(.angled-header-tab--support, .angled-header-tab--concepts) {
+  flex-basis: calc(var(--hero-tab-width) + 22px);
+}
 @media (max-width: 760px) {
   .hero-pick-tabs .angled-header-tab {
-    gap: 2px;
-    padding-inline: calc(var(--angled-tab-cut) / 2 + 3px);
+    --hero-tab-width: clamp(58px, 11.2vw, 85px);
+    gap: 3px;
+    padding-inline: calc(var(--angled-tab-cut) / 2 + 4px);
   }
-  .hero-pick-tabs .scene-header-tab-icon svg { width: 10px; height: 10px; }
+  .hero-pick-tabs .angled-header-tab--all { flex-basis: calc(var(--hero-tab-width) - 8px); }
+  .hero-pick-tabs .scene-header-tab-icon svg { width: 11px; height: 11px; }
 }
 .hero-pick-tabs.classic-header-tabs {
   display: flex;
   align-self: flex-start;
   max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.hero-pick-tabs.classic-header-tabs .menu-control { flex: 0 0 clamp(70px, 9vw, 132px); }
 .hero-selection :is(button, input, label, select) {
   pointer-events: auto;
 }
@@ -415,14 +423,16 @@
    selection belongs immediately below the grid, without a vehicle strip. */
 .hero-role-tabs {
   position: static;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
   flex: none;
   gap: 0;
   width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
   background: none;
 }
 .hero-role-tabs .menu-control {
+  flex: 1 0 clamp(65px, 7vw, 100px);
   min-height: var(--menu-action-height, 32px);
   justify-content: center;
   padding: 3px 4px;
@@ -627,14 +637,14 @@ html[data-ui-theme=scarlet]:not([data-high-contrast=true]) .hero-selection:not(.
   --menu-chrome-surface:#181b21;
 }
 
-/* Dock vehicle role filters into the selection header. Tab widths stay compact;
+/* Dock vehicle role filters into the selection header.
    the row scrolls on narrow screens instead of stretching across the scene. */
 .hero-selection:not(.mode-selection) > .menu-frame-header > .hero-role-tabs {
   display: flex;
   flex: 0 1 auto;
   align-items: center;
   width: auto;
-  max-width: min(48vw, 560px);
+  max-width: min(58vw, 680px);
   margin-left: auto;
   overflow-x: auto;
   scrollbar-width: none;
@@ -644,16 +654,16 @@ html[data-ui-theme=scarlet]:not([data-high-contrast=true]) .hero-selection:not(.
   display: none;
 }
 .hero-selection:not(.mode-selection) > .menu-frame-header > .hero-role-tabs .menu-control {
-  flex: 0 0 clamp(58px, 6vw, 88px);
+  flex: 0 0 clamp(72px, 8vw, 112px);
   min-height: clamp(28px, 2.7vw, 36px);
   padding: 2px 5px;
   font-size: clamp(8px, .72vw, 10px);
 }
 @media (max-width: 760px) {
   .hero-selection:not(.mode-selection) > .menu-frame-header > .hero-role-tabs {
-    max-width: 48vw;
+    max-width: 58vw;
   }
   .hero-selection:not(.mode-selection) > .menu-frame-header > .hero-role-tabs .menu-control {
-    flex-basis: clamp(46px, 8vw, 62px);
+    flex-basis: clamp(58px, 10vw, 76px);
   }
 }

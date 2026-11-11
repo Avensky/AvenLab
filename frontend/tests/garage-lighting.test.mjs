@@ -161,7 +161,9 @@ test("garage settings sanitize old/corrupt values and bloom off skips its blur p
   const pass = {};
   configureGarageBloom(pass, DEFAULT_GARAGE_EFFECTS, false);
   assert.equal(pass.enabled, true);
-  assert.equal(pass.strength, 0.5);
+  assert.equal(pass.strength, 0.225);
+  assert.equal(pass.radius, 0.15);
+  assert.equal(pass.threshold, 1.22);
   configureGarageBloom(
     pass,
     { ...DEFAULT_GARAGE_EFFECTS, bloom: false },
@@ -181,6 +183,7 @@ test("garage settings sanitize old/corrupt values and bloom off skips its blur p
 
 test("turning off garage mirrors skips their capture and keeps the tile shader alive", () => {
   let captures = 0;
+  let time = 0;
   const floor = {
     userData: {},
     material: {
@@ -194,28 +197,35 @@ test("turning off garage mirrors skips their capture and keeps the tile shader a
       captures++;
     },
   };
-  gateGarageFloorCapture(floor);
+  gateGarageFloorCapture(floor, () => time);
   configureGarageFloor(floor, DEFAULT_GARAGE_EFFECTS);
+  assert.equal(floor.material.uniforms.reflectionStrength.value, 0.76);
   floor.onBeforeRender();
   assert.equal(captures, 1);
+  time += 1 / 60;
+  floor.onBeforeRender();
+  assert.equal(captures, 1, "reuse the capture on the next 60 Hz frame");
+  time += 1 / 60;
+  floor.onBeforeRender();
+  assert.equal(captures, 2);
   configureGarageFloor(floor, {
     ...DEFAULT_GARAGE_EFFECTS,
     floorReflections: false,
   });
   floor.onBeforeRender();
-  assert.equal(captures, 1);
+  assert.equal(captures, 2);
   assert.equal(floor.material.uniforms.reflectionStrength.value, 0);
   configureGarageFloor(floor, {
     ...DEFAULT_GARAGE_EFFECTS,
     reflectionStrength: 0,
   });
   floor.onBeforeRender();
-  assert.equal(captures, 1);
+  assert.equal(captures, 2);
   configureGarageFloor(floor, {
     ...DEFAULT_GARAGE_EFFECTS,
     reflectionBlur: 0.75,
   });
   floor.onBeforeRender();
-  assert.equal(captures, 2);
+  assert.equal(captures, 3);
   assert.equal(floor.material.uniforms.reflectionBlur.value, 0.75);
 });

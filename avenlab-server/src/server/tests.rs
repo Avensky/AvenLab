@@ -591,6 +591,26 @@ async fn character_equip_validates_the_choice_and_persists_it_on_the_profile() {
     invalid_style["appearance"]["hair"] = json!("missing");
     assert!(s.handle(&player, json!({"action": "character_equip", "character": invalid_style})).await.is_err());
     assert_eq!(s.handle(&player, json!({"action": "character_equip", "character": styled})).await.unwrap()["character"], styled);
+    for (field, value) in [("eye_color", "blue"), ("brow_color", "copper"), ("glasses", "aviator")] {
+        let mut invalid_face = styled.clone();
+        invalid_face["appearance"][field] = json!("missing");
+        assert!(s.handle(&player, json!({"action": "character_equip", "character": invalid_face})).await.is_err());
+        styled["appearance"][field] = json!(value);
+    }
+    assert_eq!(s.handle(&player, json!({"action": "character_equip", "character": styled})).await.unwrap()["character"], styled);
+    for (field, value) in [("color", "deep-navy"), ("hair_color", "dark-auburn"), ("eye_color", "obsidian")] {
+        styled["appearance"][field] = json!(value);
+    }
+    assert_eq!(s.handle(&player, json!({"action": "character_equip", "character": styled})).await.unwrap()["character"], styled);
+    let mut invalid_identity = styled.clone();
+    invalid_identity["identity"] = json!("unknown");
+    assert!(s.handle(&player, json!({"action": "character_equip", "character": invalid_identity})).await.is_err());
+    let legacy_style = styled.clone();
+    for identity in ["male", "female", "nonbinary"] {
+        styled["identity"] = json!(identity);
+        assert_eq!(s.handle(&player, json!({"action": "character_equip", "character": styled})).await.unwrap()["character"], styled);
+    }
+    assert_eq!(s.handle(&player, json!({"action": "character_equip", "character": legacy_style})).await.unwrap()["character"], styled);
     let reloaded: SocialData = serde_json::from_slice(&tokio::fs::read(&s.path).await.unwrap()).unwrap();
     let progression = &reloaded.profiles[profile].progression;
     assert_eq!(progression.view()["character"], styled);
@@ -611,7 +631,7 @@ async fn roster_portraits_publish_only_equipped_styles_for_live_and_reserved_pla
     appearance.body = "#ed258d".into();
     appearance.finish = "soft".into();
     profile.progression.hero_loadouts.insert("cx30".into(), appearance.clone());
-    profile.progression.character = Some(crate::alpha::character::CharacterChoice { id: "niko-park".into(), outfit: "field-kit".into(), appearance: None, prop: None });
+    profile.progression.character = Some(crate::alpha::character::CharacterChoice { id: "niko-park".into(), outfit: "field-kit".into(), appearance: None, prop: None, identity: None });
     let mut alpha = AlphaState::default();
     alpha.members.insert(player.clone(), Member { mode: Mode::Quickplay, team_size:5, world: 7, hero: "cx30".into(), team: Team::Red });
     let clients = server.connections.lock().await;
@@ -656,7 +676,7 @@ async fn enemy_lobby_picks_are_hidden_until_their_exact_world_has_started() {
     let mut data=s.data.lock().await;
     let mut paint=crate::alpha::appearance::HeroAppearance::default();paint.body="#ed258d".into();
     data.profiles.get_mut(enemy_profile).unwrap().progression.hero_loadouts.insert("cx30".into(),paint);
-    data.profiles.get_mut(enemy_profile).unwrap().progression.character = Some(crate::alpha::character::CharacterChoice { id: "jules-okafor".into(), outfit: "race-crew".into(), appearance: None, prop: None });
+    data.profiles.get_mut(enemy_profile).unwrap().progression.character = Some(crate::alpha::character::CharacterChoice { id: "jules-okafor".into(), outfit: "race-crew".into(), appearance: None, prop: None, identity: None });
     let clients=s.connections.lock().await;
     let mut phases=HashMap::from([(7,("round-seven".into(),CtfPhase::Waiting)),(8,("other-round".into(),CtfPhase::Running))]);
     let view=Server::alpha_view_for_phases(&a,profile,&me,&clients,&data,3,&phases);

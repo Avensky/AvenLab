@@ -36,6 +36,32 @@ const handsMovingBack = {
   leftHand: [2.3, -.49, -.44], rightHand: [-2.3, -.49, -.44], elbowsBack: true,
   leftPalm: [[.36, -.62, -.53], [-1, 0, 0]], rightPalm: [[-.36, -.62, -.53], [1, 0, 0]],
 } as const;
+
+const robotReady = {
+  leftHand: [1.68, -.31, .62], rightHand: [-1.68, -.31, .62],
+  leftPalm: [[.06, .03, 1], [0, -1, .03]], rightPalm: [[-.06, .03, 1], [0, -1, .03]],
+  fingers: ["open", "open"], rise: -.026,
+} as const;
+const robotLeft = {
+  turn: .08,
+  ...robotReady, leftHand: [1.9, .18, .41], rightHand: [-.85, -.31, .67],
+  leftPalm: [[-.025, 1, .02], [0, 0, 1]], rightPalm: [[.99, 0, .11], [0, -1, 0]],
+  torso: [.01, .14, -.09], head: [-.045, -.32, .08], sway: .05, rise: -.044,
+  feet: { l: [.08, 0, .026, .16] }, face: [.12, .32],
+} as const;
+const robotRight = {
+  turn: -.085,
+  ...robotReady, leftHand: [.91, -.27, .67], rightHand: [-1.9, .16, .43],
+  leftPalm: [[-.99, 0, .11], [0, -1, 0]], rightPalm: [[.02, 1, .02], [0, 0, 1]],
+  torso: [.01, -.15, .095], head: [-.045, .33, -.08], sway: -.052, rise: -.043,
+  feet: { l: robotLeft.feet.l, r: [-.073, 0, .02, -.16] }, face: [.17, .43],
+} as const;
+const robotPop = {
+  turn: -.022,
+  ...robotReady, leftHand: [1.72, -.09, .58], rightHand: [-1.72, -.09, .58],
+  leftPalm: [[.03, -.54, .84], [0, -1, -.54]], rightPalm: [[-.03, -.54, .84], [0, -1, -.54]],
+  torso: [-.16, 0, 0], head: [.13, 0, 0], rise: -.023, feet: robotRight.feet, face: [.26, .56],
+} as const;
 const offer = {
   leftHand: [2.64, -.12, .52], rightHand: [.47, -.39, .65],
   leftPalm: palmUpLeft, rightPalm: [[.65, .05, .76], [0, 1, 0]], fingers: ["open", "open"],
@@ -128,6 +154,19 @@ export const PLAYFUL_EMOTES = [
     [.51, { rightHand: [-.67, -.09, .63], rightPalm: [[.24, .57, .78], [0, -.74, .57]], fingers: [null, "paw"], torso: [.17, -.07, .03], head: [.21, -.04, -.02], sway: -.06, rise: -.073, face: [-.24, -.42] }],
     [.62, { rightHand: [-.68, -.19, .6], torso: [.115, -.03, .02], head: [.155, -.04, 0], sway: -.042, rise: -.054, face: [-.14, -.27] }],
     [.81, { torso: [-.035, 0, -.024], head: [-.06, .04, .064], sway: -.018, rise: -.018, face: [.64, .33] }],
+  ] },
+  { id: "robot-dance", name: "Robot dance", duration: 4.35, keys: [
+    [.13, robotReady], [.2, robotReady],
+    [.224, { ...robotReady, sway: -.017, feet: { l: [.055, .045, .021, .09] }, head: [.03, -.31, .07] }],
+    [.26, robotLeft], [.36, robotLeft],
+    [.385, { ...robotLeft, sway: .013, head: [-.04, .31, -.07], feet: { l: robotLeft.feet.l, r: [-.046, .037, .015, -.12] } }],
+    [.42, robotRight], [.525, robotRight],
+    [.558, robotPop], [.596, { ...robotPop, torso: [.06, 0, 0], head: [-.14, 0, 0], rise: -.044 }],
+    [.63, robotPop], [.7, robotPop],
+    [.742, { ...robotReady, sway: .035, feet: { l: robotLeft.feet.l, r: [-.031, .039, .012, -.08] } }],
+    [.79, { ...robotReady, sway: .04, feet: robotLeft.feet, head: [.01, -.23, .036] }],
+    [.86, { ...robotReady, sway: .018, feet: { l: [.035, .035, .012, .06] }, head: [.03, .15, -.035] }],
+    [.93, { ...robotReady, rise: -.015, face: [.34, .2] }],
   ] },
 ] as const satisfies readonly Emote[];
 

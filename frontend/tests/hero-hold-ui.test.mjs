@@ -17,7 +17,7 @@ test('shared portrait selection opens settings; only a complete X hold sets main
   }});
   const {useSocialStore}=await load('store/social/socialStore.ts');useSocialStore.setState({view:{profile:{id:'alice',name:'Alice',progression:{default_hero:'brz',hero_loadouts:{},owned:['factory'],tier:'BRONZE',prestige:0,level:1,xp:0,required_xp:100,credits:0}},alpha:{skins:[]}}});
   const {useHeroLoadouts:cache}=await load('vehicles/cosmetics/heroLoadouts.ts');cache.getState().adopt('alice','brz');const {useUIStore:ui}=await load('store/menus/uiStore.ts');ui.setState({screen:'heroes',overlay:null,isModeLoading:false});
-  const {HeroWorkshop}=await load('game/heroes/HeroWorkshop.tsx'),{GameController}=await load('controls/GameController.ts');root=createRoot(document.getElementById('root'));await act(async()=>root.render(h('div',null,h(GameController),h(HeroWorkshop))));
+ const {HeroWorkshop,HeroLoadoutSync}=await load('game/heroes/HeroWorkshop.tsx'),{GameController}=await load('controls/GameController.ts');root=createRoot(document.getElementById('root'));await act(async()=>root.render(h('div',null,h(GameController),h(HeroLoadoutSync),h(HeroWorkshop))));
   assert.equal(document.querySelector('.vehicle-studio'),null);assert.equal(document.querySelectorAll('.hero-portrait-card').length,(await load('store/alpha/alphaStore.ts')).HEROES.length);assert.equal(document.querySelector('.hero-portrait-card[aria-pressed="true"]').dataset.hero,'brz');assert.equal(document.querySelectorAll('.hero-collection-tile').length,0);
   await advance(0);pad.buttons[2].pressed=true;await advance(16);await advance(1300);pad.buttons[2].pressed=false;await advance(16);assert.equal(requests.length,0);
   await act(async()=>document.querySelector('[data-hero="camaro"]').click());assert(document.querySelector('.vehicle-studio'));assert.equal(requests.length,0);
@@ -64,6 +64,9 @@ test('shared portrait selection opens settings; only a complete X hold sets main
   await key('KeyX');await advance(1100);await key('KeyX','keyup');await advance(200);assert.equal(requests.length,0);
   await act(async()=>document.querySelector('.alpha-selection-footer button[aria-label=Back]').click());assert.equal(document.querySelector('.vehicle-studio'),null);assert.equal(document.querySelectorAll('.hero-workshop-actions .controller-action').length,2);
   await key('KeyX');await advance(1250);await settle();assert.equal(requests.filter(r=>r.make_default).length,1);assert.equal(cache.getState().defaultHero,'camaro');assert.equal(document.querySelector('.hero-main-hold').dataset.main,'true');await advance(2000);assert.equal(requests.filter(r=>r.make_default).length,1);await key('KeyX','keyup');
+  assert.equal(useSocialStore.getState().view.profile.progression.default_hero,'camaro','the save reply updates the account before its next snapshot');
+  await act(async()=>useSocialStore.setState(({view})=>({view:{...view,profile:{...view.profile,name:'Alice Renamed'}}})));
+  assert.equal(cache.getState().defaultHero,'camaro');
   await act(async()=>document.querySelector('[data-hero="camaro"]').click());assert.equal(document.querySelectorAll('.hero-workshop-actions .controller-action').length,2);
   await chooseTab('paint');
   await act(async()=>document.querySelector('[aria-label="Paint: Crimson red"]').click());await settle();assert.equal(requests.at(-1).make_default,false);assert.equal(cache.getState().defaultHero,'camaro');
