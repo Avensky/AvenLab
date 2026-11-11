@@ -5,32 +5,11 @@
 }
 .character-editor-header { flex: none; pointer-events: auto; }
 .character-editor .character-page { pointer-events: none; }
-.character-editor .character-controls--bottom { justify-content: flex-end; }
-.character-editor-camera { flex: none; align-self: center; text-align: center; margin: 0; width: 100%; min-width: 0; pointer-events: auto; }
-.character-editor-camera > div:not(.fitting-rotation-grid) {
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; padding: 5px 8px;
-  border: 1px solid var(--app-line); background: var(--app-panel);
-  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
-}
-.character-editor-camera label { display: flex; align-items: center; gap: 6px; color: var(--app-muted); font-size: 11px; }
-.character-editor-camera .menu-control { min-height: 30px; padding: 4px 9px; font-size: 11px; }
-.character-editor-camera .garage-hide-toggle { position: static; width: 32px; padding: 4px; }
-.character-editor-camera small { display: block; margin-top: 5px; font-size: 10px; color: var(--app-muted); }
-.character-editor-camera [aria-pressed="true"] { border-color: var(--app-accent); }
 .character-editor--hidden .character-editor-header,
-.character-editor--hidden .character-page > :not(.character-stage):not(.character-controls--bottom):not(.dressing-toolbar) { display: none; }
-.character-editor--hidden .character-page { grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
+.character-editor--hidden .character-page > :not(.character-stage):not(.dressing-toolbar) { display: none; }
+.character-editor.character-editor--hidden .character-page { grid-template: minmax(0, 1fr) / minmax(0, 1fr); }
 .character-editor.character-editor--hidden .character-page .character-stage { grid-area: 1 / 1; }
-@media (max-height: 500px) {
-  .character-editor-camera small { display: none; }
-  .character-editor-camera { margin-bottom: 3px; }
-}
-
-.character-editor-camera .fitting-rotation-grid { margin-top: 5px; }
-.character-editor--hidden .character-page .character-controls--bottom { position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%); width: min(520px, 90vw); display: block; }
-.character-editor--hidden .character-controls--bottom .character-equip { display: none; }
 .character-editor--hidden .dressing-toolbar { position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%); }
 .character-editor--hidden .dressing-toolbar > :not(.fitting-camera-toolbar),
 .character-editor--hidden .dressing-toolbar .fitting-camera-panel,
-.character-editor--hidden .dressing-toolbar .fitting-camera-row > :not(.garage-hide-toggle),
-.character-editor--hidden .character-page--dressing .character-controls--bottom { display: none; }
+.character-editor--hidden .dressing-toolbar .fitting-camera-row > :not(.garage-hide-toggle) { display: none; }

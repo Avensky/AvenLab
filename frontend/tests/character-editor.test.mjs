@@ -58,17 +58,18 @@ test('character tools preserve builder drafts, frame close-ups, and wait for app
     root = createRoot(document.getElementById('root'));
     const find = selector => document.querySelector(selector);
     const click = async selector => act(async () => { assert(find(selector), selector); find(selector).click(); });
+    const cameraChoice = value => `[aria-label="Character close-up"] [data-camera-choice="${value}"]`;
     await act(async () => root.render(h(CharacterEditorPanel)));
     assert(find('.menu-frame-header .character-header-portrait'));
     assert.equal(find('.menu-frame-header [data-open-character]'), null, 'the editor cannot reopen itself');
     assert.equal(find('[aria-label="Preview camera"]'), null, 'the garage camera cannot fight the editor orbit controls');
     await click('[data-category=outfits]');
-    assert.equal(find('[aria-label="Character close-up"]').value, 'piece:corset');
+    assert.equal(find(cameraChoice('piece:corset')).getAttribute('aria-pressed'), 'true');
     await click('[data-wardrobe-back]');
     await click('[data-category=props]');
     assert.equal(editor.getState().shot, 'Hands');
     await click('[data-wardrobe-item=shop-bag]');
-    assert.equal(find('[aria-label="Character close-up"]').value, 'piece:bag');
+    assert.equal(find(cameraChoice('piece:bag')).getAttribute('aria-pressed'), 'true');
     await click('[data-wardrobe-item=empty-hands]');
     assert.equal(editor.getState().shot, 'Hands');
     await click('[data-wardrobe-back]');
@@ -77,15 +78,9 @@ test('character tools preserve builder drafts, frame close-ups, and wait for app
     assert(find('.fitting-camera-panel').hidden);
     await click('.dressing-toolbar [aria-label="Camera tools"]');
     assert.equal(find('.fitting-camera-panel').hidden, false);
-    await act(async () => {
-      const select = find('[aria-label="Character close-up"]'); select.value = 'Back'; select.dispatchEvent(new Event('change', { bubbles: true }));
-    });
+    await click(cameraChoice('Back'));
     assert.equal(editor.getState().shot, 'Back');
-    await act(async () => {
-      const select = find('[aria-label="Character close-up"]');
-      select.value = 'piece:shoes';
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-    });
+    await click(cameraChoice('piece:shoes'));
     assert.equal(editor.getState().shot, 'Selected item');
     assert.equal(preview.getState().selectedPiece, 'shoes');
     await click('[aria-label="Hide interface"]');
@@ -94,9 +89,22 @@ test('character tools preserve builder drafts, frame close-ups, and wait for app
     assert.equal(editor.getState().panelsHidden, false, 'back first restores hidden editing controls');
     assert.equal(builder.getState().workspace, 'character');
     await click('#character-editor-tab-emotes');
+    assert(find('.dressing-toolbar .fitting-camera-toolbar'), 'World Builder uses the same bottom toolbar for Emotes');
+    assert.equal(find('[data-character-option]'), null);
+    const cameraTools = '.dressing-toolbar [aria-label="Camera tools"]';
+    if (find('.fitting-camera-panel').hidden) await click(cameraTools);
+    await click(cameraChoice('Face'));
+    assert.equal(editor.getState().shot, 'Face');
+    await act(async () => {
+      find(cameraChoice('Face')).focus();
+      window.dispatchEvent(new CustomEvent('avenlab:panel-action', { detail: 'back' }));
+    });
+    assert(find('.fitting-camera-panel').hidden);
+    assert.equal(document.activeElement, find(cameraTools));
+    assert.equal(builder.getState().workspace, 'character', 'controller Back dismisses camera views before leaving the editor');
     await click('.character-emotes button:first-child');
     assert.equal(preview.getState().playbackPaused, false, 'choosing an emote starts it even after holding a pose');
-    await click('.character-editor-camera button[aria-pressed]');
+    await click('.dressing-toolbar button[aria-label="Hold pose"]');
     assert.equal(preview.getState().playbackPaused, true);
     await click('#character-editor-tab-appearance');
     await click('[data-category=tops]');

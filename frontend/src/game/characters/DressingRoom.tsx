@@ -75,8 +75,8 @@ function inspectWardrobe(focus: WardrobeFocus) {
 }
 
 /** One live scene; browsing the catalog never changes or saves the equipped look. */
-export function DressingRoom({ choice, onChange, modelControls, cameraTools }: {
-  choice: CharacterChoice; onChange: (choice: CharacterChoice) => void; modelControls?: ReactNode; cameraTools?: ReactNode;
+export function DressingRoom({ choice, onChange, cameraTools }: {
+  choice: CharacterChoice; onChange: (choice: CharacterChoice) => void; cameraTools?: ReactNode;
 }) {
   const [category, setCategory] = useState<Category>("outfits");
   const [catalogOpen, setCatalogOpen] = useState(false);
@@ -210,7 +210,6 @@ export function DressingRoom({ choice, onChange, modelControls, cameraTools }: {
     </header>
     <aside className="dressing-wardrobe" aria-label="Wardrobe">
       <h2>Wardrobe</h2>
-      {modelControls}
       <nav ref={categoryRef} className="dressing-categories" aria-label="Dressing room categories" hidden={catalogOpen}>
         {CATEGORIES.map((item, index) => <div key={item.id}>
           {index > 0 && item.group !== CATEGORIES[index - 1].group && <h3 className="dressing-group-label">{item.group}</h3>}

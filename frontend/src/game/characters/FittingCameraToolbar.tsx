@@ -15,15 +15,16 @@ function ToolIcon({ icon }: { icon: keyof typeof ICON_PATHS }) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={ICON_PATHS[icon]} /></svg>;
 }
 
-export function FittingCameraToolbar({ camera, zoomRange, visibility, paused, onPause, onZoomOut, onZoomIn,
+export function FittingCameraToolbar({ camera, zoomRange, visibility, actions, paused, onPause, onZoomOut, onZoomIn,
   zoomOutDisabled, zoomInDisabled, onReframe, vehicle = false, rotationDisabled = false }: {
   camera: ReactNode;
   zoomRange?: ReactNode;
   visibility: ReactNode;
+  actions?: ReactNode;
   paused: boolean;
   onPause: () => void;
-  onZoomOut: () => void;
-  onZoomIn: () => void;
+  onZoomOut?: () => void;
+  onZoomIn?: () => void;
   zoomOutDisabled?: boolean;
   zoomInDisabled?: boolean;
   onReframe?: () => void;
@@ -32,44 +33,63 @@ export function FittingCameraToolbar({ camera, zoomRange, visibility, paused, on
 }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
+  const toolbar = useRef<HTMLDivElement>(null);
   const toggle = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const focusCamera = useRef(false);
 
   useEffect(() => {
     if (!open) return;
-    if (focusCamera.current) panel.current?.querySelector("select")?.focus();
-    function dismiss(event: MouseEvent) {
+    const element = toolbar.current;
+    if (focusCamera.current) {
+      const selected = panel.current?.querySelector<HTMLButtonElement>('[data-camera-choice][aria-pressed="true"]');
+      (selected ?? panel.current?.querySelector<HTMLButtonElement>("[data-camera-choice]"))?.focus();
+    }
+    function dismissOutside(event: MouseEvent) {
       const target = event.target as Node | null;
       if (!toggle.current?.contains(target) && !panel.current?.contains(target)) setOpen(false);
     }
-    document.addEventListener("click", dismiss, true);
-    return () => document.removeEventListener("click", dismiss, true);
+    function dismiss(event: Event) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setOpen(false);
+      toggle.current?.focus();
+    }
+    function dismissOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape" || event.code === "Escape") dismiss(event);
+    }
+    function dismissOnBack(event: Event) {
+      if ((event as CustomEvent).detail === "back" && element?.contains(document.activeElement)) dismiss(event);
+    }
+    document.addEventListener("click", dismissOutside, true);
+    element?.addEventListener("keydown", dismissOnEscape, true);
+    window.addEventListener("avenlab:panel-action", dismissOnBack, true);
+    return () => {
+      document.removeEventListener("click", dismissOutside, true);
+      element?.removeEventListener("keydown", dismissOnEscape, true);
+      window.removeEventListener("avenlab:panel-action", dismissOnBack, true);
+    };
   }, [open]);
 
   const pauseLabel = paused ? "Resume pose" : "Hold pose";
-  return <div className="fitting-camera-toolbar" role="group" aria-label="Character camera tools" onKeyDownCapture={event => {
-    if (!open || event.key !== "Escape") return;
-    event.preventDefault();
-    event.stopPropagation();
-    setOpen(false);
-    toggle.current?.focus();
-  }}>
+  return <div ref={toolbar} className="fitting-camera-toolbar" role="group" aria-label="Character camera tools">
     <div className="fitting-camera-panel" id={panelId} hidden={!open} ref={panel}>
-      <div className="fitting-camera-preset" data-controller-row>
-        {camera}
-        {onReframe && <button type="button" className="menu-control fitting-tool-icon" aria-label="Reframe" title="Reframe" onClick={onReframe}><ToolIcon icon="reframe" /></button>}
-      </div>
+      {camera}
       {zoomRange && <div className="fitting-camera-range" data-controller-row>{zoomRange}</div>}
-      <FittingRotationControls compact vehicle={vehicle} disabled={rotationDisabled} />
+      <div className="fitting-camera-adjustments">
+        <FittingRotationControls compact vehicle={vehicle} disabled={rotationDisabled} />
+        {onReframe && <div data-controller-row><button type="button" className="menu-control fitting-tool-icon" aria-label="Reframe" title="Reframe"
+          onClick={onReframe}><ToolIcon icon="reframe" /></button></div>}
+      </div>
     </div>
     <div className="fitting-camera-row" data-controller-row>
       <button ref={toggle} type="button" className="menu-control fitting-tool-icon" aria-label="Camera tools" aria-controls={panelId}
         aria-expanded={open} title="Camera views and rotation" onClick={event => { focusCamera.current = event.detail === 0; setOpen(!open); }}><ToolIcon icon="camera" /></button>
-      <button type="button" className="menu-control fitting-tool-icon" aria-label="Zoom out" title="Zoom out" disabled={zoomOutDisabled} onClick={onZoomOut}><ToolIcon icon="zoomOut" /></button>
-      <button type="button" className="menu-control fitting-tool-icon" aria-label="Zoom in" title="Zoom in" disabled={zoomInDisabled} onClick={onZoomIn}><ToolIcon icon="zoomIn" /></button>
+      {onZoomOut && <button type="button" className="menu-control fitting-tool-icon" aria-label="Zoom out" title="Zoom out" disabled={zoomOutDisabled} onClick={onZoomOut}><ToolIcon icon="zoomOut" /></button>}
+      {onZoomIn && <button type="button" className="menu-control fitting-tool-icon" aria-label="Zoom in" title="Zoom in" disabled={zoomInDisabled} onClick={onZoomIn}><ToolIcon icon="zoomIn" /></button>}
       <button type="button" className="menu-control fitting-tool-icon" aria-label={pauseLabel} title={pauseLabel} aria-pressed={paused} onClick={onPause}><ToolIcon icon={paused ? "resume" : "hold"} /></button>
       {visibility}
+      {actions}
     </div>
   </div>;
 }

@@ -15,7 +15,6 @@ import { unlockVehicleAudio } from "../../audio/sharedAudio";
 import { GARAGE_STATIONS } from "../preview/garageStations";
 import { GARAGE_LEAN_ID, GARAGE_LEAN_NAME } from "./garageLean";
 import { CHARACTER_PERSONALITIES, type AnimationFit, type CharacterPersonality } from "./characterPersonality";
-import { FittingRotationControls } from "./FittingRotationControls";
 import { FittingCameraSelect } from "./FittingCameraSelect";
 import { FittingCameraToolbar } from "./FittingCameraToolbar";
 import { DressingRoom } from "./DressingRoom";
@@ -28,6 +27,7 @@ export const CHARACTER_TABS = [
 export type CharacterTab = typeof CHARACTER_TABS[number]["id"];
 
 const PREVIEW_CAST = CHARACTERS.map(item => ({ gender: item.gender, choice: { id: item.id, outfit: item.outfits[0].id } }));
+const COCKPIT_CAMERAS = ["Full body", "Whole car"] as const;
 
 function revealCharacterControl(event: FocusEvent<HTMLElement>) {
   event.target.scrollIntoView?.({ block: "nearest", inline: "nearest" });
@@ -143,7 +143,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
     timer.current = setTimeout(() => void flush(), 300);
   }
 
-  const genderPicker = <div className={locked ? "character-outfits" : "character-cast"} role="group"
+  const modelPicker = <div className={locked ? "character-outfits" : "character-cast"} role="group"
     aria-label={locked ? "Character model" : "Gender"} data-controller-row>
     {PREVIEW_CAST.map(({ gender, choice: next }) => <button key={next.id} type="button" className="menu-control"
       disabled={!locked && status === "saving"} data-character-option={next.id} aria-pressed={choice.id === next.id}
@@ -200,12 +200,11 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
     {reducedMotion && <p>Emote playback is paused by Reduced Motion.</p>}
     {cockpitError && <p role="status">{cockpitError}</p>}
     {cockpitPending && <p role="status">Preparing the {stationName}…</p>}
-    {insideCar && !locked && <button type="button" className="menu-control" data-cockpit-toggle onClick={toggleCockpit}>Exit {stationName}</button>}
     {insideCar && bag && <p>Handheld props are stowed while driving.</p>}
   </>;
   const visibleEmotes = pickedEmotes.filter(item => `${item.id} ${item.name}`.toLowerCase().includes(emoteSearch.trim().toLowerCase()));
   const emoteResults = <>
-    <label className="character-emote-search">Search emotes<input type="search" className="menu-control" aria-label="Search emotes" value={emoteSearch} placeholder="Name or number…" onChange={event => setEmoteSearch(event.target.value)} /></label>
+    <label className="character-emote-search" data-controller-row>Search emotes<input type="search" className="menu-control" aria-label="Search emotes" value={emoteSearch} placeholder="Name or number…" onChange={event => setEmoteSearch(event.target.value)} /></label>
     <small>{visibleEmotes.length} emotes</small>
     <div className="character-emotes" aria-label={insideCar ? (road ? "Driving emotes" : "Station emotes") : `${emoteGroup} emotes`}>
       {!insideCar && ["Garage", "All"].includes(emoteGroup) && mirrorAvailable && MIRROR_CHECK_NAME.toLowerCase().includes(emoteSearch.toLowerCase()) && <button type="button" className="menu-control" data-controller-row disabled={reducedMotion} aria-pressed={emote?.id === MIRROR_CHECK_ID}
@@ -221,30 +220,39 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
         }}><span className="emote-name">{item.name}</span><FitBadge choice={choice} pose={item.id} /></button>)}
     </div>
     {!visibleEmotes.length && <p role="status">No emotes match this filter.</p>}
-    {locked && <FitReview choice={choice} pose={emote?.id ?? "standing"} />}
   </>;
+  const poseLabel = emote?.id === MIRROR_CHECK_ID ? MIRROR_CHECK_NAME : emote?.id === GARAGE_LEAN_ID ? GARAGE_LEAN_NAME
+    : pickedEmotes.find(item => item.id === emote?.id)?.name;
   const fitting = tab === "appearance";
   const rotationDisabled = insideCar || emote?.id === MIRROR_CHECK_ID;
   const vehiclePreview = tab === "emotes" && Boolean(cockpitVehicle);
   const cameraViews = vehiclePreview ? CHARACTER_CAMERAS : CHARACTER_CAMERAS.filter(view => view !== "Whole car");
-  const cameraSelect = <FittingCameraSelect choice={choice} views={cameraViews}
-    view={!vehiclePreview && camera === "Whole car" ? "Full body" : camera} compact={fitting}
-    onViewChange={view => useCharacterPreviewStore.setState({ camera: view, zoom: 1 })} />;
+  const changeCamera = (view: typeof camera) => useCharacterPreviewStore.setState({ camera: view, zoom: 1 });
+  const cameraSelect = insideCar
+    ? <FittingCameraSelect views={COCKPIT_CAMERAS} view={camera === "Whole car" ? "Whole car" : "Full body"}
+      viewLabels={{ "Full body": "Driver", "Whole car": "Whole vehicle" }} onViewChange={changeCamera} />
+    : <FittingCameraSelect choice={choice} views={cameraViews}
+      view={!vehiclePreview && camera === "Whole car" ? "Full body" : camera} onViewChange={changeCamera} />;
   const zoomRange = <input type="range" aria-label="Preview zoom" min={CHARACTER_ZOOM_MIN} max={CHARACTER_ZOOM_MAX} step=".05" value={zoom}
     onChange={event => useCharacterPreviewStore.setState({ zoom: Number(event.target.value) })} />;
   const zoomBy = (step: number) => useCharacterPreviewStore.setState({ zoom: Math.min(CHARACTER_ZOOM_MAX, Math.max(CHARACTER_ZOOM_MIN, +(zoom + step).toFixed(2))) });
   const togglePose = () => useCharacterPreviewStore.setState({ playbackPaused: !playbackPaused });
-  const fittingCamera = inspection ? cameraControls : <FittingCameraToolbar camera={cameraSelect} zoomRange={zoomRange}
+  const exitCockpit = insideCar && <button type="button" className="menu-control fitting-tool-icon" data-cockpit-toggle
+    aria-label={`Exit ${stationName}`} title={`Exit ${stationName}`} onClick={toggleCockpit}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M11 4H4v16h7m2-12 4 4-4 4m4-4H8" /></svg>
+  </button>;
+  const cameraTools = inspection ? cameraControls : <FittingCameraToolbar key={tab} camera={cameraSelect} zoomRange={insideCar ? undefined : zoomRange}
     visibility={<PreviewVisibilityToggle />} paused={playbackPaused} onPause={togglePose}
-    rotationDisabled={rotationDisabled} zoomOutDisabled={zoom <= CHARACTER_ZOOM_MIN} zoomInDisabled={zoom >= CHARACTER_ZOOM_MAX}
-    onZoomOut={() => zoomBy(-.05)} onZoomIn={() => zoomBy(.05)} />;
+    vehicle={vehiclePreview} rotationDisabled={rotationDisabled} actions={exitCockpit}
+    zoomOutDisabled={zoom <= CHARACTER_ZOOM_MIN} zoomInDisabled={zoom >= CHARACTER_ZOOM_MAX}
+    onZoomOut={insideCar ? undefined : () => zoomBy(-.05)} onZoomIn={insideCar ? undefined : () => zoomBy(.05)} />;
 
   if (!locked) return (
     <div ref={page} className="character-page character-page--setup" aria-label="Choose character gender" onFocus={revealCharacterControl}>
       <div className="character-stage" data-character-viewport data-character-preview={character.id} data-outfit-preview={outfit.id} />
       <section className="character-controls menu-panel-frame">
         <header className="character-description"><h2>Choose gender</h2><p>You can switch models any time during alpha.</p></header>
-        {genderPicker}
+        {modelPicker}
         <div className="character-equip" data-controller-row>
           <ControllerAction button="A" className="menu-control" disabled={!connectedOwner || saved === undefined || status === "saving"}
             onClick={() => { queued.current.clear(); queued.current.set(choice.id, choice); void flush(); }}>
@@ -252,10 +260,11 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
           </ControllerAction>
           <p role="status">{message || (!connectedOwner ? "Connect your player profile to confirm." : saved === undefined ? "Update the game server to choose a character." : "")}</p>
         </div>
-        {cameraControls}
+        {insideCar && <button type="button" className="menu-control" data-cockpit-toggle onClick={toggleCockpit}>Exit {stationName}</button>}
         <h2>Preview emotes</h2>
         {emoteFilters}{emoteResults}
       </section>
+      {cameraControls && <div className="dressing-toolbar">{cameraControls}</div>}
     </div>
   );
 
@@ -264,11 +273,11 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
       onFocus={revealCharacterControl}>
       <div className="character-stage" data-character-viewport data-character-preview={choice.id} data-outfit-preview={choice.outfit}
         aria-label={`Preview of ${character.name}`} />
-      {fitting && <DressingRoom choice={choice} onChange={update} modelControls={genderPicker} cameraTools={fittingCamera} />}
+      {fitting && <DressingRoom choice={choice} onChange={update} cameraTools={cameraTools} />}
       {tab !== "appearance" && <section className="character-controls menu-panel-frame character-controls--left" aria-label={tab}>
         {tab === "identity" && <>
           <header className="character-description"><h2>Identity</h2><p>Choose how your character identifies and which model they use.</p></header>
-          {genderPicker}
+          {modelPicker}
           <div className="character-outfits" role="group" aria-label="Character identity" data-controller-row>
             {CHARACTER_IDENTITIES.map(item => <button key={item.id} type="button" className="menu-control"
               aria-pressed={(choice.identity ?? character.gender) === item.id}
@@ -282,41 +291,24 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
         </>}
         {tab === "emotes" && <>
           <h2>{insideCar ? (road ? "Driving emotes" : "Station emotes") : "Preview emotes"}</h2>
-          {genderPicker}
           <label className="character-setting" data-controller-row>Clothing fit<select className="menu-control" aria-label="Animation clothing fit" value={choice.appearance?.animation_fit ?? "auto"}
             onChange={event => update({ ...choice, appearance: { ...appearance, animation_fit: event.target.value as AnimationFit } })}>
             <option value="auto">Auto · match outfit</option><option value="full">Full skirt · more room</option><option value="fitted">Fitted · relaxed arms</option>
           </select></label>
           {emoteFilters}
+          {insideCar && inspection && <div data-controller-row><button type="button" className="menu-control" data-cockpit-toggle
+            onClick={toggleCockpit}>Exit {stationName}</button></div>}
         </>}
       </section>}
-      {tab === "emotes" && <section className="character-controls menu-panel-frame character-controls--right" aria-label="Emote results"><h2>Emotes</h2>{emoteResults}</section>}
-      <section className="character-controls menu-panel-frame character-controls--bottom" aria-label="Camera and save status">
-        {!fitting && cameraControls}
-        {!fitting && !inspection && <FittingRotationControls vehicle={vehiclePreview} disabled={rotationDisabled} />}
-        {!fitting && !inspection && (insideCar ? <div className="character-camera" data-controller-row>
-          <label>Camera<select className="menu-control" aria-label="Preview camera" value={camera === "Whole car" ? "Whole car" : "Full body"}
-            onChange={event => useCharacterPreviewStore.setState({ camera: event.target.value as typeof camera, zoom: 1 })}>
-            <option value="Full body">Driver</option><option value="Whole car">Whole vehicle</option>
-          </select></label>
-          <button type="button" className="menu-control" data-cockpit-toggle
-            onClick={toggleCockpit}>Exit {stationName}</button>
-          <PreviewVisibilityToggle />
-        </div> : <div className="character-camera" data-controller-row>
-          {cameraSelect}
-          <div className="character-zoom">
-            <label>Zoom{zoomRange}</label>
-            <button type="button" className="menu-control" aria-label="Zoom out" disabled={zoom <= CHARACTER_ZOOM_MIN}
-              onClick={() => zoomBy(-.05)}>−</button>
-            <button type="button" className="menu-control" aria-label="Zoom in" disabled={zoom >= CHARACTER_ZOOM_MAX}
-              onClick={() => zoomBy(.05)}>+</button>
-          </div>
-          <button type="button" className="menu-control" aria-pressed={playbackPaused}
-            onClick={togglePose}>{playbackPaused ? "Resume pose" : "Hold pose"}</button>
-          <PreviewVisibilityToggle />
-        </div>)}
+      {tab === "emotes" && <section className="character-controls menu-panel-frame character-controls--right" aria-label="Emote results">
+        <h2>Emotes</h2>
+        <div className="character-emote-results">{emoteResults}</div>
+        <FitReview choice={choice} pose={emote?.id ?? "standing"} poseLabel={poseLabel} />
+      </section>}
+      {!fitting && <div className="dressing-toolbar">{cameraTools}</div>}
+      <section className="character-controls menu-panel-frame character-controls--bottom" aria-label="Save status" hidden={status === "idle"}>
         <div className="character-equip" data-controller-row>
-          <p role="status">{status === "error" ? message : status === "saving" || status === "pending" ? "Saving…" : status === "saved" ? "Saved to your profile." : fitting ? "" : "Changes save automatically."}</p>
+          <p role="status">{status === "error" ? message : status === "saved" ? "Saved to your profile." : "Saving…"}</p>
           {status === "error" && <>
             <button type="button" className="menu-control" onClick={() => void flush()}>Retry</button>
             <button type="button" className="menu-control" onClick={() => {
