@@ -226,7 +226,7 @@ export function DressingRoom({ choice, onChange, cameraTools }: {
         </div>
         {sections.map(section => <section className="dressing-section" key={section} aria-label={section}>
           <h3>{section}</h3>
-          <div className="dressing-items" data-controller-row data-controller-columns="2">
+          <div className="dressing-items" data-controller-row data-controller-columns="1">
             {items.filter(item => item.section === section).map(item => <button key={item.id} type="button" data-wardrobe-item={item.id}
               data-inspected={inspected?.id === item.id || undefined} data-unavailable={item.unavailable ? true : undefined}
               className="dressing-item menu-control" aria-pressed={item.selected ?? false} aria-controls={detailsId} onClick={() => {
@@ -237,9 +237,11 @@ export function DressingRoom({ choice, onChange, cameraTools }: {
               <span className="dressing-item-art" style={{ "--item-color": item.color ?? "var(--app-muted)", "--item-accent": item.accent ?? item.color ?? "var(--app-accent)" } as CSSProperties}>
                 <WardrobeIcon name={item.icon} />{item.color && <i className="dressing-swatch" />}
               </span>
-              <span className="dressing-item-name">{item.label}</span>
-              {item.set && !item.unavailable && <FitBadge choice={{ ...choice, wardrobe: resolveWardrobe({ set: item.set, shirt: "none", waist: waistForSet(item.set) }) }} piece="corset" />}
-              <small>{item.unavailable ?? (item.selected ? "Wearing" : item.detail ?? "Ready to wear")}</small>
+              <span className="dressing-item-copy">
+                <span className="dressing-item-name">{item.label}</span>
+                {item.set && !item.unavailable && <FitBadge choice={{ ...choice, wardrobe: resolveWardrobe({ set: item.set, shirt: "none", waist: waistForSet(item.set) }) }} piece="corset" />}
+                <small>{item.unavailable ?? (item.selected ? "Wearing" : item.detail ?? "Ready to wear")}</small>
+              </span>
             </button>)}
           </div>
         </section>)}

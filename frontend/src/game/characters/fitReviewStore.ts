@@ -3,13 +3,13 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import type { CharacterChoice } from "./characterCatalog";
 import { resolveWardrobe } from "./wardrobe";
 export const FIT_REVISION = "wardrobe-10";
-const setFitRevisions: Record<string, string> = { "gothic-01": "wardrobe-9", "gothic-02": FIT_REVISION, "gothic-04": FIT_REVISION, "gothic-05": "wardrobe-11" };
+const setFitRevisions: Record<string, string> = { "gothic-01": "wardrobe-9", "gothic-02": FIT_REVISION, "gothic-04": FIT_REVISION, "gothic-05": "wardrobe-12" };
 export const FIT_CHECKS = ["front", "back", "movement"] as const;
 export type FitCheck = typeof FIT_CHECKS[number];
 type Review = { checks: Partial<Record<FitCheck, boolean>>; issue: string; updated: string };
 export function fitReviewKey(owner: string | undefined, choice: CharacterChoice, piece: string, pose = "standing") {
  const w = resolveWardrobe(choice.wardrobe);
- const revision = w?.set === "gothic-02" && w.waist === "over" ? "wardrobe-11"
+ const revision = w?.set === "gothic-02" && w.waist === "over" ? "wardrobe-12"
   : w?.set === "gothic-03" && w.waist === "tucked" ? FIT_REVISION : (w && setFitRevisions[w.set]) ?? "wardrobe-6";
  return JSON.stringify([revision, owner ?? "local", choice.id, w?.set ?? choice.outfit, w?.shirt ?? "original", w?.waist ?? "original", choice.appearance?.animation_fit ?? "auto", choice.appearance?.glasses ?? "none", choice.prop ?? "none", piece, pose]);
 }

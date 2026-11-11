@@ -81,8 +81,9 @@ try{
     const target=fitted.getObjectByName(source.name);
     assert(target?.isSkinnedMesh);
     const cupRefit=n===2&&source.material.userData.color_slot==='fabric';
+    const sweetheartOver=n===2&&!tuckRefit;
     for(const attribute of ['position','normal','uv','skinIndex','skinWeight']){
-     if((tuckRefit||cupRefit)&&attribute==='position')continue;
+     if((tuckRefit||cupRefit||sweetheartOver)&&attribute==='position')continue;
      if(n===5&&['position','skinIndex','skinWeight'].includes(attribute))continue;
      assert.deepEqual(target.geometry.getAttribute(attribute)?.array,source.geometry.getAttribute(attribute)?.array,`${set} ${lod} ${source.name} ${attribute} stays authored`);
     }
@@ -106,26 +107,30 @@ try{
       }
      }
     }
-    if(tuckRefit||cupRefit){
+    if(tuckRefit||cupRefit||sweetheartOver){
      const before=source.geometry.getAttribute('position'),after=target.geometry.getAttribute('position');
      assert.equal(after.count,before.count);
      const tuckTop=n===2?1.238:1.217,clearance=n===2?.011001:.007001;
      for(let i=0;i<after.count;i++){
-      const x=before.getX(i),y=before.getY(i),z=before.getZ(i);
-      const overCup=cupRefit&&!tuckRefit&&Math.abs(x)>.038&&Math.abs(x)<.132&&y>1.259&&z>.036;
+      const x=before.getX(i),y=before.getY(i),z=before.getZ(i),side=Math.abs(x);
       const rise=after.getY(i)-y;
-      if(overCup){
-       assert(rise>=0&&rise<=.009001,'Sweetheart over-skirt coverage stays local to the cups');
-       sweetheartOverRise=Math.max(sweetheartOverRise,rise);
-      }else assert.equal(rise,0,'the refit preserves other cup and hem heights');
       if(tuckRefit&&y<tuckTop){
+       assert.equal(rise,0,'the tucked fit preserves the authored waist height');
        assert(Math.hypot(after.getX(i)-x,after.getZ(i)-z)<=clearance,'tucked waist refit is bounded');
-      }else{
-       assert.equal(after.getX(i),x);
-       const rightCup=cupRefit&&x>-.132&&x<-.023&&z>.025&&y>1.266;
-       const depth=(rightCup?.045:0)+(overCup?.002001:0);
-       assert(after.getZ(i)>=z&&after.getZ(i)-z<=depth,'only the fitted cup regions move outward');
+       continue;
       }
+      const overCup=sweetheartOver&&cupRefit&&side>.038&&side<.132&&y>1.259&&z>.036;
+      const underarm=sweetheartOver&&cupRefit&&x>-.144&&x<-.084&&y>1.255&&z>.018;
+      const innerCup=sweetheartOver&&side>.010&&side<.060&&y>1.243&&z>.074;
+      const rightCup=cupRefit&&x>-.132&&x<-.023&&z>.025&&y>1.266;
+      const height=(overCup?.009001:0)+(underarm?.005001:0)+(innerCup&&cupRefit?.004001:0);
+      const depth=(rightCup?.045:0)+(overCup?.002001:0)+(underarm?.009001:0)+(innerCup?.006001:0);
+      const width=(after.getX(i)-x)*Math.sign(x);
+      assert(width>=(innerCup&&cupRefit?-.002001:0)&&width<=(underarm?.007001:0),'Sweetheart width changes stay local to the cup edges');
+      if(x===0)assert.equal(after.getX(i),0,'the refit preserves the centerline');
+      assert(rise>=0&&rise<=height,'the refit preserves other cup and hem heights');
+      assert(after.getZ(i)>=z&&after.getZ(i)-z<=depth,'only the fitted cup regions move outward');
+      if(overCup) sweetheartOverRise=Math.max(sweetheartOverRise,rise);
      }
     }
    });
@@ -137,6 +142,31 @@ try{
    assert(seams?.isSkinnedMesh&&seams.geometry.index.count>0,'High Collar has body-rigged shoulder seams');
    assert.equal(seams.material.userData.color_slot,'accent');
    assert.equal(seams.material.normalMap,null,'generated High Collar seams use an untextured dye material');
+   const seamPosition=seams.geometry.attributes.position;
+   for(const side of [-1,1]){
+    let front=Infinity,rear=Infinity,crest=-Infinity;
+    for(const vertex of seams.geometry.index.array){
+     if(side*seamPosition.getX(vertex)<=0)continue;
+     const y=seamPosition.getY(vertex),z=seamPosition.getZ(vertex);
+     if(z>.025)front=Math.min(front,y);
+     if(z<-.040)rear=Math.min(rear,y);
+     crest=Math.max(crest,y);
+    }
+    assert(front<1.325&&rear<1.312&&crest>1.415,'each High Collar strap reaches the front bodice and rear lacing over the shoulder');
+   }
+   const waistbandName='CLOTH_GOTHIC_SKIRT_05_GEO_1',pleatsName='CLOTH_GOTHIC_SKIRT_05_GEO_2';
+   const waistband=model.root.getObjectByName(waistbandName).geometry;
+   const authoredWaistband=scene.getObjectByName(waistbandName).geometry;
+   const authoredIndex=authoredWaistband.index.array;
+   const expected=[];
+   for(let i=0;i<authoredIndex.length;i+=3){
+    const triangle=authoredIndex.subarray(i,i+3);
+    if(triangle.every(vertex=>authoredWaistband.attributes.position.getY(vertex)>1))expected.push(...triangle);
+   }
+   assert(expected.length>0&&expected.length<authoredIndex.length,'High Collar has a distinct short skirt shell');
+   assert.deepEqual(Array.from(waistband.index.array),expected,'High Collar removes the short shell and keeps the laced waistband');
+   assert.deepEqual(model.root.getObjectByName(pleatsName).geometry.index.array,
+    scene.getObjectByName(pleatsName).geometry.index.array,'High Collar keeps the complete long pleated skirt');
   }
   if(facing){
    assert(facing.isSkinnedMesh && facing.geometry.index.count>0);

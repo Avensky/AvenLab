@@ -48,7 +48,7 @@ export function fitHighCollarSurface(body: BufferGeometry) {
   return fabric;
 }
 
-/** Replace the upper strap fragments with seams traced across the moving caps. */
+/** Trace a tapered front-to-back strap over each moving shoulder cap. */
 function addHighCollarCapSeams(root: Object3D, body: BufferGeometry) {
   const torso = root.getObjectByName("BODY_WARDROBE");
   if (!(torso instanceof SkinnedMesh) || !torso.parent) return;
@@ -58,11 +58,20 @@ function addHighCollarCapSeams(root: Object3D, body: BufferGeometry) {
       && mesh.material.name.startsWith("MAT_CORSET_05_01")) accent = mesh.material;
   });
   if (!accent) return;
+  const frontBlend = (point: Vector3) => MathUtils.smoothstep(point.z, -.032, .052);
+  const strapEdge = (side: -1 | 1) => (point: Vector3) => {
+    const shoulder = MathUtils.smoothstep(point.y, 1.323, 1.405);
+    const center = MathUtils.lerp(.113, .109, shoulder);
+    const frontWidth = MathUtils.lerp(.0045, .006, MathUtils.smoothstep(point.y, 1.320, 1.356));
+    const backWidth = MathUtils.lerp(.0045, .006, MathUtils.smoothstep(point.y, 1.309, 1.341));
+    return MathUtils.lerp(backWidth, frontWidth, frontBlend(point)) - side * (Math.abs(point.x) - center);
+  };
   const geometry = fitWardrobeSurface(body, [
-    point => point.y - MathUtils.lerp(1.351, 1.343, MathUtils.smoothstep(point.z, -.058, .043)),
+    point => point.y - MathUtils.lerp(1.309, 1.320, frontBlend(point)),
     point => capHeight(point) - .003 - point.y,
-    point => .0045 - Math.abs(Math.abs(point.x) - .110),
-  ], .0095);
+    // Clip the two edges separately so a triangle can span the strap.
+    strapEdge(1), strapEdge(-1),
+  ], .0105);
   if (!geometry) return;
 
   const material = new MeshStandardMaterial({
@@ -134,7 +143,8 @@ export function fitHighCollarShoulders(root: Object3D, body: BufferGeometry) {
           const cut = MathUtils.lerp(1.367, 1.331, MathUtils.smoothstep(center.z, -.058, .038));
           const upperCap = center.y > cut && Math.abs(center.x) > .076;
           const strayFrontTrim = slot !== "fabric" && center.y > 1.304 && center.z > .003 && Math.abs(center.x) > .057;
-          if (upperCap || strayFrontTrim) continue;
+          const strayRearTrim = slot === "accent" && center.y > 1.376 && center.z < -.025 && Math.abs(center.x) > .055;
+          if (upperCap || strayFrontTrim || strayRearTrim) continue;
           visible.push(first, second, third);
         }
         geometry.setIndex(visible);

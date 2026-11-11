@@ -185,9 +185,9 @@ visual review.
 ## Dressing room
 
 Character tabs are Identity, Appearance, and Emotes. Appearance keeps the live
-character in the center, with a scrollable category rail and a two-column item
-catalog. It reuses the existing scene; cards are light SVG illustrations, not
-additional WebGL previews. Face, hair, skin, and headwear categories focus the
+character in the center, with a scrollable left wardrobe rail and one item per
+catalog row. It reuses the existing scene and draws cards with lightweight SVG
+illustrations. Face, hair, skin, and headwear categories focus the
 face camera. Leaving restores the earlier camera. Colors contains preset dyes,
 paired palettes, and custom fabric/accent pickers.
 
@@ -249,7 +249,8 @@ canvas, world entity or server physics actor is created by this preview tool.
 
 ## Piece colors, inspection, and personality
 
-The fitting-room label sits at top left and the selected piece at top right.
+The fitting-room label sits above the character name at the top left of the
+stage. The selected piece appears at top right.
 Both sidebars extend beside the center color and camera toolbars to the footer.
 Choose an equipped piece in the center toolbar, or click its catalog card, to
 inspect it. Selected item measures the visible garment or accessory, including
@@ -278,8 +279,8 @@ its turntable drag. Touch supports one-finger orbit in both fitting views and
 two-finger pan/zoom in the standalone editor.
 
 The Camera tools icon opens view and garment close-up buttons, a zoom bar,
-rotation, and Reframe. The Heroes Fitting Room uses a studio with an angled
-wall mirror that reflects the live character. Ruffled Corset first equips in
+rotation, and Reframe. The Heroes Fitting Room uses the garage with an angled
+mirror that reflects the live character. Ruffled Corset first equips in
 Over skirt.
 
 Emotes includes Auto, Full skirt, and Fitted clothing fits. Fitted uses closer

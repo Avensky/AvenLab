@@ -55,7 +55,7 @@ test('the fitting-room wall mirror shows the rear of the live actor beside the f
         return hit;
       });
       // Gallery + details open at representative desktop and compact landscape widths.
-      for (const [w, h, left, right] of [[1280, 720, 267, 246], [568, 320, 167, 146]]) {
+      for (const [w, h, left, right] of [[1280, 720, 279, 254], [568, 320, 168, 146]]) {
         camera.aspect = w / h;
         camera.fov = Math.max(33, MathUtils.radToDeg(2 * Math.atan(Math.tan(MathUtils.degToRad(37.5)) / camera.aspect)));
         camera.setViewOffset(w, h, (right - left) / 2, 0, w, h);

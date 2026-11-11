@@ -27,7 +27,7 @@ test('the fitting camera orbits a close-up without changing its target or crossi
   } finally { await vite.close(); }
 });
 
-test('dressing room separates browsing from equipping, filters fitting work, and supports controller grids', async () => {
+test('dressing room separates browsing from equipping, filters fitting work, and supports a single-column catalog', async () => {
   const imports = JSON.parse(await readFile('src/game/characters/dressingRoomImports.json', 'utf8'));
   const pendingAccessories = imports.filter(item => ['footwear', 'headwear', 'accessories'].includes(item.category));
   const dom = new JSDOM('<div id="root" data-controller-rows></div>', { url: 'http://localhost/', pretendToBeVisual: true });
@@ -146,7 +146,10 @@ test('dressing room separates browsing from equipping, filters fitting work, and
     const first = find('[aria-label="Complete outfits"] [data-wardrobe-item]');
     first.focus();
     const memory = new WeakMap();
+    assert.equal(first.parentElement.dataset.controllerColumns, '1');
     navigateFormRows(find('#root'), first, 'right', memory);
+    assert.equal(document.activeElement, first, 'right stays on the only item in the row');
+    navigateFormRows(find('#root'), first, 'down', memory);
     assert.equal(document.activeElement.dataset.wardrobeItem, 'shop-crew');
     navigateFormRows(find('#root'), document.activeElement, 'down', memory);
     assert.equal(document.activeElement.dataset.wardrobeItem, 'gothic-05', 'down enters the next section at its equipped item');

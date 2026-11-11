@@ -108,6 +108,31 @@ function fitRuffledWaist(root: Object3D, skirt: Object3D, fabric: MeshStandardMa
   };
 }
 
+function finishHighCollarSkirt(fabric: SkinnedMesh) {
+  const source = fabric.geometry;
+  const index = source.getIndex();
+  const positions = source.getAttribute("position");
+  if (!index || !positions) return;
+
+  // This material contains the laced waistband and a separate short skirt.
+  // The long pleated skirt already supplies the full hem, so keep the waistband.
+  const waistband: number[] = [];
+  for (let i = 0; i < index.count; i += 3) {
+    const a = index.getX(i), b = index.getX(i + 1), c = index.getX(i + 2);
+    if (Math.min(positions.getY(a), positions.getY(b), positions.getY(c)) > 1) waistband.push(a, b, c);
+  }
+  if (!waistband.length || waistband.length === index.count) return;
+
+  const geometry = source.clone();
+  geometry.setIndex(waistband);
+  geometry.setDrawRange(0, waistband.length);
+  fabric.geometry = geometry;
+  return () => {
+    fabric.geometry = source;
+    geometry.dispose();
+  };
+}
+
 /** Fit the skirt layers around the active corset without adding separate underwear. */
 export function prepareWardrobeSkirt(root: Object3D) {
   const skirt = root.getObjectByName("CLOTH_BOTTOM_SKIRT");
@@ -115,6 +140,7 @@ export function prepareWardrobeSkirt(root: Object3D) {
   let panel: SkinnedMesh | undefined;
   let ruffledTrim: SkinnedMesh | undefined;
   let sweetheartFabric: MeshStandardMaterial | undefined;
+  let highCollarFabric: SkinnedMesh | undefined;
   const retiredSweetheartPanels: SkinnedMesh[] = [];
   skirt.traverse(part => {
     if (!(part instanceof SkinnedMesh) || Array.isArray(part.material)) return;
@@ -123,9 +149,11 @@ export function prepareWardrobeSkirt(root: Object3D) {
     if (name === "MAT_GOTHIC_02_Fabric_0" && part.material instanceof MeshStandardMaterial) sweetheartFabric = part.material;
     if (name === "MAT_GOTHIC_03_Fabric_2") panel = part;
     if (name === "MAT_GOTHIC_03_Trim_1") ruffledTrim = part;
+    if (name === "MAT_GOTHIC_05_Fabric_0") highCollarFabric = part;
   });
   for (const part of retiredSweetheartPanels) part.removeFromParent();
   if (sweetheartFabric) return finishSweetheartWaist(root, skirt, sweetheartFabric);
+  if (highCollarFabric) return finishHighCollarSkirt(highCollarFabric);
   // Give the Gothic 03 overskirt room around its ruffles, fading out at the waist.
   const outer = panel;
   if (!outer) return;

@@ -9,7 +9,7 @@ export const FITTING_WALL_MIRROR = {
   height: 2.06,
 } as const;
 
-export function chamferedPanel(width: number, height: number, cut: number) {
+function chamferedPanel(width: number, height: number, cut: number) {
   const x = width / 2, y = height / 2;
   const shape = new Shape();
   shape.moveTo(-x + cut, -y);

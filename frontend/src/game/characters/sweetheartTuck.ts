@@ -18,23 +18,25 @@ function rightCupSurface(body: BufferGeometry) {
   return surface;
 }
 
-/** Clear the right cup, shape the over-skirt neckline, and fit the tucked waist. */
+/** Clear the right cup, fit the over-skirt cup edges, and shape the tucked waist. */
 export function fitSweetheartCorset(root: Object3D, body: BufferGeometry) {
   const surface = rightCupSurface(body);
   const ray = new Ray(new Vector3(), new Vector3(0, 0, -1));
   const intersection = new Vector3();
   const panels: { mesh: SkinnedMesh; source: BufferGeometry; fitted: BufferGeometry }[] = [];
   for (const fit of ["TUCKED", "OVER"]) {
+    const overSkirt = fit === "OVER";
     root.getObjectByName(`CLOTH_CORSET_${fit}`)?.traverse(mesh => {
       if (!(mesh instanceof SkinnedMesh) || Array.isArray(mesh.material)) return;
-      const fabric = mesh.material.userData.color_slot === "fabric";
-      if (fit === "OVER" && !fabric) return;
+      const { color_slot: colorSlot } = mesh.material.userData;
+      const fabric = colorSlot === "fabric";
+      if (overSkirt && !fabric && colorSlot !== "accent" && colorSlot !== "hardware") return;
       const source = mesh.geometry;
       const fitted = source.clone();
       const position = fitted.getAttribute("position");
       for (let i = 0; i < position.count; i++) {
         const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
-        if (fit === "TUCKED" && y < 1.238) {
+        if (!overSkirt && y < 1.238) {
           const radius = Math.hypot(x, z - .025);
           if (radius === 0) continue;
           const clearance = (.006 + .005 * MathUtils.smoothstep(y, 1.098, 1.122))
@@ -43,7 +45,15 @@ export function fitSweetheartCorset(root: Object3D, body: BufferGeometry) {
           position.setXYZ(i, x * scale, y, .025 + (z - .025) * scale);
           continue;
         }
-        if (!fabric) continue;
+        const side = Math.abs(x);
+        // Ease the inner cup edges outward while keeping the center opening.
+        const innerCup = overSkirt ? MathUtils.smoothstep(side, .010, .019) * (1 - MathUtils.smoothstep(side, .038, .060))
+          * MathUtils.smoothstep(y, 1.243, 1.270) * MathUtils.smoothstep(z, .074, .096) : 0;
+        if (!fabric) {
+          // Keep the eyelets and laces sitting on the adjusted cup edges.
+          if (innerCup > 0) position.setZ(i, z + .006 * innerCup);
+          continue;
+        }
         let depth = z;
         if (x > -.132 && x < -.023 && z > .025 && y > 1.266) {
           ray.origin.set(x, y, .25);
@@ -56,11 +66,20 @@ export function fitSweetheartCorset(root: Object3D, body: BufferGeometry) {
             * MathUtils.smoothstep(z, .025, .045) * MathUtils.smoothstep(y, 1.266, 1.292);
           depth += (surfaceDepth + .009 - z) * blend;
         }
-        // Lift the two over-skirt cup crests, tapering into the lacing and sides.
-        const side = Math.abs(x);
-        const lift = fit === "OVER" ? MathUtils.smoothstep(side, .038, .057) * (1 - MathUtils.smoothstep(side, .104, .132))
-          * MathUtils.smoothstep(y, 1.259, 1.305) * MathUtils.smoothstep(z, .036, .065) : 0;
-        if (depth !== z || lift > 0) position.setXYZ(i, x, y + .009 * lift, depth + .002 * lift);
+        let width = x;
+        let height = y;
+        if (overSkirt) {
+          // Lift the two cup crests, tapering into the lacing and sides.
+          const lift = MathUtils.smoothstep(side, .038, .057) * (1 - MathUtils.smoothstep(side, .104, .132))
+            * MathUtils.smoothstep(y, 1.259, 1.305) * MathUtils.smoothstep(z, .036, .065);
+          // Ease the right outer edge away from the chest as it turns into the underarm.
+          const underarm = MathUtils.smoothstep(-x, .084, .108) * (1 - MathUtils.smoothstep(-x, .124, .144))
+            * MathUtils.smoothstep(y, 1.255, 1.284) * MathUtils.smoothstep(z, .018, .056);
+          width -= .007 * underarm + Math.sign(x) * .002 * innerCup;
+          height += .009 * lift + .005 * underarm + .004 * innerCup;
+          depth += .002 * lift + .009 * underarm + .006 * innerCup;
+        }
+        if (width !== x || height !== y || depth !== z) position.setXYZ(i, width, height, depth);
       }
       fitted.computeBoundingBox();
       fitted.computeBoundingSphere();

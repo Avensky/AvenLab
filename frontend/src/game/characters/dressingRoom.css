@@ -6,15 +6,14 @@
   gap: 4px clamp(6px, 1.1vw, 16px);
 }
 .character-page--editor.character-page--dressing {
-  --dressing-rail: clamp(118px, 13vw, 174px);
-  --dressing-catalog-rail: clamp(140px, 17vw, 212px);
-  --dressing-name-rail: clamp(24px, 2.3vw, 34px);
+  --dressing-rail: clamp(170px, 18vw, 240px);
+  --dressing-catalog-rail: clamp(184px, 20vw, 270px);
   --dressing-detail-rail: clamp(146px, 18vw, 232px);
   --dressing-left: var(--dressing-rail);
   --dressing-right: 0px;
   --dressing-surface: color-mix(in srgb, var(--app-panel) 94%, transparent);
   --dressing-raised: color-mix(in srgb, var(--app-raised) 82%, var(--app-background));
-  grid-template-columns: var(--dressing-left) var(--dressing-name-rail) minmax(0, 1fr) var(--dressing-right);
+  grid-template-columns: var(--dressing-left) minmax(0, 1fr) var(--dressing-right);
   column-gap: clamp(4px, .55vw, 9px);
 }
 .character-page--editor.character-page--dressing:where(:has(> .dressing-wardrobe > .dressing-catalog:not([hidden]))) {
@@ -23,24 +22,20 @@
 .character-page--editor.character-page--dressing:where(:has(> .dressing-details:not([hidden]))) {
   --dressing-right: var(--dressing-detail-rail);
 }
-.character-page--editor.character-page--dressing .character-stage { grid-area: 1 / 3; }
-.character-page--dressing > .dressing-toolbar { grid-area: 2 / 3; }
-.character-page--editor.character-page--dressing .character-controls--bottom { grid-area: 3 / 3; }
 .dressing-room-title {
-  grid-area: 1 / 2 / -1 / 3;
+  grid-area: 1 / 2;
   align-self: start;
-  justify-self: stretch;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  justify-self: start;
+  display: grid;
+  gap: 2px;
   min-width: 0;
-  padding: 8px 3px;
-  background: linear-gradient(180deg, var(--dressing-raised), var(--dressing-surface));
-  border-inline-start: 2px solid var(--app-accent);
+  max-width: 100%;
+  padding: 7px clamp(7px, 1.2vw, 16px);
+  background: linear-gradient(90deg, var(--app-panel), transparent);
+  border-left: 2px solid var(--app-accent);
   clip-path: var(--dressing-control-shape);
   color: var(--app-text);
   pointer-events: none;
-  writing-mode: vertical-rl;
 }
 .dressing-room-title small, .dressing-details header small {
   color: var(--app-accent);
@@ -49,14 +44,14 @@
   letter-spacing: .1em;
   text-transform: uppercase;
 }
+.dressing-room-title small { letter-spacing: .12em; }
 .dressing-room-title h2 {
   margin: 0;
-  padding-inline-start: 7px;
-  border-inline-start: 1px solid var(--app-line);
-  font-size: clamp(11px, 2.3dvh, 18px);
+  font-size: clamp(14px, 2vw, 25px);
   font-weight: 900;
   font-style: italic;
-  line-height: 1;
+  line-height: 1.08;
+  overflow-wrap: anywhere;
 }
 .dressing-wardrobe, .dressing-details {
   min-width: 0;
@@ -163,16 +158,14 @@
   letter-spacing: .055em;
   text-transform: uppercase;
 }
-.dressing-items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.dressing-items { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
 .character-page--dressing .dressing-item.menu-control {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 2px;
+  display: grid;
+  grid-template-columns: clamp(32px, 4vw, 50px) minmax(0, 1fr);
+  gap: 0;
   min-width: 0;
-  min-height: 53px;
-  padding: 0 0 4px;
+  min-height: 49px;
+  padding: 0;
   text-align: left;
   white-space: normal;
   border: 1px solid var(--app-line);
@@ -183,19 +176,20 @@
   position: relative;
   display: grid;
   place-items: center;
-  min-height: clamp(20px, 3.8dvh, 29px);
+  align-self: stretch;
   background: linear-gradient(127deg, transparent 44%, color-mix(in srgb, var(--item-accent) 17%, transparent));
-  border-bottom: 1px solid color-mix(in srgb, var(--app-line) 70%, transparent);
+  border-inline-end: 1px solid color-mix(in srgb, var(--app-line) 70%, transparent);
 }
 .dressing-item-art > svg { width: 17px; height: 17px; color: var(--app-muted); }
-.dressing-item-name { padding-inline: 5px; font-size: 11px; font-weight: 750; line-height: 1.15; overflow-wrap: anywhere; }
-.dressing-item small { padding-inline: 5px; color: var(--app-muted); font-size: 9px; line-height: 1.15; overflow-wrap: anywhere; }
+.dressing-item-copy { display: grid; gap: 2px; min-width: 0; padding: 4px 6px; }
+.dressing-item-name { font-size: 11px; font-weight: 750; line-height: 1.15; overflow-wrap: anywhere; }
+.dressing-item small { color: var(--app-muted); font-size: 9px; line-height: 1.15; overflow-wrap: anywhere; }
 .character-page--dressing .dressing-item[aria-pressed="true"] { box-shadow: inset 2px 0 var(--app-accent); }
 .character-page--dressing .dressing-item[data-inspected] {
   border-color: var(--app-accent);
   background: color-mix(in srgb, var(--dressing-raised) 90%, var(--app-accent));
 }
-.dressing-item .fit-badge { padding-block: 0; line-height: 1.15; }
+.dressing-item .fit-badge { padding: 0; line-height: 1.15; }
 .dressing-item[data-unavailable] .dressing-item-art { opacity: .65; }
 .dressing-item[aria-pressed="true"] svg { color: var(--app-accent); }
 .dressing-swatch {
@@ -207,7 +201,7 @@
   clip-path: var(--dressing-control-shape);
   background: linear-gradient(135deg, var(--item-color) 50%, var(--item-accent) 50%);
 }
-.dressing-details { grid-area: 1 / 4 / -1 / 5; align-self: start; max-height: 100%; }
+.dressing-details { grid-area: 1 / 3 / -1 / 4; align-self: start; max-height: 100%; }
 .dressing-details header { padding: 1px 3px 6px; border-bottom: 1px solid var(--app-line); }
 .dressing-details h2 {
   margin: 2px 0 0;
@@ -264,14 +258,12 @@
 .character-page--dressing button:not(:disabled):hover { border-color: var(--app-accent); }
 @media (max-width: 600px) {
   .character-page--editor.character-page--dressing {
-    --dressing-rail: clamp(88px, 20vw, 112px);
-    --dressing-catalog-rail: clamp(106px, 23vw, 135px);
-    --dressing-name-rail: 22px;
+    --dressing-rail: clamp(116px, 26vw, 152px);
+    --dressing-catalog-rail: clamp(124px, 28vw, 166px);
     --dressing-detail-rail: clamp(98px, 24vw, 138px);
     padding: 5px;
     gap: 4px;
   }
-  .dressing-room-title { gap: 5px; }
   .dressing-room-title small { font-size: 8px; }
   .character-page--dressing .dressing-category.menu-control { gap: 4px; padding-inline: 3px; font-size: 10px; }
   .dressing-category svg { width: 14px; height: 14px; }

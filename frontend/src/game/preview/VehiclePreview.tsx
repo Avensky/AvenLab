@@ -17,7 +17,7 @@ import { DEFAULT_PREVIEW_PLATFORM } from "./previewPlacement";
 import { selectEquippedCharacter, useSocialStore } from "../../store/social/socialStore";
 import { clothingFrame, orbitFittingCamera } from "../characters/clothingFraming";
 import { FittingCameraOrbit } from "../characters/FittingCameraOrbit";
-import { FittingRoomStage } from "../characters/FittingRoomStage";
+import { FittingMirrorDisplay } from "../characters/FittingMirrorDisplay";
 import { GARAGE_LEAN_ID } from "../characters/garageLean";
 import { MIRROR_CHECK_ID } from "../characters/mirrorCheck";
 import { DEFAULT_CHARACTER, type CharacterChoice } from "../characters/characterCatalog";
@@ -140,7 +140,7 @@ export function VehiclePreview({
   const [roomReady, setRoomReady] = useState(false);
   const roomSettled = useCallback(() => setRoomReady(true), []);
   const waitingForCar = Boolean(vehicleId && vehicleId !== settledVehicle);
-  const loadLabel = fittingRoom ? null : waitingForCar && !characterOnly ? "Summoning vehicle" : !roomReady ? "Preparing garage" : null;
+  const loadLabel = waitingForCar && !characterOnly ? "Summoning vehicle" : !roomReady ? "Preparing garage" : null;
   const { width, height } = useThree(s => s.size);
   const compact = isCompactPreview(width);
   const requestFrame = useThree(s => s.invalidate);
@@ -330,8 +330,9 @@ export function VehiclePreview({
   }, -.25);
   return (
     <>
-      {fittingRoom ? <FittingRoomStage /> : <GarageEnvironment turntable={turntable} onPlatformReady={setPlatform} accentOverride={selectionAccent}
-        allowLoad={characterOnly || !waitingForCar} onSettled={roomSettled} reflectFloor={!characterOnly} />}
+      <GarageEnvironment turntable={turntable} onPlatformReady={setPlatform} accentOverride={selectionAccent}
+        allowLoad={characterOnly || !waitingForCar} onSettled={roomSettled} reflectFloor={!characterOnly} />
+      {fittingRoom && roomReady && <FittingMirrorDisplay />}
       {loadLabel && <PreviewLoadingStatus label={loadLabel} />}
       <PerspectiveCamera ref={cameraRef} name="garage-preview-camera" makeDefault={!wardrobeOpen} />
       {wardrobeOpen && <PerspectiveCamera ref={characterCamera} name="character-preview-camera" makeDefault>
