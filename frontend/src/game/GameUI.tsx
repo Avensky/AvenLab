@@ -10,7 +10,6 @@ import {openHeroGuide} from "../store/hud/heroGuideStore";
 import { CombatHUD } from "../combat/CombatHUD";
 import { HeroWorkshop, HeroLoadoutSync } from "./heroes/HeroWorkshop";
 import type { CharacterChoice } from "./characters/characterCatalog";
-import { useVehicleStudioStore } from "./heroes/vehicleStudioStore";
 import { useAlphaFlow } from "./alpha/useAlphaFlow";
 import { useAppTheme } from "../theme";
 import "../theme/theme.css";
@@ -76,7 +75,6 @@ export function GameUI() {
   const hud = useRenderSettingsStore((s) => s.hud);
   const screen = useUIStore((s) => s.screen);
   const overlay = useUIStore((s) => s.overlay);
-  const garageAbilities = useVehicleStudioStore((s) => s.activeTab === "abilities");
   const vehicleAuthoring = workspace === "vehicle" && overlay === "world_builder";
   const socialReady = useSocialStore((s) => Boolean(s.view));
   useEffect(() => {
@@ -97,12 +95,12 @@ export function GameUI() {
     screen === "queue" ||
     screen === "signal_recon_setup" ||
     screen === "world_builder";
-  const heroOwner = useSocialStore(s=>s.view?.profile.id??"guest");
+  const heroOwner = useSocialStore(s=>s.view?.profile.id??s.profileOwner??"guest");
   const [characterOpen, setCharacterOpen] = useState(false);
   const [characterDraft, setCharacterDraft] = useState<CharacterChoice | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [reconSidebarHidden, setReconSidebarHidden] = useState(false);
-  const previewPaused = screen === "queue" || (screen === "heroes" && garageAbilities && !characterOpen);
+  const previewPaused = screen === "queue";
 
   return (
     <div className="relative game-wrapper" data-live-world={screen === "sandbox" || undefined}>

@@ -9,6 +9,35 @@
 .garage-preview-buttons .menu-control{min-height:28px;padding:0 7px;font-size:clamp(9px,1.7vw,12px);white-space:nowrap;}
 .garage-drive-status{position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);white-space:nowrap;padding:3px 7px;background:var(--app-background);color:var(--app-text);font-size:11px;pointer-events:none;}
 .hero-workshop .hero-guide-scroll{pointer-events:auto;}
+.vehicle-studio--abilities .hero-guide-body {
+ display:grid;
+ grid-template-columns:var(--vehicle-studio-column) minmax(0,1fr) var(--vehicle-studio-column);
+ grid-template-rows:minmax(0,1fr);
+ width:100%;
+ min-width:0;
+ min-height:0;
+ max-width:none;
+ margin:0;
+ padding:0;
+}
+.vehicle-studio--abilities :is(.hero-guide-overview,.hero-guide-details) {
+ min-width:0;
+ max-height:100%;
+ overflow:auto;
+ overscroll-behavior:contain;
+ scrollbar-width:thin;
+ pointer-events:auto;
+}
+.vehicle-studio--abilities .hero-guide-details {grid-column:3;display:flex;}
+.vehicle-studio--abilities .hero-guide-showcase {grid-template-columns:minmax(0,1fr);}
+.vehicle-studio--abilities :is(.hero-weapon-grid,.hero-ability-grid,.hero-effect-grid) {grid-template-columns:minmax(0,1fr);}
+.vehicle-studio--abilities :is(.hero-guide-overview,.hero-guide-details) .menu-panel-frame {
+ --menu-panel-fill:var(--vehicle-studio-panel);
+}
+@media(max-width:760px) {
+ .vehicle-studio.vehicle-studio--abilities {--vehicle-studio-column:min(30vw,220px);}
+ .vehicle-studio--abilities ~ .hero-garage-zoom {width:38%;flex-direction:column;}
+}
 .hero-workshop .hero-main-portrait-badge{position:absolute;right:3px;bottom:3px;display:flex;align-items:center;gap:3px;padding:0;background:transparent;color:white;font-size:7px;text-shadow:0 1px 3px #000,0 0 4px #000;pointer-events:none;}
 .hero-workshop .hero-main-portrait-badge :is(.controller-key,.keyboard-key){width:13px;min-width:13px;height:13px;min-height:13px;padding:0;font-size:9px;}
 .hero-workshop .hero-portrait-art{background:var(--app-raised);}

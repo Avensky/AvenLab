@@ -37,7 +37,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     const requests = [];
     client.setSocialConnection({ readyState: WebSocket.OPEN, send: value => requests.push(JSON.parse(value)) });
     const view = {
-      profile: { id: 'driver', name: 'Driver', progression: { default_hero: 'brz', character: null } },
+      profile: { id: 'driver', name: 'Driver', progression: { default_hero: 'brz', hero_loadouts: {}, character: null, character_presets: {}, cosmetics_revision: 0 } },
       players: [], teammates: [], requests: [], groups: [], worlds: [], world_invites: [], maps: [],
       current_world_id: null, limits: { max_active_worlds: 3 },
     };
@@ -158,14 +158,20 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(requests[0].action, 'character_equip');
     const choice = { id: 'jules-okafor', outfit: 'night-run' };
     assert.deepEqual(requests[0].character, choice);
+    let serverProgression = view.profile.progression;
     const acknowledge = async (request, character, publish = true) => {
+      const previous = serverProgression.character;
+      const presets = { ...serverProgression.character_presets };
+      if (previous && previous.id !== character.id) presets[previous.id] = previous;
+      delete presets[character.id];
+      serverProgression = { ...serverProgression, character, character_presets: presets, cosmetics_revision: serverProgression.cosmetics_revision + 1 };
       await act(async () => {
-        if (publish) social.getState().receive({ ...view, profile: { ...view.profile, progression: { ...view.profile.progression, character } } });
-        client.receiveSocialResult({ request_id: request.request_id, ok: true, data: { character } });
+        if (publish) social.getState().receive({ ...view, profile: { ...view.profile, progression: serverProgression } });
+        client.receiveSocialResult({ request_id: request.request_id, ok: true, data: serverProgression });
       });
     };
     await acknowledge(requests[0], choice);
-    assert.equal(find('[data-character-option]'), null);
+    assert.equal(find('[aria-label="Character model"] [data-character-option="jules-okafor"]').getAttribute('aria-pressed'), 'true');
     assert.deepEqual([...document.querySelectorAll('[role=tab]')].map(node => node.textContent), ['Identity', 'Appearance', 'Emotes']);
     await click('#character-editor-tab-emotes');
     assert(find('[aria-label="Emote results"]').classList.contains('character-controls--right'));
@@ -261,16 +267,17 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
       'two-handed gestures remain available with a bag equipped');
     await click('[aria-label="Emote collection"] button:nth-child(16)');
     assert(document.querySelectorAll('.character-emotes button').length > 0, 'gesture-owned props remain available');
-    await click('[aria-label="Preview gender"] [data-character-option="mara-vega"]');
-    assert.equal(drafts.at(-1).id, 'mara-vega');
-    assert.equal(drafts.at(-1).prop, 'shop-bag');
     await click('#character-editor-tab-appearance');
-    assert.equal(drafts.at(-1).id, 'jules-okafor', 'comparison only changes the Emotes preview');
+    assert.equal(drafts.at(-1).id, 'jules-okafor', 'switching editor tabs keeps the selected model');
     await acknowledge(requests[1], requests[1].character);
     assert.equal(requests.length, 3, 'queued prop waits for the previous save');
     assert.equal(requests[2].character.prop, 'shop-bag');
+    const staleProgression = serverProgression;
     await acknowledge(requests[2], requests[2].character, false);
     assert.equal(social.getState().view.profile.progression.character.prop, 'shop-bag', 'the acknowledgement bridges a delayed profile snapshot');
+    await act(async () => social.getState().receive({ ...view, profile: { ...view.profile, progression: { ...staleProgression, level: 7 } } }));
+    assert.equal(social.getState().view.profile.progression.character.prop, 'shop-bag', 'a delayed snapshot cannot revert the acknowledged outfit');
+    assert.equal(social.getState().view.profile.progression.level, 7, 'unrelated progression still updates');
     await move('back');
     assert.equal(title(), 'HEROES');
     assert.equal(characterViews.at(-1), false);
@@ -325,7 +332,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await move('back');
     await click('[data-open-character]');
     assert.equal(find('[data-outfit-preview]').dataset.outfitPreview, 'race-crew');
-    assert.equal(find('[data-character-option]'), null, 'gender stays locked after reopening');
+    assert.equal(find('[aria-label="Character model"] [data-character-option="jules-okafor"]').getAttribute('aria-pressed'), 'true');
     await click('#character-editor-tab-appearance');
     await click('[data-category=face]');
     assert.equal(find('[data-wardrobe-item="eye_color:obsidian"]').getAttribute('aria-pressed'), 'true');
@@ -342,6 +349,25 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('[data-open-character]');
     await click('#character-editor-tab-identity');
     assert.equal(find(identities + ':last-child').getAttribute('aria-pressed'), 'true');
+
+    await click('#character-editor-tab-appearance');
+    await click('[aria-label="Character model"] [data-character-option="mara-vega"]');
+    assert.equal(drafts.at(-1).id, 'mara-vega');
+    await click('[data-wardrobe-item="shop-crew"]');
+    await click('[aria-label="Character model"] [data-character-option="jules-okafor"]');
+    assert.equal(drafts.at(-1).outfit, 'race-crew');
+    assert.equal(drafts.at(-1).appearance.eye_color, 'obsidian');
+    await act(async () => social.getState().reset());
+    await act(async () => t.mock.timers.tick(350));
+    assert.equal(requests.length, 4);
+    assert.equal(drafts.at(-1).id, 'jules-okafor', 'a disconnect keeps the latest draft');
+    await act(async () => social.getState().receive({ ...view, profile: { ...view.profile, progression: serverProgression } }));
+    assert.equal(requests[4].character.outfit, 'shop-crew', 'pending female edits resume on reconnect');
+    await acknowledge(requests[4], requests[4].character);
+    assert.equal(drafts.at(-1).id, 'jules-okafor', 'an acknowledgement for another model does not change the preview');
+    assert.equal(requests[5].character.outfit, 'race-crew');
+    await acknowledge(requests[5], requests[5].character);
+    assert.equal(social.getState().view.profile.progression.character_presets['mara-vega'].outfit, 'shop-crew');
 
   } finally {
     t.mock.timers.reset();

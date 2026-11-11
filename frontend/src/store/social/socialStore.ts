@@ -76,20 +76,41 @@ const person = (value: unknown) => {
   );
 };
 
+type Cosmetics = Pick<Progression, "character" | "character_presets" | "default_hero" | "hero_loadouts" | "cosmetics_revision">;
+
+export function selectEquippedCharacter(state: { view: SocialView | null; cachedCosmetics: Cosmetics | null }) {
+  return state.view ? state.view.profile.progression?.character : state.cachedCosmetics?.character;
+}
+
+function cosmeticsFrom({ character, character_presets, default_hero, hero_loadouts, cosmetics_revision }: Cosmetics): Cosmetics {
+  return { character, character_presets, default_hero, hero_loadouts, cosmetics_revision };
+}
+
+function hasCosmeticsRevision(cosmetics: unknown): cosmetics is Cosmetics & { cosmetics_revision: number } {
+  if (!cosmetics || typeof cosmetics !== "object") return false;
+  const revision = (cosmetics as Cosmetics).cosmetics_revision;
+  return typeof revision === "number" && Number.isSafeInteger(revision) && revision >= 0;
+}
+
 /** Human-rate, server-owned data. Physics snapshots never write this store. */
 export const useSocialStore = create<{
   available: boolean;
   profileStatus: "idle" | "restoring" | "ready" | "error";
+  /** Editor key retained through a transport reconnect. Actions still require the current view. */
+  profileOwner: string | null;
+  cachedCosmetics: Cosmetics | null;
   view: SocialView | null;
   message: string;
   recoveryMessage?:string;
   entryCode: string;
   reset: () => void;
   receive: (value: unknown) => void;
-  acknowledgeProgression: (owner: string, update: (progression: Progression) => Progression) => void;
+  acknowledgeProgression: (owner: string, fallback: (progression: Progression) => Progression, cosmetics?: unknown) => void;
 }>((set) => ({
   available: false,
   profileStatus: "idle",
+  profileOwner: null,
+  cachedCosmetics: null,
   view: null,
   message:
     "Connect to the updated game server to use worlds and social groups.",
@@ -101,11 +122,14 @@ export const useSocialStore = create<{
       view: null,
       message: "Connecting to the game server…",
     }),
-  acknowledgeProgression: (owner, update) => set(state => {
+  acknowledgeProgression: (owner, fallback, cosmetics) => set(state => {
     const view = state.view;
     const profile = view?.profile;
     if (!view || profile?.id !== owner || !profile.progression) return state;
-    return { view: { ...view, profile: { ...profile, progression: update(profile.progression) } } };
+    const current = profile.progression;
+    if (hasCosmeticsRevision(cosmetics) && (current.cosmetics_revision ?? -1) >= cosmetics.cosmetics_revision) return state;
+    const progression = hasCosmeticsRevision(cosmetics) ? { ...current, ...cosmeticsFrom(cosmetics) } : fallback(current);
+    return { view: { ...view, profile: { ...profile, progression } }, cachedCosmetics: cosmeticsFrom(progression) };
   }),
   receive: (value) => {
     if (!value || typeof value !== "object") return;
@@ -204,6 +228,17 @@ export const useSocialStore = create<{
       )
     )
       return;
-    set({ view, profileStatus:"ready", message: "Connected" });
+    set(state => {
+      const incoming = view.profile.progression;
+      const current = state.view?.profile.id === view.profile.id ? state.view.profile.progression : undefined;
+      // A reliable reply can arrive before a replaceable snapshot that was captured earlier.
+      // Keep newer cosmetics while still consuming the snapshot's world and career data.
+      const profile = hasCosmeticsRevision(incoming) && hasCosmeticsRevision(current)
+        && incoming.cosmetics_revision <= current.cosmetics_revision
+        ? { ...view.profile, progression: { ...incoming, ...cosmeticsFrom(current) } }
+        : view.profile;
+      return { view: { ...view, profile }, profileOwner: profile.id, profileStatus: "ready", message: "Connected",
+        cachedCosmetics: profile.progression ? cosmeticsFrom(profile.progression) : null };
+    });
   },
 }));

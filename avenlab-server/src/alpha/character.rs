@@ -94,7 +94,6 @@ static CLOTHING_PIECES: LazyLock<Vec<ClothingPiece>> = LazyLock::new(|| {
 #[derive(Deserialize)]
 struct Character {
     id: String,
-    gender: String,
     outfits: Vec<Outfit>,
 }
 
@@ -121,10 +120,6 @@ fn hex_color(value: &str) -> bool {
 }
 
 impl CharacterChoice {
-    pub fn gender(&self) -> Option<&'static str> {
-        CAST.iter().find(|character| character.id == self.id).map(|character| character.gender.as_str())
-    }
-
     pub fn is_available(&self) -> bool {
         CAST.iter().any(|character| {
             character.id == self.id

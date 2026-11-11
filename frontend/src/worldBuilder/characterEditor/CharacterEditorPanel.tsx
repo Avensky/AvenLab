@@ -13,7 +13,7 @@ import "./characterEditor.css";
 export function CharacterEditorPanel() {
   const root = useRef<HTMLElement>(null), beforeClose = useRef<() => Promise<boolean>>(null);
   const remembered = useRef(new WeakMap<HTMLElement, number>()), leaving = useRef(false);
-  const owner = useSocialStore(s => s.view?.profile.id ?? "guest");
+  const owner = useSocialStore(s => s.view?.profile.id ?? s.profileOwner ?? "guest");
   const [tab, setTab] = useState<CharacterTab>("appearance"), [ready, setReady] = useState(false), [busy, setBusy] = useState(false);
   const { shot, frame, preview, panelsHidden } = useCharacterEditorStore();
   const paused = useCharacterPreviewStore(s => s.playbackPaused);

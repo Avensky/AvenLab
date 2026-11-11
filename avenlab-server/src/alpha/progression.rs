@@ -20,6 +20,9 @@ pub struct Progression {
     pub hero_loadouts: std::collections::BTreeMap<String, super::appearance::HeroAppearance>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub character: Option<CharacterChoice>,
+    #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub character_presets: std::collections::BTreeMap<String, CharacterChoice>,
+    pub cosmetics_revision: u64,
 }
 impl Default for Progression {
     fn default() -> Self {
@@ -35,7 +38,7 @@ impl Default for Progression {
             owned: BTreeSet::from(["factory".into()]),
             equipped: "factory".into(),
             default_hero: "brz".into(), hero_loadouts: Default::default(),
-            character: None,
+            character: None, character_presets: Default::default(), cosmetics_revision: 0,
         }
     }
 }
@@ -118,8 +121,21 @@ impl Progression {
     pub fn equipped_character(&self) -> Option<&CharacterChoice> {
         self.character.as_ref().filter(|choice| choice.is_available())
     }
+    fn available_character_presets(&self) -> std::collections::BTreeMap<&str, &CharacterChoice> {
+        self.character_presets.iter()
+            .filter(|(id, choice)| *id == &choice.id && choice.is_available())
+            .map(|(id, choice)| (id.as_str(), choice))
+            .collect()
+    }
+    pub fn cosmetics_view(&self) -> serde_json::Value {
+        serde_json::json!({
+            "default_hero": self.showcase_hero(), "hero_loadouts": self.hero_loadouts,
+            "character": self.equipped_character(), "character_presets": self.available_character_presets(),
+            "cosmetics_revision": self.cosmetics_revision,
+        })
+    }
     pub fn view(&self) -> serde_json::Value {
-        serde_json::json!({"career":self.career,"default_hero":self.showcase_hero(),"hero_loadouts":self.hero_loadouts,"character":self.equipped_character(),"level":self.level,"prestige":self.prestige,"xp":self.xp,"required_xp":self.required_xp(),"tier":self.tier(),"competitive_wins":self.competitive_wins,"quickplay_wins":self.quickplay_wins,"matches":self.matches,"credits":self.credits,"owned":self.owned,"equipped":self.equipped,"color":self.color(),"next_milestone":if self.level<100{((self.level/10)+1)*10}else{100}})
+        serde_json::json!({"career":self.career,"default_hero":self.showcase_hero(),"hero_loadouts":self.hero_loadouts,"character":self.equipped_character(),"character_presets":self.available_character_presets(),"cosmetics_revision":self.cosmetics_revision,"level":self.level,"prestige":self.prestige,"xp":self.xp,"required_xp":self.required_xp(),"tier":self.tier(),"competitive_wins":self.competitive_wins,"quickplay_wins":self.quickplay_wins,"matches":self.matches,"credits":self.credits,"owned":self.owned,"equipped":self.equipped,"color":self.color(),"next_milestone":if self.level<100{((self.level/10)+1)*10}else{100}})
     }
 }
 #[cfg(test)]

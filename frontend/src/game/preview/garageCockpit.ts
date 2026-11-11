@@ -10,6 +10,7 @@ import { cockpitWardrobe } from "../characters/cockpitWardrobe";
 import { createGarageHorn } from "../../audio/garageHorn";
 
 type TakeId = CockpitTake["id"];
+type HandControl = keyof ReturnType<typeof garageControlTargets> | "horn";
 export type CockpitPlayback = { hasDoor?: boolean; sample: (id: TakeId | null, phase: number, drive?: DriveOutPose) => void; stop: () => void };
 export type GarageCockpit = (driver: Object3D) => CockpitPlayback | null;
 
@@ -26,17 +27,30 @@ const RIM_FINGER_CURL = {
   pinky: [.2, .3, .42],
   thumb: [.3, .3, .3],
 } as const;
+const TAKE_HAND_CONTROLS: Partial<Record<TakeId, HandControl>> = {
+  "drive-shift-up": "shift", "drive-shift-down": "shift", "drive-clutch": "shift",
+  "drive-handbrake": "handbrake", "drive-honk": "horn", "drive-ignition": "ignition",
+  "drive-signals": "signal", "drive-wipers": "wipers", "drive-cruise": "cruise",
+};
 
 export function sampleCockpitMotion(id: TakeId | null, phase: number) {
   const ease = (from: number, to: number) => MathUtils.smoothstep(phase, from, to);
+  const pulse = (start: number, full: number, release: number, done: number) => ease(start, full) - ease(release, done);
   const mirrors = id === "086";
   const steeringTest = id === "199" ? 1 : id === "200" ? -1 : 0;
-  const control = Boolean(id?.startsWith("drive-"));
-  const reachControl = control ? ease(.12, .31) - ease(.67, .91) : 0;
-  const actuate = control ? ease(.34, .47) - ease(.53, .65) : 0;
-  const clutch = id === "drive-clutch" ? ease(.18, .32) - ease(.59, .79) : 0;
+  const drift = id === "drive-drift";
+  const handControl: HandControl | undefined = drift ? phase < .42 ? "shift" : "handbrake"
+    : id ? TAKE_HAND_CONTROLS[id] : undefined;
+  const reachControl = !handControl ? 0 : !drift ? pulse(.12, .31, .67, .91)
+    : handControl === "shift" ? pulse(.05, .17, .29, .41) : pulse(.43, .55, .65, .76);
+  const actuate = !handControl ? 0 : !drift ? pulse(.34, .47, .53, .65)
+    : handControl === "shift" ? pulse(.17, .23, .27, .31) : pulse(.55, .60, .64, .68);
+  const clutch = id === "drive-clutch" ? pulse(.18, .32, .59, .79)
+    : drift ? pulse(.055, .15, .29, .38) : 0;
+  const throttle = id === "drive-gas" ? pulse(.20, .42, .64, .88)
+    : drift ? pulse(.34, .41, .43, .49) + pulse(.66, .76, .86, .98) : 0;
   const horn = id === "drive-honk" && phase >= .38 && phase < .57;
-  const parked = id === null || id === "068" || mirrors || steeringTest !== 0 || control;
+  const parked = id === null || id === "068" || mirrors || steeringTest !== 0 || id.startsWith("drive-");
   const reversing = id === "070";
   const overtake = id === "076";
   const gesture = id === "101" || id === "102" ? ease(.33, .44) - ease(.58, .73) : 0;
@@ -44,15 +58,18 @@ export function sampleCockpitMotion(id: TakeId | null, phase: number) {
   const travel = parked ? 0 : distance * (ease(ROLL_START, .49) - ease(.63, .95));
   const curve = reversing ? -.13 : overtake ? .23 : .12;
   const heading = travel * curve;
-  const steering = steeringTest ? steeringTest * .32 * (ease(.14, .41) - ease(.62, .89))
+  const steering = steeringTest ? steeringTest * .32 * pulse(.14, .41, .62, .89)
+    : drift ? .36 * pulse(.39, .51, .57, .69) - .34 * pulse(.62, .74, .83, .98)
     : id === "068" ? .23 * (ease(.16, .36) - 2 * ease(.41, .65) + ease(.7, .92))
     : parked ? 0 : Math.atan(2.4 * curve) * (ease(.06, .22) - ease(.78, .98));
-  const brake = parked ? 0 : ease(.39, .49) - ease(.55, .63) + ease(.87, .95) - ease(.96, 1);
+  const brake = id === "drive-brake" ? pulse(.19, .41, .63, .87)
+    : drift ? pulse(.46, .53, .58, .66)
+    : parked ? 0 : pulse(.39, .49, .55, .63) + pulse(.87, .95, .96, 1);
   const sideCheck = reversing ? -.82 * (ease(.045, .14) - ease(.49, .67)) : -.57 * (ease(.035, .115) - ease(.145, .205));
   const farMirror = mirrors ? .62 * (ease(.25, .48) - ease(.61, .83)) : 0;
   const nod = .18 * (ease(.165, .218) - ease(.225, ROLL_START));
   const focus = ease(.19, .29) - ease(.85, 1);
-  return { reachControl, actuate, clutch, horn, travel, heading, across: (1 - Math.cos(heading)) / curve, along: Math.sin(heading) / curve, steering, brake,
+  return { handControl, reachControl, actuate, clutch, throttle, horn, travel, heading, across: (1 - Math.cos(heading)) / curve, along: Math.sin(heading) / curve, steering, brake,
     lookYaw: steeringTest ? steering * .66 : sideCheck + farMirror + steering * .24 - gesture * .12,
     lookPitch: steeringTest ? 0 : nod + reachControl * .10, focus: focus * (1 - gesture * .65),
     gesture, closeShot: parked || id === "077" || id === "101" || id === "102" || phase < ROLL_START };
@@ -73,11 +90,13 @@ function measureSteeringRim(car: Object3D, wheels: readonly Object3D[]) {
   const left = new Vector3(Infinity, 0, 0), right = new Vector3(-Infinity, 0, 0);
   const bottom = new Vector3(0, Infinity, 0), top = new Vector3(0, -Infinity, 0);
   const point = new Vector3();
+  const parts: { mesh: Mesh; toCar: ReturnType<typeof inverse.clone> }[] = [];
   for (const wheel of wheels) wheel.traverse(part => {
     if (!(part instanceof Mesh)) return;
     const positions = part.geometry.getAttribute("position");
     if (!positions) return;
     const toCar = inverse.clone().multiply(part.matrixWorld);
+    parts.push({ mesh: part, toCar });
     for (let i = 0; i < positions.count; i++) {
       part.getVertexPosition(i, point).applyMatrix4(toCar);
       if (point.x < left.x) left.copy(point);
@@ -90,7 +109,18 @@ function measureSteeringRim(car: Object3D, wheels: readonly Object3D[]) {
   // The hub protrudes forward. Use the rim extremes to locate its actual plane.
   const center = left.clone().lerp(right, .5);
   const up = new Vector3(0, top.y - bottom.y, top.z - bottom.z).normalize();
-  return { center, up, axis: up.clone().cross(AXLE), radius: (right.x - left.x) * .5 - .014 };
+  const axis = up.clone().cross(AXLE);
+  let hubDepth = -Infinity;
+  for (const { mesh, toCar } of parts) {
+    const positions = mesh.geometry.getAttribute("position");
+    for (let i = 0; i < positions.count; i++) {
+      mesh.getVertexPosition(i, point).applyMatrix4(toCar).sub(center);
+      if (Math.abs(point.x) < .064 && Math.abs(point.dot(up)) < .064)
+        hubDepth = Math.max(hubDepth, point.dot(axis));
+    }
+  }
+  return { center, up, axis, hubDepth: Number.isFinite(hubDepth) ? MathUtils.clamp(hubDepth, -.085, .115) : .038,
+    radius: (right.x - left.x) * .5 - .014 };
 }
 
 function directionIn(source: Object3D, target: Object3D, direction: Vector3) {
@@ -118,6 +148,7 @@ export function prepareGarageCockpit(
   const up = measured?.up ?? new Vector3(0, 1, road?.tilt ?? 0).normalize();
   const axis = measured?.axis ?? up.clone().cross(AXLE);
   const radius = measured?.radius ?? road?.radius ?? 0;
+  const hornPad = center.clone().addScaledVector(axis, measured?.hubDepth ?? .038);
   const steering = steeringParts.flatMap(object => {
     if (!object.parent) return [];
     return [{
@@ -151,7 +182,6 @@ export function prepareGarageCockpit(
     const localScale = bridge?.units ?? levers?.units ?? 1;
     const modelScale = localScale * scale / driverScale;
     const driverRest = localRest(driver);
-    const forwardEntry = driver.name === "garage-villager-male" || driver.name === "garage-jules-stylized";
     const restScale = driver.scale.clone();
     const arms = (["l", "r"] as const).flatMap(side => {
       const arm = driverArm(driver, side), hand = driverHand(driver, side);
@@ -172,16 +202,9 @@ export function prepareGarageCockpit(
     const hip = driver.worldToLocal(standingHip.clone());
     car.worldToLocal(standingHip);
     const standingAnkles = legs.map(({ foot }) => car.worldToLocal(foot.getWorldPosition(new Vector3())));
+    const inverseCarRotation = car.getWorldQuaternion(new Quaternion()).normalize().invert();
+    const standingFeet = legs.map(({ foot }) => inverseCarRotation.clone().multiply(foot.getWorldQuaternion(new Quaternion())).normalize());
     const openDoorAtStart = door?.angle ?? 0;
-    const doorBounds = door ? new Box3().setFromObject(door.pivot, true).applyMatrix4(car.matrixWorld.clone().invert()) : null;
-    const handleSide = Math.sign(center.x);
-    const exteriorHandle = classic ? new Vector3(-.831, .765, -.433) : doorBounds
-      ? new Vector3(handleSide > 0 ? doorBounds.max.x : doorBounds.min.x,
-        MathUtils.lerp(doorBounds.min.y, doorBounds.max.y, .48), MathUtils.lerp(doorBounds.min.z, doorBounds.max.z, .20))
-      : center.clone();
-    const interiorHandle = classic ? new Vector3(-.652, .688, .102) : exteriorHandle.clone().add(new Vector3(-handleSide * .13, -.035, .10));
-    exteriorHandle.sub(door?.pivot.position ?? new Vector3());
-    interiorHandle.sub(door?.pivot.position ?? new Vector3());
     const headHeight = (driver.worldToLocal(head.getWorldPosition(new Vector3())).y - hip.y) * localScale;
     let crown = headHeight + .18 * localScale;
     const vertex = new Vector3();
@@ -208,7 +231,7 @@ export function prepareGarageCockpit(
       .map(({ mesh, index }) => ({ weights: mesh.morphTargetInfluences!, index, rest: mesh.morphTargetInfluences![index],
         focus: RACE_FACE[channel], greeting: channel === 0 ? .55 : .21 })));
     const driverRotation = driver.getWorldQuaternion(new Quaternion()).invert();
-    const feet = legs.map(({ foot }) => driverRotation.clone().multiply(foot.getWorldQuaternion(new Quaternion())));
+    const seatedFeet = legs.map(({ foot }) => driverRotation.clone().multiply(foot.getWorldQuaternion(new Quaternion())).normalize());
     const camera = new Object3D();
     camera.name = "garage-cockpit-camera";
     const lens = new Object3D();
@@ -232,6 +255,7 @@ export function prepareGarageCockpit(
     }
     const carRotation = new Quaternion(), roll = new Quaternion(), steer = new Quaternion(), rimTurn = new Quaternion();
     const wheelTurn = new Quaternion(), seatRotation = new Quaternion(), entryRotation = new Quaternion(), parentRotation = new Quaternion();
+    const rootWorldRotation = new Quaternion(), footRotation = new Quaternion(), anklePitch = new Quaternion();
     const entryHip = new Vector3(), reach = new Vector3();
     const headAxes = new Quaternion(), localAxis = new Vector3();
     const shotTarget = new Vector3(...shot.at), shotEye = new Vector3(...shot.eye);
@@ -251,12 +275,14 @@ export function prepareGarageCockpit(
         } else if (pose.closeShot) {
           camera.position.copy(center).add(new Vector3(0, .015, .03));
           const eye = new Vector3(seat.x, Math.min(road.roof - .12, seat.y + headHeight + .04), seat.z + .18);
-          if (pose.reachControl && controls) {
-            const focus = id === "drive-honk" ? center
-              : id === "drive-handbrake" ? controls.handbrake
-              : id === "drive-ignition" ? controls.ignition
-              : id === "drive-signals" ? controls.signal : controls.shift;
+          if (pose.reachControl && controls && pose.handControl) {
+            const focus = pose.handControl === "horn" ? hornPad : controls[pose.handControl];
             camera.position.lerp(focus, pose.reachControl * .30);
+          }
+          if (pedals && (id === "drive-brake" || id === "drive-gas")) {
+            const press = Math.max(pose.brake, pose.throttle);
+            camera.position.lerp(pedals, press * .88);
+            eye.lerp(new Vector3(seat.x - steeringSide * .22, center.y - .08, seat.z + .22), press);
           }
           lens.position.copy(eye).sub(camera.position);
         } else {
@@ -302,57 +328,63 @@ export function prepareGarageCockpit(
         const sit = MathUtils.smoothstep(enter, .12, .93);
         driver.quaternion.copy(seatRotation);
         entryHip.copy(seat);
-        if (drive && enter < 1) {
-          entryRotation.setFromAxisAngle(UP, -steeringSide * Math.PI / 2);
-          entryRotation.premultiply(seatRotation);
-          if (forwardEntry) {
-            // These headings are almost a half-turn apart. The shortest slerp
-            // sends Rook through a rear-facing turn, making entry look reversed.
-            // Pass through the car's forward heading before facing the door.
-            const turn = drive.turnToDoor * 2;
-            if (turn <= 1) driver.quaternion.copy(driverRest.rotation).slerp(seatRotation, turn);
-            else driver.quaternion.copy(seatRotation).slerp(entryRotation, turn - 1);
-          } else driver.quaternion.copy(driverRest.rotation).slerp(entryRotation, drive.turnToDoor);
-          driver.quaternion.slerp(seatRotation, MathUtils.smoothstep(enter, .13, .76));
-          const acrossSill = MathUtils.smoothstep(enter, .27, .96);
-          const lowerToSeat = MathUtils.smoothstep(enter, .12, .73);
+        if (enter < 1) {
+          const turn = MathUtils.smoothstep(enter, .02, .52);
+          const acrossSill = MathUtils.smoothstep(enter, .10, .85);
+          const lowerToSeat = MathUtils.smoothstep(enter, .12, .87);
+          const duck = Math.sin(Math.PI * acrossSill);
+          driver.quaternion.copy(driverRest.rotation).slerp(seatRotation, turn)
+            .multiply(entryRotation.setFromAxisAngle(AXLE, duck * .16));
           entryHip.copy(standingHip).lerp(seat, acrossSill);
           entryHip.y = MathUtils.lerp(standingHip.y, seat.y, lowerToSeat);
+          entryHip.z -= duck * .09;
         }
         driver.position.copy(parent.worldToLocal(car.localToWorld(entryHip)))
           .sub(hip.clone().multiply(driver.scale).applyQuaternion(driver.quaternion));
         if (drive && door) {
-          const doorAngle = door.open * drive.door;
-          door.angle = MathUtils.lerp(openDoorAtStart, doorAngle, drive.turnToDoor);
+          door.angle = door.open * drive.door + openDoorAtStart * (1 - drive.door - drive.closeDoor);
           door.pivot.rotation[door.axis] = door.angle;
           if (driverShadow) driverShadow.visible = enter < .52;
         }
-        if (torso && pose.reachControl) torso.rotation.x += pose.reachControl * .06;
+        if (torso && pose.reachControl) {
+          torso.getWorldQuaternion(headAxes).invert().multiply(carRotation);
+          const lean = pose.handControl === "horn" ? .17 : .06;
+          torso.rotateOnAxis(localAxis.copy(AXLE).applyQuaternion(headAxes), pose.reachControl * lean);
+        }
         head.getWorldQuaternion(headAxes).invert().multiply(carRotation);
         head.rotateOnAxis(localAxis.copy(UP).applyQuaternion(headAxes), pose.lookYaw);
         head.rotateOnAxis(localAxis.copy(AXLE).applyQuaternion(headAxes), pose.lookPitch);
         for (const { weights, index, rest, focus, greeting } of expression) {
           weights[index] = MathUtils.lerp(MathUtils.lerp(rest, focus, pose.focus), greeting, pose.gesture);
         }
-        if (pedals) for (const [index, { hip, knee, foot, side }] of legs.entries()) {
-          const brake = road ? drive?.brake ?? pose.brake : 0;
-          const ankle = pedals.clone().add(new Vector3(side * .102 * localScale, side < 0 ? brake * .042 : 0, 0));
-          if (classic) ankle.set(seat.x + side * .102, .24 + (side < 0 ? brake * .042 : 0), center.z + .20);
-          if (road && side > 0 && (pose.clutch || (id === "drive-handbrake" && road.parkingBrake === "pedal"))) {
-            ankle.z += .045 * Math.max(pose.clutch, pose.actuate);
-            ankle.y += .012 * Math.max(pose.clutch, pose.actuate);
-          }
-          if (enter < 1) {
-            const step = index === 0 ? MathUtils.smoothstep(enter, .03, .65) : MathUtils.smoothstep(enter, .3, .98);
-            ankle.lerp(standingAnkles[index], 1 - step);
-            ankle.y += Math.sin(step * Math.PI) * .25;
-          }
+        driver.getWorldQuaternion(rootWorldRotation);
+        if (pedals && enter > 0) for (const [index, { hip, knee, foot, side }] of legs.entries()) {
+          const brake = road && side < 0 ? (id === null ? drive?.brake ?? pose.brake : pose.brake) : 0;
+          const throttle = road && side < 0 ? pose.throttle : 0;
+          const parkingPedal = road?.parkingBrake === "pedal" && pose.handControl === "handbrake" ? pose.actuate : 0;
+          const clutch = road && side > 0 ? Math.max(pose.clutch, parkingPedal) : 0;
+          const ankle = pedals.clone().add(new Vector3(side * .102 * localScale, 0, 0));
+          if (classic) ankle.x = seat.x + side * .102;
+          if (road) ankle.add(new Vector3(.055 * brake, .034 * brake + .010 * clutch - .018 * throttle,
+            .038 + .042 * brake + .060 * throttle + .065 * clutch));
+          const leading = side === -steeringSide;
+          const step = leading ? MathUtils.smoothstep(enter, .02, .61) : MathUtils.smoothstep(enter, .40, .97);
+          const lifted = Math.sin(Math.PI * step);
+          ankle.lerp(standingAnkles[index], 1 - step);
+          ankle.y += lifted * .16;
           car.localToWorld(ankle);
-          aimLimb(hip, knee, foot, ankle, new Vector3(side * .11, 1, .12).applyQuaternion(carRotation));
-          if (sit > 0) foot.quaternion.slerp(knee.getWorldQuaternion(new Quaternion()).invert().multiply(carRotation).multiply(feet[index]), sit);
+          const kneePole = road ? new Vector3(side * .10, sit * .86, 1 - sit * .77).applyQuaternion(rootWorldRotation)
+            : new Vector3(side * .11, 1, .12).applyQuaternion(carRotation);
+          aimLimb(hip, knee, foot, ankle, kneePole);
+          // Maintain the parked shoe's world orientation while its ankle is planted.
+          // Turn the toes toward the pedals during the swing, independent of knee IK.
+          const pitch = .13 * throttle + .12 * brake + .12 * clutch - .11 * lifted;
+          anklePitch.setFromAxisAngle(AXLE, pitch);
+          footRotation.copy(standingFeet[index]).slerp(seatedFeet[index], step).premultiply(anklePitch).premultiply(carRotation);
+          foot.quaternion.copy(knee.getWorldQuaternion(new Quaternion()).invert().multiply(footRotation));
         }
         for (const { shoulder, elbow, hand, rig, side, palmReach } of arms) {
-          if (bridge) continue;
+          if (bridge || enter === 0) continue;
           const radial = new Vector3(side * .73, 0, 0).addScaledVector(up, .68).normalize().applyQuaternion(rimTurn);
           // Aim the knuckles beyond the outer rim. The palm faces inward and
           // the fingers wrap down over the far side of the rim.
@@ -362,45 +394,42 @@ export function prepareGarageCockpit(
           const gripDirection = levers ? new Vector3(0, -.15, 1).normalize()
             : new Vector3(-side * .11, -.04, .99).applyQuaternion(rimTurn).projectOnPlane(radial).normalize();
           const wrist = grip.clone().addScaledVector(gripDirection, -palmReach);
-          const consoleHand = id === "drive-honk" || id === "drive-ignition" ? -1
-            : id === "drive-signals" ? 1 : -steeringSide;
-          const controlWeight = road && side === consoleHand && !(id === "drive-handbrake" && road.parkingBrake === "pedal") ? pose.reachControl : 0;
+          const control = pose.handControl;
+          const consoleHand = control === "shift" || control === "handbrake" ? -steeringSide
+            : control === "signal" ? 1 : -1;
+          const controlWeight = road && side === consoleHand && !(control === "handbrake" && road.parkingBrake === "pedal") ? pose.reachControl : 0;
           let controlDirection: Vector3 | undefined;
           let controlNormal: Vector3 | undefined;
-          if (controlWeight && controls) {
-            const target = id === "drive-honk" ? center.clone().addScaledVector(axis, -.005)
-              : id === "drive-handbrake" ? controls.handbrake.clone()
-              : id === "drive-ignition" ? controls.ignition.clone()
-              : id === "drive-signals" ? controls.signal.clone() : controls.shift.clone();
-            if (id === "drive-shift-up" || id === "drive-clutch") target.z += pose.actuate * .045;
-            if (id === "drive-shift-down") target.z -= pose.actuate * .045;
-            if (id === "drive-handbrake" && !road?.parkingBrake) target.y += pose.actuate * .065;
-            controlDirection = id === "drive-honk" ? up.clone() : new Vector3(0, -.28, .96);
-            controlNormal = id === "drive-honk" ? axis.clone().negate() : new Vector3(-side, -.35, 0).normalize();
-            if (id === "drive-ignition") {
+          if (controlWeight && control && controls) {
+            const target = control === "horn"
+              ? hornPad.clone().addScaledVector(axis, MathUtils.lerp(.057, .026, pose.actuate))
+              : controls[control].clone();
+            if (control === "shift") target.z += pose.actuate * (id === "drive-shift-down" ? -.045 : .045);
+            if (control === "handbrake" && !road?.parkingBrake) target.y += pose.actuate * .065;
+            controlDirection = control === "horn" ? up.clone() : new Vector3(0, -.28, .96);
+            controlNormal = control === "horn" ? axis.clone().negate() : new Vector3(-side, -.35, 0).normalize();
+            if (control === "ignition") {
               controlDirection.applyAxisAngle(AXLE, pose.actuate * .25);
               controlNormal.applyAxisAngle(AXLE, pose.actuate * .25);
             }
-            if (id === "drive-signals") target.y -= pose.actuate * .018;
+            if (control === "signal") target.y -= pose.actuate * .018;
+            if (control === "wipers") target.y += pose.actuate * .025;
+            if (control === "cruise") target.z += pose.actuate * .018;
             wrist.lerp(target.addScaledVector(controlDirection, -palmReach), controlWeight);
           }
           if (release) wrist.lerp(new Vector3(side * (.198 - wave * .021), .235, -.195).add(center), release);
           car.localToWorld(wrist);
-          if (drive && enter < 1) wrist.lerp(hand.getWorldPosition(reach), 1 - sit);
-          const handleWeight = side === steeringSide && drive ? Math.max(drive.reachHandle, drive.closeHandle) : 0;
-          if (door && drive && handleWeight) {
-            reach.copy(drive.closeHandle > 0 ? interiorHandle : exteriorHandle);
-            wrist.lerp(door.pivot.localToWorld(reach), handleWeight);
+          if (enter < 1) {
+            wrist.lerp(hand.getWorldPosition(reach), 1 - sit);
+            const tuck = Math.sin(Math.PI * enter) * .40;
+            wrist.lerp(car.localToWorld(reach.copy(entryHip).add(new Vector3(side * .17, .16, .16))), tuck);
           }
-          const pole = new Vector3(side * .47, -1, -.16).applyQuaternion(carRotation);
+          const pole = new Vector3(side * (road ? .19 : .47), -1, road ? .39 : -.16).applyQuaternion(carRotation);
           aimLimb(shoulder, elbow, hand, wrist, pole, shoulder instanceof Bone ? ELBOW_HINGE : undefined);
-          if (!rig || (sit < .28 && handleWeight < .25)) continue;
+          if (!rig || sit === 0) continue;
+          const standingHand = sit < 1 ? hand.quaternion.clone() : null;
           const direction = car.localToWorld(grip).sub(hand.getWorldPosition(new Vector3())).normalize();
           const palmNormal = (levers ? new Vector3(-side * .24, -1, 0) : radial.negate()).applyQuaternion(carRotation);
-          if (handleWeight > 0) {
-            direction.lerp(reach.copy(UP).applyQuaternion(carRotation), handleWeight).normalize();
-            palmNormal.lerp(reach.set(1, 0, 0).applyQuaternion(carRotation), handleWeight);
-          }
           if (release) {
             const thumbsUp = id === "102";
             const raisedFingers = thumbsUp ? new Vector3(-side * .23, .15, .96) : new Vector3(side * (.06 - wave * .28), .95, .25);
@@ -414,11 +443,24 @@ export function prepareGarageCockpit(
           }
           aimDriverJoint(hand, rig.middle, direction.clone());
           alignJointNormal(hand, direction, rig.palm, palmNormal);
+          if (standingHand) hand.quaternion.slerp(standingHand, 1 - sit);
           for (const { joint, axis, name, segment } of rig.fingers) {
             const gripCurl = RIM_FINGER_CURL[name][segment];
             const gestureCurl = id === "101" ? .05 : name === "thumb" ? .04 : [1.04, 1.27, .64][segment];
-            const controlCurl = id === "drive-honk" ? .10 : name === "thumb" ? .35 : [.48, .88, .65][segment];
-            joint.rotateOnAxis(axis, MathUtils.lerp(MathUtils.lerp(gripCurl, gestureCurl, release), controlCurl, controlWeight));
+            const controlCurl = control === "horn" ? (name === "thumb" ? .05 : .10)
+              : name === "thumb" ? .35 : [.48, .88, .65][segment];
+            joint.rotateOnAxis(axis, sit * MathUtils.lerp(MathUtils.lerp(gripCurl, gestureCurl, release), controlCurl, controlWeight));
+          }
+          if (control === "horn" && controlWeight && rig.thumb) {
+            // Press with the palm and keep the thumb splayed above the pad's face.
+            const [base, middle, tip] = rig.thumb;
+            const thumbOut = new Vector3(-side, 0, 0).addScaledVector(up, .50).addScaledVector(axis, .38);
+            const thumbTip = new Vector3(-side * .35, 0, 0).addScaledVector(up, .78).addScaledVector(axis, .35);
+            for (const [joint, child, direction] of [[base, middle, thumbOut], [middle, tip, thumbTip]] as const) {
+              const relaxed = joint.quaternion.clone();
+              aimDriverJoint(joint, child, direction.applyQuaternion(carRotation));
+              joint.quaternion.slerp(relaxed, 1 - controlWeight);
+            }
           }
           if (release && id === "102" && rig.thumb) {
             const [base, middle, tip] = rig.thumb;

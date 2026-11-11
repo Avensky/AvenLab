@@ -4,7 +4,7 @@ import { FitBadge, FitReview } from "./FitReview";
 import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type Ref, type ReactNode } from "react";
 import { ControllerAction } from "../../components/controller";
 import { requestSocial } from "../../net/socialClient";
-import { useSocialStore } from "../../store/social/socialStore";
+import { selectEquippedCharacter, useSocialStore } from "../../store/social/socialStore";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 import { CHARACTERS, CHARACTER_IDENTITIES, DEFAULT_CHARACTER, characterLook, type CharacterChoice } from "./characterCatalog";
 import { CharacterPortrait } from "./CharacterPortrait";
@@ -40,8 +40,9 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
   beforeClose: Ref<() => Promise<boolean>>;
 }) {
   const page = useRef<HTMLDivElement>(null);
-  const owner = useSocialStore(state => state.view?.profile.id);
-  const saved = useSocialStore(state => state.view?.profile.progression?.character);
+  const owner = useSocialStore(state => state.view?.profile.id ?? state.profileOwner);
+  const connectedOwner = useSocialStore(state => state.view?.profile.id);
+  const saved = useSocialStore(selectEquippedCharacter);
   const reducedMotion = usePreferencesStore(state => state.reducedMotion);
   const [choice, setChoice] = useState(() => characterLook(saved) ? saved! : DEFAULT_CHARACTER);
   const [locked, setLocked] = useState(() => Boolean(characterLook(saved)));
@@ -49,15 +50,13 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
   const [message, setMessage] = useState("");
   const [emoteGroup, setEmoteGroup] = useState<EmoteGroup | "Best" | "All" | "Personality">("Garage");
   const [emoteSearch, setEmoteSearch] = useState("");
-  const [comparison, setComparison] = useState<CharacterChoice | null>(null);
   const acknowledged = useRef(locked ? choice : null);
-  const queued = useRef<CharacterChoice | null>(null);
+  const queued = useRef(new Map<string, CharacterChoice>());
+  const drafts = useRef(new Map<string, CharacterChoice>());
   const running = useRef<Promise<boolean> | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const { character, outfit, appearance } = characterLook(choice)!;
   const { camera, zoom, emote, playbackPaused, cockpitVehicle, cockpitAvailable, cockpitError, insideCar, leanAvailable, mirrorAvailable } = useCharacterPreviewStore();
-  const previewChoice = useMemo(() => tab === "emotes" && comparison && comparison.id !== choice.id
-    ? { ...comparison, prop: choice.prop, appearance: { ...characterLook(comparison)!.appearance, personality: appearance.personality, animation_fit: appearance.animation_fit } } : choice, [tab, comparison, choice]);
 
   useLayoutEffect(() => {
     const element = page.current?.querySelector<HTMLElement>("[data-character-viewport]");
@@ -74,27 +73,29 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
   const flush = useCallback((): Promise<boolean> => {
     clearTimeout(timer.current);
     if (running.current) return running.current;
-    if (!queued.current) return Promise.resolve(true);
+    if (!queued.current.size) return Promise.resolve(true);
     const drain = async () => {
       setStatus("saving");
-      while (queued.current) {
-        const next = queued.current;
-        queued.current = null;
+      while (queued.current.size) {
+        const [id, next] = queued.current.entries().next().value!;
+        queued.current.delete(id);
         try {
           if (!owner || useSocialStore.getState().view?.profile.id !== owner) throw Error("Connect your player profile to save.");
           const result = await requestSocial("character_equip", { character: next });
           const confirmed = (result.character as CharacterChoice | undefined) ?? next;
-          // The reliable reply can arrive before the replaceable social view.
-          useSocialStore.getState().acknowledgeProgression(owner, progression => ({ ...progression, character: confirmed }));
-          acknowledged.current = confirmed;
+          useSocialStore.getState().acknowledgeProgression(owner, progression => ({ ...progression, character: confirmed }), result);
+          acknowledged.current = useSocialStore.getState().view?.profile.progression?.character ?? confirmed;
+          if (drafts.current.get(id) === next) drafts.current.delete(id);
           setLocked(true);
         } catch (error) {
-          queued.current ??= next;
+          // Keep another model's pending edits and the order in which the player selected them.
+          if (!queued.current.has(id)) queued.current = new Map([[id, next], ...queued.current]);
           setStatus("error");
           setMessage(error instanceof Error ? error.message : "Could not save your character.");
           return false;
         }
       }
+      if (acknowledged.current) setChoice(acknowledged.current);
       setStatus("saved");
       return true;
     };
@@ -102,8 +103,16 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
     return running.current;
   }, [owner]);
 
+  useLayoutEffect(() => {
+    if (saved && characterLook(saved) && !running.current && !queued.current.size) {
+      acknowledged.current = saved;
+      setChoice(saved);
+      setLocked(true);
+    }
+  }, [saved]);
+  useEffect(() => { if (connectedOwner && queued.current.size) void flush(); }, [connectedOwner, flush]);
   useImperativeHandle(beforeClose, () => () => locked ? flush() : Promise.resolve(true), [flush, locked]);
-  useLayoutEffect(() => { onPreview?.(previewChoice); }, [previewChoice, onPreview]);
+  useLayoutEffect(() => { onPreview?.(choice); }, [choice, onPreview]);
   useLayoutEffect(() => { onReady(locked); }, [locked, onReady]);
   useLayoutEffect(() => {
     if (tab === "emotes") return () => useCharacterPreviewStore.setState({ emote: null, insideCar: false, cockpitError: null });
@@ -124,26 +133,32 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
     setChoice(next);
     setMessage("");
     if (!locked) return;
-    queued.current = next;
+    drafts.current.set(next.id, next);
+    queued.current.delete(next.id);
+    queued.current.set(next.id, next);
     setStatus("pending");
     clearTimeout(timer.current);
     timer.current = setTimeout(() => void flush(), 300);
   }
 
   const genderPicker = <div className={locked ? "character-outfits" : "character-cast"} role="group"
-    aria-label={locked ? "Preview gender" : "Gender"} data-controller-row>
+    aria-label={locked ? "Character model" : "Gender"} data-controller-row>
     {PREVIEW_CAST.map(({ gender, choice: next }) => <button key={next.id} type="button" className="menu-control"
-      disabled={!locked && status === "saving"} data-character-option={next.id} aria-pressed={previewChoice.id === next.id}
+      disabled={!locked && status === "saving"} data-character-option={next.id} aria-pressed={choice.id === next.id}
       onClick={() => {
-        if (insideCar) useCharacterPreviewStore.setState({ emote: null });
-        if (locked) setComparison(next);
-        else update(next);
+        if (next.id === choice.id) return;
+        useCharacterPreviewStore.setState({ emote: null });
+        const state = useSocialStore.getState();
+        const progression = state.view?.profile.progression ?? state.cachedCosmetics;
+        const preset = drafts.current.get(next.id) ?? (progression?.character?.id === next.id
+          ? progression.character : progression?.character_presets?.[next.id]);
+        update({ ...(preset && characterLook(preset) ? preset : next), identity: choice.identity });
       }}>
       {!locked && <CharacterPortrait choice={next} compact />}
       <span>{gender === "female" ? "Female" : "Male"}</span>
     </button>)}
   </div>;
-  const bag = Boolean(previewChoice.prop);
+  const bag = Boolean(choice.prop);
   const canEnterCar = !reducedMotion;
   const cockpitPending = insideCar && !cockpitAvailable;
   const station = cockpitVehicle ? GARAGE_STATIONS[cockpitVehicle] : null;
@@ -192,7 +207,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
     <small>{visibleEmotes.length} emotes</small>
     <div className="character-emotes" aria-label={insideCar ? (road ? "Driving emotes" : "Station emotes") : `${emoteGroup} emotes`}>
       {!insideCar && ["Garage", "All"].includes(emoteGroup) && mirrorAvailable && MIRROR_CHECK_NAME.toLowerCase().includes(emoteSearch.toLowerCase()) && <button type="button" className="menu-control" data-controller-row disabled={reducedMotion} aria-pressed={emote?.id === MIRROR_CHECK_ID}
-        onClick={() => { useFittingTurnStore.setState({ characterYaw: 0 }); useCharacterPreviewStore.setState({ camera: "Whole car", emote: { id: MIRROR_CHECK_ID }, playbackPaused: false }); }}>{MIRROR_CHECK_NAME}<FitBadge choice={previewChoice} pose={MIRROR_CHECK_ID} /></button>}
+        onClick={() => { useFittingTurnStore.setState({ characterYaw: 0 }); useCharacterPreviewStore.setState({ camera: "Whole car", emote: { id: MIRROR_CHECK_ID }, playbackPaused: false }); }}>{MIRROR_CHECK_NAME}<FitBadge choice={choice} pose={MIRROR_CHECK_ID} /></button>}
       {!insideCar && emoteGroup === "Garage" && leanAvailable && <button type="button" className="menu-control" data-controller-row
         disabled={reducedMotion} aria-pressed={emote?.id === GARAGE_LEAN_ID}
         onClick={() => useCharacterPreviewStore.setState({ emote: { id: GARAGE_LEAN_ID } })}>{GARAGE_LEAN_NAME}</button>}
@@ -201,24 +216,24 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
         aria-pressed={emote?.id === item.id} onClick={() => {
           if (item.id === "drive-honk") unlockVehicleAudio();
           useCharacterPreviewStore.setState({ emote: { id: item.id }, playbackPaused: false });
-        }}><span className="emote-name">{item.name}</span><FitBadge choice={previewChoice} pose={item.id} /></button>)}
+        }}><span className="emote-name">{item.name}</span><FitBadge choice={choice} pose={item.id} /></button>)}
     </div>
     {!visibleEmotes.length && <p role="status">No emotes match this filter.</p>}
-    {locked && <FitReview choice={previewChoice} pose={emote?.id ?? "standing"} />}
+    {locked && <FitReview choice={choice} pose={emote?.id ?? "standing"} />}
   </>;
 
   if (!locked) return (
     <div ref={page} className="character-page character-page--setup" aria-label="Choose character gender" onFocus={revealCharacterControl}>
       <div className="character-stage" data-character-viewport data-character-preview={character.id} data-outfit-preview={outfit.id} />
       <section className="character-controls menu-panel-frame">
-        <header className="character-description"><h2>Choose gender</h2><p>This choice is permanent for your profile.</p></header>
+        <header className="character-description"><h2>Choose gender</h2><p>You can switch models any time during alpha.</p></header>
         {genderPicker}
         <div className="character-equip" data-controller-row>
-          <ControllerAction button="A" className="menu-control" disabled={!owner || saved === undefined || status === "saving"}
-            onClick={() => { queued.current = choice; void flush(); }}>
+          <ControllerAction button="A" className="menu-control" disabled={!connectedOwner || saved === undefined || status === "saving"}
+            onClick={() => { queued.current.clear(); queued.current.set(choice.id, choice); void flush(); }}>
             {status === "saving" ? "Saving…" : `Confirm ${character.gender}`}
           </ControllerAction>
-          <p role="status">{message || (!owner ? "Connect your player profile to confirm." : saved === undefined ? "Update the game server to choose a character." : "")}</p>
+          <p role="status">{message || (!connectedOwner ? "Connect your player profile to confirm." : saved === undefined ? "Update the game server to choose a character." : "")}</p>
         </div>
         {cameraControls}
         <h2>Preview emotes</h2>
@@ -230,12 +245,13 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
   return (
     <div ref={page} className={`character-page character-page--editor${tab === "appearance" ? " character-page--dressing" : tab === "emotes" ? " character-page--emotes" : ""}`} role="tabpanel" id="character-editor-panel" aria-labelledby={"character-editor-tab-" + tab}
       onFocus={revealCharacterControl}>
-      <div className="character-stage" data-character-viewport data-character-preview={previewChoice.id} data-outfit-preview={previewChoice.outfit}
-        aria-label={`Preview of ${characterLook(previewChoice)!.character.name}`} />
-      {tab === "appearance" && <DressingRoom choice={choice} onChange={update} />}
+      <div className="character-stage" data-character-viewport data-character-preview={choice.id} data-outfit-preview={choice.outfit}
+        aria-label={`Preview of ${character.name}`} />
+      {tab === "appearance" && <DressingRoom choice={choice} onChange={update} modelControls={genderPicker} />}
       {tab !== "appearance" && <section className="character-controls menu-panel-frame character-controls--left" aria-label={tab}>
         {tab === "identity" && <>
-          <header className="character-description"><h2>Identity</h2><p>Choose how your character identifies. Their model and outfit are separate.</p></header>
+          <header className="character-description"><h2>Identity</h2><p>Choose how your character identifies and which model they use.</p></header>
+          {genderPicker}
           <div className="character-outfits" role="group" aria-label="Character identity" data-controller-row>
             {CHARACTER_IDENTITIES.map(item => <button key={item.id} type="button" className="menu-control"
               aria-pressed={(choice.identity ?? character.gender) === item.id}
@@ -287,11 +303,12 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
           <PreviewVisibilityToggle />
         </div>)}
         <div className="character-equip" data-controller-row>
-          <p role="status">{status === "error" ? message : status === "saving" || status === "pending" ? "Saving…" : "Changes save automatically."}</p>
+          <p role="status">{status === "error" ? message : status === "saving" || status === "pending" ? "Saving…" : status === "saved" ? "Saved to your profile." : "Changes save automatically."}</p>
           {status === "error" && <>
             <button type="button" className="menu-control" onClick={() => void flush()}>Retry</button>
             <button type="button" className="menu-control" onClick={() => {
-              queued.current = null;
+              queued.current.clear();
+              drafts.current.clear();
               if (acknowledged.current) setChoice(acknowledged.current);
               setStatus("idle");
             }}>Revert unsaved</button>

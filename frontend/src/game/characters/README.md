@@ -2,12 +2,11 @@
 
 Heroes and Garage use the portrait at the right of the header to open Character.
 The editor previews changes on the same turntable as the vehicle. New profiles
-confirm a character model before editing. Identity saves Male, Female, or
-Nonbinary independently of that model. The server saves identity, appearance,
-and prop edits automatically. Earlier profiles with a
-character keep their saved gender and use default appearance values as needed.
-You can preview emotes before confirming a gender. After setup, the Emotes
-tab can compare both rigs without changing the equipped driver.
+confirm a character model before editing. During alpha, Appearance, Identity,
+and Emotes can switch between male and female models. Each model keeps its own
+saved outfit and appearance. Identity saves Male, Female, or Nonbinary
+independently of the equipped model. The server saves edits automatically,
+and the editor keeps pending changes through a reconnect to the same profile.
 
 Vesper's desktop garage uses the full `villager-female.glb`. The compact
 garage and portrait share the same geometry with smaller textures. The

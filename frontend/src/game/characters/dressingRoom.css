@@ -18,6 +18,7 @@
   touch-action: pan-y;
 }
 .dressing-categories { grid-area: 2 / 1 / -1 / 2; padding: 12px 7px; border-radius: 16px 0 0; }
+.dressing-categories > .character-outfits { margin-bottom: 8px; }
 .dressing-heading { padding: 2px 7px 9px; }
 .dressing-heading small, .dressing-catalog-heading small, .dressing-mirror-label small {
   display: block;

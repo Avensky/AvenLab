@@ -1,5 +1,6 @@
 import {Box3,Group,Matrix4,Mesh,Vector3,type Object3D} from "three";
 import type {VehicleStudioPart} from "../heroes/vehicleStudioStore";
+import {AE_HINGE} from "../../vehicles/tools/roadLamps";
 
 export type VehiclePartHinge={part:VehicleStudioPart;pivot:Group;axis:"x"|"y"|"z";closed:number;open:number;angle:number};
 const rules:Partial<Record<VehicleStudioPart,RegExp>>={
@@ -16,7 +17,17 @@ function boundsInRoot(root:Object3D,objects:Object3D[]){
 }
 function meshCandidates(root:Object3D,part:VehicleStudioPart){
  const pattern=rules[part];if(!pattern)return [] as Mesh[];const found:Mesh[]=[];
- root.traverse(object=>{if((object as Mesh).isMesh&&pattern.test(object.name)&&!/(?:sticker|decal|latch|arm|frame)$/i.test(object.name))found.push(object as Mesh);});
+ root.traverse(object=>{
+  if (!(object instanceof Mesh)) return;
+  // The AE86 lid is a GLTF group with several material primitives.
+  if (part === "headlights") {
+   for (let node: Object3D | null = object; node && node !== root; node = node.parent) {
+    if (pattern.test(node.name)) { found.push(object); break; }
+   }
+  } else if (pattern.test(object.name) && !/(?:sticker|decal|latch|arm|frame)$/i.test(object.name)) {
+   found.push(object);
+  }
+ });
  return found;
 }
 export function measureDriverDoor(root: Object3D, model?: string) {
@@ -72,6 +83,11 @@ export function createVehiclePartRig(root:Group,model:string):VehiclePartHinge[]
  for(const part of ["door-left","door-right","hood","trunk","headlights"] as const){
   if(part==="headlights"&&model!=="ae86")continue;
   const objects=meshCandidates(root,part);if(!objects.length)continue;
+  if (part === "headlights") {
+   const hinge = moveUnderPivot(root, objects, new Vector3(...AE_HINGE), part, "x", -Math.PI / 3);
+   if (hinge) hinges.push(hinge);
+   continue;
+  }
   const bounds=boundsInRoot(root,objects),center=bounds.getCenter(new Vector3()),point=center.clone();let axis:"x"|"y"|"z"="y",angle=0;
   if(part==="door-left"||part==="door-right"){
    point[longAxis]=frontSign<0?bounds.min[longAxis]:bounds.max[longAxis];
@@ -81,16 +97,15 @@ export function createVehiclePartRig(root:Group,model:string):VehiclePartHinge[]
    axis=widthAxis;
    if(part==="hood"){point[longAxis]=frontSign<0?bounds.max[longAxis]:bounds.min[longAxis];angle=frontSign*Math.PI/5;}
    else if(part==="trunk"){point[longAxis]=frontSign<0?bounds.min[longAxis]:bounds.max[longAxis];angle=-frontSign*Math.PI/5;}
-   else {point[longAxis]=frontSign<0?bounds.min[longAxis]:bounds.max[longAxis];angle=frontSign*Math.PI/4;}
   }
   const hinge=moveUnderPivot(root,objects,point,part,axis,angle);if(hinge)hinges.push(hinge);
  }
  return hinges;
 }
 
-export function advanceVehiclePartRig(hinges:VehiclePartHinge[],parts:Record<VehicleStudioPart,boolean>,delta:number,controlled?:VehicleStudioPart){
+export function advanceVehiclePartRig(hinges:VehiclePartHinge[],parts:Record<VehicleStudioPart,boolean>,delta:number,controlled?:VehicleStudioPart,headlights=parts.headlights){
  const blend=1-Math.exp(-Math.max(0,delta)*8);
- for(const hinge of hinges){if(hinge.part===controlled)continue;const target=parts[hinge.part]?hinge.open:hinge.closed;hinge.angle+= (target-hinge.angle)*blend;hinge.pivot.rotation[hinge.axis]=hinge.angle;}
+ for(const hinge of hinges){if(hinge.part===controlled)continue;const opened=hinge.part==="headlights"?headlights:parts[hinge.part];const target=opened?hinge.open:hinge.closed;hinge.angle+= (target-hinge.angle)*blend;hinge.pivot.rotation[hinge.axis]=hinge.angle;}
 }
 
 export function availableVehicleParts(hinges:VehiclePartHinge[]){return new Set(hinges.map(hinge=>hinge.part));}

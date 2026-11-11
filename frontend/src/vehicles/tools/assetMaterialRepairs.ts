@@ -4,9 +4,24 @@ import { MeshPhysicalMaterial, MeshStandardMaterial, type Material } from 'three
  * leaves these surfaces at glTF's white/metallic defaults; authored textures
  * and deliberately colored materials must remain intact. */
 export function repairAe86Material(material: Material) {
-  if (!(material instanceof MeshStandardMaterial) || material.map ||
+  if (!(material instanceof MeshStandardMaterial) ||
       Math.min(material.color.r,material.color.g,material.color.b)<.95) return;
   const name=material.name.replace(/\.\d+$/,'');
+  // The shipped wheel is an opaque leather hub and rim exported in BLEND
+  // mode, with a single white texel instead of the original wheel texture.
+  const image = material.map?.image as { width?: number; height?: number } | undefined;
+  if (name === "SteeringWheel" && (!material.map || image?.width === 1 && image?.height === 1)) {
+    material.color.set("#292a2d");
+    material.roughness = .78;
+    material.metalness = 0;
+    material.transparent = false;
+    material.opacity = 1;
+    material.alphaTest = 0;
+    material.depthWrite = true;
+    material.needsUpdate = true;
+    return;
+  }
+  if (material.map) return;
   const surfaces: Record<string,[string,number,number]> = {
     TireMaterial:['#191b1e',.92,0], RimMaterial:['#858b94',.4,.8],
     'Brake Disc':['#898e94',.48,.8], BrakeCaliper:['#555c65',.5,.45],

@@ -12,13 +12,13 @@ import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 import { GarageEnvironment } from "./GarageEnvironment";
 import { PreviewTurntable } from "./PreviewTurntable";
 import { DEFAULT_PREVIEW_PLATFORM } from "./previewPlacement";
-import { useSocialStore } from "../../store/social/socialStore";
+import { selectEquippedCharacter, useSocialStore } from "../../store/social/socialStore";
 import { clothingFrame } from "../characters/clothingFraming";
 import { DEFAULT_CHARACTER, type CharacterChoice } from "../characters/characterCatalog";
 import { CHARACTER_ZOOM_MAX, CHARACTER_ZOOM_MIN, failCockpitPreview, useCharacterPreviewStore } from "../characters/characterPreviewStore";
 import { HEROES, useAlphaStore } from "../../store/alpha/alphaStore";
 import { PREVIEW_ZOOM_LEVELS, usePreviewZoom } from "./previewZoomStore";
-import { PreviewLoadingSeal } from "./PreviewLoadingSeal";
+import { PreviewLoadingStatus } from "./PreviewLoadingSeal";
 import { isCompactPreview } from "./previewBudget";
 import { garageCamera, useGarageDrive } from "./garageDriveStore";
 import { GARAGE_STATIONS } from "./garageStations";
@@ -68,13 +68,14 @@ export function VehiclePreview({
   const mode = useAlphaStore(s => s.mode);
   const favorite = useSelectionStore(s => s.getSelectedVehicle().id);
   const workshop = screen === "heroes";
-  const garageOpen = useVehicleStudioStore(s => workshop && !wardrobeOpen && s.activeTab !== null && s.activeTab !== "abilities");
+  const garageTab = useVehicleStudioStore(s => s.activeTab);
+  const garageOpen = workshop && !wardrobeOpen && garageTab !== null;
   const garageView = useGarageDrive(s => garageOpen ? garageCamera(s) : "Showroom");
   const stationActive = useGarageDrive(s => garageOpen && s.stage !== "idle");
   const zoom = usePreviewZoom(s => !wardrobeOpen && (workshop || screen === "hero_select") ? PREVIEW_ZOOM_LEVELS[s.level] : 1);
   const sandboxPicker = screen === "hero_select" && mode === "sandbox";
   const driverStage = workshop || ["mode_select", "hero_select", "queue", "sandbox_setup", "signal_recon_setup"].includes(screen);
-  const equipped = useSocialStore(s => driverStage ? s.view?.profile.progression?.character : null);
+  const equipped = useSocialStore(s => driverStage ? selectEquippedCharacter(s) : null);
   const savedHero = useSocialStore(s => workshop ? s.view?.profile.progression?.default_hero : undefined);
   const driver = driverStage ? characterDraft ?? equipped ?? DEFAULT_CHARACTER : null;
   const selected = HEROES.find(hero => hero.id === (picked ?? savedHero))?.vehicle;
@@ -117,7 +118,7 @@ export function VehiclePreview({
     ? Math.max(52, verticalFov(95))
     : driverStage && aspect >= 1 ? Math.max(33, verticalFov(75)) : Math.max(60, verticalFov(75));
   const cameraPosition = driverStage ? DRIVER_STAGE_CAMERA : STANDARD_STAGE_CAMERA;
-  useLayoutEffect(() => { requestFrame(); }, [width, height, driverStage, heroLayout, sandboxPicker, wardrobeOpen, workshop, zoom, reducedMotion, requestFrame, garageView]);
+  useLayoutEffect(() => { requestFrame(); }, [width, height, driverStage, heroLayout, sandboxPicker, wardrobeOpen, workshop, zoom, reducedMotion, requestFrame, garageView, garageTab]);
   useLayoutEffect(() => useCharacterPreviewStore.subscribe(() => requestFrame()), [requestFrame]);
   useFrame(({ frameloop, invalidate, scene }, delta) => {
     const camera = cameraRef.current;
@@ -195,7 +196,8 @@ export function VehiclePreview({
       }
     }
     const area = wardrobeOpen && !insideCar ? useCharacterPreviewStore.getState().viewport : null;
-    const offsetX = area?.width ? width / 2 - (area.left + area.width / 2) : width * (sandboxPicker ? .15 : workshop && !wardrobeOpen && !closeShot ? .07 : 0);
+    const garageOffset = workshop && !wardrobeOpen && !closeShot && garageTab !== "abilities" ? .07 : 0;
+    const offsetX = area?.width ? width / 2 - (area.left + area.width / 2) : width * (sandboxPicker ? .15 : garageOffset);
     const offsetY = area?.height ? height / 2 - (area.top + area.height / 2) : wardrobeOpen ? height * .055 : heroLayout && aspect < 1 ? -height * .04 : 0;
     const firstFrame = initializedCamera.current !== camera;
     initializedCamera.current = camera;
@@ -228,7 +230,7 @@ export function VehiclePreview({
     <>
       <GarageEnvironment turntable={turntable} onPlatformReady={setPlatform} accentOverride={selectionAccent}
         allowLoad={!waitingForCar} onSettled={roomSettled} />
-      {loadLabel && <PreviewLoadingSeal label={loadLabel} />}
+      {loadLabel && <PreviewLoadingStatus label={loadLabel} />}
       <PerspectiveCamera
         ref={cameraRef}
         makeDefault

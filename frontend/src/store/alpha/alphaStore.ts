@@ -139,6 +139,8 @@ export type Progression = {
   default_hero?: string;
   hero_loadouts?: Record<string,HeroAppearance>;
   character?: CharacterChoice | null;
+  character_presets?: Record<string, CharacterChoice>;
+  cosmetics_revision?: number;
   level: number;
   prestige: number;
   xp: number;

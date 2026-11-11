@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { useUIStore, type MenuScreen, type UIOverlay } from "../../store/menus/uiStore";
 import { useInputStore } from "../../store/input/inputStore";
 import { useBuilderStore } from "../state/builderStore";
-import { useSocialStore } from "../../store/social/socialStore";
+import { selectEquippedCharacter, useSocialStore } from "../../store/social/socialStore";
 import { characterLook, DEFAULT_CHARACTER, type CharacterChoice } from "../../game/characters/characterCatalog";
 import { useFittingTurnStore } from "../../game/characters/fittingControlsStore";
 import { useCharacterPreviewStore } from "../../game/characters/characterPreviewStore";
@@ -30,7 +30,7 @@ export const useCharacterEditorStore = create<{
 export function openCharacterEditor() {
   const ui = useUIStore.getState(), builder = useBuilderStore.getState();
   if (builder.workspace === "character" && (ui.screen === "world_builder" || ui.overlay === "world_builder")) return;
-  const saved = useSocialStore.getState().view?.profile.progression?.character;
+  const saved = selectEquippedCharacter(useSocialStore.getState());
   useInputStore.getState().releaseControls();
   useFittingTurnStore.setState({ characterYaw: 0, dragging: false });
   useCharacterEditorStore.setState({

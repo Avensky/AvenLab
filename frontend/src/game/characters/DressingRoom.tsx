@@ -48,7 +48,7 @@ function WardrobeIcon({ name }: { name: Icon }) {
 type Item = { id: string; label: string; section: string; icon: Icon; selected?: boolean; detail?: string; disabled?: boolean; color?: string; accent?: string; choose?: () => void };
 
 /** One live scene; browsing the catalog never changes or saves the equipped look. */
-export function DressingRoom({ choice, onChange }: { choice: CharacterChoice; onChange: (choice: CharacterChoice) => void }) {
+export function DressingRoom({ choice, onChange, modelControls }: { choice: CharacterChoice; onChange: (choice: CharacterChoice) => void; modelControls?: ReactNode }) {
   const [category, setCategory] = useState<Category>("outfits");
   const [search, setSearch] = useState("");
   const [readyOnly, setReadyOnly] = useState(false);
@@ -159,6 +159,7 @@ export function DressingRoom({ choice, onChange }: { choice: CharacterChoice; on
     <ClothingColorToolbar choice={choice} onChange={onChange} />
     <nav className="dressing-categories" aria-label="Dressing room categories">
       <header className="dressing-heading"><small>YOUR WARDROBE</small><h2>Dressing room</h2></header>
+      {modelControls}
       {CATEGORIES.map((item, index) => <div key={item.id}>
         {(index === 0 || item.group !== CATEGORIES[index - 1].group) && <h3 className="dressing-group-label">{item.group}</h3>}
         <div data-controller-row><button type="button" className="dressing-category menu-control" data-category={item.id} aria-pressed={category === item.id}
