@@ -1,3 +1,5 @@
+import { CharacterEditorPanel } from "../characterEditor/CharacterEditorPanel";
+import { useCharacterEditorStore } from "../characterEditor/characterEditorStore";
 import { MenuLogo } from "../../components/menus/MenuLogo";
 import { kitAsset } from "../mapKit/catalog";
 import { ExcavationTools } from './ExcavationTools';
@@ -821,10 +823,13 @@ export function WorldBuilderPanel({
   modelReference?: boolean;
 }) {
   const workspace = useBuilderStore((s) => s.workspace);
-  if (workspace === "vehicle") return <VehicleEditorPanel />;
-  return workspace === "colliders" ? (
+  const returnWorkspace = useCharacterEditorStore(s => s.returnTo?.workspace);
+  const keepVehicle = workspace === "vehicle" || (workspace === "character" && returnWorkspace === "vehicle");
+  return <>
+    {keepVehicle && <div hidden={workspace !== "vehicle"} inert={workspace !== "vehicle"}><VehicleEditorPanel suspended={workspace !== "vehicle"} /></div>}
+    {workspace === "character" ? <CharacterEditorPanel /> : workspace === "vehicle" ? null : workspace === "colliders" ? (
     <CollisionBuilderPanel planOnly={planOnly || !modelReference} />
   ) : (
     <LayoutPanel planOnly={planOnly} modelReference={modelReference} />
-  );
+  )}</>;
 }

@@ -1,5 +1,9 @@
+import type { MirrorCheckFit } from "./mirrorCheck";
+import { CharacterTurntable } from "./CharacterTurntable";
+import { usesFittedAnimation } from "./animationFit";
+import { clothingColors } from "./clothingPieces";
 import { Suspense, useEffect, useLayoutEffect, useMemo } from "react";
-import { useGLTF } from "@react-three/drei";
+import { Html, useGLTF } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { AssetBoundary } from "../../components/debugger/AssetBoundary";
 import { ROOK_ID, VILLAGER_ID, characterLook, type CharacterChoice, type CharacterLook } from "./characterCatalog";
@@ -23,14 +27,15 @@ function MissingVillager({ cockpit }: { cockpit?: GarageCockpit }) {
   return null;
 }
 
-function VillagerDriver({ url, look, bag, previewPacks, leanFit, victory, cockpit }: {
-  url: string; look: CharacterLook; bag: boolean; previewPacks?: boolean; leanFit?: GarageLeanFit; victory?: VictoryPlayback; cockpit?: GarageCockpit;
+function VillagerDriver({ url, look, bag, previewPacks, leanFit, mirrorFit, victory, cockpit }: {
+  url: string; look: CharacterLook; bag: boolean; previewPacks?: boolean; leanFit?: GarageLeanFit; mirrorFit?: MirrorCheckFit; victory?: VictoryPlayback; cockpit?: GarageCockpit;
 }) {
   const { scene } = useGLTF(url);
   const femaleWithBag = look.female && bag;
   const wetEyes = !victory;
-  const model = useMemo(() => prepareVillager(scene, { female: look.female, animateFace: true, bag: femaleWithBag, wetEyes }),
-    [scene, look.female, femaleWithBag, wetEyes]);
+  const fitted = usesFittedAnimation(look);
+  const model = useMemo(() => prepareVillager(scene, { female: look.female, animateFace: true, bag: femaleWithBag, wetEyes, fitted }),
+    [scene, look.female, femaleWithBag, wetEyes, fitted]);
   const invalidate = useThree(s => s.invalidate);
   useEffect(() => model.dispose, [model]);
   useLayoutEffect(() => {
@@ -38,32 +43,34 @@ function VillagerDriver({ url, look, bag, previewPacks, leanFit, victory, cockpi
     invalidate();
   }, [model, look, invalidate]);
 
-  return <GarageEmotePlayer root={model.root} bag={bag} previewPacks={previewPacks} leanFit={leanFit} victory={victory} cockpit={cockpit} />;
+  return <GarageEmotePlayer root={model.root} bag={bag} personality={look.appearance.personality} bagColors={clothingColors(look, "bag")} previewPacks={previewPacks} leanFit={leanFit} mirrorFit={mirrorFit} victory={victory} cockpit={cockpit} />;
 }
 
-export function GarageDriver({ choice, previewPacks, leanFit, victory, cockpit }: {
-  choice: CharacterChoice; previewPacks?: boolean; leanFit?: GarageLeanFit; victory?: VictoryPlayback; cockpit?: GarageCockpit;
+export function GarageDriver({ choice, previewPacks, leanFit, mirrorFit, victory, cockpit, upright = false }: {
+  choice: CharacterChoice; previewPacks?: boolean; leanFit?: GarageLeanFit; mirrorFit?: MirrorCheckFit; victory?: VictoryPlayback; cockpit?: GarageCockpit; upright?: boolean;
 }) {
   const look = useMemo(() => characterLook(choice), [choice]);
   const compact = useThree(s => isCompactPreview(s.size.width));
   if (!look) return null;
   const bag = choice.prop === "shop-bag";
   const coatFitsLean = choice.id === ROOK_ID && (choice.outfit === "night-run" || choice.outfit === "race-crew");
-  const fallback = choice.id === VILLAGER_ID ? <MissingVillager cockpit={cockpit} /> :
-    <group name="garage-driver" rotation={DRIVER_TILT}><StylizedDriver look={look} bag={bag} previewPacks={previewPacks} victory={victory} cockpit={cockpit} /></group>;
-  const url = villagerModelUrl(look, compact && choice.id === VILLAGER_ID && !victory ? "portrait" : "garage");
+  const fallback = choice.id === VILLAGER_ID ? upright
+    ? <Html center><p className="menu-control">Character model unavailable. Install the character assets with Git LFS.</p></Html>
+    : <MissingVillager cockpit={cockpit} /> :
+    <group name="garage-driver" rotation={upright ? [0, 0, 0] : DRIVER_TILT}><StylizedDriver look={look} bag={bag} previewPacks={previewPacks} mirrorFit={mirrorFit} victory={victory} cockpit={cockpit} /></group>;
+  const url = villagerModelUrl(look, compact && choice.id === VILLAGER_ID ? "portrait" : "garage");
   return (
-    <>
+    <CharacterTurntable enabled={Boolean(previewPacks)}>
       {url
         ? <AssetBoundary key={url} fallback={fallback}>
             <Suspense fallback={victory ? <CharacterLoadingEffect /> : <PreviewLoadingStatus label="Loading driver" />}>
-              <group name="garage-driver" rotation={DRIVER_TILT}>
+              <group name="garage-driver" rotation={upright ? [0, 0, 0] : DRIVER_TILT}>
                 <VillagerDriver url={url} look={look} bag={bag} previewPacks={previewPacks}
-                  leanFit={coatFitsLean ? leanFit : undefined} victory={victory} cockpit={cockpit} />
+                  leanFit={coatFitsLean ? leanFit : undefined} mirrorFit={mirrorFit} victory={victory} cockpit={cockpit} />
               </group>
             </Suspense>
           </AssetBoundary>
         : fallback}
-    </>
+    </CharacterTurntable>
   );
 }

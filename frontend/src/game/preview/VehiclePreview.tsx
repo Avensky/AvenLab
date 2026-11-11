@@ -13,6 +13,7 @@ import { GarageEnvironment } from "./GarageEnvironment";
 import { PreviewTurntable } from "./PreviewTurntable";
 import { DEFAULT_PREVIEW_PLATFORM } from "./previewPlacement";
 import { useSocialStore } from "../../store/social/socialStore";
+import { clothingFrame } from "../characters/clothingFraming";
 import { DEFAULT_CHARACTER, type CharacterChoice } from "../characters/characterCatalog";
 import { CHARACTER_ZOOM_MAX, CHARACTER_ZOOM_MIN, failCockpitPreview, useCharacterPreviewStore } from "../characters/characterPreviewStore";
 import { HEROES, useAlphaStore } from "../../store/alpha/alphaStore";
@@ -72,7 +73,7 @@ export function VehiclePreview({
   const stationActive = useGarageDrive(s => garageOpen && s.stage !== "idle");
   const zoom = usePreviewZoom(s => !wardrobeOpen && (workshop || screen === "hero_select") ? PREVIEW_ZOOM_LEVELS[s.level] : 1);
   const sandboxPicker = screen === "hero_select" && mode === "sandbox";
-  const driverStage = workshop || sandboxPicker;
+  const driverStage = workshop || ["mode_select", "hero_select", "queue", "sandbox_setup", "signal_recon_setup"].includes(screen);
   const equipped = useSocialStore(s => driverStage ? s.view?.profile.progression?.character : null);
   const savedHero = useSocialStore(s => workshop ? s.view?.profile.progression?.default_hero : undefined);
   const driver = driverStage ? characterDraft ?? equipped ?? DEFAULT_CHARACTER : null;
@@ -100,6 +101,7 @@ export function VehiclePreview({
     position: new Vector3(), target: new Vector3(), offset: new Vector3(), scale: new Vector3(),
     pivot: new Vector3(), eye: new Vector3(), nextEye: new Vector3(),
     anchorRotation: new Quaternion(), orbit: new Quaternion(), swing: new Quaternion(), lookAt: new Matrix4(),
+    itemKey: "", itemCenter: new Vector3(), itemDistance: 1,
     anchors: new Map<string, Object3D>(), cameraMin: new Vector3(), cameraMax: new Vector3(),
   }), []);
   const [turntable, setTurntable] = useState<Group | null>(null);
@@ -116,6 +118,7 @@ export function VehiclePreview({
     : driverStage && aspect >= 1 ? Math.max(33, verticalFov(75)) : Math.max(60, verticalFov(75));
   const cameraPosition = driverStage ? DRIVER_STAGE_CAMERA : STANDARD_STAGE_CAMERA;
   useLayoutEffect(() => { requestFrame(); }, [width, height, driverStage, heroLayout, sandboxPicker, wardrobeOpen, workshop, zoom, reducedMotion, requestFrame, garageView]);
+  useLayoutEffect(() => useCharacterPreviewStore.subscribe(() => requestFrame()), [requestFrame]);
   useFrame(({ frameloop, invalidate, scene }, delta) => {
     const camera = cameraRef.current;
     if (!camera || !width || !height) return;
@@ -146,17 +149,33 @@ export function VehiclePreview({
         const eyeHeight = view.camera === "Face" ? 1.56 : view.camera === "Hands" ? 1.12 : .9;
         const distance = view.camera === "Face" ? .52 : view.camera === "Hands" ? 1.95 : 4.25;
         const scale = anchor.getWorldScale(aim.scale).y;
-        const radius = distance * scale / MathUtils.clamp(view.zoom, CHARACTER_ZOOM_MIN, CHARACTER_ZOOM_MAX);
+        let radius = distance * scale / MathUtils.clamp(view.zoom, CHARACTER_ZOOM_MIN, CHARACTER_ZOOM_MAX);
+        if (view.camera !== "Selected item") radius *= Math.max(1, height / Math.max(1, view.viewport?.height || height) * .72);
         anchor.getWorldPosition(target);
         target.setY(target.y + eyeHeight * scale);
-        if (view.camera === "Face") {
+        if (view.camera === "Selected item") {
+          const key = [anchor.uuid, anchor.children[0]?.uuid, view.focusRevision, view.selectedPiece, driver?.wardrobe?.set, driver?.wardrobe?.shirt, driver?.wardrobe?.waist, driver?.appearance?.glasses, width, height, view.viewport?.width, view.viewport?.height].join(":");
+          if (aim.itemKey !== key) {
+            const area = view.viewport;
+            const shot = clothingFrame(anchor, view.selectedPiece, fov, area?.width && area.height ? area.width / area.height : aspect);
+            // Keep the selected region attached to the stage, not to the rotating clothing.
+            aim.itemCenter.copy(shot.center);
+            anchor.parent!.parent!.worldToLocal(aim.itemCenter);
+            aim.itemDistance = shot.distance * height / Math.max(1, area?.height || height);
+            aim.itemKey = key;
+          }
+          anchor.parent!.parent!.localToWorld(target.copy(aim.itemCenter));
+          radius = aim.itemDistance / MathUtils.clamp(view.zoom, CHARACTER_ZOOM_MIN, CHARACTER_ZOOM_MAX);
+          anchor.parent!.parent!.getWorldQuaternion(anchorRotation);
+          offset.set(0, radius * .06, radius).applyQuaternion(anchorRotation);
+        } else if (view.camera === "Face") {
           const focus = findPreviewAnchor(aim.anchors, anchor, "villager-face-focus");
           const head = focus ?? findPreviewAnchor(aim.anchors, anchor, "head");
           if (head) {
             head.getWorldPosition(target);
             if (!focus) target.setY(target.y + .035 * scale);
           }
-          anchor.getWorldQuaternion(anchorRotation);
+          (anchor.parent?.parent ?? anchor).getWorldQuaternion(anchorRotation);
           offset.set(0, radius * .13, radius).applyQuaternion(anchorRotation);
         } else {
           offset.set(radius * .14, radius * .08, radius);
@@ -175,8 +194,9 @@ export function VehiclePreview({
         boundedCamera = true;
       }
     }
-    const offsetX = width * (sandboxPicker ? .15 : workshop && !wardrobeOpen && !closeShot ? .07 : 0);
-    const offsetY = wardrobeOpen ? height * .055 : heroLayout && aspect < 1 ? -height * .04 : 0;
+    const area = wardrobeOpen && !insideCar ? useCharacterPreviewStore.getState().viewport : null;
+    const offsetX = area?.width ? width / 2 - (area.left + area.width / 2) : width * (sandboxPicker ? .15 : workshop && !wardrobeOpen && !closeShot ? .07 : 0);
+    const offsetY = area?.height ? height / 2 - (area.top + area.height / 2) : wardrobeOpen ? height * .055 : heroLayout && aspect < 1 ? -height * .04 : 0;
     const firstFrame = initializedCamera.current !== camera;
     initializedCamera.current = camera;
     const blend = firstFrame || reducedMotion ? 1 : 1 - Math.exp(-(closeShot ? 2.8 : 4.5) * Math.min(delta, .1));

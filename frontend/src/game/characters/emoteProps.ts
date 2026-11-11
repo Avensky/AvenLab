@@ -4,10 +4,11 @@ import {
 } from "three";
 import type { Palm, XYZ } from "./garageEmotes";
 
-export type EmoteProp = "map" | "binoculars" | "compass" | "collectible" | "controller" | "headphones" | "phone" | "tablet" | "keyboard" | "gauge" | "cloth" | "flag";
+export type EmoteProp = "lipstick" | "map" | "binoculars" | "compass" | "collectible" | "controller" | "headphones" | "phone" | "tablet" | "keyboard" | "gauge" | "cloth" | "flag";
 
 type Grip = { wrist: XYZ; palm: Palm };
 export const EMOTE_PROP_GRIPS: Record<EmoteProp, readonly [Grip | null, Grip | null]> = {
+  lipstick: [null, { wrist: [-.015, -.035, -.015], palm: [[0, 1, 0], [1, 0, 0]] }],
   map: [
     { wrist: [.151, -.036, -.026], palm: [[-.48, .23, .85], [-.87, -.12, -.47]] },
     { wrist: [-.151, -.036, -.026], palm: [[.48, .23, .85], [.87, -.12, -.47]] },
@@ -64,6 +65,11 @@ export function createEmoteProp(kind: EmoteProp) {
   const disk = (radius: number, depth: number, color: string, at: XYZ) =>
     mesh(root, new CylinderGeometry(radius, radius, depth, 12), color, at);
   switch (kind) {
+    case "lipstick":
+      disk(.008, .034, "#25232d", [0, -.017, 0]);
+      disk(.0085, .007, "#c7a372", [0, .003, 0]);
+      disk(.0055, .017, "#a83b58", [0, .014, 0]);
+      break;
     case "map": {
       for (const side of [1, -1]) {
         const panel = new Group();

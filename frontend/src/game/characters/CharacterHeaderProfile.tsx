@@ -12,8 +12,8 @@ export function CharacterHeaderProfile({ onOpen, showProgress = false }: {
   const portrait = <span className="character-header-portrait"><CharacterPortrait choice={choice} compact /></span>;
   if (onOpen) return (
     <div data-controller-row>
-      <button type="button" className="character-header-profile" data-open-character onClick={onOpen}>
-        <span className="character-header-info">{name}</span>
+      <button type="button" className="character-header-profile" data-open-character data-selection-action aria-label="Edit character" title="Edit character" onClick={onOpen}>
+        <span className="character-header-info">{showProgress ? <ProgressBadge compact /> : name}</span>
         {portrait}
       </button>
     </div>

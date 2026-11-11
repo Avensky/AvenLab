@@ -3,7 +3,8 @@ import { useMemo, useState } from "react";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 import { GarageDriver } from "../characters/GarageDriver";
 import type { VictoryPlayback } from "../characters/GarageEmotePlayer";
-import { VILLAGER_ID, type CharacterChoice } from "../characters/characterCatalog";
+import { VILLAGER_ID, characterLook, type CharacterChoice } from "../characters/characterCatalog";
+import { villagerModelUrl } from "../characters/villagerModel";
 
 export default function VictoryPreview({ choice }: { choice: CharacterChoice }) {
   const reducedMotion = usePreferencesStore(state => state.reducedMotion);
@@ -11,7 +12,8 @@ export default function VictoryPreview({ choice }: { choice: CharacterChoice }) 
   const [playing, setPlaying] = useState(true);
   const victory = useMemo<VictoryPlayback>(() => ({ id: "011", onFinish: () => setPlaying(false) }), []);
 
-  if (choice.id === VILLAGER_ID && !__VILLAGER_MODEL_URL__) {
+  const look = characterLook(choice);
+  if (choice.id === VILLAGER_ID && (!look || !villagerModelUrl(look))) {
     return <p role="status">Install the Village Woman GLB to preview this celebration.</p>;
   }
 

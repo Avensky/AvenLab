@@ -75,6 +75,15 @@
 }
 @media(prefers-reduced-motion:reduce){.hero-main-halo{transform:none;}}
 
-.hero-workshop .garage-hide-toggle{position:fixed;right:10px;top:calc(var(--angled-tabs-height,44px) + 8px);z-index:42;width:32px;height:30px;display:grid;place-items:center;padding:0;pointer-events:auto;}
+.hero-workshop .garage-hide-toggle{position:static;flex:none;width:32px;height:30px;min-height:30px;display:grid;place-items:center;padding:0;pointer-events:auto;}
 .hero-workshop.hero-workshop--hidden{visibility:hidden;pointer-events:none;}
 .hero-workshop--hidden .garage-hide-toggle{visibility:visible;pointer-events:auto;}
+
+.hero-workshop .character-controls--bottom { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); }
+.hero-workshop .character-controls--bottom .character-camera { grid-column:2; align-items:center; }
+.hero-workshop .character-controls--bottom .character-equip { grid-column:3; justify-content:flex-end; }
+@media(max-width:600px) {
+ .hero-workshop .character-controls--bottom { grid-template-columns:minmax(0,1fr) auto; }
+ .hero-workshop .character-controls--bottom .character-camera { grid-column:1; justify-content:center; }
+ .hero-workshop .character-controls--bottom .character-equip { grid-column:2; }
+}

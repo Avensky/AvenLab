@@ -12,7 +12,7 @@ import {
   type Triple,
 } from "../document/mapDocument";
 type BuilderState = {
-  workspace: "layout" | "colliders" | "vehicle";
+  workspace: "layout" | "colliders" | "vehicle" | "character";
   presentation: "workspace" | "hud";
   doc: MapDocument | null;
   saved: MapDocument | null;

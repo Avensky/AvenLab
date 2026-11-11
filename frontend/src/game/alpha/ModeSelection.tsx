@@ -1,3 +1,4 @@
+import { openCharacterEditor } from "../../worldBuilder/characterEditor/characterEditorStore";
 import { useConnectionView } from "../../store/session/networkViews";
 import { CharacterHeaderProfile } from "../characters/CharacterHeaderProfile";
 import { SceneTabHeader } from "../../components/menus/SceneTabHeader";
@@ -147,6 +148,12 @@ export function ModeSelection() {
           buttons[index<0?0:(index+step+buttons.length)%buttons.length]?.focus();return;
         }
       }
+      if (["up", "down"].includes(action) && root.current) {
+        const actions = [...root.current.querySelectorAll<HTMLButtonElement>("[data-selection-action]:not(:disabled), [data-match-size]:not(:disabled)")];
+        const index = actions.indexOf(document.activeElement as HTMLButtonElement);
+        actions[(index + (action === "up" ? -1 : 1) + actions.length) % actions.length]?.focus({ preventScroll: true });
+        return;
+      }
       if(isMatchMode(mode)&&["up","down","left","right"].includes(action)){
         const cards=[...root.current?.querySelectorAll<HTMLButtonElement>('[data-match-size]:not(:disabled)')??[]];
         const index=cards.indexOf(document.activeElement as HTMLButtonElement),step=action==="up"||action==="left"?-1:1;
@@ -190,7 +197,7 @@ export function ModeSelection() {
       <SceneTabHeader
         title={play ? "PLAY" : "EXPLORE"}
         compact
-        actions={<CharacterHeaderProfile showProgress />}
+        actions={<CharacterHeaderProfile showProgress onOpen={busy ? undefined : openCharacterEditor} />}
         busy={busy}
         tablistLabel="Game mode"
         tablistClassName="alpha-mode-tabs"

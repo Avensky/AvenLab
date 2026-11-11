@@ -6,6 +6,7 @@ import { COCKPIT_TAKES, type CockpitTake } from "../characters/cockpitEmotes";
 import { unlockVehicleAudio } from "../../audio/sharedAudio";
 import { useVehicleStudioStore } from "../heroes/vehicleStudioStore";
 import { PreviewZoom } from "./PreviewZoom";
+import { PreviewVisibilityToggle } from "./PreviewVisibilityToggle";
 
 const stageLabel: Record<DriveStage, string> = {
   idle: "", station: "At the controls", opening: "Opening door", entering: "Getting in", closing: "Closing door",
@@ -51,6 +52,7 @@ export function GaragePreviewControls({ vehicle }: { vehicle: VehicleModelId }) 
           {COCKPIT_TAKES.filter(take => take.id.startsWith("drive-")).map(take =>
             <option key={take.id} value={take.id}>{take.name}</option>)}
         </select>}
+      <PreviewVisibilityToggle />
     </div>
   </div>;
 }

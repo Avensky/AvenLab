@@ -25,6 +25,17 @@ export function repairSupraHighlights(material: Material) {
   if (!(material instanceof MeshStandardMaterial)) return;
   const name=material.name.toLowerCase();
   if(/window|glass|mirror|lightg_material/.test(name))return;
+  // These Forza-style body textures store surface data in alpha. Treating that
+  // channel as transparency reveals the exhaust through the painted rear shell.
+  // Grille cutouts, badges, lamp lenses and actual windows keep their own alpha.
+  if (/(?:painttnr|base|carbon\d*|coloured|speculartintg)_material/i.test(name)) {
+    material.transparent = false;
+    material.opacity = 1;
+    material.alphaTest = 0;
+    material.alphaMap = null;
+    material.depthWrite = true;
+    if (material instanceof MeshPhysicalMaterial) material.transmission = 0;
+  }
   material.roughness=Math.max(material.roughness,.28);
   if(material instanceof MeshPhysicalMaterial) {
     material.specularColor.setRGB(Math.min(1,material.specularColor.r),Math.min(1,material.specularColor.g),Math.min(1,material.specularColor.b));

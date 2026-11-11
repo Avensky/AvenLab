@@ -1,3 +1,4 @@
+import { fittedArmTarget, fittedHandTarget } from "./animationFit";
 import {
   AnimationClip, Bone, BooleanKeyframeTrack, Euler, NumberKeyframeTrack, Quaternion, QuaternionKeyframeTrack, Vector3, VectorKeyframeTrack,
   type Object3D,
@@ -253,6 +254,7 @@ export function driverHand(root: Object3D, side: "l" | "r") {
 }
 
 export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?: ReadonlyMap<EmoteProp, EmotePropModel>) {
+  const fitted = root.userData.fittedClothing === true;
   const torso = root.getObjectByName("spine_02");
   const head = root.getObjectByName("head");
   const left = driverArm(root, "l");
@@ -357,10 +359,10 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
       root.position.copy(basePosition);
       tilt(torso, pose.torso);
       tilt(head, pose.head);
-      arms(left, pose.left);
-      arms(right, pose.right);
-      hands(left, right, pose.leftHand, 1, pose.elbowsBack, !!pose.leftPalm);
-      hands(right, left, pose.rightHand, -1, pose.elbowsBack, !!pose.rightPalm);
+      arms(left, fitted ? fittedArmTarget(pose.left) : pose.left);
+      arms(right, fitted ? fittedArmTarget(pose.right) : pose.right);
+      hands(left, right, fitted ? fittedHandTarget(pose.leftHand) : pose.leftHand, 1, pose.elbowsBack, !!pose.leftPalm);
+      hands(right, left, fitted ? fittedHandTarget(pose.rightHand) : pose.rightHand, -1, pose.elbowsBack, !!pose.rightPalm);
       orientPalm(handRigs[0], pose.leftPalm);
       orientPalm(handRigs[1], pose.rightPalm);
       // Solve the wrists against the prop frame so the same hand grips fit
@@ -476,7 +478,7 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
         // at the same point on both imported rigs.
         const tipOffset = rightRig.fingertip.getWorldPosition(new Vector3()).sub(rightRig.hand.getWorldPosition(new Vector3()));
         const goal = head.localToWorld(lipAnchor.clone()).add(lipClearance).sub(tipOffset);
-        hands(right, left, pose.rightHand, -1, false, true, goal);
+        hands(right, left, fitted ? fittedHandTarget(pose.rightHand) : pose.rightHand, -1, false, true, goal);
         orientPalm(rightRig, pose.rightPalm);
       }
       root.position.add(new Vector3(pose.sway ?? 0, pose.rise ?? 0, pose.travel ?? 0).applyQuaternion(rest[0]));

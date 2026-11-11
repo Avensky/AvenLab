@@ -270,6 +270,10 @@ export async function loadStandaloneBuilder() {
   await switchBuilderWorld(mapId);
 }
 export function closeWorldBuilder() {
+  if (useBuilderStore.getState().workspace === "character") {
+    window.dispatchEvent(new Event("avenlab:character-editor-close"));
+    return;
+  }
   request++;
   rememberWorld();
   const layout = useLayoutStore.getState();

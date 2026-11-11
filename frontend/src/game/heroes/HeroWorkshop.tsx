@@ -16,6 +16,7 @@ import {HoldMainButton} from "./HoldMainButton";
 import {SelectionFooter,SelectionHeader} from "../alpha/SelectionChrome";
 import {CHARACTER_TABS,CharacterPage,type CharacterTab} from "../characters/CharacterPage";
 import {PreviewZoom} from "../preview/PreviewZoom";
+import {PreviewVisibilityToggle} from "../preview/PreviewVisibilityToggle";
 import {GaragePreviewControls} from "../preview/GaragePreviewControls";
 import {useGarageDrive} from "../preview/garageDriveStore";
 import {CharacterHeaderProfile} from "../characters/CharacterHeaderProfile";
@@ -241,14 +242,6 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  </>;
  const currentFooter=studioTab==="performance"?studioFooter:studioTab==="body"?bodyFooter:studioTab==="lighting"?lightingFooter:null;
  return <section ref={root} className={`game-ui menu-surface alpha-selection hero-selection hero-workshop${panelsHidden?" hero-workshop--hidden":""}${viewingReference?" hero-ability-guide":""}`} data-character-page={characterOpen||undefined} inert={overlay!==null} tabIndex={-1} aria-label={characterOpen?"Character":"Heroes garage"} data-controller-form data-controller-rows>
-  <button type="button" className="menu-control garage-hide-toggle" aria-label={panelsHidden?"Show interface":"Hide interface"}
-    aria-pressed={panelsHidden} title={panelsHidden?"Show interface":"Hide interface"}
-    onClick={()=>useGarageDrive.setState({panelsHidden:!panelsHidden})}>
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>
-      {panelsHidden&&<path d="m4 3 16 18"/>}
-    </svg>
-  </button>
   {characterOpen?characterReady?<SceneTabHeader title="CHARACTER" compact tabs={CHARACTER_TABS} activeTab={characterTab}
     onTabChange={id=>setCharacterTab(id as CharacterTab)} idPrefix="character-editor" panelId="character-editor-panel"/>
     :<SelectionHeader title="CHARACTER" compact/>:editing&&definition
@@ -285,7 +278,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
         </div>
       </section>
         {status!=="idle"&&<div className="hero-collection-save-status" role="status">{status==="error"?`NOT SAVED · ${message}`:status==="saved"?"SAVED TO YOUR PLAYER":"SAVING YOUR STYLE…"}{status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}</div>}
-        {definition&&<PreviewZoom/>}
+        {definition&&<PreviewZoom visibilityToggle/>}
     </div>
     <HeroRoster showFilters={false} allowBoats selected={hero} main={main} filter={role} busy={!owner} onChoose={openHero} onFilter={setRole}/>
    </div>}
@@ -375,6 +368,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
     {status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}
    </VehicleStudio>}
    {editing&&definition&&studioTab!=="abilities"&&<GaragePreviewControls vehicle={definition.vehicle}/>}
+   {((characterOpen&&!characterReady)||viewingConcepts||(editing&&studioTab==="abilities")||(!characterOpen&&!definition))&&<div className="hero-garage-zoom" data-controller-row><PreviewVisibilityToggle/></div>}
   </div>
   <SelectionFooter tabs={!characterOpen||characterReady} selectLabel={editing&&studioTab==="abilities"?"Toggle":undefined} hasPrimaryAction={!characterOpen&&(!editing||studioTab!=="abilities")} backAction={{onClick:()=>void back(),label:"Back"}}>{!characterOpen&&<div className="hero-workshop-actions">
    {!viewingReference&&<ControllerAction button="A" type="button" className="menu-control" disabled={!owner} tabIndex={-1} onClick={()=>editing?setPage("heroes"):openHero()}>{editing?"APPLY":"OPEN GARAGE"}</ControllerAction>}

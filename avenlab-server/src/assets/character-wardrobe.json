@@ -1,0 +1,7 @@
+[
+  { "id": "gothic-01", "name": "Laced bodice", "requiresShirt": false },
+  { "id": "gothic-02", "name": "Sweetheart corset", "requiresShirt": false },
+  { "id": "gothic-03", "name": "Ruffled corset", "requiresShirt": false },
+  { "id": "gothic-04", "name": "Underbust vest", "requiresShirt": true },
+  { "id": "gothic-05", "name": "High-collar corset", "requiresShirt": false }
+]

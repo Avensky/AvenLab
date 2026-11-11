@@ -2,16 +2,21 @@
 import { execFile } from "node:child_process";
 import { resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
 import { defineConfig, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 import { findVillagerModel, hasCharacterModel } from "./scripts/character-model-paths.mts";
+const wardrobeSets: { id: string }[] = JSON.parse(readFileSync(new URL("../avenlab-server/src/assets/character-wardrobe.json", import.meta.url), "utf8"));
 
-const bagFolder = "/models/characters/props/bag-black-gold";
+const dressingRoomImports: { id: string; url: string }[] = JSON.parse(readFileSync(new URL("./src/game/characters/dressingRoomImports.json", import.meta.url), "utf8"));
+const bagFolder = "/models/characters/female/props/bag-black-gold";
 const bagModelUrl = [
   `${bagFolder}/bag-black-gold-mobile.glb`,
   `${bagFolder}/bag-black-gold-garage.glb`,
+  "/models/characters/props/bag-black-gold/bag-black-gold-mobile.glb",
+  "/models/characters/props/bag-black-gold/bag-black-gold-garage.glb",
   "/models/characters/shop-bag.glb",
 ].find(url => hasCharacterModel(new URL(`./public${url}`, import.meta.url)));
 function characterLod(asset: ReturnType<typeof findVillagerModel>, kind: "garage" | "portrait") {
@@ -25,6 +30,10 @@ const vesperModelUrl = vesper?.sourceUrl ?? (vesper && hasCharacterModel(vesper.
 
 export default defineConfig({
   define: {
+    __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(dressingRoomImports.filter(item => hasCharacterModel(new URL(`./public${item.url}`, import.meta.url))).map(item => item.id)),
+    __WARDROBE_SET_IDS__: JSON.stringify(wardrobeSets.filter(({ id }) =>
+      ["garage", "mobile"].every(kind => hasCharacterModel(new URL(`./public/models/characters/wardrobe/${id}.${kind}.glb`, import.meta.url))),
+    ).map(({ id }) => id)),
     __CHARACTER_BAG_URL__: JSON.stringify(bagModelUrl ?? null),
     __VILLAGER_MODEL_URL__: JSON.stringify(vesperModelUrl),
     __VILLAGER_PORTRAIT_URL__: JSON.stringify(characterLod(vesper, "portrait") ?? vesperModelUrl),

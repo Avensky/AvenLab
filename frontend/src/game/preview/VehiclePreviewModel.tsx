@@ -1,3 +1,4 @@
+import { nearestSideMirror, type MirrorCheckFit } from "../characters/mirrorCheck";
 import { FACTORY_APPEARANCE, useHeroLoadouts } from "../../vehicles/cosmetics/heroLoadouts";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useGLTF } from "@react-three/drei";
@@ -224,6 +225,15 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
   const driverAcross = staging.edge * display.scale + display.position[0] + staging.side * (.27 - inset) * driverScale;
   // Vehicles without an authored front door still stage beside the front seat.
   const driverAlong = staging.along === undefined ? display.footprint[1] * .12 : staging.along * display.scale + display.position[2];
+  const mirrorFit = useMemo<MirrorCheckFit | undefined>(() => {
+    if (!previewPacks || !driverReady || station.kind !== "wheel" || staging.along === undefined) return undefined;
+    const from = new Vector3(staging.edge + staging.side * (.27 - inset), measurements.support.min.y, staging.along);
+    const mirror = nearestSideMirror(prepared.root, station, measurements.bounds, from);
+    if (!mirror) return undefined;
+    const across = -staging.side * (mirror.z - from.z);
+    if (Math.abs(across) > 1.4) return undefined;
+    return { across, forward: .12, side: staging.side, gaze: Math.max(.15, Math.min(.65, Math.atan2(1.48 - (mirror.y - from.y), .5))) };
+  }, [previewPacks, driverReady, station, staging, inset, measurements, prepared]);
   const cameraRig = useMemo(() => {
     const size = measurements.bounds.getSize(new Vector3());
     const center = measurements.bounds.getCenter(new Vector3());
@@ -256,7 +266,7 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
       {driver && <group position={[driverAcross, .023, driverAlong]} scale={driverScale} rotation={[0, staging.side * Math.PI / 2, 0]}>
         {driverReady ? <>
           <group name="garage-driver-shadow"><PreviewContactShadow footprint={[.55, .46]} offset={[0, 0]} /></group>
-          <GarageDriver choice={driver} previewPacks={previewPacks} leanFit={lean} cockpit={cockpit} />
+          <GarageDriver choice={driver} previewPacks={previewPacks} leanFit={lean} mirrorFit={mirrorFit} cockpit={cockpit} />
         </> : null}
       </group>}
       <PreviewContactShadow

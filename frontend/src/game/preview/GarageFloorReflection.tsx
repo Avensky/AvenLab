@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import { useThree } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import {
   LinearMipmapLinearFilter,
   PlaneGeometry,
@@ -18,7 +18,7 @@ import {
 } from "./garageFloorEffects";
 
 // One shared planar capture avoids recursive floor/platform mirror renders.
-// World-space tiles and the machined platform stay fixed as the vehicle turns.
+// World-space square tiles stay fixed; only the softer platform finish rotates.
 const floorShader = {
   name: "GarageBlackTiles",
   uniforms: {
@@ -27,6 +27,7 @@ const floorShader = {
     tDiffuse: { value: null },
     textureMatrix: { value: null },
     platformRadius: { value: 0 },
+    platformAngle: { value: 0 },
     reflectionStrength: { value: 1 },
     reflectionBlur: { value: 0.25 },
     perimeterBounds: { value: new Vector4() },
@@ -49,6 +50,7 @@ const floorShader = {
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse;
     uniform float platformRadius;
+    uniform float platformAngle;
     uniform float reflectionStrength;
     uniform float reflectionBlur;
     uniform vec4 perimeterBounds;
@@ -59,10 +61,9 @@ const floorShader = {
     #include <fog_pars_fragment>
     void main() {
       vec2 uv = vReflection.xy / vReflection.w;
-      vec2 local = vFloor;
-      vec2 edgePoint = abs(local);
-      float edgeValue = max(dot(edgePoint, vec2(0.9238795, 0.3826834)),
-        dot(edgePoint, vec2(0.3826834, 0.9238795))) - platformRadius * 0.9238795;
+      float c = cos(platformAngle), s = sin(platformAngle);
+      vec2 local = vec2(c * vFloor.x - s * vFloor.y, s * vFloor.x + c * vFloor.y);
+      float edgeValue = length(local) - platformRadius;
       float edgeAA = max(fwidth(edgeValue), 0.015);
       float platform = 1.0 - smoothstep(-edgeAA, edgeAA, edgeValue);
       // Trilinear mip sampling softens the pad with one texture lookup.
@@ -85,10 +86,14 @@ const floorShader = {
       float trim = showPerimeter * smoothstep(-trimAA, trimAA, wallEdge)
         * (1.0 - smoothstep(0.55 - trimAA, 0.55 + trimAA, wallEdge));
       tileColor = mix(tileColor, vec3(0.085, 0.09, 0.10) + reflection * 0.28, trim);
-      float brush = sin(local.y * 440.0 + sin(local.x * 17.0)) * 0.004;
-      vec3 padColor = vec3(0.085, 0.098, 0.112) + brush + reflection * 0.46;
-      float bevel = 1.0 - smoothstep(0.012, 0.045, abs(edgeValue));
-      padColor = mix(padColor, vec3(0.14, 0.16, 0.18) + reflection * 0.22, bevel);
+      vec3 padColor = vec3(0.005, 0.005, 0.006) + reflection * 0.75;
+      // Circular perimeter with alternating theme, amber and cool-white cues.
+      float edgeDistance = platformRadius - length(local);
+      float rimAA = max(fwidth(edgeDistance), 0.004);
+      float rim = 1.0 - smoothstep(0.018 - rimAA, 0.018 + rimAA, abs(edgeDistance));
+      float sector = mod(floor((atan(local.y, local.x) + 3.1415926) * 12.0 / 6.2831852), 3.0);
+      vec3 rimColor = sector < 1.0 ? vec3(0.08, 0.72, 0.82) : sector < 2.0 ? vec3(0.92, 0.48, 0.08) : vec3(0.62, 0.8, 0.88);
+      padColor = mix(padColor, padColor * 0.55 + rimColor * 0.45, rim);
       gl_FragColor = vec4(mix(tileColor, padColor, platform), 1.0);
       #include <tonemapping_fragment>
       #include <colorspace_fragment>
@@ -100,6 +105,7 @@ const floorShader = {
 export function GarageFloorReflection({
   width,
   depth,
+  turntable,
   perimeter,
 }: {
   width: number;
@@ -153,6 +159,11 @@ export function GarageFloorReflection({
   useLayoutEffect(() => {
     configureGarageFloor(floor, settings);
   }, [floor, settings]);
+  useFrame(() => {
+    const material = floorRef.current?.material as ShaderMaterial | undefined;
+    if (material)
+      material.uniforms.platformAngle.value = turntable?.rotation.y ?? 0;
+  });
   useEffect(
     () => () => {
       floor.dispose();
