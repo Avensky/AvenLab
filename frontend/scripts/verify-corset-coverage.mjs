@@ -23,13 +23,51 @@ function visibleIndices(mesh) {
   return index.array.subarray(drawRange.start, drawRange.start + drawRange.count);
 }
 
-export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGaragePreviewEmote) {
+function posedSurface(mesh) {
+  return new MeshBVH(new BufferGeometry()
+    .setAttribute('position', new Float32BufferAttribute(posedVertices(mesh), 3))
+    .setIndex(Array.from(visibleIndices(mesh))));
+}
+
+function tuckSamples(bindBody, triangle, center) {
+  const regions = { skirt: [], hem: [], corset: [] };
+  const points = bindBody.getAttribute('position').array;
+  const indices = bindBody.index.array;
+  for (let i = 0; i < indices.length; i += 3) {
+    const face = indices.subarray(i, i + 3);
+    triangle(points, face);
+    if (Math.abs(center.x) > .155 || center.y <= 1.052 || center.y >= 1.19) continue;
+    regions[center.y < 1.085 ? 'skirt' : center.y < 1.114 ? 'hem' : 'corset'].push(face);
+  }
+  return regions;
+}
+
+function verifyTuckPose(label, samples, points, triangle, center, normal, ray, skirts, corsets) {
+  const firstHit = (surfaces) => Math.min(...surfaces.map(surface => surface.raycastFirst(ray, DoubleSide)?.distance ?? Infinity));
+  for (const [zone, faces] of Object.entries(samples)) {
+    assert(faces.length > 0, `${label} samples the tucked ${zone}`);
+    for (const face of faces) {
+      triangle(points, face);
+      if (Math.abs(normal.y) > .90) continue;
+      ray.origin.copy(center).addScaledVector(normal, .08);
+      ray.direction.copy(normal).negate();
+      const skirt = firstHit(skirts), corset = firstHit(corsets);
+      assert(Math.min(skirt, corset) < .0794, `${label} ${zone} sits outside the unmasked body`);
+      if (zone === 'skirt' || (zone === 'hem' && skirt < .08 && corset < .08)) assert(skirt < corset, `${label} skirt covers the tucked hem`);
+      if (zone === 'corset') assert(corset < skirt, `${label} shows the lower corset above the skirt`);
+    }
+  }
+}
+
+export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGaragePreviewEmote, tuckBindBody) {
   const body = root.getObjectByName('BODY_WARDROBE');
-  const corset = [];
+  const corset = [], skirt = [];
   root.traverse(mesh => {
-    if (!mesh.isSkinnedMesh || mesh.userData.clothingPiece !== 'corset') return;
+    if (!mesh.isSkinnedMesh) return;
+    const piece = mesh.userData.clothingPiece;
+    if (piece !== 'corset' && !(tuckBindBody && piece === 'skirt')) return;
     for (let part = mesh; part; part = part.parent) if (!part.visible) return;
-    corset.push(mesh);
+    (piece === 'corset' ? corset : skirt).push(mesh);
   });
   const a = new Vector3(), b = new Vector3(), c = new Vector3(), center = new Vector3(), normal = new Vector3();
   function triangle(points, [i, j, k]) {
@@ -47,9 +85,12 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
     for (const [zone, faces] of Object.entries(samples)) if (zones[zone](center, normal)) faces.push(face);
   }
   for (const [zone, faces] of Object.entries(samples)) assert(faces.length > 0, `${label} samples ${zone}`);
+  const tuck = tuckBindBody && tuckSamples(tuckBindBody, triangle, center);
 
   const mixer = new AnimationMixer(root), ray = new Ray();
-  for (const [pose, phase] of [['idle', 0], ['013', .45], ['008', .5], ['010', .5]]) {
+  const poses = [['idle', 0], ['013', .45], ['008', .5], ['010', .5]];
+  if (tuck) poses.push(['009', .5]);
+  for (const [pose, phase] of poses) {
     const emote = pose === 'idle' ? undefined : findGaragePreviewEmote(pose, false);
     if (pose !== 'idle') assert(emote, `${pose} is available for coverage verification`);
     const clip = emote && buildEmoteClips(root, [emote])[0];
@@ -58,9 +99,7 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
     if (clip) mixer.setTime(clip.duration * phase);
     root.updateMatrixWorld(true);
     const points = posedVertices(body);
-    const shapes = corset.map(mesh => new MeshBVH(new BufferGeometry()
-      .setAttribute('position', new Float32BufferAttribute(posedVertices(mesh), 3))
-      .setIndex(Array.from(visibleIndices(mesh)))));
+    const shapes = corset.map(posedSurface);
     for (const [zone, faces] of Object.entries(samples)) {
       for (const face of faces) {
         triangle(points, face);
@@ -69,6 +108,7 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
         assert(shapes.some(surface => (surface.raycastFirst(ray, DoubleSide)?.distance ?? Infinity) < .100001), `${label} ${pose} leaves ${zone} exposed`);
       }
     }
+    if (tuck) verifyTuckPose(`${label} ${pose}`, tuck, points, triangle, center, normal, ray, skirt.map(posedSurface), shapes);
     action?.stop();
     if (clip) mixer.uncacheClip(clip);
   }

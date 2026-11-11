@@ -46,16 +46,18 @@ try{
    const skirt=model.root.getObjectByName('CLOTH_BOTTOM_SKIRT');
    const materials=[];
    skirt.traverse(part=>{if(part.isMesh)materials.push(part.material.name);});
-   assert.deepEqual(materials,['MAT_GOTHIC_02_Fabric_0','MAT_GOTHIC_02_WaistSeam'],'Sweetheart skirt keeps its fabric and a narrow matching waist seam');
-   const seam=skirt.getObjectByName('CLOTH_GOTHIC_02_WAIST_SEAM');
-   seam.geometry.computeBoundingBox();
-   assert(seam.geometry.boundingBox.max.y<1.11,'the waist seam cannot cover the corset midsection');
+   assert.deepEqual(materials,['MAT_GOTHIC_02_Fabric_0','MAT_GOTHIC_02_WaistSeam','MAT_GOTHIC_02_WaistSeam'],'Sweetheart skirt keeps its fabric and a matching seam per fit');
+   for(const fit of ['TUCKED','OVER']){
+    const seam=skirt.getObjectByName(`CLOTH_GOTHIC_02_WAIST_SEAM_${fit}`);
+    seam.geometry.computeBoundingBox();
+    assert(seam.geometry.boundingBox.max.y<1.12,'the waist seam cannot cover the corset midsection');
+   }
    facing.geometry.computeBoundingBox();
    assert(facing.geometry.boundingBox.min.y>1.25,'Sweetheart cup backing stops above the waist');
    assert(facing.geometry.boundingBox.min.z>.06,'Sweetheart cup backing stays in front');
   }
-  // Changing an individual panel pulled welded seams out of shape. The fitted
-  // coverage belongs to a separate primitive, with the authored shell intact.
+  // Keep authored UVs and rigging. Sweetheart's tucked torso moves as a whole
+  // across materials, and its cups and over-skirt version retain the source fit.
   for(const name of ['CLOTH_CORSET_TUCKED','CLOTH_CORSET_OVER']){
    const authored=scene.getObjectByName(name), fitted=model.root.getObjectByName(name);
    authored.traverse(source=>{
@@ -63,7 +65,17 @@ try{
     const target=fitted.getObjectByName(source.name);
     assert(target?.isSkinnedMesh);
     for(const attribute of ['position','normal','uv','skinIndex','skinWeight']){
+     if(n===2&&name==='CLOTH_CORSET_TUCKED'&&attribute==='position')continue;
      assert.deepEqual(target.geometry.getAttribute(attribute)?.array,source.geometry.getAttribute(attribute)?.array,`${set} ${lod} ${source.name} ${attribute} stays authored`);
+    }
+    if(n===2&&name==='CLOTH_CORSET_TUCKED'){
+     const before=source.geometry.getAttribute('position'),after=target.geometry.getAttribute('position');
+     assert.equal(after.count,before.count);
+     for(let i=0;i<after.count;i++){
+      assert.equal(after.getY(i),before.getY(i),'tucked refit preserves hem and cup height');
+      if(before.getY(i)>=1.238){assert.equal(after.getX(i),before.getX(i));assert.equal(after.getZ(i),before.getZ(i));}
+      else assert(Math.hypot(after.getX(i)-before.getX(i),after.getZ(i)-before.getZ(i))<=.011001,'tucked refit is bounded');
+     }
     }
    });
   }
@@ -98,7 +110,9 @@ try{
    const look=characterLook({...DEFAULT_CHARACTER,wardrobe:{set,shirt:'none',waist}});applyVillagerLook(model,look);
    assert.equal(shorts.visible,false,'complete Gothic outfits hide the standalone shorts');
    if(facing)assert(facing.visible);
-   if(n!==3)verifyCorsetCoverage(model.root,`${set} ${lod} ${waist}`,n,buildEmoteClips,findGaragePreviewEmote);
+   if(n===2)for(const fit of ['tucked','over'])assert.equal(model.root.getObjectByName(`CLOTH_GOTHIC_02_WAIST_SEAM_${fit.toUpperCase()}`).visible,fit===waist);
+   const tuckBindBody=n===2&&waist==='tucked'?scene.getObjectByName('BODY_WARDROBE').geometry:undefined;
+   if(n!==3)verifyCorsetCoverage(model.root,`${set} ${lod} ${waist}`,n,buildEmoteClips,findGaragePreviewEmote,tuckBindBody);
    let triangles=0,draws=0;
    model.root.traverse(o=>{if(!o.isMesh)return;for(let a=o;a;a=a.parent)if(!a.visible)return;const g=o.geometry;triangles+=Math.min(g.drawRange.count,g.index?.count??g.attributes.position.count)/3;draws+=Array.isArray(o.material)?g.groups.length:1;});
    counts.push({shirt:look.wardrobe.shirt,waist,triangles,draws});

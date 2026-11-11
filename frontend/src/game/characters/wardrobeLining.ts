@@ -1,22 +1,11 @@
 import { DoubleSide, MathUtils, Mesh, MeshStandardMaterial, SkinnedMesh, type BufferGeometry, type Object3D } from "three";
 import { fitHighCollarSurface } from "./highCollarFit";
+import { fitLacedBodiceStraps } from "./lacedStrapFit";
+import { fitSweetheartTuck } from "./sweetheartTuck";
 import { fitUnderbustChest } from "./underbustFit";
 import { fitWardrobeSurface } from "./wardrobeSurface";
 
 type CorsetStyle = "01" | "02" | "03" | "04" | "05";
-
-/** Back the small spot where skin crosses the original left rear strap in motion. */
-function fitLacedRearStrap(body: BufferGeometry) {
-  return fitWardrobeSurface(body, [
-    point => point.y - 1.337,
-    point => 1.38 - point.y,
-    point => -.05 - point.z,
-    point => {
-      const center = MathUtils.lerp(.114, .108, MathUtils.smoothstep(point.y, 1.337, 1.38));
-      return .014 - Math.abs(point.x - center);
-    },
-  ], .0035);
-}
 
 /** Back the two cups while leaving the lace opening, waist, and back clear. */
 function fitSweetheartCups(body: BufferGeometry) {
@@ -62,12 +51,14 @@ export function prepareWardrobeLining(root: Object3D) {
   const style = fabric?.name.match(/^MAT_CORSET_(0[1-5])_/u)?.[1] as CorsetStyle | undefined;
   if (!fabric || !style) return;
   if (style === "04") body.userData.wardrobeBackOpening = true;
-  const geometry = style === "01" ? fitLacedRearStrap(body.geometry)
+  const straps = style === "01" ? fitLacedBodiceStraps(root, body.geometry) : undefined;
+  const disposeFit = style === "02" ? fitSweetheartTuck(corset) : straps?.disposeShell;
+  const geometry = style === "01" ? straps?.geometry
     : style === "02" ? fitSweetheartCups(body.geometry)
     : style === "04" ? fitUnderbustChest(body)
     : style === "05" ? fitHighCollarSurface(body.geometry)
     : fitRuffledNeckline(body.geometry);
-  if (!geometry) return;
+  if (!geometry) return disposeFit;
 
   const material = new MeshStandardMaterial({
     name: "MAT_CORSET_FACING", color: fabric.color, roughness: style === "03" ? .91 : fabric.roughness, side: DoubleSide,
@@ -83,5 +74,6 @@ export function prepareWardrobeLining(root: Object3D) {
     facing.removeFromParent();
     geometry.dispose();
     material.dispose();
+    disposeFit?.();
   };
 }

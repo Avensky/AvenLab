@@ -1,28 +1,36 @@
-import { DoubleSide, MathUtils, MeshStandardMaterial, SkinnedMesh, type Object3D } from "three";
+import { DoubleSide, MathUtils, MeshStandardMaterial, SkinnedMesh, type Object3D, type Vector3 } from "three";
 import { fitWardrobeSurface } from "./wardrobeSurface";
 
 function finishSweetheartWaist(root: Object3D, skirt: Object3D, fabric: MeshStandardMaterial) {
   const body = root.getObjectByName("BODY_WARDROBE");
   if (!(body instanceof SkinnedMesh)) return;
-  const geometry = fitWardrobeSurface(body.geometry, [
-    point => point.y - 1.049,
-    point => 1.105 - point.y,
-    point => .141 - Math.abs(point.x),
-  ], .003);
-  if (!geometry) return;
+  const boundaries = [
+    (point: Vector3) => point.y - 1.049,
+    (point: Vector3) => 1.105 - point.y,
+    (point: Vector3) => .141 - Math.abs(point.x),
+  ];
+  const over = fitWardrobeSurface(body.geometry, boundaries, .003);
+  const tucked = fitWardrobeSurface(body.geometry, boundaries, point => .003 + .009 * MathUtils.smoothstep(point.y, 1.06, 1.092));
+  if (!over || !tucked) { over?.dispose(); tucked?.dispose(); return; }
 
   const material = new MeshStandardMaterial({
     name: "MAT_GOTHIC_02_WaistSeam", color: fabric.color, roughness: fabric.roughness,
     metalness: fabric.metalness, side: DoubleSide,
   });
   material.userData.color_slot = "fabric";
-  const seam = body.clone(false);
-  seam.name = "CLOTH_GOTHIC_02_WAIST_SEAM";
-  seam.userData = { clothingPiece: "skirt" };
-  seam.geometry = geometry;
-  seam.material = material;
-  skirt.add(seam);
-  return () => { seam.removeFromParent(); geometry.dispose(); material.dispose(); };
+  const seams = ([["tucked", tucked], ["over", over]] as const).map(([fit, geometry]) => {
+    const seam = body.clone(false);
+    seam.name = `CLOTH_GOTHIC_02_WAIST_SEAM_${fit.toUpperCase()}`;
+    seam.userData = { clothingPiece: "skirt", wardrobeRole: `bottom-seam-${fit}` };
+    seam.geometry = geometry;
+    seam.material = material;
+    skirt.add(seam);
+    return seam;
+  });
+  return () => {
+    for (const seam of seams) { seam.removeFromParent(); seam.geometry.dispose(); }
+    material.dispose();
+  };
 }
 
 /** Keep the skirt fabric and remove the obsolete Sweetheart bodice and its lacing. */
