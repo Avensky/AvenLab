@@ -118,6 +118,8 @@ export function prepareWardrobeGarments(
     for (const piece of wardrobeGarmentReplacements.top) replacements.add(piece);
   }
   let top = Boolean(corset), skirt = false;
+  let tucksHair = false;
+  let scalpCap = false;
   let skirtRadius: number | undefined;
   for (const { item, scene, authoredFit } of sources) {
     if (replacesVillagerBody(item.slot) && !full?.getIndex()) continue;
@@ -155,6 +157,10 @@ export function prepareWardrobeGarments(
       garment.add(mesh);
     });
     if (!garmentMeshes.length) continue;
+    if (item.slot === "hat") {
+      tucksHair ||= Boolean(item.tucksHair);
+      scalpCap ||= Boolean(item.scalpCap);
+    }
     if (item.id === "socks-04") tallSocks.push(...garmentMeshes);
     const skirtBody = full && !authoredFit && item.slot === "skirt" && item.id.startsWith("gothic-skirt-") ? bodySurface(full) : undefined;
     const skirtSurfaces = skirtBody ? garmentMeshes.filter(isFabric).flatMap(mesh => bodySurface(mesh.geometry) ?? []) : [];
@@ -202,6 +208,8 @@ export function prepareWardrobeGarments(
   let maskedWaist: string | undefined;
   let socksFitted = false;
   return {
+    tucksHair,
+    scalpCap,
     apply(look: CharacterLook) {
       const corsetWaist = look.corset?.waist ?? "tucked";
       const waist = `${corset ? corsetWaist : look.wardrobe?.waist ?? "original"}:${look.overEase}`;

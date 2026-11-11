@@ -44,6 +44,8 @@ export function setWardrobeRemoval(choice: CharacterChoice, slot: WardrobeRemova
 type WardrobeGarment = {
   id: string; label: string; section: string; category: string; slot: WardrobeGarmentSlot;
   piece: ClothingPiece; url: string; mobileUrl?: string; revisionUrl?: string; retired?: boolean;
+  tucksHair?: boolean;
+  scalpCap?: boolean;
 };
 
 export const importedWardrobeItems = (importedItems as WardrobeGarment[]).filter(item => !item.retired);

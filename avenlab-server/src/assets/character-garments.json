@@ -127,6 +127,83 @@
     "mobileUrl": "/models/characters/female/wardrobe/hats/hat-02-beanie.mobile.glb"
   },
   {
+    "id": "hood-01",
+    "label": "Medieval Hood 01",
+    "category": "headwear",
+    "url": "/models/characters/female/wardrobe/hats/hood-01.garage.glb",
+    "section": "Medieval hoods",
+    "slot": "hat",
+    "piece": "hat",
+    "mobileUrl": "/models/characters/female/wardrobe/hats/hood-01.mobile.glb",
+    "tucksHair": true
+  },
+  {
+    "id": "hood-02",
+    "label": "Medieval Hood 02",
+    "category": "headwear",
+    "url": "/models/characters/female/wardrobe/hats/hood-02.garage.glb",
+    "section": "Medieval hoods",
+    "slot": "hat",
+    "piece": "hat",
+    "mobileUrl": "/models/characters/female/wardrobe/hats/hood-02.mobile.glb",
+    "tucksHair": true
+  },
+  {
+    "id": "hood-03",
+    "label": "Medieval Hood 03",
+    "category": "headwear",
+    "url": "/models/characters/female/wardrobe/hats/hood-03.garage.glb",
+    "section": "Medieval hoods",
+    "slot": "hat",
+    "piece": "hat",
+    "mobileUrl": "/models/characters/female/wardrobe/hats/hood-03.mobile.glb",
+    "tucksHair": true
+  },
+  {
+    "id": "hood-04",
+    "label": "Medieval Hood 04",
+    "category": "headwear",
+    "url": "/models/characters/female/wardrobe/hats/hood-04.garage.glb",
+    "section": "Medieval hoods",
+    "slot": "hat",
+    "piece": "hat",
+    "mobileUrl": "/models/characters/female/wardrobe/hats/hood-04.mobile.glb",
+    "tucksHair": true
+  },
+  {
+    "id": "hood-05",
+    "label": "Medieval Hood 05",
+    "category": "headwear",
+    "url": "/models/characters/female/wardrobe/hats/hood-05.garage.glb",
+    "section": "Medieval hoods",
+    "slot": "hat",
+    "piece": "hat",
+    "mobileUrl": "/models/characters/female/wardrobe/hats/hood-05.mobile.glb",
+    "tucksHair": true
+  },
+  {
+    "id": "hood-06",
+    "label": "Medieval Hood 06",
+    "category": "headwear",
+    "url": "/models/characters/female/wardrobe/hats/hood-06.garage.glb",
+    "section": "Medieval hoods",
+    "slot": "hat",
+    "piece": "hat",
+    "mobileUrl": "/models/characters/female/wardrobe/hats/hood-06.mobile.glb",
+    "tucksHair": true
+  },
+  {
+    "id": "hood-07",
+    "label": "Medieval Hood 07 (Down)",
+    "category": "headwear",
+    "url": "/models/characters/female/wardrobe/hats/hood-07.garage.glb",
+    "section": "Medieval hoods",
+    "slot": "hat",
+    "piece": "hat",
+    "mobileUrl": "/models/characters/female/wardrobe/hats/hood-07.mobile.glb",
+    "scalpCap": true
+  },
+  {
     "id": "socks-01",
     "label": "Socks 01",
     "category": "footwear",

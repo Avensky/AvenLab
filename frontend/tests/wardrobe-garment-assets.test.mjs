@@ -22,6 +22,9 @@ const bundledDir = 'models/characters/wardrobe/';
 const catalog = JSON.parse(await readFile(new URL('../../avenlab-server/src/assets/character-garments.json', import.meta.url), 'utf8'));
 const wardrobeSets = JSON.parse(await readFile(new URL('../../avenlab-server/src/assets/character-wardrobe.json', import.meta.url), 'utf8'));
 const garmentFiles = catalog.flatMap(item => [item.url, item.mobileUrl].filter(Boolean).map(url => url.slice(1)));
+const hoodIds = Array.from({ length: 7 }, (_, index) => `hood-0${index + 1}`);
+const hoodFiles = new Set(catalog.filter(item => hoodIds.includes(item.id))
+  .flatMap(item => [item.url.slice(1), item.mobileUrl.slice(1)]));
 const rigTolerance = 2e-5;
 const isLfsPointer = bytes => bytes.subarray(0, 64).toString().startsWith('version https://git-lfs.github.com/spec/v1');
 
@@ -29,6 +32,7 @@ test('each loose female garment and its available model tiers are in the wardrob
   const families = { top: 5, skirt: 4, 'gothic-skirt': 5, coat: 1, dress: 1, hat: 2, socks: 4, bowtie: 14, harness: 5 };
   const ids = Object.entries(families).flatMap(([family, count]) =>
     Array.from({ length: count }, (_, index) => `${family}-${String(index + 1).padStart(2, '0')}`));
+  ids.push(...hoodIds);
   assert.deepEqual(catalog.map(item => item.id).sort(), ids.sort());
   for (const item of catalog) {
     assert(item.url.startsWith(`/${garmentDir}`), item.id);
@@ -39,8 +43,9 @@ test('each loose female garment and its available model tiers are in the wardrob
   const files = await readdir(new URL(garmentDir, publicDir), { recursive: true });
   const imports = files.map(file => file.replaceAll('\\', '/')).filter(file => file.endsWith('.glb')
     && file !== 'vesper-body.glb' && !file.startsWith('corsets/') && !file.startsWith('corsettes/'));
-  assert.deepEqual(garmentFiles.toSorted(), imports.map(file => garmentDir + file).sort());
-  assert.equal(new Set(garmentFiles).size, 49);
+  const installed = new Set(imports.map(file => garmentDir + file));
+  assert.deepEqual(garmentFiles.filter(file => !hoodFiles.has(file) || installed.has(file)).sort(), [...installed].sort());
+  assert.equal(new Set(garmentFiles).size, garmentFiles.length);
 });
 
 test('both glasses sit close to the nose and eyes on the authored character heads', async t => {
@@ -153,6 +158,36 @@ test('the Village bonnet can keep its crown without its chin bow', async t => {
   } finally {
     await vite.close();
   }
+});
+
+test('medieval hoods replace the bonnet while keeping the outfit and stored hairstyle', async t => {
+  const up = catalog.find(item => item.id === 'hood-01');
+  const down = catalog.find(item => item.id === 'hood-07');
+  const paths = [villagerDir + 'villager-female.garage.glb', up.url.slice(1), down.url.slice(1)];
+  const bytes = await Promise.all(paths.map(path => readFile(new URL(path, publicDir)).catch(error => {
+    if (error.code === 'ENOENT' && hoodFiles.has(path)) return undefined;
+    throw error;
+  })));
+  if (bytes.some(data => !data || isLfsPointer(data))) return t.skip('Install the Medieval Hood Pack and materialize the character model.');
+  const [villager, upScene, downScene] = await Promise.all(bytes.map(loadGeometry));
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  try {
+    const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
+    const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    for (const [item, scene, removed] of [[up, upScene, false], [down, downScene, false], [up, upScene, true]]) {
+      const removedClothing = removed ? ['hat'] : [];
+      const model = prepareVillager(villager, { garments: removed ? [] : [{ item, scene }], removedClothing });
+      try {
+        applyVillagerLook(model, characterLook({ ...DEFAULT_CHARACTER, garments: { hat: item.id }, removedClothing }));
+        assert.equal(model.hat.visible, false);
+        assert.equal(model.root.getObjectByName('CLOTH_TOP_CORSET').visible, true);
+        assert.equal(model.longHair.visible, removed || item === down);
+        assert.equal(model.crop.visible, false);
+        assert.equal(Boolean(model.scalpCap?.visible), !removed && item === down);
+        assert.equal(Boolean(model.root.getObjectByName(`wardrobe-${item.id}`)), !removed);
+      } finally { model.dispose(); }
+    }
+  } finally { await vite.close(); }
 });
 
 test('turning off wardrobe layers restores the donor skin and keeps the other pieces', async t => {
@@ -396,7 +431,11 @@ test('materialized loose garments can share the live female skeleton and skin we
 
   for (const file of garmentFiles) {
     await t.test(file.slice(garmentDir.length), async subtest => {
-      const bytes = await readFile(new URL(file, publicDir));
+      const bytes = await readFile(new URL(file, publicDir)).catch(error => {
+        if (error.code === 'ENOENT' && hoodFiles.has(file)) return undefined;
+        throw error;
+      });
+      if (!bytes) return subtest.skip('Install the Medieval Hood Pack to verify this garment GLB.');
       if (isLfsPointer(bytes)) return subtest.skip('Run git lfs pull to materialize this garment GLB.');
       const root = (await io.readBinary(bytes)).getRoot();
       const skins = root.listSkins();
