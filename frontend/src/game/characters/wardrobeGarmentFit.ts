@@ -3,6 +3,7 @@ import type { MeshBVH } from "three-mesh-bvh";
 import type { CharacterLook } from "./characterCatalog";
 import { clothingColors, clothingPieceFor, type ClothingPiece } from "./clothingPieces";
 import { prepareGothicSkirtFit } from "./gothicSkirtFit";
+import { isLacedShoulder, showsTuckedLacingSkin } from "./lacedStrapFit";
 import { prepareShortSkirtFit } from "./shortSkirtFit";
 import { prepareSockSkirtFit } from "./sockSkirtFit";
 import { prepareShoelessSockFit } from "./wardrobeSocksFit";
@@ -53,14 +54,16 @@ type SkinCover = { surface: MeshBVH; piece: ClothingPiece };
 
 function fitBodyMask(
   body: SkinnedMesh, original: SkinnedMesh, full: BufferGeometry, top: boolean, skirt: boolean,
-  restored: RestoredSkin, clothes: SkinCover[], checkTopEdges: boolean,
+  restored: RestoredSkin, clothes: SkinCover[], checkTopEdges: boolean, lacedBodice: "tucked" | "over" | undefined,
 ) {
   const position = full.getAttribute("position"), index = full.getIndex()!;
   const baseline = bodySurface(original.geometry);
   const fittedIndex = body.geometry.getIndex()!;
   const a = new Vector3(), b = new Vector3(), c = new Vector3(), point = new Vector3();
   const hit = { point: new Vector3(), distance: 0, faceIndex: 0 };
-  const covered = prepareWardrobeCoverage(clothes.map(({ surface }) => surface));
+  const surfaces = clothes.map(({ surface }) => surface);
+  const covered = prepareWardrobeCoverage(surfaces);
+  const coveredShoulder = lacedBodice && prepareWardrobeCoverage(surfaces, .001);
   const coveredTorso = restored.upper
     ? prepareWardrobeCoverage(clothes.filter(({ piece }) => coversTorso.has(piece)).map(({ surface }) => surface))
     : covered;
@@ -79,12 +82,13 @@ function fitBodyMask(
       || (restored.skirt && point.y > .075 && point.y < 1.24)
       || (restored.feet && point.y < .115);
     const replaced = restoredSkin || (upperBody ? top : skirt && point.y > .075);
-    if (!replaced && !baseline?.closestPointToPoint(point, hit, 0, .0016)) continue;
+    const openLacing = lacedBodice === "tucked" && showsTuckedLacingSkin(point);
+    if (!openLacing && !replaced && !baseline?.closestPointToPoint(point, hit, 0, .0016)) continue;
     // A strap or neckline can cross the middle of a skin triangle. Keep the
     // skin at that edge unless the fabric covers the face and its corners.
     // Keep the exposed torso intact through pose changes at the skirt waist.
-    const isCovered = restoredTorso ? coveredTorso : covered;
-    if (replaced && isCovered(point, a, b, c, restoredSkin || (upperBody && checkTopEdges))) continue;
+    const isCovered = coveredShoulder && isLacedShoulder(point) ? coveredShoulder : restoredTorso ? coveredTorso : covered;
+    if (!openLacing && replaced && isCovered(point, a, b, c, restoredSkin || (upperBody && checkTopEdges))) continue;
     fittedIndex.array[visible++] = ai;
     fittedIndex.array[visible++] = bi;
     fittedIndex.array[visible++] = ci;
@@ -275,7 +279,8 @@ export function prepareWardrobeGarments(
           fittedShapes.set(waist, fittedSurfaces);
           surfaces = fittedSurfaces;
         }
-        fitBodyMask(body, original, full, top, skirt, restored, surfaces ? [...shapes, ...surfaces] : shapes, checkTopEdges);
+        fitBodyMask(body, original, full, top, skirt, restored, surfaces ? [...shapes, ...surfaces] : shapes,
+          checkTopEdges, corset?.group.userData.lacedBodiceStraps ? corsetWaist : undefined);
         maskedWaist = waist;
       }
       if (body) original.visible = false;

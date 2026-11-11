@@ -776,7 +776,7 @@ test('standalone corsets and a selected skirt share the live rig and switch wais
   }
 });
 
-test('Laced Bodice has narrow straps, continuous waist backing and skin at fabric edges', async t => {
+test('Laced Bodice straps clear the rear shoulders and Tucked lacing shows skin', async t => {
   const set = 'gothic-01';
   const item = catalog.find(garment => garment.id === 'skirt-02');
   const paths = ['garage', 'mobile'].flatMap(tier => [
@@ -791,6 +791,7 @@ test('Laced Bodice has narrow straps, continuous waist backing and skin at fabri
   try {
     const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
     const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { buildEmoteClips, findGaragePreviewEmote } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
     for (const [bundle, base, skirt] of [[garageBundle, garage, skirtGarage], [mobileBundle, portrait, skirtMobile]]) {
       for (const standalone of [false, true]) {
         const options = standalone ? { garmentBody, corsetSource: { set, scene: bundle }, garments: [{ item, scene: skirt }] } : {};
@@ -799,7 +800,8 @@ test('Laced Bodice has narrow straps, continuous waist backing and skin at fabri
           const source = standalone ? garmentBody : bundle.getObjectByName('BODY_WARDROBE');
           const body = model.root.getObjectByName(standalone ? 'fitting-room-body' : 'BODY_WARDROBE');
           const position = source.geometry.attributes.position;
-          const facing = model.root.getObjectByName('CLOTH_CORSET_FACING').geometry;
+          const straps = model.root.getObjectByName('CLOTH_CORSET_FACING');
+          const facing = straps.geometry;
           const panel = new MeshBVH(new BufferGeometry().setAttribute('position', facing.attributes.position)
             .setIndex(facing.index.clone()));
           const frontRay = new Ray(new Vector3(), new Vector3(0, 0, -1));
@@ -830,7 +832,8 @@ test('Laced Bodice has narrow straps, continuous waist backing and skin at fabri
             try {
               for (const side of [-1, 1]) {
                 for (const y of [waist === 'over' ? 1.05 : 1.075, 1.095, 1.14, 1.165]) {
-                  const ray = new Ray(new Vector3(0, y, .30 * side), new Vector3(0, 0, -side));
+                  const x = waist === 'tucked' && side > 0 ? .045 : 0;
+                  const ray = new Ray(new Vector3(x, y, .30 * side), new Vector3(0, 0, -side));
                   assert(lining.raycastFirst(ray, DoubleSide, 0, .28), `${waist} waist backs the ${side > 0 ? 'front' : 'rear'} seam at ${y}`);
                 }
               }
@@ -849,6 +852,21 @@ test('Laced Bodice has narrow straps, continuous waist backing and skin at fabri
                 .setIndex(Array.from(faces))));
             });
             try {
+              if (waist === 'tucked') {
+                const skin = new MeshBVH(new BufferGeometry().setAttribute('position', body.geometry.attributes.position)
+                  .setIndex(Array.from(active.slice(0, body.geometry.drawRange.count))));
+                try {
+                  for (const y of [1.100, 1.140, 1.175, 1.210]) {
+                    const ray = new Ray(new Vector3(.010, y, .30), new Vector3(0, 0, -1));
+                    const belly = skin.raycastFirst(ray, DoubleSide, 0, .28);
+                    assert(belly, `Tucked lacing retains real skin at ${y}`);
+                    assert(cloth.every(surface => !surface.raycastFirst(ray, DoubleSide, 0, belly.distance - .0005)),
+                      `Tucked lacing shows skin between the laces at ${y}`);
+                  }
+                } finally {
+                  skin.geometry.dispose();
+                }
+              }
               if (standalone) {
                 const belt = [];
                 model.root.getObjectByName(`wardrobe-${item.id}`).traverseVisible(mesh => {
@@ -892,6 +910,46 @@ test('Laced Bodice has narrow straps, continuous waist backing and skin at fabri
               assert(maskedFaces > 0, 'The fabric interior still masks covered skin.');
             } finally {
               for (const surface of cloth) surface.geometry.dispose();
+            }
+            if (waist === 'tucked' && standalone) {
+              const mixer = new AnimationMixer(model.root);
+              const [clap] = buildEmoteClips(model.root, [findGaragePreviewEmote('013', false)]);
+              const point = new Vector3(), a = new Vector3(), b = new Vector3(), c = new Vector3();
+              const normal = new Vector3(), delta = new Vector3();
+              for (const pose of ['idle', 'clap']) {
+                if (pose === 'clap') {
+                  mixer.clipAction(clap).play();
+                  mixer.setTime(clap.duration * .45);
+                }
+                model.root.updateMatrixWorld(true);
+                const posed = new Float32BufferAttribute(new Float32Array(position.count * 3), 3);
+                for (let vertex = 0; vertex < position.count; vertex++) {
+                  body.getVertexPosition(vertex, point).applyMatrix4(body.matrixWorld);
+                  posed.setXYZ(vertex, point.x, point.y, point.z);
+                }
+                const skin = new MeshBVH(new BufferGeometry().setAttribute('position', posed).setIndex(source.geometry.index.clone()));
+                try {
+                  const strapPosition = facing.attributes.position;
+                  const samples = [0, 0];
+                  for (let vertex = 0; vertex < strapPosition.count; vertex++) {
+                    point.fromBufferAttribute(strapPosition, vertex);
+                    if (point.z > -.038 || point.y < 1.274 || point.y > 1.39) continue;
+                    samples[Number(point.x > 0)]++;
+                    straps.getVertexPosition(vertex, point).applyMatrix4(straps.matrixWorld);
+                    const hit = skin.closestPointToPoint(point);
+                    const index = skin.geometry.index;
+                    a.fromBufferAttribute(posed, index.getX(hit.faceIndex * 3));
+                    b.fromBufferAttribute(posed, index.getX(hit.faceIndex * 3 + 1));
+                    c.fromBufferAttribute(posed, index.getX(hit.faceIndex * 3 + 2));
+                    normal.copy(b).sub(a).cross(c.sub(a)).normalize();
+                    assert(delta.copy(point).sub(hit.point).dot(normal) > -.0005, `${pose} rear strap crosses the shoulder skin`);
+                  }
+                  assert(samples.every(count => count > 10), 'both rear strap roots are sampled');
+                } finally {
+                  skin.geometry.dispose();
+                }
+              }
+              mixer.stopAllAction();
             }
           }
         } finally {

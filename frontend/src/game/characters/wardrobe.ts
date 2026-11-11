@@ -1,6 +1,6 @@
 import { Mesh, type BufferGeometry, type Object3D } from "three";
 import catalog from "../../../../avenlab-server/src/assets/character-wardrobe.json";
-import { prepareLacedShoulderMask } from "./lacedStrapFit";
+import { prepareLacedBodyMask } from "./lacedStrapFit";
 import { prepareOverSkirtEase, type OverSkirtEase } from "./overSkirtEase";
 
 export const WARDROBE_SETS = catalog.filter(set => !set.retired);
@@ -80,7 +80,7 @@ export function prepareWardrobe(root: Object3D) {
     const body = part.userData.wardrobeRole === "body" ? geometry.getAttribute("position") : undefined;
     const indices = Array.from({ length: 2 }, (_, mode) => {
       const visible: number[] = [], bit = 1 << mode;
-      const lacedMask = body && prepareLacedShoulderMask(root, mode === 1 ? "over" : "tucked");
+      const lacedMask = body && prepareLacedBodyMask(root, mode === 1 ? "over" : "tucked");
       for (let i = 0; i < index.count; i += 3) {
         const a = index.getX(i), b = index.getX(i + 1), c = index.getX(i + 2);
         if (body && skirtCoversHips && Math.max(Math.abs(body.getX(a)), Math.abs(body.getX(b)), Math.abs(body.getX(c))) < .203) {

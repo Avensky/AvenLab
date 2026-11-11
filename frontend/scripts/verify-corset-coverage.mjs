@@ -19,7 +19,12 @@ const zones = {
   rearShoulderPanels: (p, n) => Math.abs(p.x) > .072 && Math.abs(p.x) < .169 && p.y > 1.353 && p.y < 1.421
     && p.z < -.025 && n.z < -.16,
   rearStraps: (p, n) => p.z < -.04 && Math.abs(p.x) > .095 && Math.abs(p.x) < .132 && p.y > 1.345 && p.y < 1.398 && n.z < -.3,
+<<<<<<< ours
   leftRearStrap: (p, n) => p.x > .107 && p.x < .119 && p.y > 1.345 && p.y < 1.382 && p.z < -.055 && n.z < -.35,
+=======
+  lacedRearStraps: (p, n) => Math.abs(p.x) > .102 && Math.abs(p.x) < .111
+    && p.y > 1.349 && p.y < 1.379 && p.z < -.064 && n.z < -.35,
+>>>>>>> theirs
   vestShoulder: (p, n) => Math.abs(p.x) > .078 && Math.abs(p.x) < .162 && p.y > 1.355 && p.y < 1.443
     && p.z > -.054 && p.z < .038 && n.y > .26,
   vestFrontStrap: (p, n) => Math.abs(p.x) > .075 && Math.abs(p.x) < .156 && p.y > 1.322 && p.y < 1.38
@@ -164,8 +169,14 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
   root.updateMatrixWorld(true);
   const idle = posedVertices(body), indices = visibleIndices(body);
   const required = style === 5 ? ['collarBust', 'collarKeyhole', 'bustTips', 'back', 'shoulders', 'outerShoulders', 'rearStraps', ...highCollarShoulderZones]
+<<<<<<< ours
     : style === 4 ? ['bustTips', ...vestZones, ...vestStrapZones] : style === 3 ? [] : style === 2 ? ['chest', 'rightCup'] : ['chest', 'leftRearStrap'];
   const unmaskedZones = ['leftRearStrap', 'outerShoulders', ...highCollarShoulderZones, ...vestZones, ...vestStrapZones, ...(style === 4 ? ['bustTips'] : [])];
+=======
+    : style === 4 ? ['bustTips', ...vestZones, ...vestStrapZones] : style === 3 ? [] : style === 2 ? ['chest', 'rightCup'] : ['chest', 'lacedRearStraps'];
+  const unmaskedZones = ['lacedRearStraps', 'outerShoulders', ...highCollarShoulderZones, ...vestZones, ...vestStrapZones,
+    ...(style === 4 ? ['bustTips'] : [])];
+>>>>>>> theirs
   const samples = Object.fromEntries(required.map(zone => [zone, []]));
   const edges = style === 2 ? Object.entries(sweetheartEdges).map(([zone, { select, view }]) => ({ zone, select, view, faces: [] })) : [];
   const bindPoints = bindBody.getAttribute('position').array;

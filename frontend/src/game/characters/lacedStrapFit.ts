@@ -2,6 +2,7 @@ import {
   DoubleSide, Float32BufferAttribute, MathUtils, MeshStandardMaterial, Ray, SkinnedMesh, Uint16BufferAttribute,
   Vector3, type BufferGeometry, type Object3D,
 } from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import type { MeshBVH } from "three-mesh-bvh";
 import { prepareWardrobeCoverage, wardrobeCoverageSurface } from "./wardrobeCoverage";
 import { fitWardrobeSurface } from "./wardrobeSurface";
@@ -29,7 +30,7 @@ function finishStrapEdges(geometry: BufferGeometry) {
   function edgeVertex(source: number, lower: boolean) {
     const next = positions.length / 3;
     a.fromBufferAttribute(position, source);
-    if (lower) a.addScaledVector(outward.fromBufferAttribute(normal, source), -.0026);
+    if (lower) a.addScaledVector(outward.fromBufferAttribute(normal, source), -.001);
     positions.push(a.x, a.y, a.z);
     normals.push(edgeNormal.x, edgeNormal.y, edgeNormal.z);
     for (let channel = 0; channel < 4; channel++) {
@@ -56,26 +57,37 @@ function finishStrapEdges(geometry: BufferGeometry) {
   geometry.setIndex(indices);
 }
 
+function strapCenter(point: Vector3) {
+  const front = MathUtils.smoothstep(point.z, -.043, .055);
+  const scoop = MathUtils.smoothstep(point.y, 1.320, 1.358) * (1 - MathUtils.smoothstep(point.y, 1.381, 1.412));
+  const rear = .109 + .016 * MathUtils.smoothstep(point.y, 1.353, 1.405) - .008 * scoop;
+  const chest = .124 - .035 * MathUtils.smoothstep(point.z, .005, .080);
+  return MathUtils.lerp(rear, chest, front);
+}
+
+function strapHalfWidth(point: Vector3) {
+  const join = 1 - MathUtils.smoothstep(point.y, 1.280, 1.323);
+  const shoulder = MathUtils.smoothstep(point.y, 1.363, 1.412);
+  return .010 + .007 * join + .003 * shoulder;
+}
+
 function fitStraps(body: BufferGeometry) {
   const straps = fitWardrobeSurface(body, [
     point => {
-      const front = MathUtils.smoothstep(point.z, -.035, .055);
-      return point.y - MathUtils.lerp(1.273, 1.281, front);
+      const rear = 1 - MathUtils.smoothstep(point.z, -.067, -.032);
+      const front = MathUtils.smoothstep(point.z, .028, .077);
+      return point.y - (1.326 - .055 * rear - .050 * front);
     },
-    point => {
-      const side = Math.abs(point.x);
-      const front = MathUtils.smoothstep(point.z, -.04, .055);
-      const rear = .111 + .014 * MathUtils.smoothstep(point.y, 1.364, 1.404);
-      const chest = .125 - .042 * MathUtils.smoothstep(point.z, .005, .08);
-      const center = MathUtils.lerp(rear, chest, front);
-      const backSeam = (1 - front) * (1 - MathUtils.smoothstep(point.y, 1.295, 1.322));
-      const halfWidth = .0115 + .007 * backSeam;
-      const armhole = front * (1 - MathUtils.smoothstep(point.y, 1.29, 1.337));
-      const neckline = center - halfWidth - .003 * armhole;
-      const outerEdge = center + halfWidth + .008 * front + .015 * armhole;
-      return Math.min(side - neckline, outerEdge - side);
-    },
-  ], point => .006 + .0025 * MathUtils.smoothstep(point.y, 1.295, 1.369));
+    point => Math.abs(point.x) - (strapCenter(point) - strapHalfWidth(point)),
+    point => strapCenter(point) + strapHalfWidth(point) - Math.abs(point.x),
+    point => .114 + .033 * MathUtils.smoothstep(point.y, 1.291, 1.373)
+      + .006 * MathUtils.smoothstep(point.z, .025, .068) - Math.abs(point.x),
+  ], point => {
+    const rear = 1 - MathUtils.smoothstep(point.z, -.046, -.008);
+    const edge = MathUtils.clamp(Math.abs(Math.abs(point.x) - strapCenter(point)) / strapHalfWidth(point), 0, 1);
+    const join = 1 - MathUtils.smoothstep(point.y, 1.315, 1.362);
+    return .006 + (.003 + .004 * rear) * join + .001 * edge * edge;
+  });
   if (straps) finishStrapEdges(straps);
   return straps;
 }
@@ -87,12 +99,40 @@ function waistClearance(point: Vector3, over: boolean) {
   return MathUtils.lerp(over ? .020 + .012 * rear : .013, .0025, MathUtils.smoothstep(point.y, low, high));
 }
 
+const lacingCenter = .007;
+const frontFacingStart = .045;
+
+function tuckedLacingHalfWidth(y: number) {
+  const width = .007 + .009 * MathUtils.smoothstep(y, 1.112, 1.155) + .011 * MathUtils.smoothstep(y, 1.195, 1.234);
+  return width * MathUtils.smoothstep(y, 1.091, 1.107);
+}
+
+export function showsTuckedLacingSkin(point: Vector3) {
+  return point.z > frontFacingStart && point.y > 1.087 && point.y < 1.257
+    && Math.abs(point.x - lacingCenter) < tuckedLacingHalfWidth(point.y) + .014;
+}
+
 function fitWaistFacing(body: BufferGeometry, over: boolean) {
-  return fitWardrobeSurface(body, [
-    point => point.y - (over ? 1.032 + .010 * MathUtils.smoothstep(point.z, -.045, .065) : 1.065),
-    point => 1.263 - .024 * MathUtils.smoothstep(point.z, .035, .11) - point.y,
-    point => .152 - Math.abs(point.x),
-  ], point => waistClearance(point, over) - .0015);
+  const boundaries = [
+    (point: Vector3) => point.y - (over ? 1.032 + .010 * MathUtils.smoothstep(point.z, -.045, .065) : 1.065),
+    (point: Vector3) => 1.263 - .024 * MathUtils.smoothstep(point.z, .035, .11) - point.y,
+    (point: Vector3) => .152 - .026 * MathUtils.smoothstep(point.y, 1.222, 1.263)
+      * (1 - MathUtils.smoothstep(point.z, .042, .08)) - Math.abs(point.x),
+  ];
+  const clearance = (point: Vector3) => waistClearance(point, over) - .0015;
+  if (over) return fitWardrobeSurface(body, boundaries, clearance);
+
+  // Keep the back and side backing while following the open center seam of the tucked bodice.
+  // Clip the front halves separately so a wide triangle cannot bridge the narrow opening.
+  const back = fitWardrobeSurface(body, [...boundaries, point => frontFacingStart - point.z], clearance);
+  const front = [...boundaries, (point: Vector3) => point.z - frontFacingStart];
+  const left = fitWardrobeSurface(body, [...front, point => lacingCenter - tuckedLacingHalfWidth(point.y) - point.x], clearance);
+  const right = fitWardrobeSurface(body, [...front, point => point.x - lacingCenter - tuckedLacingHalfWidth(point.y)], clearance);
+  const panels = [back, left, right].filter((panel): panel is BufferGeometry => panel !== undefined);
+  if (!panels.length) return;
+  const facing = mergeGeometries(panels);
+  for (const panel of panels) panel.dispose();
+  return facing ?? undefined;
 }
 
 /** Refit the hem, back the waist seams and replace the original shoulder tabs. */
@@ -104,35 +144,33 @@ export function fitLacedBodice(root: Object3D, body: BufferGeometry) {
   const torso = wardrobeCoverageSurface(body);
   const altered: { mesh: SkinnedMesh; source: BufferGeometry; owned: BufferGeometry;
     material: MeshStandardMaterial; finish: MeshStandardMaterial }[] = [];
-  const a = new Vector3(), b = new Vector3(), c = new Vector3();
   const point = new Vector3(), ray = new Ray();
   for (const name of ["CLOTH_CORSET_TUCKED", "CLOTH_CORSET_OVER"]) {
     const over = name === "CLOTH_CORSET_OVER";
     root.getObjectByName(name)?.traverse(mesh => {
       if (!(mesh instanceof SkinnedMesh) || !(mesh.material instanceof MeshStandardMaterial)) return;
-      const source = mesh.geometry, index = source.getIndex(), positions = source.getAttribute("position");
-      if (!index || !positions) return;
+      const source = mesh.geometry;
       const material = mesh.material;
       const slot = material.userData.color_slot;
       const fabric = slot === "fabric";
-      const kept: number[] = [];
-      for (let i = 0; i < index.count; i += 3) {
-        const first = index.getX(i), second = index.getX(i + 1), third = index.getX(i + 2);
-        a.fromBufferAttribute(positions, first);
-        b.fromBufferAttribute(positions, second);
-        c.fromBufferAttribute(positions, third);
-        a.add(b).add(c).multiplyScalar(1 / 3);
-        const join = MathUtils.lerp(1.289, 1.306, MathUtils.smoothstep(a.z, -.04, .055));
-        // The lacing ends below the old tabs. Keep the original cup and waist vertices intact.
-        const upperStrap = fabric ? a.y > 1.319 || (a.y > join && Math.abs(a.x) > .072) : a.y > 1.298;
-        if (!upperStrap) kept.push(first, second, third);
-      }
-      const owned = source.clone();
-      owned.setIndex(kept);
-      owned.setDrawRange(0, kept.length);
+      // Cut across the old tabs at the seam so a retained triangle cannot leave a spike above it.
+      const owned = fitWardrobeSurface(source, [point => {
+        if (!fabric) return 1.298 - point.y;
+        const join = MathUtils.lerp(1.285, 1.306, MathUtils.smoothstep(point.z, -.04, .055));
+        const inner = 1 - MathUtils.smoothstep(Math.abs(point.x), .060, .082);
+        const armhole = MathUtils.smoothstep(Math.abs(point.x), .106, .135) * (1 - MathUtils.smoothstep(point.z, .041, .085));
+        return MathUtils.lerp(join, 1.319, inner) - .036 * armhole - point.y;
+      }], 0, true);
+      if (!owned) return;
       const position = owned.getAttribute("position");
       for (let i = 0; torso && i < position.count; i++) {
-        point.fromBufferAttribute(positions, i);
+        point.fromBufferAttribute(position, i);
+        if (point.y > 1.235 && point.z < -.045) {
+          const side = MathUtils.smoothstep(Math.abs(point.x), .092, .119);
+          const rearJoin = MathUtils.smoothstep(point.y, 1.235, 1.270)
+            * (1 - MathUtils.smoothstep(point.z, -.061, -.045));
+          position.setZ(i, point.z - .006 * side * rearJoin);
+        }
         if (point.y > 1.199 || (over && point.y < 1.014)) continue;
         ray.origin.set(0, point.y, waistCenter);
         ray.direction.set(point.x, 0, point.z - waistCenter).normalize();
@@ -140,10 +178,10 @@ export function fitLacedBodice(root: Object3D, body: BufferGeometry) {
         if (!radius) continue;
         const skin = torso.raycastFirst(ray, DoubleSide, 0, .22);
         if (!skin) continue;
-        const longline = over ? MathUtils.smoothstep(point.y, 1.014, 1.052) : 1;
-        const taper = 1 - MathUtils.smoothstep(point.y, 1.177, 1.199);
         const standOff = fabric ? 0 : slot === "hardware" ? .002 : .001;
-        const move = Math.max(0, skin.distance + waistClearance(point, over) + standOff - radius) * longline * taper;
+        const blend = (over ? MathUtils.smoothstep(point.y, 1.014, 1.052) : 1)
+          * (1 - MathUtils.smoothstep(point.y, 1.177, 1.199));
+        const move = Math.max(0, skin.distance + waistClearance(point, over) + standOff - radius) * blend;
         position.setXYZ(i, point.x + ray.direction.x * move, point.y, point.z + ray.direction.z * move);
       }
       owned.computeBoundingBox();
@@ -252,9 +290,10 @@ export function fitLacedBodiceToSkirt(root: Object3D, body: BufferGeometry, skir
   };
 }
 
-export function prepareLacedShoulderMask(root: Object3D, waist: "tucked" | "over") {
+export function prepareLacedBodyMask(root: Object3D, waist: "tucked" | "over") {
   if (!root.userData.lacedBodiceStraps) return;
   const surfaces: MeshBVH[] = [];
+  const tucked = waist === "tucked";
   for (const name of [`CLOTH_CORSET_${waist.toUpperCase()}`, "CLOTH_CORSET_FACING"]) {
     root.getObjectByName(name)?.traverse(mesh => {
       if (!(mesh instanceof SkinnedMesh) || Array.isArray(mesh.material) || mesh.material.transparent
@@ -264,7 +303,7 @@ export function prepareLacedShoulderMask(root: Object3D, waist: "tucked" | "over
     });
   }
   if (!surfaces.length) return;
-  const covered = prepareWardrobeCoverage(surfaces);
+  const covered = prepareWardrobeCoverage(surfaces, .001);
   const a = new Vector3(), b = new Vector3(), c = new Vector3(), center = new Vector3();
   return {
     retainsFace(position: ReturnType<BufferGeometry["getAttribute"]>, first: number, second: number, third: number) {
@@ -272,10 +311,16 @@ export function prepareLacedShoulderMask(root: Object3D, waist: "tucked" | "over
       b.fromBufferAttribute(position, second);
       c.fromBufferAttribute(position, third);
       center.copy(a).add(b).add(c).multiplyScalar(1 / 3);
-      const side = Math.abs(center.x);
+      if (tucked && showsTuckedLacingSkin(center)) return true;
       // Restore skin at the neckline and armhole wherever the refitted fabric leaves it exposed.
-      return center.y > 1.267 && side > .058 && side < .19 && !covered(center, a, b, c, true);
+      return isLacedShoulder(center) && !covered(center, a, b, c, true);
     },
     dispose() { for (const { geometry } of surfaces) geometry.dispose(); },
   };
+}
+
+export function isLacedShoulder(point: Vector3) {
+  const side = Math.abs(point.x);
+  const base = MathUtils.lerp(1.253, 1.269, MathUtils.smoothstep(point.z, .074, .105));
+  return point.y > base && side > .058 && side < .19;
 }

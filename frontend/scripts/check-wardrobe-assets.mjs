@@ -159,6 +159,16 @@ try{
      }
      return;
     }
+    if(n===1){
+     const geometry=target.geometry, position=geometry.attributes.position, weights=geometry.attributes.skinWeight;
+     assert(geometry.index.count>0&&geometry.index.count<=source.geometry.index.count,'Laced Bodice trims the old tabs');
+     assert.equal(Boolean(geometry.attributes.uv),Boolean(source.geometry.attributes.uv),'Laced Bodice preserves texture coordinates');
+     for(let i=0;i<position.count;i++){
+      assert(position.getY(i)<=1.319001,'the original shell ends below the rebuilt straps');
+      assert(Math.abs(weights.getX(i)+weights.getY(i)+weights.getZ(i)+weights.getW(i)-1)<1e-4,'Laced Bodice weights remain normalized');
+     }
+     return;
+    }
     for(const attribute of ['position','normal','uv','skinIndex','skinWeight']){
      if((n===1||tuckRefit)&&attribute==='position')continue;
      if(n===4){
