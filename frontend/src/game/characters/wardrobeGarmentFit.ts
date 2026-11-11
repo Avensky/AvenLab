@@ -112,6 +112,7 @@ export function prepareWardrobeGarments(
   const tallSocks: SkinnedMesh[] = [];
   let checkTopEdges = Boolean(corset);
   const shapes: MeshBVH[] = [];
+  const topSurfaces: MeshBVH[] = [];
   const fittedShapes = new Map<string, MeshBVH[]>();
   if (corset) {
     group.add(corset.group);
@@ -176,7 +177,10 @@ export function prepareWardrobeGarments(
       }
       if ((replacesVillagerBody(item.slot) || (restoresBody && coversSkin.has(item.piece))) && isFabric(mesh)) {
         const surface = bodySurface(mesh.geometry);
-        if (surface) shapes.push(surface);
+        if (surface) {
+          shapes.push(surface);
+          if (item.slot === "top" && corset?.fitTop) topSurfaces.push(surface);
+        }
       }
       if (item.slot === "skirt" || item.slot === "dress") {
         const position = mesh.geometry.getAttribute("position"), point = new Vector3();
@@ -195,6 +199,7 @@ export function prepareWardrobeGarments(
     top ||= item.slot === "top" || item.slot === "dress";
     skirt ||= item.slot === "skirt" || item.slot === "dress";
   }
+  if (topSurfaces.length) corset?.fitTop?.(topSurfaces);
   if (!group.children.length && !replacements.size) return;
   const body = (top || skirt || restoresBody) && full && fullBody instanceof SkinnedMesh ? bindWardrobeGarmentMesh(fullBody, original.skeleton) : undefined;
   if (body && full) {

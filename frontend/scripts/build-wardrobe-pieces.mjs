@@ -8,11 +8,9 @@ const catalog = JSON.parse(await readFile(new URL('../../avenlab-server/src/asse
 const corsetRoles = ['corset-tucked', 'corset-over'];
 const script = await stat(new URL(import.meta.url));
 const underbustFitModule = new URL('../src/game/characters/underbustFit.ts', import.meta.url);
-const underbustFitSources = await Promise.all([
-  stat(underbustFitModule),
-  stat(new URL('../src/game/characters/wardrobeSurface.ts', import.meta.url)),
-]);
-const underbustFitMtime = Math.max(...underbustFitSources.map(source => source.mtimeMs));
+const underbustFitMtime = Math.max(...(await Promise.all([
+  stat(underbustFitModule), stat(new URL('../src/game/characters/wardrobeSurface.ts', import.meta.url)),
+])).map(source => source.mtimeMs));
 const jobs = catalog.flatMap(({ id }) => ['garage', 'mobile'].map(tier => ({
   source: new URL(`${id}.${tier}.glb`, wardrobeRoot),
   output: new URL(`corsets/${id}.${tier}.glb`, pieceRoot),
@@ -85,7 +83,7 @@ if (pending.length) {
 }
 
 async function bakeUnderbustFit(body, parts) {
-  const [{ BufferAttribute, BufferGeometry }, { prepareUnderbustVestFit, UNDERBUST_FIT_VERSION }] =
+  const [{ BufferAttribute, BufferGeometry }, { isUnderbustOuterFabric, prepareUnderbustVestFit, UNDERBUST_FIT_VERSION }] =
     await Promise.all([import('three'), import(underbustFitModule.href)]);
   const semantics = {
     POSITION: 'position', NORMAL: 'normal', JOINTS_0: 'skinIndex', WEIGHTS_0: 'skinWeight',
@@ -100,11 +98,15 @@ async function bakeUnderbustFit(body, parts) {
     geometry.setIndex(new BufferAttribute(primitive.getIndices().getArray(), 1));
     return geometry;
   };
-  const fit = prepareUnderbustVestFit(geometryOf(body));
+  const fitBody = geometryOf(body);
   for (const part of parts) {
     const extras = part.getExtras();
-    for (const primitive of part.getMesh().listPrimitives()) {
-      const geometry = fit(geometryOf(primitive), extras.wardrobeRole === 'corset-tucked', primitive.getMaterial()?.getName());
+    const sources = part.getMesh().listPrimitives().map(primitive => ({
+      primitive, geometry: geometryOf(primitive), material: primitive.getMaterial()?.getName(),
+    }));
+    const fit = prepareUnderbustVestFit(fitBody, sources.filter(source => isUnderbustOuterFabric(source.material)).map(source => source.geometry));
+    for (const { primitive, geometry: source, material } of sources) {
+      const geometry = fit(source, extras.wardrobeRole === 'corset-tucked', material);
       for (const [semantic, name] of Object.entries(semantics)) {
         const fitted = geometry.getAttribute(name);
         const accessor = primitive.getAttribute(semantic);

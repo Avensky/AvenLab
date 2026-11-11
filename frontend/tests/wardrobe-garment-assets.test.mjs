@@ -369,7 +369,7 @@ test('standalone wardrobe exports keep the corset rig and discard unrelated laye
       const authored = original.listNodes().find(candidate => candidate.getName() === node.getName());
       assert(authored);
       const underbust = source.startsWith('gothic-04.');
-      assert.equal(node.getExtras().underbustFitVersion, underbust ? 1 : undefined);
+      assert.equal(node.getExtras().underbustFitVersion, underbust ? 2 : undefined);
       const primitives = node.getMesh().listPrimitives(), sourcePrimitives = authored.getMesh().listPrimitives();
       assert.equal(primitives.length, sourcePrimitives.length);
       let positionChanged = false;
@@ -706,6 +706,23 @@ test('standalone corsets and a selected skirt share the live rig and switch wais
               const shirt = root.getObjectByName(`wardrobe-${top.id}`);
               assert(shirt?.visible && shirt.children.every(mesh => mesh.visible && mesh.skeleton === original.skeleton));
               assert(shirt.children.some(mesh => mesh.material.color.getHexString() === 'dab872'));
+              if (waist === 'over') {
+                const shell = visibleMeshes.find(mesh => mesh.material.name === 'MAT_CORSET_04_05.001');
+                const fitted = shell.geometry, positions = fitted.getAttribute('position');
+                const authored = scene.getObjectByName(shell.name).geometry.getAttribute('position');
+                assert(positions.array.some((value, i) => Math.abs(value - authored.array[i]) > .002),
+                  'the selected top adds local room to the vest shell');
+                applyVillagerLook(model, { ...look, overEase: 2 });
+                const eased = shell.geometry.getAttribute('position');
+                assert.notEqual(eased, positions);
+                const upper = new Vector3(), widened = new Vector3();
+                for (let i = 0; i < positions.count; i++) {
+                  if (positions.getY(i) >= 1.17) assert(upper.fromBufferAttribute(positions, i)
+                    .equals(widened.fromBufferAttribute(eased, i)), 'over-skirt ease retains the layered fit above the hem');
+                }
+                applyVillagerLook(model, look);
+                assert.equal(shell.geometry, fitted, 'turning ease off restores the same layered fit');
+              }
             }
           }
           const active = corset.getObjectByName('CLOTH_CORSET_TUCKED');
@@ -731,7 +748,7 @@ test('standalone corsets and a selected skirt share the live rig and switch wais
   }
 });
 
-test('Laced Bodice keeps skin where a new strap crosses the edge of a body triangle', async t => {
+test('Laced Bodice covers the chest beside the armholes and keeps skin at the fabric edges', async t => {
   const set = 'gothic-01';
   const paths = ['garage', 'mobile'].flatMap(tier => [
     bundledDir + `${set}.${tier}.glb`, villagerDir + `villager-female.${tier === 'mobile' ? 'portrait' : 'garage'}.glb`,
@@ -753,6 +770,24 @@ test('Laced Bodice keeps skin where a new strap crosses the edge of a body trian
           const source = standalone ? garmentBody : bundle.getObjectByName('BODY_WARDROBE');
           const body = model.root.getObjectByName(standalone ? 'fitting-room-body' : 'BODY_WARDROBE');
           const position = source.geometry.attributes.position;
+          const facing = model.root.getObjectByName('CLOTH_CORSET_FACING').geometry;
+          const panel = new MeshBVH(new BufferGeometry().setAttribute('position', facing.attributes.position)
+            .setIndex(facing.index.clone()));
+          const frontRay = new Ray(new Vector3(), new Vector3(0, 0, -1));
+          try {
+            for (const side of [-1, 1]) {
+              for (const x of [.095, .111, .128]) {
+                frontRay.origin.set(side * x, 1.318, .24);
+                assert(panel.raycastFirst(frontRay, DoubleSide, 0, .24), 'The chest and underarm fabric form a continuous panel.');
+              }
+              frontRay.origin.set(side * .167, 1.318, .24);
+              assert(!panel.raycastFirst(frontRay, DoubleSide, 0, .24), 'The fitted panel ends before the upper arm.');
+            }
+            frontRay.origin.set(.035, 1.318, .24);
+            assert(!panel.raycastFirst(frontRay, DoubleSide, 0, .24), 'The center neckline stays open.');
+          } finally {
+            panel.geometry.dispose();
+          }
           for (const waist of ['tucked', 'over']) {
             const choice = { ...DEFAULT_CHARACTER, [standalone ? 'wardrobeTrial' : 'wardrobe']: { set, waist, shirt: 'none' } };
             applyVillagerLook(model, characterLook(choice));

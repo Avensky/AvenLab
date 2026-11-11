@@ -1,8 +1,10 @@
 import { Group, Mesh, SkinnedMesh, type Object3D, type Skeleton } from "three";
 import { prepareWardrobeLining } from "./wardrobeLining";
 import { bindWardrobeGarmentMesh } from "./wardrobeGarmentFit";
-import { prepareWardrobe, type WardrobeChoice } from "./wardrobe";
+import { prepareWardrobe, UNDERBUST_WARDROBE_SET, type WardrobeChoice } from "./wardrobe";
+import { fitUnderbustOverTop } from "./underbustFit";
 import type { OverSkirtEase } from "./overSkirtEase";
+import type { MeshBVH } from "three-mesh-bvh";
 
 export const FITTING_BODY_URL = "/models/characters/female/wardrobe/vesper-body.glb";
 
@@ -35,15 +37,22 @@ export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton
   group.add(tucked, over, body);
   const disposeFit = prepareWardrobeLining(group);
   body.removeFromParent();
-  const wardrobe = prepareWardrobe(group);
+  const underbust = source.set === UNDERBUST_WARDROBE_SET;
+  let wardrobe = underbust ? undefined : prepareWardrobe(group);
+  let disposeTopFit: (() => void) | undefined;
   return {
     group,
+    fitTop: underbust ? (tops: readonly MeshBVH[]) => {
+      disposeTopFit = fitUnderbustOverTop(group, body.geometry, tops);
+    } : undefined,
     apply(waist: WardrobeChoice["waist"], ease: OverSkirtEase = 0) {
+      wardrobe ??= prepareWardrobe(group);
       wardrobe.apply({ set: source.set, shirt: "none", waist }, ease);
     },
     dispose() {
       group.removeFromParent();
-      wardrobe.dispose();
+      wardrobe?.dispose();
+      disposeTopFit?.();
       disposeFit?.();
     },
   };

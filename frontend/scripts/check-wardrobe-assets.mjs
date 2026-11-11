@@ -5,6 +5,8 @@ import {NodeIO} from '@gltf-transform/core';
 import {ALL_EXTENSIONS} from '@gltf-transform/extensions';
 import {MeshoptDecoder} from 'meshoptimizer';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {Vector3} from 'three';
+import {MeshBVH} from 'three-mesh-bvh';
 import {createServer} from 'vite';
 import {verifyCorsetCoverage} from './verify-corset-coverage.mjs';
 const dir=process.argv[2];if(!dir)throw Error('Usage: check-wardrobe-assets.mjs directory');
@@ -30,51 +32,42 @@ function triangleKeys(index) {
  for(let i=0;i<index.count;i+=3)triangles.push(`${index.getX(i)},${index.getX(i+1)},${index.getX(i+2)}`);
  return triangles;
 }
-function verifyWiderVestShell(source, target, splitLining) {
+function verifyVestShell(source, target, splitLining, body) {
  const original=source.geometry.attributes.position, fitted=target.geometry.attributes.position;
  const trim=source.material.name==='MAT_CORSET_04_00.001', fabric=source.material.name==='MAT_CORSET_04_05.001';
  if(trim)assert(splitLining?.isSkinnedMesh,'Underbust keeps the lining in its own color slot');
  const targetFaces=triangleKeys(target.geometry.index);
  if(trim)targetFaces.push(...triangleKeys(splitLining.geometry.index));
- const faces=new Set(targetFaces), originalIndex=source.geometry.index;
- for(let i=0;i<originalIndex.count;i+=3){
-  const a=originalIndex.getX(i), b=originalIndex.getX(i+1), c=originalIndex.getX(i+2);
-  if((original.getY(a)+original.getY(b)+original.getY(c))/3<=1.339){
-   assert(faces.has(`${a},${b},${c}`),'Underbust keeps every lower shell, placket and trim triangle');
-  }
- }
  if(trim||fabric){
-  assert(fitted.count>original.count,'Underbust appends reconstructed shoulder faces');
-  assert(target.geometry.index.array.some(vertex=>vertex>=original.count),'Underbust draws the reconstructed shoulder faces');
-  const sides=[0,0];
-  for(let i=original.count;i<fitted.count;i++){
-   if(fitted.getY(i)>1.37)sides[fitted.getX(i)<0?0:1]++;
+  assert(fitted.count>original.count,'Underbust rebuilds the continuous shoulder crowns');
+  const faces=new Set(targetFaces), index=source.geometry.index;
+  for(let i=0;i<index.count;i+=3){
+   const a=index.getX(i),b=index.getX(i+1),c=index.getX(i+2);
+   if((original.getY(a)+original.getY(b)+original.getY(c))/3<=1.339)
+    assert(faces.has(`${a},${b},${c}`),'Underbust keeps the authored torso triangles below the shoulder rebuild');
   }
-  assert(sides.every(count=>count>4),'Underbust reconstructs both shoulder crowns');
- }else assert.equal(fitted.count,original.count,'Underbust keeps the placket and hardware vertex layout');
+ }else{
+  assert.deepEqual(targetFaces.sort(),triangleKeys(source.geometry.index).sort(),'Underbust keeps the placket and hardware triangles');
+  assert.equal(fitted.count,original.count);
+ }
  const weights=target.geometry.attributes.skinWeight;
+ const point=new Vector3(), gaps=[];
  for(let i=0;i<fitted.count;i++){
   assert(Math.abs(weights.getX(i)+weights.getY(i)+weights.getZ(i)+weights.getW(i)-1)<1e-4,
    'Underbust vest weights remain normalized');
- }
- const ease=[0,0];
- for(let i=0;i<original.count;i++){
-  const x=original.getX(i), y=original.getY(i), z=original.getZ(i);
-  const limit=y>1.338&&Math.abs(x)>.090?.075:.040;
-  assert(Math.hypot(fitted.getX(i)-x,fitted.getY(i)-y,fitted.getZ(i)-z)<limit,
-   'Underbust keeps a close fit around the torso and shoulders');
-  if(y<=1.294||Math.abs(x)<=.047)for(const attr of ['skinIndex','skinWeight']){
-   const before=source.geometry.attributes[attr], after=target.geometry.attributes[attr];
-   for(let c=0;c<before.itemSize;c++)assert.equal(after.getComponent(i,c),before.getComponent(i,c),
-    'Underbust weight edits stay at the upper straps and back');
-  }
-  if(y>1.14&&y<1.30&&Math.abs(x)>.075){
-   const side=x<0?0:1;
-   ease[side]=Math.max(ease[side],Math.abs(fitted.getX(i))-Math.abs(x));
+  if(fabric&&fitted.getY(i)>1.12&&fitted.getY(i)<1.29){
+   const hit=body.closestPointToPoint(point.fromBufferAttribute(fitted,i));
+   assert(hit);
+   gaps.push(hit.distance);
   }
  }
- if(source.material.name==='MAT_CORSET_04_05.001')assert(ease.every(width=>width>.007),
-  'Underbust fabric has room on both sides for a separate top');
+ if(fabric){
+  gaps.sort((a,b)=>a-b);
+  assert(gaps.length>30,'Underbust audit samples the torso panels');
+  const median=gaps[Math.floor(gaps.length/2)], outer=gaps[Math.floor(gaps.length*.95)];
+  assert(median>.002&&median<.010&&outer<.016,
+   `Underbust torso stays close to the body (median ${median.toFixed(4)} m, 95th percentile ${outer.toFixed(4)} m)`);
+ }
 }
 const rows=[];
 try{
@@ -143,6 +136,7 @@ try{
   // Keep authored UVs and limit each fit change to its affected panels.
   let sweetheartOverRise=0;
   let collarRemovedIndices=0;
+  const vestBody=n===4&&new MeshBVH(scene.getObjectByName('BODY_WARDROBE').geometry,{indirect:true,setBoundingBox:false});
   for(const name of ['CLOTH_CORSET_TUCKED','CLOTH_CORSET_OVER']){
    const tuckRefit=(n===2||n===3)&&name==='CLOTH_CORSET_TUCKED';
    const authored=scene.getObjectByName(name), fitted=model.root.getObjectByName(name);
@@ -166,7 +160,7 @@ try{
      if(n===5&&['position','skinIndex','skinWeight'].includes(attribute))continue;
      assert.deepEqual(target.geometry.getAttribute(attribute)?.array,source.geometry.getAttribute(attribute)?.array,`${set} ${lod} ${source.name} ${attribute} stays authored`);
     }
-    if(n===4)verifyWiderVestShell(source,target,fitted.getObjectByName(`CLOTH_CORSET_04_LINING_${name.split('_').at(-1)}`));
+    if(n===4)verifyVestShell(source,target,fitted.getObjectByName(`CLOTH_CORSET_04_LINING_${name.split('_').at(-1)}`),vestBody);
     if(n===5){
      assert(target.geometry.index.count<=source.geometry.index.count,'High Collar keeps the authored lower shell triangles');
      collarRemovedIndices+=source.geometry.index.count-target.geometry.index.count;

@@ -164,8 +164,8 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
   root.updateMatrixWorld(true);
   const idle = posedVertices(body), indices = visibleIndices(body);
   const required = style === 5 ? ['collarBust', 'collarKeyhole', 'bustTips', 'back', 'shoulders', 'outerShoulders', 'rearStraps', ...highCollarShoulderZones]
-    : style === 4 ? [...vestZones, ...vestStrapZones] : style === 3 ? [] : style === 2 ? ['chest', 'rightCup'] : ['chest', 'leftRearStrap'];
-  const unmaskedZones = ['outerShoulders', ...highCollarShoulderZones, ...vestZones, ...vestStrapZones];
+    : style === 4 ? ['bustTips', ...vestZones, ...vestStrapZones] : style === 3 ? [] : style === 2 ? ['chest', 'rightCup'] : ['chest', 'leftRearStrap'];
+  const unmaskedZones = ['outerShoulders', ...highCollarShoulderZones, ...vestZones, ...vestStrapZones, ...(style === 4 ? ['bustTips'] : [])];
   const samples = Object.fromEntries(required.map(zone => [zone, []]));
   const edges = style === 2 && !tucked ? Object.entries(sweetheartEdges).map(([zone, { select, view }]) => ({ zone, select, view, faces: [] })) : [];
   const bindPoints = bindBody.getAttribute('position').array;
@@ -291,7 +291,7 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
         // The upper arm folds over the crest at the highest reach. The
         // front and rear anchors still need the same coverage as rest.
         const foldedCrest = zone === 'vestShoulder' && pose === 'heart-overhead';
-        const minimum = foldedCrest ? .40 : vestStrapZones.includes(zone) ? .84 : .95;
+        const minimum = zone === 'bustTips' ? 1 : foldedCrest ? .40 : vestStrapZones.includes(zone) ? .84 : .95;
         assert(covered >= faces.length * minimum, `${label} ${pose} ${zone} covers ${covered}/${faces.length} of the sampled body`);
       }
       if (zone === 'rightCup') assert(covered >= faces.length / 2, `${label} ${pose} reaches the right cup`);

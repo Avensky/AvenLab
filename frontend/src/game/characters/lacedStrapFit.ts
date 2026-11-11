@@ -3,17 +3,26 @@ import type { MeshBVH } from "three-mesh-bvh";
 import { prepareWardrobeCoverage, wardrobeCoverageSurface } from "./wardrobeCoverage";
 import { fitWardrobeSurface } from "./wardrobeSurface";
 
-/** Trace simple ribbons along the shoulder surface, with each end inside the bodice seam. */
+/** Fit a continuous upper bodice from the shoulder to the front armhole. */
 export function fitLacedBodiceStraps(root: Object3D, body: BufferGeometry) {
   const geometry = fitWardrobeSurface(body, [
-    point => point.y - MathUtils.lerp(1.267, 1.279, MathUtils.smoothstep(point.z, -.035, .055)),
     point => {
+      const front = MathUtils.smoothstep(point.z, -.035, .055);
+      const side = MathUtils.smoothstep(Math.abs(point.x), .094, .133);
+      return point.y - MathUtils.lerp(1.267, 1.279 - .025 * side, front);
+    },
+    point => {
+      const side = Math.abs(point.x);
       const front = MathUtils.smoothstep(point.z, -.04, .055);
       const rear = .111 + .014 * MathUtils.smoothstep(point.y, 1.364, 1.404);
       const chest = .125 - .042 * MathUtils.smoothstep(point.z, .005, .08);
       const center = MathUtils.lerp(rear, chest, front);
       const backSeam = (1 - front) * (1 - MathUtils.smoothstep(point.y, 1.295, 1.322));
-      return .0155 + .008 * backSeam - Math.abs(Math.abs(point.x) - center);
+      const halfWidth = .0155 + .008 * backSeam;
+      const armhole = front * (1 - MathUtils.smoothstep(point.y, 1.315, 1.399));
+      const neckline = center - halfWidth - .006 * front - .007 * armhole;
+      const outerEdge = center + halfWidth + .010 * front + .043 * armhole;
+      return Math.min(side - neckline, outerEdge - side);
     },
   ], .0045);
   if (!geometry) return;
@@ -76,7 +85,7 @@ export function prepareLacedShoulderMask(root: Object3D, waist: "tucked" | "over
       c.fromBufferAttribute(position, third);
       center.copy(a).add(b).add(c).multiplyScalar(1 / 3);
       const side = Math.abs(center.x);
-      // The baked mask was authored for wider tabs. Restore skin at the new ribbons and armholes.
+      // Restore skin at the neckline and armhole wherever the refitted fabric leaves it exposed.
       return center.y > 1.267 && side > .058 && side < .19 && !covered(center, a, b, c, true);
     },
     dispose() { for (const { geometry } of surfaces) geometry.dispose(); },
