@@ -10,10 +10,6 @@ import "./dressingRoom.css";
 
 const CATEGORIES = [
   { id: "outfits", label: "Outfits", group: "Wardrobe", icon: "outfits" },
-  { id: "tops", label: "Tops & corsets", group: "Wardrobe", icon: "tops" },
-  { id: "bottoms", label: "Skirts & pants", group: "Wardrobe", icon: "bottoms" },
-  { id: "dresses", label: "Dresses", group: "Wardrobe", icon: "dresses" },
-  { id: "outerwear", label: "Outerwear", group: "Wardrobe", icon: "outerwear" },
   { id: "footwear", label: "Shoes & socks", group: "Wardrobe", icon: "footwear" },
   { id: "headwear", label: "Headwear", group: "Finishing touches", icon: "headwear" },
   { id: "accessories", label: "Accessories", group: "Finishing touches", icon: "accessories" },
@@ -26,10 +22,6 @@ type Category = typeof CATEGORIES[number]["id"];
 type Icon = typeof CATEGORIES[number]["icon"];
 const ICON_PATHS: Record<Icon, string> = {
   outfits: "M9 4h6l2 5-3 2 3 9H7l3-9-3-2z M9 4l3 3 3-3 M9 14h6",
-  tops: "M8 4 3 7l2 5 3-1v9h8v-9l3 1 2-5-5-3c0 4-8 4-8 0z",
-  bottoms: "M8 4h8l4 16H4z M7 8h10 M10 9l-1 11 M14 9l1 11",
-  dresses: "M9 3h6l1 6-2 3 6 9H4l6-9-2-3z M9 3l3 4 3-4 M10 12h4",
-  outerwear: "M8 3h8l5 6-3 3-2-2v11H8V10l-2 2-3-3z M8 3l4 6 4-6 M12 9v12",
   footwear: "M5 4h7v8l7 3 2 3v3H3v-9h2z M3 18h18 M12 12l-2 3",
   headwear: "M6 14v-3a6 6 0 0 1 12 0v3 M3 16c4-3 14-3 18 0l-3 3H6z",
   accessories: "M12 10 4 6v12l8-4 8 4V6z M10 10h4v4h-4z",
@@ -97,7 +89,7 @@ export function DressingRoom({ choice, onChange, cameraTools }: {
   const hasAuthoredMale = choice.id === ROOK_ID && Boolean(__ROOK_MODEL_URL__);
   const upperPiece = female ? "corset" : "coat";
   const categoryFocus: Record<Category, WardrobeFocus> = {
-    outfits: upperPiece, tops: upperPiece, bottoms: female ? "skirt" : "pants", dresses: upperPiece, outerwear: upperPiece,
+    outfits: upperPiece,
     footwear: "shoes", headwear: pieces.includes("hat") ? "hat" : "Face", accessories: pieces.includes("glasses") ? "glasses" : "Face",
     props: pieces.includes("bag") ? "bag" : "Hands", hair: "Face", face: "Face", skin: "Face",
   };
@@ -141,10 +133,10 @@ export function DressingRoom({ choice, onChange, cameraTools }: {
       choose: () => edit(field, option.id),
     }));
   }
-  const sets = (section: string, icon: Icon): Item[] => female ? WARDROBE_SETS.map(set => {
+  const fittedSets = female ? WARDROBE_SETS.map((set): Item => {
     const installed = __WARDROBE_SET_IDS__.includes(set.id);
     return {
-      id: set.id, label: set.name, section, icon, selected: wardrobe?.set === set.id, set: set.id,
+      id: set.id, label: set.name, section: "Gothic collection", icon: "outfits", selected: wardrobe?.set === set.id, set: set.id,
       description: GOTHIC_DESCRIPTIONS[set.id] ?? "A matching corset and skirt.", pieces: "outfit",
       detail: "Matched corset + skirt", unavailable: installed ? undefined : "Pack not installed",
       choose: installed ? () => wearSet(set.id) : undefined,
@@ -156,11 +148,8 @@ export function DressingRoom({ choice, onChange, cameraTools }: {
         description: OUTFIT_DESCRIPTIONS[item.id] ?? "A complete outfit for this character.", pieces: "outfit" as const,
         selected: !wardrobe && outfit.id === item.id, color: item.jacket, accent: item.trim,
         choose: () => onChange({ ...choice, outfit: item.id, wardrobe: undefined }) })),
-      ...sets("Gothic collection", "outfits"),
+      ...fittedSets,
     ],
-    tops: sets("Corsets · matched sets", "tops"),
-    bottoms: sets("Gothic skirts · matched sets", "bottoms"),
-    dresses: [], outerwear: [],
     footwear: [{ id: "outfit-shoes", label: female ? "Village shoes" : "Outfit boots", section: "Shoes", icon: "footwear", selected: true,
       description: "The footwear bundled with the equipped outfit.", pieces: ["shoes"], included: true }],
     headwear: female ? [{ id: "bonnet", label: "Village bonnet", section: "Headwear", icon: "headwear", selected: true,
@@ -176,9 +165,9 @@ export function DressingRoom({ choice, onChange, cameraTools }: {
     skin: options("skin", "Skin tone", "skin"),
   };
   if (female) for (const item of importedItems) {
-    if (!__DRESSING_ROOM_IMPORTED_IDS__.includes(item.id)) continue;
-    const target = item.category as Category;
-    allItems[target].push({ id: item.id, label: item.label, section: item.section, icon: CATEGORIES.find(c => c.id === target)!.icon,
+    const category = CATEGORIES.find(category => category.id === item.category);
+    if (!category || !__DRESSING_ROOM_IMPORTED_IDS__.includes(item.id)) continue;
+    allItems[category.id].push({ id: item.id, label: item.label, section: item.section, icon: category.icon,
       unavailable: "Fitting pending", description: "This imported piece still needs fitting before it can be worn." });
   }
   const query = search.trim().toLocaleLowerCase();
@@ -249,7 +238,7 @@ export function DressingRoom({ choice, onChange, cameraTools }: {
                 <WardrobeIcon name={item.icon} />{item.color && <i className="dressing-swatch" />}
               </span>
               <span className="dressing-item-name">{item.label}</span>
-              {item.set && !item.unavailable && <FitBadge choice={{ ...choice, wardrobe: resolveWardrobe({ set: item.set, shirt: "none", waist: waistForSet(item.set) }) }} piece={category === "bottoms" ? "skirt" : "corset"} />}
+              {item.set && !item.unavailable && <FitBadge choice={{ ...choice, wardrobe: resolveWardrobe({ set: item.set, shirt: "none", waist: waistForSet(item.set) }) }} piece="corset" />}
               <small>{item.unavailable ?? (item.selected ? "Wearing" : item.detail ?? "Ready to wear")}</small>
             </button>)}
           </div>

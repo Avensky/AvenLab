@@ -191,20 +191,18 @@ additional WebGL previews. Face, hair, skin, and headwear categories focus the
 face camera. Leaving restores the earlier camera. Colors contains preset dyes,
 paired palettes, and custom fabric/accent pickers.
 
-The 13 categories cover outfits, tops/corsets, skirts/pants, dresses, outerwear,
-shoes/socks, headwear, accessories, handheld props, hair, face, skin, and colors.
-Accessories contains glasses, bow ties, and harnesses. Gothic corsets and skirts
-still equip as fitted matched sets. Tops & corsets controls their waist fit.
-Pants and shoes bundled into a complete outfit are not separate
-swaps. The bonnet remains part of Vesper's model to cover the open scalp.
+Outfits contains complete character looks and fitted Gothic corset-and-skirt
+sets. An outfit's details open close-ups for its individual pieces, with waist
+layering controls for the selected Gothic set. Shoes and socks, headwear,
+accessories, handheld props, hair, face, and skin tone have their own categories.
+The bonnet remains part of Vesper's model to cover the open scalp.
 
 `dressingRoomImports.json` inventories the 36 separate female garments added in
-9bd8f49. Vite exposes only IDs whose GLBs are materialized, excluding LFS
-pointers. These pieces are explicitly marked Fitting pending until fitting,
-coverage, and a runtime equip path are ready. LOD alternatives are one item,
-and the five raw Gothic skirts are represented by their fitted wardrobe sets.
-No raw asset is loaded just by browsing its category. The Ready to wear filter
-hides fitting work. Search filters the current category.
+9bd8f49. Standalone tops, skirts, coats, and dresses stay in the inventory for
+future fitting. Materialized footwear, headwear, and accessories appear as
+Fitting pending in their categories. Each entry groups its LODs, and browsing
+loads only the card. Ready to wear filters out fitting work, and search filters
+the current category.
 
 Category/search/filter changes never alter saved character state. Equipping a
 card feeds the existing coalesced autosave; keyboard/controller row navigation

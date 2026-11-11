@@ -1,19 +1,25 @@
-import { Box3, MathUtils, SkinnedMesh, Triangle, Vector3, type BufferGeometry, type Object3D } from "three";
+import { Box3, DoubleSide, MathUtils, MeshStandardMaterial, SkinnedMesh, Triangle, Vector3, type BufferGeometry, type Object3D } from "three";
 import { fitWardrobeSurface } from "./wardrobeSurface";
+
+const capHeight = (point: Vector3) => {
+  const across = Math.abs(point.x);
+  const front = 1.297 + .145 * MathUtils.smoothstep(across, .027, .069);
+  const back = 1.447 - .020 * MathUtils.smoothstep(across, .093, .182);
+  return MathUtils.lerp(back, front, MathUtils.smoothstep(point.z, -.01, .061));
+};
 
 /** Fit the High Collar's inset to the skinned torso, including the shoulder caps. */
 export function fitHighCollarSurface(body: BufferGeometry) {
   const fabric = fitWardrobeSurface(body, [
     point => point.y - 1.174,
-    point => .139 + .030 * MathUtils.smoothstep(point.y, 1.310, 1.381) - Math.abs(point.x),
     point => {
-      const across = Math.abs(point.x);
-      const front = 1.297 + .137 * MathUtils.smoothstep(across, .027, .069);
-      const back = 1.443 - .020 * MathUtils.smoothstep(across, .093, .167);
-      const edge = MathUtils.lerp(back, front, MathUtils.smoothstep(point.z, -.01, .061));
-      return edge - point.y;
+      const cap = .139 + .043 * MathUtils.smoothstep(point.y, 1.302, 1.367);
+      const shoulder = .014 * MathUtils.smoothstep(point.y, 1.294, 1.351)
+        * (1 - MathUtils.smoothstep(Math.abs(point.z), .018, .055));
+      return cap + shoulder - Math.abs(point.x);
     },
-  ], .0045);
+    point => capHeight(point) - point.y,
+  ], point => .0045 + .0015 * MathUtils.smoothstep(point.y, 1.310, 1.372));
   if (!fabric) return;
 
   // Span the bust with a shaped fabric panel. Its center follows the garment's
@@ -21,9 +27,9 @@ export function fitHighCollarSurface(body: BufferGeometry) {
   const position = fabric.getAttribute("position"), normal = fabric.getAttribute("normal");
   const point = new Vector3(), direction = new Vector3();
   function ease(x: number, y: number, z: number) {
-    const bust = MathUtils.smoothstep(y, 1.19, 1.232) * (1 - MathUtils.smoothstep(y, 1.259, 1.295));
+    const bust = MathUtils.smoothstep(y, 1.19, 1.232) * (1 - MathUtils.smoothstep(y, 1.264, 1.302));
     const center = 1 - MathUtils.smoothstep(Math.abs(x), .018, .087);
-    return (.003 + .017 * center) * bust * MathUtils.smoothstep(z, .05, .083);
+    return (.009 + .016 * center) * bust * MathUtils.smoothstep(z, .05, .083);
   }
   const step = .0002;
   for (let i = 0; i < position.count; i++) {
@@ -42,7 +48,37 @@ export function fitHighCollarSurface(body: BufferGeometry) {
   return fabric;
 }
 
-/** Carry the rear straps on the moving shoulder surface, including their trim. */
+/** Replace the upper strap fragments with seams traced across the moving caps. */
+function addHighCollarCapSeams(root: Object3D, body: BufferGeometry) {
+  const torso = root.getObjectByName("BODY_WARDROBE");
+  if (!(torso instanceof SkinnedMesh) || !torso.parent) return;
+  let accent: MeshStandardMaterial | undefined;
+  root.getObjectByName("CLOTH_CORSET_TUCKED")?.traverse(mesh => {
+    if (mesh instanceof SkinnedMesh && mesh.material instanceof MeshStandardMaterial
+      && mesh.material.name.startsWith("MAT_CORSET_05_01")) accent = mesh.material;
+  });
+  if (!accent) return;
+  const geometry = fitWardrobeSurface(body, [
+    point => point.y - MathUtils.lerp(1.351, 1.343, MathUtils.smoothstep(point.z, -.058, .043)),
+    point => capHeight(point) - .003 - point.y,
+    point => .0045 - Math.abs(Math.abs(point.x) - .110),
+  ], .0095);
+  if (!geometry) return;
+
+  const material = new MeshStandardMaterial({
+    name: "MAT_CORSET_05_CapSeam", color: accent.color, roughness: accent.roughness, side: DoubleSide,
+  });
+  material.userData.color_slot = "accent";
+  const seam = torso.clone(false);
+  seam.name = "CLOTH_CORSET_HIGH_COLLAR_CAP_SEAMS";
+  seam.userData = { clothingPiece: "corset" };
+  seam.geometry = geometry;
+  seam.material = material;
+  torso.parent.add(seam);
+  return () => { seam.removeFromParent(); geometry.dispose(); material.dispose(); };
+}
+
+/** Carry the lower rear lacing on the moving torso while the new caps supply the upper shoulder. */
 export function fitHighCollarShoulders(root: Object3D, body: BufferGeometry) {
   const bodyPositions = body.getAttribute("position"), bodyNormals = body.getAttribute("normal");
   const bodyJoints = body.getAttribute("skinIndex"), bodyWeights = body.getAttribute("skinWeight"), bodyIndex = body.getIndex();
@@ -79,12 +115,31 @@ export function fitHighCollarShoulders(root: Object3D, body: BufferGeometry) {
 
   const fitted: { mesh: SkinnedMesh; source: BufferGeometry; geometry: BufferGeometry }[] = [];
   const point = new Vector3(), closest = new Vector3(), target = new Vector3(), normal = new Vector3(), weights = new Vector3();
+  const disposeSeams = addHighCollarCapSeams(root, body);
   for (const name of ["CLOTH_CORSET_TUCKED", "CLOTH_CORSET_OVER"]) {
     root.getObjectByName(name)?.traverse(mesh => {
       if (!(mesh instanceof SkinnedMesh) || Array.isArray(mesh.material)) return;
       const source = mesh.geometry, geometry = source.clone();
       const position = geometry.getAttribute("position"), skinIndex = geometry.getAttribute("skinIndex"), skinWeight = geometry.getAttribute("skinWeight");
       const slot = mesh.material.userData.color_slot;
+      const index = source.getIndex();
+      if (index && disposeSeams) {
+        const visible: number[] = [];
+        for (let i = 0; i < index.count; i += 3) {
+          const first = index.getX(i), second = index.getX(i + 1), third = index.getX(i + 2);
+          a.fromBufferAttribute(position, first);
+          b.fromBufferAttribute(position, second);
+          c.fromBufferAttribute(position, third);
+          center.copy(a).add(b).add(c).multiplyScalar(1 / 3);
+          const cut = MathUtils.lerp(1.367, 1.331, MathUtils.smoothstep(center.z, -.058, .038));
+          const upperCap = center.y > cut && Math.abs(center.x) > .076;
+          const strayFrontTrim = slot !== "fabric" && center.y > 1.304 && center.z > .003 && Math.abs(center.x) > .057;
+          if (upperCap || strayFrontTrim) continue;
+          visible.push(first, second, third);
+        }
+        geometry.setIndex(visible);
+        geometry.setDrawRange(0, visible.length);
+      }
       const clearance = slot === "hardware" ? .009 : slot === "accent" ? .007 : .0055;
       for (let i = 0; i < position.count; i++) {
         point.fromBufferAttribute(position, i);
@@ -140,6 +195,7 @@ export function fitHighCollarShoulders(root: Object3D, body: BufferGeometry) {
     });
   }
   return () => {
+    disposeSeams?.();
     for (const { mesh, source, geometry } of fitted) {
       mesh.geometry = source;
       geometry.dispose();

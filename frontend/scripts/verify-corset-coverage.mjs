@@ -8,8 +8,11 @@ const zones = {
   chest: (p, n) => p.z > .083 && Math.abs(p.x) > .037 && Math.abs(p.x) < .09 && p.y > 1.252 && p.y < 1.292 && n.z > .35,
   rightCup: (p, n) => p.x > -.092 && p.x < -.055 && p.y > 1.299 && p.y < 1.312 && p.z > .072 && n.z > .18,
   bust: (p, n) => p.z > .081 && Math.abs(p.x) > .035 && Math.abs(p.x) < .096 && p.y > 1.244 && p.y < 1.296 && n.z > .32,
+  bustTips: (p, n) => p.z > .121 && Math.abs(p.x) > .047 && Math.abs(p.x) < .079 && p.y > 1.215 && p.y < 1.24 && n.z > .3,
   back: (p, n) => p.z < -.025 && Math.abs(p.x) < .105 && p.y > 1.33 && p.y < 1.405 && n.z < -.35,
   shoulders: (p, n) => Math.abs(p.x) > .08 && Math.abs(p.x) < .139 && p.y > 1.36 && p.y < 1.414 && n.y > .2,
+  outerShoulders: (p, n) => Math.abs(p.x) > .139 && Math.abs(p.x) < .155 && p.y > 1.359 && p.y < 1.424
+    && p.z > -.064 && p.z < .05 && n.y > .1,
   rearStraps: (p, n) => p.z < -.04 && Math.abs(p.x) > .095 && Math.abs(p.x) < .132 && p.y > 1.345 && p.y < 1.398 && n.z < -.3,
   leftRearStrap: (p, n) => p.x > .099 && p.x < .117 && p.y > 1.352 && p.y < 1.382 && p.z < -.068 && n.z < -.35,
 };
@@ -26,10 +29,28 @@ function visibleIndices(mesh) {
   return index.array.subarray(drawRange.start, drawRange.start + drawRange.count);
 }
 
-function posedSurface(mesh) {
+function surfaceFromVertices(points, indices) {
   return new MeshBVH(new BufferGeometry()
-    .setAttribute('position', new Float32BufferAttribute(posedVertices(mesh), 3))
-    .setIndex(Array.from(visibleIndices(mesh))));
+    .setAttribute('position', new Float32BufferAttribute(points, 3))
+    .setIndex(Array.from(indices)));
+}
+
+function posedSurface(mesh) {
+  return surfaceFromVertices(posedVertices(mesh), visibleIndices(mesh));
+}
+
+function verifyRaisedShoulder(label, ray, center, direction, skin, corsets) {
+  // At full reach skin folds can invert a face normal. Check the front, back,
+  // and top silhouettes when this shoulder point is visible from those views.
+  for (const [y, z] of [[0, 1], [0, -1], [1, 0]]) {
+    direction.set(0, y, z);
+    ray.origin.copy(center).addScaledVector(direction, .1);
+    ray.direction.copy(direction).negate();
+    const skinHit = skin.raycastFirst(ray, DoubleSide)?.distance ?? Infinity;
+    if (skinHit < .0999) continue;
+    assert(corsets.some(surface => (surface.raycastFirst(ray, DoubleSide)?.distance ?? Infinity) < .100001),
+      `${label} leaves an outer shoulder exposed from an external view`);
+  }
 }
 
 function tuckSamples(bindBody, triangle, center) {
@@ -81,30 +102,33 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
   }
   root.updateMatrixWorld(true);
   const idle = posedVertices(body), indices = visibleIndices(body);
-  const required = style === 5 ? ['bust', 'back', 'shoulders', 'rearStraps']
+  const required = style === 5 ? ['bust', 'bustTips', 'back', 'shoulders', 'outerShoulders', 'rearStraps']
     : style === 4 ? ['bust'] : style === 3 ? [] : style === 2 ? ['chest', 'rightCup'] : ['chest', 'leftRearStrap'];
+  const unmaskedZones = ['bust', 'bustTips', 'outerShoulders'];
   const samples = Object.fromEntries(required.map(zone => [zone, []]));
   for (let i = 0; i < indices.length; i += 3) {
     const face = indices.subarray(i, i + 3);
     triangle(idle, face);
-    for (const [zone, faces] of Object.entries(samples)) if (zone !== 'bust' && zones[zone](center, normal)) faces.push(face);
+    for (const [zone, faces] of Object.entries(samples)) if (!unmaskedZones.includes(zone) && zones[zone](center, normal)) faces.push(face);
   }
-  if (samples.bust) {
-    // Check the cloth against the original chest even where the outfit masks skin.
+  const raw = unmaskedZones.filter(zone => samples[zone]);
+  if (raw.length) {
+    // Check the cloth against the original body even where the outfit masks skin.
     const points = bindBody.getAttribute('position').array;
     const indices = bindBody.index.array;
     for (let i = 0; i < indices.length; i += 3) {
       const face = indices.subarray(i, i + 3);
       triangle(points, face);
-      if (zones.bust(center, normal)) samples.bust.push(face);
+      for (const zone of raw) if (zones[zone](center, normal)) samples[zone].push(face);
     }
   }
   for (const [zone, faces] of Object.entries(samples)) assert(faces.length > 0, `${label} samples ${zone}`);
   const tuck = verifyTuck && tuckSamples(bindBody, triangle, center);
 
-  const mixer = new AnimationMixer(root), ray = new Ray();
+  const mixer = new AnimationMixer(root), ray = new Ray(), direction = new Vector3();
   const poses = [['idle', 0], ['013', .45], ['008', .5], ['010', .5]];
   if (style !== 1) poses.push(['009', .5]);
+  if (style === 5) poses.push(['heart-overhead', .5]);
   for (const [pose, phase] of poses) {
     const emote = pose === 'idle' ? undefined : findGaragePreviewEmote(pose, false);
     if (pose !== 'idle') assert(emote, `${pose} is available for coverage verification`);
@@ -115,16 +139,22 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
     root.updateMatrixWorld(true);
     const points = posedVertices(body);
     const shapes = corset.map(posedSurface);
+    const raisedSkin = pose === 'heart-overhead' ? surfaceFromVertices(points, bindBody.index.array) : undefined;
     for (const [zone, faces] of Object.entries(samples)) {
+      if (raisedSkin && zone !== 'bustTips' && zone !== 'outerShoulders') continue;
       let covered = 0;
       for (const face of faces) {
         triangle(points, face);
+        if (raisedSkin && zone === 'outerShoulders') {
+          verifyRaisedShoulder(`${label} ${pose}`, ray, center, direction, raisedSkin, shapes);
+          continue;
+        }
         ray.origin.copy(center).addScaledVector(normal, .1);
         ray.direction.copy(normal).negate();
         const distance = Math.min(...shapes.map(surface => surface.raycastFirst(ray, DoubleSide)?.distance ?? Infinity));
         // At the dipped neckline some shoulder poses cast over the edge, through to the back.
         if (zone === 'rightCup' && distance > .145) continue;
-        assert(distance < .100001, `${label} ${pose} leaves ${zone} exposed`);
+        assert(distance < (zone === 'bustTips' ? .0975 : .100001), `${label} ${pose} leaves ${zone} exposed`);
         covered++;
       }
       if (zone === 'rightCup') assert(covered >= faces.length / 2, `${label} ${pose} reaches the right cup`);

@@ -72,6 +72,7 @@ try{
   }
   // Keep authored UVs and limit each fit change to its affected panels.
   let sweetheartOverRise=0;
+  let collarRemovedIndices=0;
   for(const name of ['CLOTH_CORSET_TUCKED','CLOTH_CORSET_OVER']){
    const tuckRefit=(n===2||n===3)&&name==='CLOTH_CORSET_TUCKED';
    const authored=scene.getObjectByName(name), fitted=model.root.getObjectByName(name);
@@ -86,6 +87,8 @@ try{
      assert.deepEqual(target.geometry.getAttribute(attribute)?.array,source.geometry.getAttribute(attribute)?.array,`${set} ${lod} ${source.name} ${attribute} stays authored`);
     }
     if(n===5){
+     assert(target.geometry.index.count<=source.geometry.index.count,'High Collar keeps the authored lower shell triangles');
+     collarRemovedIndices+=source.geometry.index.count-target.geometry.index.count;
      const positions=source.geometry.attributes.position;
      for(let i=0;i<positions.count;i++){
       const z=positions.getZ(i),y=positions.getY(i);
@@ -128,6 +131,13 @@ try{
    });
   }
   if(n===2)assert(sweetheartOverRise>.006,'Sweetheart over-skirt cup has a visible coverage increase');
+  if(n===5){
+   assert(collarRemovedIndices>0,'High Collar removes the old shoulder fragments');
+   const seams=model.root.getObjectByName('CLOTH_CORSET_HIGH_COLLAR_CAP_SEAMS');
+   assert(seams?.isSkinnedMesh&&seams.geometry.index.count>0,'High Collar has body-rigged shoulder seams');
+   assert.equal(seams.material.userData.color_slot,'accent');
+   assert.equal(seams.material.normalMap,null,'generated High Collar seams use an untextured dye material');
+  }
   if(facing){
    assert(facing.isSkinnedMesh && facing.geometry.index.count>0);
    assert.equal(facing.material.transparent,false,'the corset facing must remain opaque');

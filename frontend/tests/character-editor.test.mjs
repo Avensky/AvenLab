@@ -115,7 +115,7 @@ test('character tools preserve builder drafts, frame close-ups, and wait for app
     await click('.dressing-toolbar button[aria-label="Hold pose"]');
     assert.equal(preview.getState().playbackPaused, true);
     await click('#character-editor-tab-appearance');
-    await click('[data-category=tops]');
+    await click('[data-category=outfits]');
     await click('[data-wardrobe-item=gothic-01]');
     assert.equal(editor.getState().choice.wardrobe.set, 'gothic-01');
     await click('.controller-shortcut-back');

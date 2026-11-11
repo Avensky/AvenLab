@@ -3,7 +3,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import type { CharacterChoice } from "./characterCatalog";
 import { resolveWardrobe } from "./wardrobe";
 export const FIT_REVISION = "wardrobe-10";
-const setFitRevisions: Record<string, string> = { "gothic-01": "wardrobe-9", "gothic-02": FIT_REVISION, "gothic-04": FIT_REVISION, "gothic-05": FIT_REVISION };
+const setFitRevisions: Record<string, string> = { "gothic-01": "wardrobe-9", "gothic-02": FIT_REVISION, "gothic-04": FIT_REVISION, "gothic-05": "wardrobe-11" };
 export const FIT_CHECKS = ["front", "back", "movement"] as const;
 export type FitCheck = typeof FIT_CHECKS[number];
 type Review = { checks: Partial<Record<FitCheck, boolean>>; issue: string; updated: string };

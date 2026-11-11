@@ -260,7 +260,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     }
     current.mixer.update(step);
     current.fitFlag?.();
-  }, cockpit ? -.5 : 0);
+  }, cockpit ? -.5 : -.125);
 
   return <group>
     <primitive object={root} dispose={null} onClick={(event: import("@react-three/fiber").ThreeEvent<MouseEvent>) => {
