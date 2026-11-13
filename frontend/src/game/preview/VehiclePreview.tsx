@@ -40,16 +40,18 @@ function subscribeMotion(listener: () => void) {
   return () => media?.removeEventListener("change", listener);
 }
 
-function MissingVehicle({ model, onSettled, cockpit }: { model: string; onSettled: (model: string) => void; cockpit: boolean }) {
+function MissingVehicle({ model, onSettled, cockpit, active }: {
+  model: string; onSettled: (model: string) => void; cockpit: boolean; active: boolean;
+}) {
   useLayoutEffect(() => onSettled(model), [model, onSettled]);
   useLayoutEffect(() => {
     if (cockpit) failCockpitPreview("The selected vehicle model is unavailable.");
   }, [cockpit]);
-  return <Html center>
+  return active ? <Html center>
     <p className="rounded bg-slate-950 p-3 text-sm text-amber-200">
       Vehicle model unavailable. Check Git LFS assets or select another vehicle.
     </p>
-  </Html>;
+  </Html> : null;
 }
 
 function findPreviewAnchor(cache: Map<string, Object3D>, root: Object3D | null, name: string) {
@@ -270,7 +272,9 @@ export function VehiclePreview({
           (anchor.parent?.parent ?? anchor).getWorldQuaternion(anchorRotation);
           offset.set(0, radius * .13, radius).applyQuaternion(anchorRotation);
         } else {
-          offset.set(radius * .14, radius * .08, radius);
+          // The garage turntable can park the actor at any world yaw.
+          (characterActor.current ?? anchor).getWorldQuaternion(anchorRotation);
+          offset.set(radius * .14, radius * .08, radius).applyQuaternion(anchorRotation);
         }
         position.copy(target).add(offset);
       }
@@ -331,7 +335,7 @@ export function VehiclePreview({
   return (
     <>
       <GarageEnvironment turntable={turntable} onPlatformReady={setPlatform} accentOverride={selectionAccent}
-        allowLoad={characterOnly || !waitingForCar} onSettled={roomSettled} reflectFloor={!characterOnly} />
+        allowLoad={characterOnly || !waitingForCar} onSettled={roomSettled} />
       {fittingRoom && roomReady && <FittingMirrorDisplay />}
       {loadLabel && <PreviewLoadingStatus label={loadLabel} />}
       <PerspectiveCamera ref={cameraRef} name="garage-preview-camera" makeDefault={!wardrobeOpen} />
@@ -356,9 +360,9 @@ export function VehiclePreview({
               <group name="character-driver-shadow"><PreviewContactShadow footprint={[.55, .46]} offset={[0, 0]} /></group>
               <GarageDriver choice={driver} previewPacks leanFit={vehicleFit?.lean} mirrorFit={vehicleFit?.mirror} cockpit={vehicleFit?.cockpit} />
             </group>}
-            {!fittingRoom && vehicleId && <AssetBoundary
+            {vehicleId && <AssetBoundary
               key={vehicleId}
-              fallback={<MissingVehicle model={vehicleId} onSettled={setSettledVehicle} cockpit={insideCar} />}
+              fallback={<MissingVehicle model={vehicleId} onSettled={setSettledVehicle} cockpit={insideCar} active={!characterOnly} />}
             >
               <Suspense fallback={null}>
                 <VehiclePreviewModel platform={platform} model={vehicleId} driver={vehicleEmotes ? driver : garageDriver} previewPacks={vehicleEmotes}

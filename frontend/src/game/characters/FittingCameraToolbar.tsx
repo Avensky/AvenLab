@@ -43,7 +43,7 @@ export function FittingCameraToolbar({ camera, zoomRange, visibility, actions, p
     const element = toolbar.current;
     if (focusCamera.current) {
       const selected = panel.current?.querySelector<HTMLButtonElement>('[data-camera-choice][aria-pressed="true"]');
-      (selected ?? panel.current?.querySelector<HTMLButtonElement>("[data-camera-choice]"))?.focus();
+      (selected ?? panel.current?.querySelector<HTMLElement>("[data-camera-choice], button:not(:disabled), input"))?.focus();
     }
     function dismissOutside(event: MouseEvent) {
       const target = event.target as Node | null;

@@ -1,10 +1,11 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { requestSocial } from "../../net/socialClient";
 import { useSocialStore } from "../../store/social/socialStore";
 import { characterLook, type CharacterChoice } from "./characterCatalog";
 import { clothingPieceLabel, wornClothing } from "./clothingPieces";
 import { resolveCharacterWardrobe, wardrobeOverEase, WARDROBE_CORSETS, WARDROBE_WAIST_OPTIONS } from "./wardrobe";
 import { getWardrobeGarment, visibleWardrobeGarments } from "./wardrobeGarments";
+import { LOCAL_OUTFITS_KEY, readLocalOutfits, writeLocalOutfit } from "./localOutfits";
 import "./savedOutfits.css";
 
 const MAX_OUTFITS = 24;
@@ -34,14 +35,21 @@ type SavedOutfitsProps = {
   onEndPreview?: () => void;
 };
 
-export function SavedOutfits(props: SavedOutfitsProps) {
+export function SavedOutfits({ choice, onTryOn, onEndPreview }: SavedOutfitsProps) {
   const owner = useSocialStore(({ view }) => view?.profile.progression ? view.profile.id : undefined);
-  if (!owner) return <p className="dressing-empty" role="status">Connect your player profile to save outfits.</p>;
-  return <ConnectedSavedOutfits key={owner} owner={owner} {...props} />;
-}
-
-function ConnectedSavedOutfits({ owner, choice, onTryOn, onEndPreview }: SavedOutfitsProps & { owner: string }) {
-  const records = useSocialStore(state => state.view?.profile.progression?.character_outfits);
+  const profileOutfits = useSocialStore(state => state.view ? state.view.profile.progression?.character_outfits : state.cachedCosmetics?.character_outfits);
+  const [localOutfits, setLocalOutfits] = useState(readLocalOutfits);
+  const [source, setSource] = useState<"device" | "profile">(() =>
+    Object.values(localOutfits).some(item => item.id === choice.id) || !Object.values(profileOutfits ?? {}).some(item => item.id === choice.id)
+      ? "device" : "profile");
+  const records = source === "device" ? localOutfits : profileOutfits;
+  useEffect(() => {
+    const refresh = (event: StorageEvent) => {
+      if (event.key === null || event.key === LOCAL_OUTFITS_KEY) setLocalOutfits(readLocalOutfits());
+    };
+    window.addEventListener("storage", refresh);
+    return () => window.removeEventListener("storage", refresh);
+  }, []);
   const [name, setName] = useState("");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
@@ -59,8 +67,35 @@ function ConnectedSavedOutfits({ owner, choice, onTryOn, onEndPreview }: SavedOu
         ? "Delete a saved outfit to make room for another."
         : "";
 
+  function saveDeviceCopy(name: string, outfit: CharacterChoice) {
+    if (Object.hasOwn(localOutfits, name)) {
+      setMessage(`A device outfit named ${name} already exists. Use This device to update it.`);
+      return;
+    }
+    if (Object.keys(localOutfits).length >= MAX_OUTFITS) {
+      setMessage("Delete a device outfit to make room for a copy.");
+      return;
+    }
+    try {
+      setLocalOutfits(writeLocalOutfit(name, outfit));
+      setMessage(`Copied ${name} to this device.`);
+    } catch {
+      setMessage("Browser storage could not save the copy.");
+    }
+  }
+
   async function changeOutfits(action: "character_outfit_save" | "character_outfit_delete", name: string, character?: CharacterChoice) {
-    if (requestPending.current || useSocialStore.getState().view?.profile.id !== owner) return;
+    if (source === "device") {
+      try {
+        setLocalOutfits(writeLocalOutfit(name, character));
+        if (!character) setName(current => current.trim() === name ? "" : current);
+        setMessage(character ? `Saved ${name} on this device.` : `Deleted ${name} from this device.`);
+      } catch {
+        setMessage("Browser storage could not update your outfits.");
+      }
+      return;
+    }
+    if (requestPending.current || !owner || useSocialStore.getState().view?.profile.id !== owner) return;
     requestPending.current = true;
     setPending(true);
     setMessage("");
@@ -90,8 +125,17 @@ function ConnectedSavedOutfits({ owner, choice, onTryOn, onEndPreview }: SavedOu
     if (trimmedName && !saveProblem) void changeOutfits("character_outfit_save", trimmedName, choice);
   }
 
-  const notice = pending ? "Updating saved outfits…" : saveProblem || message;
+  const readOnly = source === "profile" && !owner;
+  const notice = pending ? "Updating saved outfits…" : message || saveProblem;
+
   return <div className="saved-outfits">
+    <div className="saved-outfit-sources" role="group" aria-label="Outfit storage" data-controller-row>
+      {(["device", "profile"] as const).map(location => <button key={location} type="button" className="menu-control"
+        aria-pressed={source === location} disabled={pending} onClick={() => {
+          setSource(location);
+          setMessage("");
+        }}>{location === "device" ? "This device" : "Profile"}</button>)}
+    </div>
     {onEndPreview && <div data-controller-row>
       <button type="button" className="menu-control" onClick={() => {
         onEndPreview();
@@ -106,11 +150,14 @@ function ConnectedSavedOutfits({ owner, choice, onTryOn, onEndPreview }: SavedOu
           onChange={event => { setName(event.target.value); setMessage(""); }} />
       </label>
       <div data-controller-row>
-        <button type="submit" className="menu-control" disabled={pending || !trimmedName || Boolean(saveProblem)}>
+        <button type="submit" className="menu-control" disabled={readOnly || pending || !trimmedName || Boolean(saveProblem)}>
           {existing?.id === choice.id ? "Update outfit" : "Save outfit"}
         </button>
+        {source === "profile" && existing?.id === choice.id && <button type="button" className="menu-control" disabled={pending}
+          onClick={() => saveDeviceCopy(trimmedName, existing)}>Copy profile outfit to this device</button>}
       </div>
     </form>
+    {readOnly && <p className="saved-outfit-message">Connect your profile to change profile saves. Cached outfits can still be tried on.</p>}
     {notice && <p className="saved-outfit-message" role="status">{notice}</p>}
     {looks.length > 0 ? <ul className="saved-outfit-list" aria-label="Saved outfits">
       {looks.map(([outfitName, outfit]) => {
@@ -125,7 +172,7 @@ function ConnectedSavedOutfits({ owner, choice, onTryOn, onEndPreview }: SavedOu
             {details && <small>{details}</small>}
           </button>
           <button type="button" className="menu-control saved-outfit-delete" aria-label={`Delete ${outfitName}`} title={`Delete ${outfitName}`}
-            disabled={pending} onClick={() => void changeOutfits("character_outfit_delete", outfitName)}>
+            disabled={readOnly || pending} onClick={() => void changeOutfits("character_outfit_delete", outfitName)}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M4 6h16M9 6V3h6v3M6 6l1 14h10l1-14M10 9v8m4-8v8" /></svg>
           </button>
         </li>;

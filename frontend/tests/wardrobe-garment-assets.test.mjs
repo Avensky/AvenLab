@@ -198,7 +198,7 @@ test('medieval hoods replace the bonnet while keeping the outfit and stored hair
   } finally { await vite.close(); }
 });
 
-test('turning off wardrobe layers restores the donor skin and keeps the other pieces', async t => {
+test('turning off wardrobe layers fits underwear and keeps the other pieces', async t => {
   const top = catalog.find(item => item.id === 'top-02');
   const paths = [
     villagerDir + 'villager-female.garage.glb', bundledDir + 'gothic-02.garage.glb',
@@ -218,6 +218,28 @@ test('turning off wardrobe layers restores the donor skin and keeps the other pi
       applyVillagerLook(model, look);
       return model;
     };
+    const { getWardrobeGarment, setWardrobeGarment, setWardrobeRemoval, villageWardrobeItems } =
+      await vite.ssrLoadModule('/src/game/characters/wardrobeGarments.ts');
+    for (const item of villageWardrobeItems) {
+      assert(village.getObjectByName(item.villageNode), item.id);
+    }
+    const sleeves = getWardrobeGarment('village-sleeves');
+    const separated = setWardrobeGarment(DEFAULT_CHARACTER, sleeves.slot, sleeves.id);
+    const sleeveless = setWardrobeRemoval(separated, 'sleeves', true);
+    const withoutSleeves = build(village, sleeveless, { garmentBody: donor });
+    try {
+      assert.equal(withoutSleeves.root.getObjectByName(sleeves.villageNode).visible, false);
+      assert(withoutSleeves.root.getObjectByName('CLOTH_TOP_CORSET').visible);
+      assert(withoutSleeves.root.getObjectByName('fitting-room-body').geometry.drawRange.count > 0);
+      assert(!withoutSleeves.root.getObjectByName('wardrobe-underwear-bra'));
+    } finally { withoutSleeves.dispose(); }
+    const withSleeves = build(village, separated, { garments: [{ item: sleeves, scene: village }] });
+    try {
+      const sleeveGroup = withSleeves.root.getObjectByName('wardrobe-village-sleeves');
+      assert.deepEqual(sleeveGroup.children.map(mesh => mesh.name), [sleeves.villageNode]);
+      assert.equal(withSleeves.root.getObjectByName(sleeves.villageNode).visible, false);
+    } finally { withSleeves.dispose(); }
+
     const withoutCorset = build(village, { removedClothing: ['corset'], garments: { top: top.id } },
       { garmentBody: donor, garments: [{ item: top, scene: topScene }] });
     try {
@@ -227,6 +249,7 @@ test('turning off wardrobe layers restores the donor skin and keeps the other pi
       assert(root.getObjectByName('wardrobe-top-02').visible);
       assert(root.getObjectByName('CLOTH_BOTTOM_SKIRT').visible);
       assert(root.getObjectByName('fitting-room-body').geometry.drawRange.count > 0);
+      assert.equal(root.getObjectByName('wardrobe-underwear-bra'), undefined, 'the equipped Top 02 covers the torso');
     } finally {
       withoutCorset.dispose();
     }
@@ -254,6 +277,8 @@ test('turning off wardrobe layers restores the donor skin and keeps the other pi
       assert(torsoFaces > 100);
       assert.equal(root.getObjectByName('CLOTH_CORSET_OVER').visible, false);
       assert.equal(root.getObjectByName('CLOTH_BOTTOM_SKIRT').visible, true);
+      assert(root.getObjectByName('wardrobe-underwear-bra')?.visible);
+      assert(!root.getObjectByName('wardrobe-underwear-briefs'));
     } finally {
       exposedTorso.dispose();
     }
@@ -262,10 +287,12 @@ test('turning off wardrobe layers restores the donor skin and keeps the other pi
     try {
       const { root } = withoutSkirt;
       assert.equal(root.getObjectByName('CLOTH_BOTTOM_SKIRT').visible, false);
+      assert(root.getObjectByName('wardrobe-underwear-briefs')?.visible);
       assert.equal(root.userData.skirtHandRoom, undefined);
       assert(root.getObjectByName('CLOTH_CORSET_OVER').visible);
       assert(root.getObjectByName('CLOTH_FEET_SHOES').visible);
       assert(root.getObjectByName('fitting-room-body').geometry.drawRange.count > 0);
+      assert.equal(root.getObjectByName('wardrobe-underwear-bra'), undefined, 'the fitted corset stays on');
     } finally {
       withoutSkirt.dispose();
     }
@@ -285,7 +312,10 @@ test('turning off wardrobe layers restores the donor skin and keeps the other pi
         assert.equal(root.getObjectByName(name).visible, false, name);
       }
       const body = root.getObjectByName('fitting-room-body');
-      assert.equal(body.geometry.drawRange.count, donor.geometry.index.count, 'the torso, legs, and feet use the complete skin mesh');
+      assert(body.geometry.drawRange.count > 0 && body.geometry.drawRange.count < donor.geometry.index.count,
+        'the donor supplies the restored skin and underwear masks the covered faces');
+      assert(root.getObjectByName('wardrobe-underwear-bra')?.visible);
+      assert(root.getObjectByName('wardrobe-underwear-briefs')?.visible);
       root.updateMatrixWorld(true);
       assert(Math.abs(new Box3().setFromObject(body, true).min.y) < 1e-5, 'the bare feet remain on the floor');
     } finally {
@@ -1183,6 +1213,7 @@ test('each Gothic skirt closes its waistband gap and clears the animated torso',
     const { buildEmoteClips, findGaragePreviewEmote } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
     for (const [index, item] of skirts.entries()) {
       const scene = skirtScenes[index];
+      const fittedHem = item.id === 'gothic-skirt-03' || item.id === 'gothic-skirt-05';
       const model = prepareVillager(garage, { fitted: true, garments: [{ item, scene }], garmentBody });
       try {
         applyVillagerLook(model, characterLook({ ...DEFAULT_CHARACTER, garments: { skirt: item.id } }));
@@ -1190,15 +1221,23 @@ test('each Gothic skirt closes its waistband gap and clears the animated torso',
         const body = root.getObjectByName('fitting-room-body');
         const { children } = root.getObjectByName(`wardrobe-${item.id}`);
         let roundedCorners = 0;
+        let taperedTips = 0;
         for (const mesh of children) {
           const source = scene.getObjectByName(mesh.name).geometry;
           const { position: cloth, uv, skinWeight, skinIndex } = mesh.geometry.attributes;
           const original = source.attributes.position;
           assert.deepEqual(mesh.geometry.index.array, source.index.array, item.id);
           assert.deepEqual(uv.array, source.attributes.uv.array, item.id);
-          assert.deepEqual(skinWeight.array, source.attributes.skinWeight.array, item.id);
-          assert.deepEqual(skinIndex.array, source.attributes.skinIndex.array, item.id);
           for (let i = 0; i < original.count; i++) {
+            if (!fittedHem || original.getY(i) >= .91) {
+              for (const channel of [0, 1, 2, 3]) {
+                assert.equal(skinWeight.getComponent(i, channel), source.attributes.skinWeight.getComponent(i, channel), item.id);
+                assert.equal(skinIndex.getComponent(i, channel), source.attributes.skinIndex.getComponent(i, channel), item.id);
+              }
+            } else {
+              const total = skinWeight.getX(i) + skinWeight.getY(i) + skinWeight.getZ(i) + skinWeight.getW(i);
+              assert(Math.abs(total - 1) < .00001, `${item.id} normalizes the refitted hem weights`);
+            }
             if (item.id === 'gothic-skirt-04' && original.getY(i) < .76 && original.getZ(i) > .035) {
               const lift = cloth.getY(i) - original.getY(i);
               assert(lift >= 0 && lift <= .024001, 'the front corners lift gently');
@@ -1208,11 +1247,19 @@ test('each Gothic skirt closes its waistband gap and clears the animated torso',
             }
             assert.equal(cloth.getY(i), original.getY(i), item.id);
             if (original.getY(i) >= .965) continue;
+            if (fittedHem && original.getY(i) < .84) {
+              assert(Math.hypot(cloth.getX(i) - original.getX(i), cloth.getZ(i) - original.getZ(i)) <= .032001,
+                `${item.id} keeps the hem adjustment local`);
+              const radius = attribute => Math.hypot(attribute.getX(i), attribute.getZ(i) - .025);
+              if (original.getY(i) < .52 && radius(original) - radius(cloth) > .006) taperedTips++;
+              continue;
+            }
             assert.equal(cloth.getX(i), original.getX(i), item.id);
             assert.equal(cloth.getZ(i), original.getZ(i), item.id);
           }
         }
         if (item.id === 'gothic-skirt-04') assert(roundedCorners > 20, 'the front hem rounds while the rear stays unchanged');
+        if (fittedHem) assert(taperedTips > 10, `${item.id} draws in its widest lower tips`);
         const mesh = children.find(part => part.material.name.endsWith(waistMaterial[index]));
         const cloth = mesh.geometry.attributes.position;
         const original = scene.getObjectByName(mesh.name).geometry.attributes.position;
@@ -1273,6 +1320,42 @@ test('each Gothic skirt closes its waistband gap and clears the animated torso',
             }
           } finally {
             torso.dispose();
+            mixer.stopAllAction();
+          }
+        }
+        if (fittedHem) {
+          const trim = children.find(part => part.material.name.endsWith('Trim_1'));
+          const [walk] = buildEmoteClips(root, [findGaragePreviewEmote('walk-casual', false)]);
+          mixer.clipAction(walk).play();
+          mixer.setTime(walk.duration * .45);
+          root.updateMatrixWorld(true);
+          const { position } = trim.geometry.attributes;
+          const posed = new Float32BufferAttribute(new Float32Array(position.count * 3), 3);
+          const point = new Vector3(), lowerFaces = [];
+          for (let i = 0; i < position.count; i++) {
+            trim.getVertexPosition(i, point).applyMatrix4(trim.matrixWorld);
+            posed.setXYZ(i, point.x, point.y, point.z);
+          }
+          for (let i = 0; i < trim.geometry.index.count; i += 3) {
+            const face = [trim.geometry.index.getX(i), trim.geometry.index.getX(i + 1), trim.geometry.index.getX(i + 2)];
+            if (face.every(vertex => position.getY(vertex) >= .40 && position.getY(vertex) <= .82)) lowerFaces.push(...face);
+          }
+          assert(lowerFaces.length > 100);
+          const hem = new BufferGeometry().setAttribute('position', posed).setIndex(lowerFaces);
+          try {
+            const surface = new MeshBVH(hem);
+            const crossing = { start: new Vector3(), end: new Vector3() };
+            let crossings = 0;
+            surface.bvhcast(surface, identity, {
+              intersectsTriangles: (a, b, ai, bi) => {
+                if (ai >= bi || [a.a, a.b, a.c].some(p => [b.a, b.b, b.c].some(q => p.distanceToSquared(q) < 1e-12))) return false;
+                if (a.intersectsTriangle(b, crossing) && crossing.start.distanceToSquared(crossing.end) >= .002 ** 2) crossings++;
+                return false;
+              },
+            });
+            assert(crossings < 60, `${item.id} keeps lower trim from folding through itself during a step (${crossings} crossings)`);
+          } finally {
+            hem.dispose();
             mixer.stopAllAction();
           }
         }

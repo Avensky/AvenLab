@@ -1,6 +1,7 @@
 import type { CharacterChoice } from "./characterCatalog";
 import type { ClothingPiece } from "./clothingPieces";
 import type { Object3D, SkinnedMesh } from "three";
+import villageItems from "../../../../avenlab-server/src/assets/character-village-pieces.json";
 import importedItems from "../../../../avenlab-server/src/assets/character-garments.json";
 
 export const wardrobeGarmentReplacements = {
@@ -13,11 +14,14 @@ export const wardrobeGarmentReplacements = {
   coat: [],
   harness: [],
   bracer: [],
+  sleeves: ["sleeves"], belt: ["belt"], underskirt: ["underskirt"], shoes: ["shoes"],
 } satisfies Record<string, ClothingPiece[]>;
 
 export type WardrobeGarmentSlot = keyof typeof wardrobeGarmentReplacements;
 export type WardrobeGarmentChoice = Partial<Record<WardrobeGarmentSlot, string>>;
 export const wardrobeRemovalPieces = {
+  dress: ["dress", "sleeves"],
+  sleeves: ["sleeves"], belt: ["belt"], underskirt: ["underskirt"], "village-skirt": ["skirt"], coat: ["coat"],
   top: ["shirt", "sleeves"], corset: ["corset"], skirt: ["skirt", "underskirt", "shorts", "belt"],
   shoes: ["shoes"], socks: ["socks"], hat: ["hat"], bow: ["bow"], harness: ["harness"], bracer: ["bracer"], "bonnet-bow": [],
 } satisfies Record<string, ClothingPiece[]>;
@@ -31,9 +35,12 @@ export function removedWardrobeLayers(choice?: Pick<CharacterChoice, "id" | "rem
 export function visibleWardrobeGarments(choice?: Pick<CharacterChoice, "id" | "removedClothing" | "garments"> | null) {
   const garments = choice?.garments;
   const removed = removedWardrobeLayers(choice);
-  if (!garments || !removed.some(slot => slot in garments)) return garments;
-  const visible = Object.fromEntries(Object.entries(garments).filter(([slot]) => !removed.some(layer => layer === slot)));
-  return Object.keys(visible).length ? visible as WardrobeGarmentChoice : undefined;
+  if (!garments || !removed.length) return garments;
+  const entries = Object.entries(garments);
+  const visible = entries.filter(([slot, id]) => !removed.some(layer => layer === slot
+    || (layer === "corset" && id === "village-bodice") || (layer === "village-skirt" && id === "village-skirt")));
+  if (visible.length === entries.length) return garments;
+  return visible.length ? Object.fromEntries(visible) as WardrobeGarmentChoice : undefined;
 }
 
 export function setWardrobeRemoval(choice: CharacterChoice, slot: WardrobeRemoval, remove: boolean): CharacterChoice {
@@ -44,7 +51,7 @@ export function setWardrobeRemoval(choice: CharacterChoice, slot: WardrobeRemova
 }
 type WardrobeGarment = {
   id: string; label: string; section: string; category: string; slot: WardrobeGarmentSlot;
-  piece: ClothingPiece; url: string; mobileUrl?: string; revisionUrl?: string; retired?: boolean;
+  piece: ClothingPiece; url?: string; villageNode?: string; mobileUrl?: string; revisionUrl?: string; retired?: boolean;
   tucksHair?: boolean;
   scalpCap?: boolean;
   description?: string; hideLongHair?: boolean;
@@ -53,11 +60,20 @@ type WardrobeGarment = {
 
 export const importedWardrobeItems = (importedItems as WardrobeGarment[]).filter(item => !item.retired);
 
+export const villageWardrobeItems = villageItems as WardrobeGarment[];
+const wardrobeItems = [...importedWardrobeItems, ...villageWardrobeItems];
+
 export function getWardrobeGarment(id?: string) {
-  return importedWardrobeItems.find(item => item.id === id);
+  return wardrobeItems.find(item => item.id === id);
+}
+
+export function wardrobeReplacedPieces(item: WardrobeGarment): readonly ClothingPiece[] {
+  if (!item.villageNode) return wardrobeGarmentReplacements[item.slot];
+  return item.slot === "top" ? ["corset", "shirt"] : [item.piece];
 }
 
 export function wardrobeGarmentModelUrl(item: WardrobeGarment, kind: "garage" | "portrait", { useRevision = true } = {}) {
+  if (item.villageNode) return (kind === "portrait" ? __VILLAGER_PORTRAIT_URL__ : __VILLAGER_MODEL_URL__) ?? undefined;
   if (!__DRESSING_ROOM_IMPORTED_IDS__.includes(item.id)) return undefined;
   if (useRevision && item.revisionUrl && __DRESSING_ROOM_REVISION_IDS__.includes(item.id)) return item.revisionUrl;
   if (kind === "portrait" && item.mobileUrl && __DRESSING_ROOM_MOBILE_IDS__.includes(item.id)) return item.mobileUrl;
@@ -89,8 +105,9 @@ export function setWardrobeGarment(choice: CharacterChoice, slot: WardrobeGarmen
       delete garments.skirt;
     } else if (slot === "top" || slot === "skirt") delete garments.dress;
   } else delete garments[slot];
-  const replacesBodice = id && (slot === "dress" || item?.piece === "armor");
-  const removed = choice.removedClothing?.filter(layer => !id || layer !== slot);
+  const replacesBodice = id && (slot === "dress" || item?.piece === "armor" || item?.piece === "corset");
+  const removed = choice.removedClothing?.filter(layer => !id || (layer !== slot
+    && !(id === "village-bodice" && layer === "corset") && !(id === "village-skirt" && layer === "village-skirt")));
   return { ...choice, garments: Object.keys(garments).length ? garments : undefined,
     removedClothing: removed?.length ? removed : undefined, wardrobeTrial: replacesBodice ? undefined : choice.wardrobeTrial,
     wardrobeEase: replacesBodice || (id && slot === "top" && !choice.wardrobeTrial) ? undefined : choice.wardrobeEase };

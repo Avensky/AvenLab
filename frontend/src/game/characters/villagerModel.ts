@@ -240,7 +240,8 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
   if (model.hat) model.hat.visible = true;
   model.bonnet?.setBowVisible(!look.removedClothing.includes("bonnet-bow"));
   if (model.longHair) model.longHair.visible = !cropped && !tucksHair;
-  if (model.bow) model.bow.visible = Boolean(look.appearance.accent) || look.outfit.id === "shop-crew";
+  if (model.bow) model.bow.visible = !look.removedClothing.includes("bow")
+    && (Boolean(look.appearance.accent) || look.outfit.id === "shop-crew");
   if (model.crop) {
     model.crop.visible = cropped && !tucksHair && !model.scalpCap;
     model.crop.material.color.set(look.hair);

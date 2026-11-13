@@ -1,3 +1,105 @@
+.hero-workshop .character-header-action[aria-label="Customization"] {
+  --customization-cut: clamp(8px, 1.05vw, 14px);
+  --customization-tab-height: var(--angled-tabs-height, 32px);
+  align-items: flex-start;
+}
+.hero-workshop .character-header-action[aria-label="Customization"] > :is(.hero-workshop-main, .character-header-profile) {
+  position: relative;
+  align-items: center;
+  background: var(--angled-tab-surface, var(--app-panel));
+  box-shadow: inset 0 -1px var(--app-accent);
+}
+.hero-workshop .character-header-action[aria-label="Customization"] > :is(.hero-workshop-main, .character-header-profile):is(:hover, :focus-visible, [aria-current="page"]):not(:disabled) {
+  background: var(--app-raised);
+}
+.hero-workshop .character-header-action[aria-label="Customization"] > [aria-current="page"] {
+  box-shadow: inset 0 -2px var(--app-accent);
+}
+.hero-workshop .character-header-action[aria-label="Customization"] > .character-header-profile {
+  height: var(--angled-header-height, 38px);
+}
+.hero-workshop .character-header-action[aria-label="Customization"] :is(.character-header-info, .character-header-portrait) {
+  height: 100%;
+  margin-inline-start: 0;
+  border: 0;
+  background: transparent;
+  clip-path: none;
+}
+.hero-workshop .character-header-action[aria-label="Customization"] .character-header-info {
+  padding-inline: calc(var(--customization-cut) + 5px) 6px;
+}
+.hero-workshop .character-header-action[aria-label="Customization"] .character-header-portrait {
+  width: var(--angled-header-height, 38px);
+  padding: 0;
+}
+.hero-workshop .angled-tab-header .character-header-action[aria-label="Customization"] > .character-header-profile {
+  margin-inline-start: calc(-1 * var(--customization-cut));
+  clip-path: polygon(var(--customization-cut) 0, 100% 0, 100% 100%, 0 100%, 0 var(--customization-tab-height));
+}
+.hero-workshop .angled-tab-header .character-header-action[aria-label="Customization"] > .character-header-profile::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: calc(var(--customization-cut) + 1px);
+  height: var(--customization-tab-height);
+  background: var(--app-line);
+  clip-path: polygon(var(--customization-cut) 0, 100% 0, 1px 100%, 0 100%);
+  pointer-events: none;
+}
+.hero-workshop .menu-frame-header:not(.angled-tab-header) .character-header-action[aria-label="Customization"] > .character-header-profile {
+  border-inline-start: 1px solid var(--app-line);
+}
+.hero-workshop-main {
+  display: flex;
+  flex: none;
+  gap: 5px;
+  height: var(--customization-tab-height);
+  max-width: clamp(118px, 14vw, 182px);
+  padding: 0 calc(var(--customization-cut) + 4px);
+  border: 0;
+  border-radius: 0;
+  color: var(--app-text);
+  font: inherit;
+  font-size: clamp(8px, .85vw, 11px);
+  font-style: italic;
+  font-weight: 850;
+  cursor: pointer;
+}
+.hero-workshop .angled-tab-header .hero-workshop-main {
+  clip-path: polygon(var(--customization-cut) 0, 100% 0, calc(100% - var(--customization-cut)) 100%, 0 100%);
+}
+.hero-workshop-main-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hero-workshop .hero-workshop-main .hero-portrait-art {
+  flex: none;
+  width: clamp(38px, 4vw, 56px);
+  height: calc(100% - 4px);
+  aspect-ratio: auto;
+  overflow: visible;
+  background: transparent;
+}
+.hero-workshop-main .hero-portrait-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.hero-workshop-main > .menu-icon { flex: none; width: 21px; height: 21px; color: var(--app-accent); }
+.hero-workshop-main:focus-visible { outline: 2px solid var(--app-accent); outline-offset: -3px; }
+.hero-workshop-main:disabled { opacity: .65; cursor: default; }
+@media(max-width:760px) {
+ .hero-workshop-main { padding-inline: calc(var(--customization-cut) + 2px); }
+ .hero-workshop-main-name { display: none; }
+}
+@media(max-width:560px) {
+ .hero-workshop .angled-tab-header .character-header-action[aria-label="Customization"] .character-header-portrait {
+   width: calc(var(--angled-header-height, 38px) + var(--customization-cut));
+   padding-inline-start: var(--customization-cut);
+ }
+}
 /* The full-screen world remains visible around the studio controls. */
 .hero-selection.hero-workshop{z-index:35;backdrop-filter:none;}
 .hero-selection.hero-workshop:not(.hero-ability-guide){background:transparent!important;}

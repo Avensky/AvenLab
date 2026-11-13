@@ -65,7 +65,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
       input.dispatchEvent(new Event('change', { bubbles: true }));
     });
     const cameraTools = 'button[aria-label="Camera tools"]';
-    const cameraView = label => [...find('[aria-label="Preview camera"]').querySelectorAll('button')]
+    const cameraView = label => [...document.querySelectorAll('[aria-label="Preview camera"] button, .dressing-wearable-shortcuts button')]
       .find(button => button.getAttribute('aria-label') === label);
     const chooseCameraView = label => act(async () => {
       const button = cameraView(label);
@@ -196,10 +196,10 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert(find('.dressing-toolbar button[aria-label="Hide interface"]'));
     assert.equal(find('select[aria-label="Preview camera"]'), null);
     const results = find('[aria-label="Emote results"]');
-    const fitReview = find('[aria-label="In-game fit checks"]');
+    const fitReview = find('[aria-label="Emote logic review"]');
     assert(results.contains(fitReview) && !results.querySelector('.character-emotes').contains(fitReview),
       'the fit review is accessible separately from the emote results list');
-    assert(fitReview.querySelector('[aria-label="Fit issue notes"]'));
+    assert(fitReview.querySelector('textarea'));
     await act(async () => [...document.querySelectorAll('[aria-label="Emote collection"] button')].find(b => b.textContent === 'All').click());
     assert(document.querySelectorAll('.character-emotes button').length > 180);
     await act(async () => {
@@ -212,10 +212,19 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     const emoteButton = results.querySelector('.character-emotes button');
     await click('[aria-label="Emote results"] .character-emotes button:first-child');
     assert(fitReview.textContent.includes(emoteButton.querySelector('.emote-name').textContent), 'the review identifies the selected emote');
-    await click('[aria-label="In-game fit checks"] input[type="checkbox"]');
+    await click('[aria-label="Emote logic review"] input[type="checkbox"]');
     assert(fitReview.querySelector('input[type="checkbox"]').checked, 'the selected emote review can be edited beside the results');
     await click('[aria-label="Emote collection"] button:first-child');
 
+    const { useFittingTurnStore: turns } = await vite.ssrLoadModule('/src/game/characters/fittingControlsStore.ts');
+    await act(async () => {
+      turns.setState({ characterYaw: Math.PI });
+      preview.setState({ camera: 'Face', zoom: 1.2 });
+    });
+    await act(async () => [...document.querySelectorAll('[aria-label="Emote collection"] button')].find(b => b.textContent === 'Garage').click());
+    assert.equal(turns.getState().characterYaw, 0);
+    assert.equal(preview.getState().camera, 'Full body');
+    assert.equal(preview.getState().zoom, 1);
     const cockpitToggle = '[data-cockpit-toggle]';
     await act(async () => preview.setState({ cockpitVehicle: 'brz' }));
     assert.equal(find(cockpitToggle).disabled, false, 'the selected vehicle has its own cockpit');
@@ -263,10 +272,10 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(preview.getState().camera, 'Selected item');
     assert.equal(cameraView('Glasses').getAttribute('aria-pressed'), 'true');
     assert.equal(find('[aria-label="Clothing piece"]'), null, 'the camera selector also inspects clothing');
-    assert(find('[aria-label="Preview camera"]').closest('[hidden]'), 'camera controls start collapsed');
+    assert(find('.dressing-camera-shortcuts [aria-label="Preview camera"]'), 'camera shortcuts stay on the wardrobe rail');
+    assert(find('.fitting-camera-panel').hidden, 'the zoom and rotation popup starts closed');
     await click(cameraTools);
     assert.equal(find('[aria-label="Preview camera"]').closest('[hidden]'), null);
-    assert(find('[aria-label="Preview camera"]').contains(document.activeElement), 'keyboard activation focuses a camera choice');
     assert.equal(find('.fitting-camera-panel').textContent.trim(), '', 'the camera popup uses icons and a zoom bar');
     assert(cameraView('Glasses').querySelector('svg'), 'the clothing close-up has a labeled icon');
     await click('.fitting-camera-panel [aria-label="Zoom in"]');
@@ -290,7 +299,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(find('[aria-label="Open clothing colors"]').textContent, '', 'the toolbar uses a swatch icon');
     await click('[aria-label="Open clothing colors"]');
     assert.equal(find('.dressing-color-panel').hidden, false);
-    assert(find('[aria-label="Preview camera"]').closest('[hidden]'), 'opening colors closes the camera tools');
+    assert(find('.fitting-camera-panel').hidden, 'opening colors closes the zoom and rotation popup');
     const initialMain = find('input[aria-label="Custom main color"]').value;
     await click('button[aria-label="Accent color: Crimson"]');
     assert.equal(find('input[aria-label="Custom main color"]').value, initialMain);
@@ -333,6 +342,8 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(find('.dressing-color-panel').hidden, true, 'Escape closes the palette before it can leave the fitting room');
     assert.equal(document.activeElement, find('[aria-label="Open clothing colors"]'));
     await click('#character-editor-tab-identity');
+    assert(find('select[aria-label="Eye color"]'));
+    assert(find('select[aria-label="Skin tone"]'));
     await select('Character personality', 'tsundere');
     await click('#character-editor-tab-emotes');
     await select('Animation clothing fit', 'fitted');
@@ -483,6 +494,13 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(requests[5].character.outfit, 'race-crew');
     await acknowledge(requests[5], requests[5].character);
     assert.equal(social.getState().view.profile.progression.character_presets['mara-vega'].outfit, 'shop-crew');
+
+    const customization = find('[aria-label="Customization"]');
+    assert(customization.querySelector('[data-open-character][aria-current="page"]'));
+    assert(customization.querySelector('[data-customize-vehicle] .hero-portrait-art'));
+    await click('[data-customize-vehicle]');
+    assert(find('.vehicle-studio'));
+    assert(find('[data-customize-vehicle][aria-current="page"]'));
 
   } finally {
     t.mock.timers.reset();

@@ -86,7 +86,8 @@ test('saved outfits preserve a tuned look through a confirmed save, reconnect, a
     assert.deepEqual(useSocialStore.getState().view.profile.progression.character, equipped);
 
     await act(async () => client.setSocialConnection(null));
-    assert.match(document.body.textContent, /Connect your player profile/);
+    assert.match(document.body.textContent, /Connect your profile/);
+    assert(document.querySelector('[aria-label="Try on Harbor practice"]'), 'profile cache stays available while disconnected');
     await act(async () => {
       connect();
       receive(confirmed);
@@ -109,6 +110,23 @@ test('saved outfits preserve a tuned look through a confirmed save, reconnect, a
     }));
     assert.equal(document.querySelector('[aria-label="Try on Harbor practice"]'), null);
     assert.deepEqual(useSocialStore.getState().view.profile.progression.character, equipped);
+
+    await act(async () => client.setSocialConnection(null));
+    await act(async () => button('This device').click());
+    await act(async () => {
+      set.call(input, 'Offline fit');
+      input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    });
+    await act(async () => button('Save outfit').click());
+    assert.match(document.body.textContent, /Saved Offline fit on this device/);
+    assert.equal(sent.length, 2, 'local saves send no network request');
+    const { LOCAL_OUTFITS_KEY } = await vite.ssrLoadModule('/src/game/characters/localOutfits.ts');
+    assert.deepEqual(JSON.parse(window.localStorage.getItem(LOCAL_OUTFITS_KEY))['Offline fit'], tuned);
+    await act(async () => root.render(null));
+    await act(async () => root.render(createElement(SavedOutfits, { choice: equipped, onTryOn: choice => previews.push(choice) })));
+    await act(async () => button('This device').click());
+    await act(async () => document.querySelector('[aria-label="Try on Offline fit"]').click());
+    assert.deepEqual(previews.at(-1), tuned);
   } finally {
     if (root) await act(async () => root.unmount());
     client?.setSocialConnection(null);

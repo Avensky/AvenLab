@@ -75,7 +75,7 @@ export function characterLook(choice: CharacterChoice | null | undefined) {
   const wardrobe = character.id === VILLAGER_ID ? resolveWardrobe(choice?.wardrobe) : undefined;
   const trials = character.id === VILLAGER_ID ? visibleWardrobeGarments(choice) : undefined;
   const outfitGarment = character.id === VILLAGER_ID ? getWardrobeGarment(outfit.id) : undefined;
-  const wearsOutfitGarment = outfitGarment?.outfit && !wardrobe && !choice?.wardrobeTrial
+  const wearsOutfitGarment = outfitGarment?.outfit && !choice?.removedClothing?.includes("dress") && !wardrobe && !choice?.wardrobeTrial
     && !trials?.top && !trials?.skirt && !trials?.dress && wardrobeGarmentModelUrl(outfitGarment, "garage");
   const outfitRemovals: readonly WardrobeRemoval[] = !wearsOutfitGarment ? NO_OUTFIT_REMOVALS
     : outfitGarment.outfit?.barefoot ? SLEEPWEAR_REMOVALS : OUTFIT_REMOVALS;

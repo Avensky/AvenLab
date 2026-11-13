@@ -7,7 +7,8 @@ import { act, createElement as h, useState } from 'react';
 import { Spherical, Vector3 } from 'three';
 
 test('the fitting camera orbits a close-up without changing its target or crossing the floor', async () => {
-  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error',
+    optimizeDeps: { noDiscovery: true, include: [] } });
   try {
     const { orbitFittingCamera } = await vite.ssrLoadModule('/src/game/characters/clothingFraming.ts');
     const sphere = new Spherical(), target = new Vector3(.2, .92, -.15);
@@ -44,11 +45,13 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
   try {
     const { createRoot } = await import('react-dom/client');
     vite = await createServer({ define: {
+      __VILLAGER_MODEL_URL__: JSON.stringify("/models/characters/villagers/villager-female/villager-female.garage.glb"),
       __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(inventory.filter(item => item.id !== missingImport && item.id !== missingOutfit).map(item => item.id)),
       __DRESSING_ROOM_REVISION_IDS__: JSON.stringify([revisedImport]),
       __STANDALONE_CORSET_LODS__: JSON.stringify({ 'gothic-05': { garage: true, mobile: true } }),
       __WARDROBE_SET_IDS__: JSON.stringify(['gothic-01', 'gothic-03', 'gothic-04', 'gothic-05']),
-    }, server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+    }, server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error',
+      optimizeDeps: { noDiscovery: true, include: [] } });
     const { DressingRoom } = await vite.ssrLoadModule('/src/game/characters/DressingRoom.tsx');
     const { CHARACTERS, DEFAULT_CHARACTER, ROOK_ID, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
     const { useCharacterPreviewStore: preview } = await vite.ssrLoadModule('/src/game/characters/characterPreviewStore.ts');
@@ -72,7 +75,11 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     preview.setState({ camera: 'Hands', zoom: 1.2 });
     await act(async () => root.render(h(Harness, { initial: DEFAULT_CHARACTER })));
     assert.deepEqual([...document.querySelectorAll('[data-category]')].map(button => button.dataset.category),
-      ['outfits', 'saved', 'layers', 'corsets', 'tops', 'bottoms', 'footwear', 'headwear', 'bows', 'accessories', 'props', 'hair', 'face', 'skin']);
+      ['outfits', 'saved', 'layers', 'underwear', 'corsets', 'tops', 'bottoms', 'footwear', 'headwear', 'bows', 'accessories', 'props', 'hair', 'face', 'skin']);
+    assert.equal(find('.dressing-camera-block').previousElementSibling, find('.dressing-wardrobe'));
+    assert.equal(find('.dressing-room-title').nextElementSibling, find('.dressing-camera-shortcuts'));
+    assert(find('[data-wearable-quick-select="corset"]'));
+    assert(!find('[data-wearable-quick-select="bra"]'));
     assert.equal(find('[data-category=colors]'), null, 'presets live in the color toolbar');
     assert.deepEqual([...find('.dressing-room-title').children].map(label => label.textContent), ['Fitting room', 'Vesper Vega']);
     assert.equal(find('.dressing-catalog').hidden, true);
@@ -96,6 +103,14 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     await click('[data-wardrobe-item=gothic-02]');
     assert.equal(find('.dressing-details').hidden, false, 'unavailable cards can still be inspected');
     assert.equal(find('.dressing-details dd').textContent, 'Not listed');
+    const note = find('[aria-label="Clipping / fit review"] textarea');
+    assert(note, 'missing items can still have issue notes');
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set.call(note, 'Verify strap in idle');
+      note.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () => [...document.querySelectorAll('.fit-review-actions button')].find(button => button.textContent.includes('Copy ticket draft')).click());
+    assert.match(find('[aria-label="Ticket draft"]').value, /gothic-02[\s\S]+Verify strap in idle/);
     assert.equal(changes.length, 0, 'inspecting a missing pack never equips it');
     await click('[data-wardrobe-back]');
     assert.equal(find('.dressing-details').hidden, true);
@@ -110,6 +125,7 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
       for (const item of imports.filter(item => item.category === category)) {
         const card = find(`[data-wardrobe-item="${item.id}"]`);
         assert(card, `${item.id} is listed in ${category}`);
+        assert.equal(card.querySelector('.dressing-item-name').textContent, item.label);
         assert.equal(card.hasAttribute('data-unavailable'), item.id === missingImport);
         const availability = item.id === missingImport ? /Pack not installed/
           : item.id === revisedImport ? /Revised model/ : /Try-on/;
@@ -143,14 +159,13 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     assert(find('[data-wardrobe-item=harness-01]'));
     assert.equal(find('[data-wardrobe-item=coat-01]'), null);
     await chooseLayer('Underwear');
-    assert.equal(document.querySelectorAll('[data-wardrobe-item]').length, 0);
-    assert.match(find('[role=status]').textContent, /standalone underwear/);
+    assert.deepEqual([...document.querySelectorAll('[data-wardrobe-item]')].map(item => item.querySelector('.dressing-item-name').textContent), ['Bra', 'Briefs']);
     assert.equal(changes.length + trials.length, 0, 'category and camera changes never alter the outfit');
 
     await open('footwear');
     await click('[aria-label="Item availability"] button:last-child');
     assert.deepEqual([...document.querySelectorAll('[data-wardrobe-item]')].map(button => button.dataset.wardrobeItem),
-      ['remove-shoes', 'outfit-shoes', 'remove-socks']);
+      ['remove-shoes', 'remove-socks', 'village-shoes']);
     await click('[aria-label="Item availability"] button:first-child');
     await open('bows');
     const search = find('input[type=search]');
@@ -259,6 +274,37 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     await act(async () => root.unmount()); root = null;
     assert.equal(preview.getState().camera, 'Hands', 'leaving restores the previous camera');
     assert.equal(preview.getState().zoom, 1.2);
+
+    root = createRoot(find('#root'));
+    await act(async () => root.render(h(Harness, { initial: DEFAULT_CHARACTER })));
+    await open('tops');
+    await click('[data-wardrobe-item=village-sleeves]');
+    await click('[data-remove-try-on]');
+    assert.deepEqual(trials.at(-1).removedClothing, ['sleeves']);
+    assert(!find('[data-wearable-quick-select=sleeves]'));
+    assert(find('[data-wearable-quick-select=corset]'));
+    await click('[data-wardrobe-item=village-sleeves]');
+    assert.equal(trials.at(-1).garments.sleeves, 'village-sleeves');
+    await open('outfits');
+    await click('[data-remove-outfit]');
+    assert.deepEqual([...document.querySelectorAll('[data-wearable-quick-select]')].map(node => node.dataset.wearableQuickSelect).sort(), ['bra', 'briefs']);
+    await click('[data-wardrobe-item=dockwear]');
+    await click('[data-wardrobe-item=linen-nightgown]');
+    await click('[data-remove-try-on]');
+    assert(!find('[data-wearable-quick-select=dress]'));
+    assert(!find('[data-wearable-quick-select=sleeves]'));
+    await click('[data-wardrobe-item=dockwear]');
+    await open('underwear');
+    await click('[data-wardrobe-remove=top]');
+    assertPiece('bra');
+    assert(find('[data-wearable-quick-select="bra"]'));
+    await click('[data-wardrobe-remove=bottom]');
+    assertPiece('briefs');
+    assert(find('[data-wearable-quick-select="briefs"]'));
+    await click('[data-wearable-quick-select="bra"]');
+    assertPiece('bra');
+    assert.equal(find('.dressing-details h2').textContent, 'Bra');
+    await act(async () => root.unmount()); root = null;
 
     const rook = CHARACTERS.find(character => character.id === ROOK_ID);
     root = createRoot(find('#root'));

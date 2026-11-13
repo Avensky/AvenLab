@@ -20,10 +20,12 @@ const VIEW_ICONS: Record<string, string> = {
 const PIECE_ICONS: Record<ClothingPiece, string> = {
   corset: "M5 5l3 2 4 1 4-1 3-2-2 9 1 5-6 2-6-2 1-5zm4 4 6 7m0-7-6 7",
   shirt: "M8 4l4 2 4-2 5 3-2 5-3-1v9H8v-9l-3 1-2-5z",
+  bra: "M3 9c3 0 3-2 5-2s3 3 4 3 2-3 4-3 2 2 5 2v7H3zm0 5h18",
   skirt: "M8 5h8l4 15H4zM8 8h8m-6 3-1 9m5-9 1 9",
   sleeves: "M9 5h6l5 11-4 2-3-7h-2l-3 7-4-2zm-4 9 4 2m6 0 4-2",
   underskirt: "M9 5h6l4 10H5zm-3 10-2 5h16l-2-5m-8 1-1 4m6-4 1 4",
   shorts: "M6 5h12l2 13h-6l-2-5-2 5H4zM6 8h12",
+  briefs: "M4 7h16v4c-4 0-5 3-6 6h-4c-1-3-2-6-6-6zm0 3h16",
   shoes: BOOT,
   hat: "M7 15v-4a5 5 0 0 1 10 0v4M4 16h16l-2 3H6zm3-3h10",
   bow: "M10 10h4v4h-4zM10 10 4 7v10l6-3m4-4 6-3v10l-6-3",
@@ -47,19 +49,39 @@ function CameraChoiceIcon({ path }: { path: string }) {
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false"><path d={path} /></svg>;
 }
 
-export function FittingCameraSelect<View extends string>({ choice, views, view, onViewChange, label = "Preview camera", viewLabels }: {
+export function FittingWearableShortcuts({ pieces, active, vertical = false, onSelect }: {
+  pieces: readonly ClothingPiece[];
+  active?: ClothingPiece;
+  vertical?: boolean;
+  onSelect: (piece: ClothingPiece) => void;
+}) {
+  if (!pieces.length) return null;
+  return <div className={vertical ? "dressing-wearable-shortcuts fitting-camera-toolbar" : "fitting-camera-choices"}
+    role="group" aria-label="Clothing close-ups" data-controller-row data-controller-columns={vertical ? 1 : 7}>
+    {pieces.map(piece => {
+      const label = clothingPieceLabel(piece);
+      return <button key={piece} type="button" className="menu-control fitting-tool-icon"
+        data-camera-choice={`piece:${piece}`} data-wearable-quick-select={vertical ? piece : undefined}
+        aria-label={label} title={label} aria-pressed={active === piece}
+        onClick={() => onSelect(piece)}><CameraChoiceIcon path={PIECE_ICONS[piece]} /></button>;
+    })}
+  </div>;
+}
+
+export function FittingCameraSelect<View extends string>({ choice, views, view, onViewChange, label = "Preview camera", viewLabels, vertical = false }: {
   choice?: CharacterChoice;
   views: readonly View[];
   view: View;
   onViewChange: (view: View) => void;
   label?: string;
   viewLabels?: Partial<Record<View, string>>;
+  vertical?: boolean;
 }) {
   const selected = useCharacterPreviewStore(state => state.selectedPiece);
   const pieces = choice ? wornClothing(choice) : [];
 
   return <div className="fitting-camera-select" role="group" aria-label={label}>
-    <div className="fitting-camera-choices" role="group" aria-label="Views" data-controller-row data-controller-columns="7">
+    <div className="fitting-camera-choices" role="group" aria-label="Views" data-controller-row data-controller-columns={vertical ? 1 : 7}>
       {views.filter(item => item !== "Selected item").map(item => {
         const name = viewLabels?.[item] ?? item;
         const icon = item === "Whole car" ? <MenuIcon name="vehicles" />
@@ -69,13 +91,7 @@ export function FittingCameraSelect<View extends string>({ choice, views, view, 
           aria-label={name} title={name} aria-pressed={view === item} onClick={() => { if (view !== item) onViewChange(item); }}>{icon}</button>;
       })}
     </div>
-    {pieces.length > 0 && <div className="fitting-camera-choices" role="group" aria-label="Clothing close-ups" data-controller-row data-controller-columns="7">
-      {pieces.map(item => {
-        const name = clothingPieceLabel(item);
-        return <button key={item} type="button" className="menu-control fitting-tool-icon" data-camera-choice={`piece:${item}`}
-          aria-label={name} title={name} aria-pressed={view === "Selected item" && item === selected}
-          onClick={() => { if (view !== "Selected item" || item !== selected) focusClothingPiece(item); }}><CameraChoiceIcon path={PIECE_ICONS[item]} /></button>;
-      })}
-    </div>}
+    <FittingWearableShortcuts pieces={pieces} active={view === "Selected item" ? selected : undefined}
+      onSelect={item => { if (view !== "Selected item" || item !== selected) focusClothingPiece(item); }} />
   </div>;
 }

@@ -19,12 +19,17 @@ export function fitReviewKey(owner: string | undefined, choice: CharacterChoice,
   choice.appearance?.animation_fit ?? "auto", choice.appearance?.glasses ?? "none", choice.prop ?? "none", piece, pose, ...base,
   ...(garments.length ? [garments] : []), ...(ease ? [ease] : []), ...(removed.length ? [{ removed }] : [])]);
 }
-export function fitReviewStatus(review?: Review) { return review?.issue.trim() ? "issue" : FIT_CHECKS.every(check => review?.checks[check]) ? "passed" : review ? "partial" : "untested"; }
+export function fitReviewStatus(review?: Review) { return review?.issue.trim() ? "issue" : FIT_CHECKS.every(check => review?.checks[check]) ? "passed" : FIT_CHECKS.some(check => review?.checks[check]) ? "partial" : "untested"; }
 export const useFitReviewStore = create(persist<{
- reviews: Record<string, Review>; check: (key: string, check: FitCheck, value: boolean) => void; note: (key: string, issue: string) => void; reset: (key: string) => void;
+ reviews: Record<string, Review>; check: (key: string, check: FitCheck, value: boolean, initial?: Review) => void; note: (key: string, issue: string, initial?: Review) => void; reset: (key: string, hideLegacy?: boolean) => void;
 }>((set) => ({
  reviews: {},
- check: (key, check, value) => set(s => ({ reviews: { ...s.reviews, [key]: { ...s.reviews[key], issue: s.reviews[key]?.issue ?? "", checks: { ...s.reviews[key]?.checks, [check]: value }, updated: new Date().toISOString() } } })),
- note: (key, issue) => set(s => ({ reviews: { ...s.reviews, [key]: { ...s.reviews[key], checks: s.reviews[key]?.checks ?? {}, issue: issue.slice(0, 500), updated: new Date().toISOString() } } })),
- reset: key => set(s => { const reviews = { ...s.reviews }; delete reviews[key]; return { reviews }; }),
+ check: (key, check, value, initial) => set(s => ({ reviews: { ...s.reviews, [key]: { ...s.reviews[key], issue: s.reviews[key]?.issue ?? initial?.issue ?? "", checks: { ...initial?.checks, ...s.reviews[key]?.checks, [check]: value }, updated: new Date().toISOString() } } })),
+ note: (key, issue, initial) => set(s => ({ reviews: { ...s.reviews, [key]: { ...s.reviews[key], checks: s.reviews[key]?.checks ?? initial?.checks ?? {}, issue: issue.slice(0, 500), updated: new Date().toISOString() } } })),
+ reset: (key, hideLegacy) => set(s => {
+   const reviews = { ...s.reviews };
+   if (hideLegacy) reviews[key] = { checks: {}, issue: "", updated: new Date().toISOString() };
+   else delete reviews[key];
+   return { reviews };
+ }),
 }), { name: "avenlab-fit-reviews-v1", storage: createJSONStorage(() => localStorage) }));
