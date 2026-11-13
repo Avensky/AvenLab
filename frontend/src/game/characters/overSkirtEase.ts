@@ -10,11 +10,13 @@ const torsoDepth = .025;
 /** Flare the authored Over hem in the actor's bind space, including its trim. */
 export function prepareOverSkirtEase(root: Object3D) {
   const meshes: { mesh: SkinnedMesh; source: BufferGeometry; fitted: Partial<Record<1 | 2, BufferGeometry>> }[] = [];
-  root.getObjectByName("CLOTH_CORSET_OVER")?.traverse(mesh => {
-    if (mesh instanceof SkinnedMesh && mesh.geometry.hasAttribute("position")) {
-      meshes.push({ mesh, source: mesh.geometry, fitted: {} });
-    }
-  });
+  for (const name of ["CLOTH_CORSET_OVER", "CLOTH_CORSET_WAIST_OVER"]) {
+    root.getObjectByName(name)?.traverse(mesh => {
+      if (mesh instanceof SkinnedMesh && mesh.geometry.hasAttribute("position")) {
+        meshes.push({ mesh, source: mesh.geometry, fitted: {} });
+      }
+    });
+  }
   const normal = new Vector3();
   let current: OverSkirtEase = 0;
   return {

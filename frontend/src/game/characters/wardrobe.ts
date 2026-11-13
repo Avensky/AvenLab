@@ -1,6 +1,6 @@
 import { Mesh, type BufferGeometry, type Object3D } from "three";
 import catalog from "../../../../avenlab-server/src/assets/character-wardrobe.json";
-import { prepareLacedShoulderMask } from "./lacedStrapFit";
+import { prepareLacedBodyMask } from "./lacedStrapFit";
 import { prepareOverSkirtEase, type OverSkirtEase } from "./overSkirtEase";
 
 export const WARDROBE_SETS = catalog.filter(set => !set.retired);
@@ -67,7 +67,8 @@ export function prepareWardrobe(root: Object3D) {
     if (typeof part.userData.wardrobeRole === "string") {
       parts.push(part);
       // Keep unconfigured or failed loads covered until apply() selects a complete outfit.
-      part.visible = ["bottom", "bottom-seam-tucked", "bottom-trim-tucked", "corset-tucked", "corset-facing"].includes(part.userData.wardrobeRole);
+      part.visible = ["bottom", "bottom-seam-tucked", "bottom-trim-tucked", "corset-tucked", "corset-facing", "corset-facing-tucked"]
+        .includes(part.userData.wardrobeRole);
     }
     if (!(part instanceof Mesh)) return;
     const coverage = part.geometry.getAttribute("_aven_coverage");
@@ -79,7 +80,7 @@ export function prepareWardrobe(root: Object3D) {
     const body = part.userData.wardrobeRole === "body" ? geometry.getAttribute("position") : undefined;
     const indices = Array.from({ length: 2 }, (_, mode) => {
       const visible: number[] = [], bit = 1 << mode;
-      const lacedMask = body && prepareLacedShoulderMask(root, mode === 1 ? "over" : "tucked");
+      const lacedMask = body && prepareLacedBodyMask(root, mode === 1 ? "over" : "tucked");
       for (let i = 0; i < index.count; i += 3) {
         const a = index.getX(i), b = index.getX(i + 1), c = index.getX(i + 2);
         if (body && skirtCoversHips && Math.max(Math.abs(body.getX(a)), Math.abs(body.getX(b)), Math.abs(body.getX(c))) < .203) {
@@ -104,7 +105,8 @@ export function prepareWardrobe(root: Object3D) {
     apply(choice?: WardrobeChoice, ease: OverSkirtEase = 0) {
       const selected = resolveWardrobe(choice, { includeRetired: true });
       if (!parts.length || !selected) return;
-      const visible = new Set(["body", "bottom", "corset-facing", `corset-${selected.waist}`, `bottom-seam-${selected.waist}`, `bottom-trim-${selected.waist}`]);
+      const visible = new Set(["body", "bottom", "corset-facing", `corset-${selected.waist}`, `corset-facing-${selected.waist}`,
+        `bottom-seam-${selected.waist}`, `bottom-trim-${selected.waist}`]);
       parts.forEach(part => { part.visible = visible.has(part.userData.wardrobeRole); });
       const mode = selected.waist === "over" ? 1 : 0;
       if (mode !== lastMode) {

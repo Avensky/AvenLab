@@ -27,7 +27,7 @@ pub struct CharacterChoice {
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum WardrobeRemoval { Top, Corset, Skirt, Shoes, Socks, Hat, Bow, BonnetBow, Harness }
+pub enum WardrobeRemoval { Top, Corset, Skirt, Shoes, Socks, Hat, Bow, BonnetBow, Harness, Bracer }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]

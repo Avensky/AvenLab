@@ -1,4 +1,5 @@
 import { Group, Mesh, SkinnedMesh, type Object3D, type Skeleton } from "three";
+import { fitLacedBodiceToSkirt } from "./lacedStrapFit";
 import { prepareWardrobeLining } from "./wardrobeLining";
 import { bindWardrobeGarmentMesh } from "./wardrobeGarmentFit";
 import { prepareWardrobe, UNDERBUST_WARDROBE_SET, type WardrobeChoice } from "./wardrobe";
@@ -38,12 +39,17 @@ export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton
   const disposeFit = prepareWardrobeLining(group);
   body.removeFromParent();
   const underbust = source.set === UNDERBUST_WARDROBE_SET;
-  let wardrobe = underbust ? undefined : prepareWardrobe(group);
+  const laced = source.set === "gothic-01";
+  let wardrobe = underbust || laced ? undefined : prepareWardrobe(group);
   let disposeTopFit: (() => void) | undefined;
+  let disposeSkirtFit: (() => void) | undefined;
   return {
     group,
     fitTop: underbust ? (tops: readonly MeshBVH[]) => {
       disposeTopFit = fitUnderbustOverTop(group, body.geometry, tops);
+    } : undefined,
+    fitSkirt: laced ? (skirts: readonly MeshBVH[]) => {
+      disposeSkirtFit = fitLacedBodiceToSkirt(group, body.geometry, skirts);
     } : undefined,
     apply(waist: WardrobeChoice["waist"], ease: OverSkirtEase = 0) {
       wardrobe ??= prepareWardrobe(group);
@@ -53,6 +59,7 @@ export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton
       group.removeFromParent();
       wardrobe?.dispose();
       disposeTopFit?.();
+      disposeSkirtFit?.();
       disposeFit?.();
     },
   };

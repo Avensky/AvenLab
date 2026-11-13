@@ -125,7 +125,7 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
   await click('[data-category=corsets]');
   assert.equal(document.querySelectorAll('[aria-label="Gothic corsets"] [data-wardrobe-item]').length,6);
   await click('[aria-label="Gothic corsets"] [data-wardrobe-item="gothic-02"]');
-  assert.equal(previews.at(-1).wardrobeTrial.set,'gothic-02','Sweetheart is selectable with one installed model tier');
+  assert.deepEqual(previews.at(-1).wardrobeTrial,{set:'gothic-02',shirt:'none',waist:'tucked'},'Sweetheart tries on tucked with one installed model tier');
   await click('[aria-label="Gothic corsets"] [data-wardrobe-item="gothic-04"]');
   assert.deepEqual(previews.at(-1).wardrobeTrial,{set:'gothic-04',shirt:'none',waist:'over'});
   assert.equal(document.querySelector('[data-dressing-piece="shirt"]'),null);
@@ -207,7 +207,7 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
   await click('[data-wardrobe-item=gothic-03]');
   assert.equal(previews.at(-1).wardrobe.waist,'tucked','reselecting Ruffled preserves the active fit');
   await click('[data-wardrobe-item=gothic-02]');
-  assert.deepEqual(previews.at(-1).wardrobe,{set:'gothic-02',shirt:'none',waist:'over'},'Sweetheart equips the preferred over-skirt fit');
+  assert.deepEqual(previews.at(-1).wardrobe,{set:'gothic-02',shirt:'none',waist:'tucked'},'Sweetheart equips the preferred tucked fit');
   await click('[data-wardrobe-item=gothic-05]');
   assert.deepEqual(previews.at(-1).wardrobe,{set:'gothic-05',shirt:'none',waist:'tucked'},'High Collar equips the preferred tucked fit');
   assert.equal(document.querySelector('[aria-label="Shirt layer"]'),null);

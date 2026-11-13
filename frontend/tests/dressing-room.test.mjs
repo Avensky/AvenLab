@@ -89,8 +89,8 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     assert.equal(find('[data-wardrobe-item=gothic-04]'), null, 'installed retired sets are hidden from outfits');
     assert.deepEqual([...document.querySelectorAll('[data-wardrobe-item^=gothic-]')].map(button => button.dataset.wardrobeItem),
       ['gothic-02', 'gothic-03', 'gothic-05'], 'only the selected Gothic presets are listed in Outfits');
-    for (const item of imports) {
-      assert.equal(find(`[data-wardrobe-item="${item.id}"]`), null, 'raw garments stay out of the outfit list');
+    for (const item of imports.filter(item => item.category !== 'outfits')) {
+      assert(!find(`[data-wardrobe-item="${item.id}"]`), `${item.id} stays in its own category`);
     }
     assert.match(find('[data-wardrobe-item=gothic-02]').textContent, /Pack not installed/);
     await click('[data-wardrobe-item=gothic-02]');
@@ -235,10 +235,20 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     assert.deepEqual(trials.at(-1).garments, { skirt: 'gothic-skirt-04', top: 'armor-01' });
     assertPiece('armor');
     await open('headwear');
-    await click('[aria-label="Hoods"] [data-wardrobe-item=hood-02]');
+    await click('[aria-label="Medieval hoods"] [data-wardrobe-item=hood-02]');
     await open('accessories');
     await click('[aria-label="Bracers"] [data-wardrobe-item=bracer-01]');
     assert.deepEqual(trials.at(-1).garments, { skirt: 'gothic-skirt-04', top: 'armor-01', hat: 'hood-02', bracer: 'bracer-01' });
+    const bracerToggle = '[aria-label="Bracers"] [data-wardrobe-item=remove-bracer]';
+    assert.match(find(bracerToggle).textContent, /Remove bracer/);
+    await click(bracerToggle);
+    assert.deepEqual(trials.at(-1).removedClothing, ['bracer']);
+    assert.equal(trials.at(-1).garments.bracer, 'bracer-01');
+    assert.equal(characterLook(trials.at(-1)).garments.bracer, undefined);
+    assert.equal(characterLook(trials.at(-1)).garments.top, 'armor-01');
+    assert.match(find(bracerToggle).textContent, /Restore bracer/);
+    await click(bracerToggle);
+    assert.equal(characterLook(trials.at(-1)).garments.bracer, 'bracer-01');
     await open('corsets');
     await click('[data-wardrobe-item=gothic-05]');
     assert.equal(trials.at(-1).garments.top, undefined);

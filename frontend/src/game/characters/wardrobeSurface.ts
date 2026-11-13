@@ -1,8 +1,8 @@
-import { BufferGeometry, Float32BufferAttribute, Uint16BufferAttribute, Vector3 } from "three";
+import { BufferGeometry, Float32BufferAttribute, Uint16BufferAttribute, Uint8BufferAttribute, Vector2, Vector3 } from "three";
 
 type Boundary = (point: Vector3) => number;
 type Influence = { joint: number; weight: number };
-type Vertex = { point: Vector3; normal: Vector3; influences: Influence[] };
+type Vertex = { point: Vector3; normal: Vector3; influences: Influence[]; uv?: Vector2; coverage?: number };
 
 function interpolate(a: Vertex, b: Vertex, t: number): Vertex {
   const weights = new Map<number, number>();
@@ -12,7 +12,11 @@ function interpolate(a: Vertex, b: Vertex, t: number): Vertex {
     .sort((a, b) => b.weight - a.weight || a.joint - b.joint).slice(0, 4);
   const sum = influences.reduce((total, influence) => total + influence.weight, 0);
   for (const influence of influences) influence.weight /= sum;
-  return { point: a.point.clone().lerp(b.point, t), normal: a.normal.clone().lerp(b.normal, t), influences };
+  return {
+    point: a.point.clone().lerp(b.point, t), normal: a.normal.clone().lerp(b.normal, t), influences,
+    uv: a.uv && b.uv ? a.uv.clone().lerp(b.uv, t) : undefined,
+    coverage: a.coverage !== undefined && b.coverage !== undefined ? a.coverage & b.coverage : undefined,
+  };
 }
 
 function clip(vertices: Vertex[], boundary: Boundary) {
@@ -30,10 +34,13 @@ function clip(vertices: Vertex[], boundary: Boundary) {
 }
 
 /** Trace fabric from an undeformed body so it shares the same bone motion. */
-export function fitWardrobeSurface(source: BufferGeometry, boundaries: readonly Boundary[], clearance: number | Boundary) {
+export function fitWardrobeSurface(source: BufferGeometry, boundaries: readonly Boundary[], clearance: number | Boundary,
+  preserveShellAttributes = false) {
   const position = source.getAttribute("position"), normal = source.getAttribute("normal");
   const skinIndex = source.getAttribute("skinIndex"), skinWeight = source.getAttribute("skinWeight"), index = source.getIndex();
   if (!position || !normal || !skinIndex || !skinWeight) return;
+  const uv = preserveShellAttributes ? source.getAttribute("uv") : undefined;
+  const coverage = preserveShellAttributes ? source.getAttribute("_aven_coverage") : undefined;
 
   const vertices: (Vertex | undefined)[] = [];
   function vertex(i: number) {
@@ -47,10 +54,13 @@ export function fitWardrobeSurface(source: BufferGeometry, boundaries: readonly 
       point: new Vector3().fromBufferAttribute(position, i),
       normal: new Vector3().fromBufferAttribute(normal, i),
       influences,
+      uv: uv ? new Vector2(uv.getX(i), uv.getY(i)) : undefined,
+      coverage: coverage?.getX(i),
     };
   }
 
   const positions: number[] = [], normals: number[] = [], joints: number[] = [], weights: number[] = [], indices: number[] = [];
+  const uvs: number[] = [], coverageValues: number[] = [];
   const vertexIndices = new Map<Vertex, number>();
   function append(vertex: Vertex) {
     const existing = vertexIndices.get(vertex);
@@ -60,6 +70,8 @@ export function fitWardrobeSurface(source: BufferGeometry, boundaries: readonly 
     const distance = typeof clearance === "number" ? clearance : clearance(vertex.point);
     positions.push(...vertex.point.clone().addScaledVector(unitNormal, distance).toArray());
     normals.push(...unitNormal.toArray());
+    if (vertex.uv) uvs.push(vertex.uv.x, vertex.uv.y);
+    if (vertex.coverage !== undefined) coverageValues.push(vertex.coverage);
     for (let channel = 0; channel < 4; channel++) {
       joints.push(vertex.influences[channel]?.joint ?? 0);
       weights.push(vertex.influences[channel]?.weight ?? 0);
@@ -81,10 +93,13 @@ export function fitWardrobeSurface(source: BufferGeometry, boundaries: readonly 
     for (let j = 1; j < polygon.length - 1; j++) indices.push(append(polygon[0]), append(polygon[j]), append(polygon[j + 1]));
   }
   if (!indices.length) return;
-  return new BufferGeometry()
+  const geometry = new BufferGeometry()
     .setAttribute("position", new Float32BufferAttribute(positions, 3))
     .setAttribute("normal", new Float32BufferAttribute(normals, 3))
     .setAttribute("skinIndex", new Uint16BufferAttribute(joints, 4))
     .setAttribute("skinWeight", new Float32BufferAttribute(weights, 4))
     .setIndex(indices);
+  if (uv) geometry.setAttribute("uv", new Float32BufferAttribute(uvs, 2));
+  if (coverage) geometry.setAttribute("_aven_coverage", new Uint8BufferAttribute(coverageValues, 1));
+  return geometry;
 }

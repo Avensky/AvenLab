@@ -66,6 +66,7 @@ const REMOVAL_CARDS: { category: Category; slot: WardrobeRemoval; label: string;
   { category: "headwear", slot: "hat", label: "headwear", section: "Headwear", focus: "Face", layer: "Overwear" },
   { category: "bows", slot: "bow", label: "bow", section: "Bows", focus: "bow", layer: "Overwear" },
   { category: "accessories", slot: "harness", label: "harness", section: "Harnesses", focus: "harness", layer: "Overwear" },
+  { category: "accessories", slot: "bracer", label: "bracer", section: "Bracers", focus: "bracer", layer: "Overwear" },
 ];
 type Item = {
   id: string; label: string; section: string; icon: Icon; description: string;
@@ -81,7 +82,7 @@ const OUTFIT_DESCRIPTIONS: Record<string, string> = {
   "race-crew": "Rook’s race-crew outfit uses warm brown fabric and gold trim on his coat and accessories.",
 };
 const FITTED_PRESETS: Partial<Record<string, { waist: WardrobeChoice["waist"]; description: string }>> = {
-  "gothic-02": { waist: "over", description: "A sweetheart-neckline corset with a layered, scalloped skirt." },
+  "gothic-02": { waist: "tucked", description: "A sweetheart-neckline corset with a layered, scalloped skirt." },
   "gothic-03": { waist: "over", description: "A ruffled corset with a matching skirt cut to clear its inner ruffles." },
   "gothic-05": { waist: "tucked", description: "A high-collar corset with a fitted upper back and a matching skirt. It supports tucked and over-skirt fits." },
 };
@@ -274,6 +275,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
   }
   if (female) for (const { category, slot, label, section, focus, layer } of REMOVAL_CARDS) {
     if (outfitRemovals.includes(slot) || (slot === "bonnet-bow" && (choice.garments?.hat || outfitRemovals.includes("hat")))) continue;
+    if (slot === "bracer" && !choice.garments?.bracer) continue;
     const name = slot === "hat" && !choice.garments?.hat ? "bonnet" : label;
     const selected = removedClothing.includes(slot);
     allItems[category].unshift({
