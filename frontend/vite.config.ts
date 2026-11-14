@@ -64,6 +64,14 @@ export default defineConfig({
   // The road workbench has its own virtual bundle / preview build. Scanning all
   // preview HTML at app startup wasted work and attempted to resolve that bundle.
   optimizeDeps: { entries: ["index.html"] },
+  build: {
+    rollupOptions: {
+      input: [
+        fileURLToPath(new URL("./index.html", import.meta.url)),
+        fileURLToPath(new URL("./previews/wardrobe-asset.html", import.meta.url)),
+      ],
+    },
+  },
   resolve: { dedupe: ["react", "react-dom", "three"] },
   plugins: [
     {

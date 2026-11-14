@@ -17,7 +17,7 @@ function ToolIcon({ icon }: { icon: keyof typeof ICON_PATHS }) {
 
 export function FittingCameraToolbar({ camera, zoomRange, visibility, actions, paused, onPause, onZoomOut, onZoomIn,
   zoomOutDisabled, zoomInDisabled, onReframe, vehicle = false, rotationDisabled = false }: {
-  camera: ReactNode;
+  camera?: ReactNode;
   zoomRange?: ReactNode;
   visibility: ReactNode;
   actions?: ReactNode;
@@ -43,7 +43,7 @@ export function FittingCameraToolbar({ camera, zoomRange, visibility, actions, p
     const element = toolbar.current;
     if (focusCamera.current) {
       const selected = panel.current?.querySelector<HTMLButtonElement>('[data-camera-choice][aria-pressed="true"]');
-      (selected ?? panel.current?.querySelector<HTMLButtonElement>("[data-camera-choice]"))?.focus();
+      (selected ?? panel.current?.querySelector<HTMLButtonElement>("button:not(:disabled)"))?.focus();
     }
     function dismissOutside(event: MouseEvent) {
       const target = event.target as Node | null;
@@ -91,7 +91,8 @@ export function FittingCameraToolbar({ camera, zoomRange, visibility, actions, p
     </div>
     <div className="fitting-camera-row" data-controller-row>
       <button ref={toggle} type="button" className="menu-control fitting-tool-icon" aria-label="Camera tools" aria-controls={panelId}
-        aria-expanded={open} title="Camera views and rotation" onClick={event => { focusCamera.current = event.detail === 0; setOpen(!open); }}><ToolIcon icon="camera" /></button>
+        aria-expanded={open} title={camera ? "Camera views and rotation" : "Camera adjustments"}
+        onClick={event => { focusCamera.current = event.detail === 0; setOpen(!open); }}><ToolIcon icon="camera" /></button>
       <button type="button" className="menu-control fitting-tool-icon" aria-label={pauseLabel} title={pauseLabel} aria-pressed={paused} onClick={onPause}><ToolIcon icon={paused ? "resume" : "hold"} /></button>
       {visibility}
       {actions}

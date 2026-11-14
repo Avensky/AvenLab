@@ -19,6 +19,7 @@ export type WardrobeGarmentSlot = keyof typeof wardrobeGarmentReplacements;
 export type WardrobeGarmentChoice = Partial<Record<WardrobeGarmentSlot, string>>;
 export const wardrobeRemovalPieces = {
   top: ["shirt", "sleeves"], corset: ["corset"], skirt: ["skirt", "underskirt", "shorts", "belt"],
+  dress: ["dress"],
   shoes: ["shoes"], socks: ["socks"], hat: ["hat"], bow: ["bow"], harness: ["harness"], bracer: ["bracer"], "bonnet-bow": [],
 } satisfies Record<string, ClothingPiece[]>;
 export type WardrobeRemoval = keyof typeof wardrobeRemovalPieces;
@@ -93,7 +94,8 @@ export function setWardrobeGarment(choice: CharacterChoice, slot: WardrobeGarmen
     } else if (slot === "top" || slot === "skirt") delete garments.dress;
   } else delete garments[slot];
   const replacesBodice = id && (slot === "dress" || item?.piece === "armor");
-  const removed = choice.removedClothing?.filter(layer => !id || layer !== slot);
+  const removed = choice.removedClothing?.filter(layer => !id || (layer !== slot
+    && (slot !== "dress" || (layer !== "top" && layer !== "corset" && layer !== "skirt"))));
   return { ...choice, garments: Object.keys(garments).length ? garments : undefined,
     removedClothing: removed?.length ? removed : undefined, wardrobeTrial: replacesBodice ? undefined : choice.wardrobeTrial,
     wardrobeEase: replacesBodice || (id && slot === "top" && !choice.wardrobeTrial) ? undefined : choice.wardrobeEase };

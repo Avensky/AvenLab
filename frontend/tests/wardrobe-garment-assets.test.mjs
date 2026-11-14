@@ -199,15 +199,16 @@ test('medieval hoods replace the bonnet while keeping the outfit and stored hair
   } finally { await vite.close(); }
 });
 
-test('turning off wardrobe layers restores the donor skin and keeps the other pieces', async t => {
+test('turning off wardrobe layers fits underwear and keeps the other pieces', async t => {
   const top = catalog.find(item => item.id === 'top-02');
+  const skirt = catalog.find(item => item.id === 'gothic-skirt-02');
   const paths = [
     villagerDir + 'villager-female.garage.glb', bundledDir + 'gothic-02.garage.glb',
-    bundledDir + 'gothic-02.mobile.glb', top.url.slice(1),
+    bundledDir + 'gothic-02.mobile.glb', top.url.slice(1), skirt.url.slice(1), garmentDir + 'vesper-body.glb',
   ];
   const bytes = await Promise.all(paths.map(path => readFile(new URL(path, publicDir))));
   if (bytes.some(isLfsPointer)) return t.skip('Run git lfs pull to materialize the fitting-room models.');
-  const [village, bundle, donorScene, topScene] = await Promise.all(bytes.map(loadGeometry));
+  const [village, bundle, donorScene, topScene, skirtScene, fittingBody] = await Promise.all(bytes.map(loadGeometry));
   const donor = donorScene.getObjectByName('BODY_WARDROBE');
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
   try {
@@ -228,6 +229,7 @@ test('turning off wardrobe layers restores the donor skin and keeps the other pi
       assert(root.getObjectByName('wardrobe-top-02').visible);
       assert(root.getObjectByName('CLOTH_BOTTOM_SKIRT').visible);
       assert(root.getObjectByName('fitting-room-body').geometry.drawRange.count > 0);
+      assert.equal(root.getObjectByName('wardrobe-underwear-bra'), undefined, 'the equipped Top 02 covers the torso');
     } finally {
       withoutCorset.dispose();
     }
@@ -255,6 +257,8 @@ test('turning off wardrobe layers restores the donor skin and keeps the other pi
       assert(torsoFaces > 100);
       assert.equal(root.getObjectByName('CLOTH_CORSET_OVER').visible, false);
       assert.equal(root.getObjectByName('CLOTH_BOTTOM_SKIRT').visible, true);
+      assert(root.getObjectByName('wardrobe-underwear-bra')?.visible);
+      assert.equal(root.getObjectByName('wardrobe-underwear-briefs'), undefined);
     } finally {
       exposedTorso.dispose();
     }
@@ -267,6 +271,8 @@ test('turning off wardrobe layers restores the donor skin and keeps the other pi
       assert(root.getObjectByName('CLOTH_CORSET_OVER').visible);
       assert(root.getObjectByName('CLOTH_FEET_SHOES').visible);
       assert(root.getObjectByName('fitting-room-body').geometry.drawRange.count > 0);
+      assert(root.getObjectByName('wardrobe-underwear-briefs')?.visible);
+      assert.equal(root.getObjectByName('wardrobe-underwear-bra'), undefined);
     } finally {
       withoutSkirt.dispose();
     }
@@ -279,25 +285,73 @@ test('turning off wardrobe layers restores the donor skin and keeps the other pi
       emptyLayer.dispose();
     }
 
-    const restored = build(village, { removedClothing: ['top', 'corset', 'skirt', 'shoes'] }, { garmentBody: donor });
-    try {
-      const { root } = restored;
-      for (const name of ['CLOTH_ARMS_SLEEVES', 'CLOTH_TOP_CORSET', 'CLOTH_BOTTOM_SKIRT', 'CLOTH_FEET_SHOES']) {
-        assert.equal(root.getObjectByName(name).visible, false, name);
+    for (const donorMesh of [donor, fittingBody.getObjectByName('BODY_WARDROBE')]) {
+      const donorPosition = donorMesh.geometry.attributes.position.array.slice();
+      const donorIndex = donorMesh.geometry.index.array.slice();
+      const choice = { ...DEFAULT_CHARACTER, removedClothing: ['top', 'corset', 'skirt', 'shoes'] };
+      const { withClothingColors } = await vite.ssrLoadModule('/src/game/characters/clothingPieces.ts');
+      const dyed = withClothingColors(withClothingColors(choice, 'bra', { color: '#223355' }), 'briefs', { accent: '#bbccdd' });
+      const restored = build(village, dyed, { garmentBody: donorMesh });
+      try {
+        const { root } = restored;
+        for (const name of ['CLOTH_ARMS_SLEEVES', 'CLOTH_TOP_CORSET', 'CLOTH_BOTTOM_SKIRT', 'CLOTH_FEET_SHOES']) {
+          assert.equal(root.getObjectByName(name).visible, false, name);
+        }
+        const body = root.getObjectByName('fitting-room-body');
+        assert(body.geometry.drawRange.count > 0 && body.geometry.drawRange.count < donorMesh.geometry.index.count,
+          'the underwear shell masks donor faces beneath the fabric');
+        for (const piece of ['bra', 'briefs']) {
+          const group = root.getObjectByName(`wardrobe-underwear-${piece}`);
+          assert(group?.visible);
+          assert.equal(group.children.length, 3, 'fabric, top binding and hem binding are present');
+          for (const mesh of group.children) {
+            assert.equal(mesh.skeleton, body.skeleton);
+            assert.equal(mesh.material.transparent, false);
+            const weights = mesh.geometry.attributes.skinWeight;
+            for (let i = 0; i < weights.count; i++) {
+              assert(Math.abs(weights.getX(i) + weights.getY(i) + weights.getZ(i) + weights.getW(i) - 1) < 1e-5);
+            }
+          }
+        }
+        assert.equal(root.getObjectByName('wardrobe-underwear-bra-fabric').material.color.getHexString(), '223355');
+        assert.equal(root.getObjectByName('wardrobe-underwear-briefs-hem-binding').material.color.getHexString(), 'bbccdd');
+        assert.deepEqual(donorMesh.geometry.attributes.position.array, donorPosition, 'fitting leaves donor coordinates intact');
+        assert.deepEqual(donorMesh.geometry.index.array, donorIndex, 'fitting leaves donor topology intact');
+        root.updateMatrixWorld(true);
+        assert(Math.abs(new Box3().setFromObject(body, true).min.y) < 1e-5, 'the bare feet remain on the floor');
+      } finally {
+        restored.dispose();
       }
-      const body = root.getObjectByName('fitting-room-body');
-      assert.equal(body.geometry.drawRange.count, donor.geometry.index.count, 'the torso, legs, and feet use the complete skin mesh');
-      root.updateMatrixWorld(true);
-      assert(Math.abs(new Box3().setFromObject(body, true).min.y) < 1e-5, 'the bare feet remain on the floor');
-    } finally {
-      restored.dispose();
     }
+
+    const underSkirt = build(village, { garments: { skirt: skirt.id } }, { garmentBody: donor, garments: [{ item: skirt, scene: skirtScene }] });
+    try {
+      assert(underSkirt.root.getObjectByName('wardrobe-underwear-briefs')?.visible);
+      assert(underSkirt.root.getObjectByName(`wardrobe-${skirt.id}`)?.visible);
+    } finally { underSkirt.dispose(); }
+
+    const withoutDress = build(village, { outfit: 'linen-nightgown', removedClothing: ['dress', 'skirt'] }, { garmentBody: donor });
+    try {
+      assert(withoutDress.root.getObjectByName('wardrobe-underwear-briefs')?.visible);
+      assert(withoutDress.root.getObjectByName('CLOTH_TOP_CORSET').visible, 'revealing the briefs uses the stock top beneath a complete outfit');
+      assert.equal(withoutDress.root.getObjectByName('CLOTH_FEET_SHOES').visible, false);
+      assert.equal(withoutDress.root.getObjectByName('wardrobe-underwear-bra'), undefined);
+    } finally { withoutDress.dispose(); }
+
+    const defaultModel = build(village, {});
+    try {
+      assert(defaultModel.root.getObjectByName('CLOTH_TOP_CORSET').visible);
+      assert(defaultModel.root.getObjectByName('CLOTH_BOTTOM_SKIRT').visible);
+      assert.equal(defaultModel.root.getObjectByName('fitting-room-body'), undefined);
+      assert.equal(defaultModel.root.getObjectByName('wardrobe-underwear'), undefined);
+    } finally { defaultModel.dispose(); }
 
     const missingDonor = build(village, { removedClothing: ['corset', 'hat'] });
     try {
       assert(missingDonor.root.getObjectByName('CLOTH_TOP_CORSET').visible, 'keep the stock corset when the donor is unavailable');
       assert.equal(missingDonor.root.getObjectByName('ACC_HAT').visible, false);
       assert.equal(missingDonor.root.getObjectByName('fitting-room-body'), undefined);
+      assert.equal(missingDonor.root.getObjectByName('wardrobe-underwear'), undefined);
     } finally {
       missingDonor.dispose();
     }

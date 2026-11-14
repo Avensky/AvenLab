@@ -390,12 +390,18 @@ same scanner, so install the same materialized GLBs on the build machine.
 Curated items keep their existing IDs and metadata. Existing outfits keep
 working when the underlying model remains in its original family and filename.
 
-## Review the Underbust Vest strap update
+## Review the Underbust Vest cup and strap update
 
-Start the frontend and open `/previews/wardrobe-asset.html` on the Vite URL.
-Choose `Underbust-Oval-Smooth-Front-Canonical.glb` from the review download.
-Use Front, Side and Back or drag to look at the armhole and front strap seam.
-The GLB is a garment-only garage review export and stays outside the wardrobe
-catalog while on-character shoulder overlap, layered fit and mobile LOD are
-being reviewed. The currently equipped Underbust Vest still uses the existing
-production assets.
+From `frontend`, run `npx vite` to start the standalone viewer without the
+game's asset preparation. Open
+`http://localhost:5174/previews/wardrobe-asset.html`. The same path works on
+the production frontend build. Extract the review archive and choose or drop
+`underbust-vest-review.glb` into the viewer. For a local checkout you can also
+copy the GLB into `frontend/public/wardrobe-review/` and click **Open local
+vest review**. Select **Right ¾** to see the wearer's right cup. Drag to orbit
+and scroll to zoom in on the seam and the shoulder openings.
+
+The archive includes the editable Blender file and matched before-and-after
+views. The GLB is a garment-only garage review export. It stays outside the
+wardrobe catalog pending approval, layered and posed fit, and mobile LOD
+verification.

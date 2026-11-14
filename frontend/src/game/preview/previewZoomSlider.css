@@ -1,0 +1,15 @@
+.preview-zoom-slider {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  display: block;
+  width: 24px;
+  height: clamp(60px, 23dvh, 154px);
+  box-sizing: border-box;
+  margin: 0;
+  padding: 6px 2px;
+  border: 1px solid var(--app-line);
+  background: var(--app-panel);
+  accent-color: var(--app-accent);
+  cursor: ns-resize;
+  pointer-events: auto;
+}

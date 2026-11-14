@@ -30,6 +30,7 @@
   },
   "include": [
     "src",
+    "previews/wardrobe-asset.ts",
     "vite-env.d.ts"
   ]
 }

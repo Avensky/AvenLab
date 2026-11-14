@@ -350,7 +350,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
     {status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}
    </VehicleStudio>}
    {editing&&definition&&<GaragePreviewControls vehicle={definition.vehicle}/>}
-   {((characterOpen&&!characterReady)||viewingConcepts||(!characterOpen&&!definition))&&<div className="hero-garage-zoom" data-controller-row><PreviewVisibilityToggle/></div>}
+   {((characterOpen&&!characterReady)||viewingConcepts||(!characterOpen&&!definition))&&<div className="hero-garage-controls" data-controller-row><PreviewVisibilityToggle/></div>}
   </div>
   <SelectionFooter tabs={!characterOpen||characterReady} selectLabel={editing&&studioTab==="abilities"?"Toggle":undefined} hasPrimaryAction={!characterOpen&&(!editing||studioTab!=="abilities")} backAction={{onClick:()=>void back(),label:"Back"}}>{!characterOpen&&<div className="hero-workshop-actions">
    {!viewingReference&&<ControllerAction button="A" type="button" className="menu-control" disabled={!owner} tabIndex={-1} onClick={()=>editing?setPage("heroes"):openHero()}>{editing?"APPLY":"OPEN GARAGE"}</ControllerAction>}

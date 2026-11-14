@@ -7,7 +7,7 @@
 .fitting-camera-row, .fitting-camera-adjustments, .fitting-camera-range { display: flex; align-items: center; gap: 3px; }
 .fitting-camera-row { flex-wrap: wrap; justify-content: center; }
 .fitting-camera-adjustments { justify-content: center; gap: 5px; }
-.fitting-camera-toolbar .menu-control:is(.fitting-tool-icon, .garage-hide-toggle),
+:is(.fitting-camera-toolbar, .dressing-camera-shortcuts) .menu-control:is(.fitting-tool-icon, .garage-hide-toggle),
 .fitting-camera-toolbar .fitting-rotation-grid .menu-control {
   display: grid;
   flex: none;
@@ -22,8 +22,8 @@
   background: linear-gradient(150deg, var(--app-raised), var(--app-panel));
   color: var(--app-text);
 }
-.fitting-camera-toolbar .menu-control:is(:hover, :focus-visible, [aria-expanded="true"], [aria-pressed="true"]):not(:disabled) { border-color: var(--app-accent); color: var(--app-accent); }
-.fitting-camera-toolbar :is(.fitting-tool-icon, .fitting-rotation-grid, .garage-hide-toggle) svg { width: 16px; height: 16px; }
+:is(.fitting-camera-toolbar, .dressing-camera-shortcuts) .menu-control:is(:hover, :focus-visible, [aria-expanded="true"], [aria-pressed="true"]):not(:disabled) { border-color: var(--app-accent); color: var(--app-accent); }
+:is(.fitting-camera-toolbar, .dressing-camera-shortcuts) :is(.fitting-tool-icon, .fitting-rotation-grid, .garage-hide-toggle) svg { width: 16px; height: 16px; }
 .fitting-camera-panel {
   position: absolute;
   left: 50%;
@@ -60,7 +60,7 @@
   border-top: 1px solid var(--app-line);
   padding-top: 4px;
 }
-.fitting-camera-toolbar .fitting-camera-choices .menu-control[aria-pressed="true"] {
+.fitting-camera-choices .menu-control[aria-pressed="true"] {
   background: color-mix(in srgb, var(--app-raised), var(--app-accent) 18%);
   box-shadow: inset 0 -2px var(--app-accent);
 }

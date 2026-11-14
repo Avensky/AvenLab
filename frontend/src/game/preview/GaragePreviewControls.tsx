@@ -5,7 +5,6 @@ import { garageCamera, useGarageDrive, type DriveStage } from "./garageDriveStor
 import { COCKPIT_TAKES, type CockpitTake } from "../characters/cockpitEmotes";
 import { unlockVehicleAudio } from "../../audio/sharedAudio";
 import { useVehicleStudioStore } from "../heroes/vehicleStudioStore";
-import { PreviewZoom } from "./PreviewZoom";
 import { PreviewVisibilityToggle } from "./PreviewVisibilityToggle";
 
 const stageLabel: Record<DriveStage, string> = {
@@ -27,9 +26,8 @@ export function GaragePreviewControls({ vehicle }: { vehicle: VehicleModelId }) 
     useGarageDrive.setState({ steering: { id }, camera: "Cockpit" });
   }
 
-  return <div className="hero-garage-zoom">
+  return <div className="hero-garage-controls">
     {(error || active) && <span className="garage-drive-status" role="status">{error || stageLabel[stage]}</span>}
-    <PreviewZoom />
     <div className="garage-preview-buttons" role="group" aria-label="Garage camera and drive preview" data-controller-row>
       <button type="button" className="menu-control" aria-label={`Switch garage camera. Current view: ${camera}`}
         onClick={() => nextCamera(station.kind === "wheel")}>Camera · {camera}</button>

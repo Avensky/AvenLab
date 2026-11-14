@@ -1,7 +1,7 @@
 import { BufferAttribute, type BufferGeometry, Color, Group, MathUtils, SkinnedMesh, Vector3, type Material, type Object3D, type Skeleton } from "three";
 import type { MeshBVH } from "three-mesh-bvh";
 import type { CharacterLook } from "./characterCatalog";
-import { clothingColors, clothingPieceFor, type ClothingPiece } from "./clothingPieces";
+import { clothingColors, clothingPieceFor, skirtUsesUnderwear, underwearColors, type ClothingPiece } from "./clothingPieces";
 import { prepareGothicSkirtFit } from "./gothicSkirtFit";
 import { isLacedShoulder, showsTuckedLacingSkin } from "./lacedStrapFit";
 import { prepareShortSkirtFit } from "./shortSkirtFit";
@@ -11,6 +11,7 @@ import type { StandaloneCorset } from "./standaloneCorset";
 import { wardrobeGarmentReplacements, wardrobeRemovalPieces, type getWardrobeGarment, type WardrobeGarmentSlot, type WardrobeRemoval } from "./wardrobeGarments";
 import { prepareWardrobeTopFit } from "./wardrobeTopFit";
 import { prepareWardrobeCoverage, wardrobeCoverageSurface as bodySurface } from "./wardrobeCoverage";
+import { prepareWardrobeUnderwear } from "./wardrobeUnderwear";
 
 export type WardrobeGarmentSource = { item: NonNullable<ReturnType<typeof getWardrobeGarment>>; scene: Object3D; authoredFit?: boolean };
 
@@ -19,7 +20,7 @@ export function replacesVillagerBody(slot: WardrobeGarmentSlot) {
 }
 
 export function removalNeedsVillagerBody(slot: WardrobeRemoval) {
-  return slot === "top" || slot === "corset" || slot === "skirt" || slot === "shoes";
+  return slot === "top" || slot === "corset" || slot === "skirt" || slot === "dress" || slot === "shoes";
 }
 
 function sharesWardrobeRig(source: SkinnedMesh, skeleton: Skeleton) {
@@ -50,7 +51,7 @@ const coversSkin = new Set<ClothingPiece>(["corset", "shirt", "sleeves", "skirt"
 const coversTorso = new Set<ClothingPiece>(["corset", "shirt", "sleeves", "dress", "armor"]);
 
 type RestoredSkin = { upper: boolean; skirt: boolean; feet: boolean };
-type SkinCover = { surface: MeshBVH; piece: ClothingPiece };
+type SkinCover = { surface: MeshBVH; piece: ClothingPiece; baseLayer?: true };
 
 function fitBodyMask(
   body: SkinnedMesh, original: SkinnedMesh, full: BufferGeometry, top: boolean, skirt: boolean,
@@ -65,7 +66,7 @@ function fitBodyMask(
   const covered = prepareWardrobeCoverage(surfaces);
   const coveredShoulder = lacedBodice && prepareWardrobeCoverage(surfaces, .001);
   const coveredTorso = restored.upper
-    ? prepareWardrobeCoverage(clothes.filter(({ piece }) => coversTorso.has(piece)).map(({ surface }) => surface))
+    ? prepareWardrobeCoverage(clothes.filter(({ piece, baseLayer }) => baseLayer || coversTorso.has(piece)).map(({ surface }) => surface))
     : covered;
   let visible = 0;
   for (let i = 0; i < index.count; i += 3) {
@@ -113,7 +114,8 @@ export function prepareWardrobeGarments(
   });
   // A cut outfit cannot safely expose its skin when its body donor is unavailable.
   const removals = removedClothing.filter(slot => (full || !removalNeedsVillagerBody(slot))
-    && wardrobeRemovalPieces[slot].some(piece => stock.some(part => part.piece === piece)));
+    && (((slot === "top" || slot === "skirt") && removedClothing.includes("dress"))
+      || wardrobeRemovalPieces[slot].some(piece => stock.some(part => part.piece === piece))));
   const restored = { upper: removals.includes("top") || removals.includes("corset"), skirt: removals.includes("skirt"), feet: removals.includes("shoes") };
   const restoresBody = restored.upper || restored.skirt || restored.feet;
   const replacements = new Set<ClothingPiece>(removals.flatMap(slot => wardrobeRemovalPieces[slot]));
@@ -132,7 +134,7 @@ export function prepareWardrobeGarments(
     group.add(corset.group);
     for (const piece of wardrobeGarmentReplacements.top) replacements.add(piece);
   }
-  let top = Boolean(corset), skirt = false;
+  let upperGarment = false, skirt = false, skirtNeedsBriefs = false;
   let tucksHair = false;
   let scalpCap = false;
   let skirtRadius: number | undefined;
@@ -215,13 +217,29 @@ export function prepareWardrobeGarments(
     if (fabricColor) for (const color of liningColors) color.copy(fabricColor);
     group.add(garment);
     for (const piece of wardrobeGarmentReplacements[item.slot]) replacements.add(piece);
-    top ||= item.slot === "top" || item.slot === "dress";
+    upperGarment ||= item.slot === "top" || item.slot === "dress";
     skirt ||= item.slot === "skirt" || item.slot === "dress";
+    skirtNeedsBriefs ||= skirtUsesUnderwear(item.id);
   }
   if (topSurfaces.length) corset?.fitTop?.(topSurfaces);
   if (shortSkirtSurfaces.length) corset?.fitSkirt?.(shortSkirtSurfaces);
   if (!group.children.length && !replacements.size) return;
+  const top = Boolean(corset) || upperGarment;
   const body = (top || skirt || restoresBody) && full && fullBody instanceof SkinnedMesh ? bindWardrobeGarmentMesh(fullBody, original.skeleton) : undefined;
+  const stockBodice = stock.some(({ piece }) => (piece === "corset" || piece === "shirt") && !replacements.has(piece));
+  const bra = restored.upper && !upperGarment && !stockBodice && (!corset || Boolean(corset.fitTop));
+  const briefs = skirtNeedsBriefs ? "under-skirt" : restored.skirt && !skirt && "standalone";
+  const underwear = body && (bra || briefs) ? prepareWardrobeUnderwear(body, { bra, briefs }) : undefined;
+  if (underwear) {
+    group.add(underwear.group);
+    for (const [part, piece] of [[underwear.bra, "bra"], [underwear.briefs, "briefs"]] as const) {
+      part?.traverse(mesh => {
+        if (!(mesh instanceof SkinnedMesh) || Array.isArray(mesh.material) || mesh.material.userData.color_slot !== "fabric") return;
+        const surface = bodySurface(mesh.geometry);
+        if (surface) shapes.push({ surface, piece, baseLayer: true });
+      });
+    }
+  }
   if (body && full) {
     body.name = "fitting-room-body";
     body.material = original.material;
@@ -284,6 +302,7 @@ export function prepareWardrobeGarments(
         maskedWaist = waist;
       }
       if (body) original.visible = false;
+      underwear?.applyColors(piece => underwearColors(look, piece));
       for (const { piece, color, base, accent } of materials) {
         const dye = clothingColors(look, piece);
         color.copy(base);
@@ -293,6 +312,7 @@ export function prepareWardrobeGarments(
     },
     dispose() {
       group.removeFromParent();
+      underwear?.dispose();
       body?.geometry.dispose();
       for (const geometry of fittedGarments) geometry.dispose();
       for (const { surface } of shapes) surface.geometry.dispose();

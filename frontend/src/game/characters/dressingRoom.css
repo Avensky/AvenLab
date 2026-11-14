@@ -22,10 +22,19 @@
 .character-page--editor.character-page--dressing:where(:has(> .dressing-details:not([hidden]))) {
   --dressing-right: var(--dressing-detail-rail);
 }
-.dressing-room-title {
+.dressing-room-controls {
   grid-area: 1 / 2;
   align-self: start;
   justify-self: start;
+  z-index: 1;
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  pointer-events: none;
+}
+.dressing-room-title {
   display: grid;
   gap: 2px;
   min-width: 0;
@@ -36,6 +45,27 @@
   clip-path: var(--dressing-control-shape);
   color: var(--app-text);
   pointer-events: none;
+}
+.dressing-camera-shortcuts {
+  --fitting-tool-size: clamp(23px, 3vw, 32px);
+  max-width: 100%;
+  padding: 3px;
+  box-sizing: border-box;
+  background: var(--dressing-surface);
+  clip-path: var(--dressing-control-shape);
+  pointer-events: auto;
+}
+.dressing-camera-shortcuts .fitting-camera-choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, var(--fitting-tool-size)));
+  justify-content: start;
+}
+.dressing-preview-zoom {
+  grid-area: 1 / 2;
+  align-self: center;
+  justify-self: end;
+  z-index: 1;
+  pointer-events: auto;
 }
 .dressing-room-title small, .dressing-details header small {
   color: var(--app-accent);
@@ -290,6 +320,9 @@
   .dressing-category svg { width: 12px; height: 12px; }
   .dressing-toolbar .fitting-camera-toolbar { --fitting-tool-size: 23px; }
   .dressing-toolbar .dressing-color-toolbar .dressing-color-toggle { width: 25px; min-height: 23px; }
+}
+@media (max-width: 360px) {
+  .dressing-preview-zoom { align-self: end; }
 }
 @media (max-height: 500px) {
   .character-page--dressing .dressing-category.menu-control { min-height: 26px; }
