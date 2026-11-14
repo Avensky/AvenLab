@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AvenLab wardrobe GLB review</title>
+  <style>
+    :root { color-scheme: dark; font: 16px system-ui, sans-serif; background: #151a22; color: #edf0f4; }
+    body { margin: auto; max-width: 78rem; padding: 1rem; }
+    h1 { margin: 0 0 .6rem; }
+    p { margin: .65rem 0; color: #c4cdd8; }
+    form { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; }
+    input, button { font: inherit; }
+    button { padding: .35rem .7rem; border: 1px solid #a4b0c1; background: #262e3a; color: inherit; }
+    button:disabled { opacity: .4; }
+    #viewport { height: min(70vh, 50rem); min-height: 20rem; background: #242c38; border: 1px solid #505c6e; }
+    #viewport[data-dragging] { border-color: #b4cfff; }
+    canvas { width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <h1>Wardrobe GLB review</h1>
+  <form>
+    <label for="asset">Choose a garment GLB</label>
+    <input id="asset" type="file" accept=".glb,model/gltf-binary" disabled>
+    <button id="open-review" type="button" disabled>Open local vest review</button>
+    <button type="button" data-angle="front" disabled>Front</button>
+    <button type="button" data-angle="right-three-quarter" disabled>Right ¾</button>
+    <button type="button" data-angle="side" disabled>Side</button>
+    <button type="button" data-angle="back" disabled>Back</button>
+  </form>
+  <p id="status" role="status">Starting the 3D viewer…</p>
+  <div id="viewport" aria-label="Garment preview"></div>
+  <script type="module" src="./wardrobe-asset.ts"></script>
+</body>
+</html>

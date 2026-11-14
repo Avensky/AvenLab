@@ -72,7 +72,7 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     preview.setState({ camera: 'Hands', zoom: 1.2 });
     await act(async () => root.render(h(Harness, { initial: DEFAULT_CHARACTER })));
     assert.deepEqual([...document.querySelectorAll('[data-category]')].map(button => button.dataset.category),
-      ['outfits', 'saved', 'layers', 'corsets', 'tops', 'bottoms', 'footwear', 'headwear', 'bows', 'accessories', 'props', 'hair', 'face', 'skin']);
+      ['outfits', 'saved', 'layers', 'underwear', 'corsets', 'tops', 'bottoms', 'footwear', 'headwear', 'bows', 'accessories', 'props', 'hair', 'face', 'skin']);
     assert.equal(find('[data-category=colors]'), null, 'presets live in the color toolbar');
     assert.deepEqual([...find('.dressing-room-title').children].map(label => label.textContent), ['Fitting room', 'Vesper Vega']);
     assert.equal(find('.dressing-catalog').hidden, true);
@@ -104,6 +104,7 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     await open('outfits');
     assert(preview.getState().focusRevision > revision, 'reopening a category restores its close-up');
 
+    assert(find('[aria-label="Clear Complete outfits"]').disabled, 'the default outfit has nothing to reset');
     const found = new Set();
     for (const category of new Set(imports.map(item => item.category))) {
       await open(category);
@@ -143,9 +144,32 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     assert(find('[data-wardrobe-item=harness-01]'));
     assert.equal(find('[data-wardrobe-item=coat-01]'), null);
     await chooseLayer('Underwear');
-    assert.equal(document.querySelectorAll('[data-wardrobe-item]').length, 0);
-    assert.match(find('[role=status]').textContent, /standalone underwear/);
+    assert.deepEqual([...document.querySelectorAll('[data-wardrobe-item]')].map(button => button.dataset.wardrobeItem),
+      ['underwear-bra', 'underwear-briefs']);
     assert.equal(changes.length + trials.length, 0, 'category and camera changes never alter the outfit');
+
+    await open('underwear');
+    assert(find('[aria-label="Clear Underwear"]').disabled);
+    await click('[data-wardrobe-item=underwear-bra]');
+    assertPiece('bra');
+    assert.equal(trials.length, 0, 'inspecting a covered base layer preserves the outfit');
+    assert.equal(find('.dressing-details .dressing-color-toggle').title, 'Bra colors');
+    await click('[data-wardrobe-remove=top]');
+    assert.deepEqual(trials.at(-1).removedClothing, ['top', 'corset']);
+    assert(find('[data-wardrobe-remove=top]').disabled);
+    assert.equal(find('[data-wardrobe-item=underwear-briefs]').getAttribute('aria-pressed'), 'false');
+    await click('[data-wardrobe-remove=bottom]');
+    assertPiece('briefs');
+    assert.deepEqual(trials.at(-1).removedClothing, ['top', 'corset', 'skirt']);
+    assert.equal(find('.dressing-details .dressing-color-toggle').title, 'Briefs colors');
+    await click('.dressing-details .dressing-color-toggle');
+    await click('.dressing-details [aria-label="Main color: White"]');
+    assert.deepEqual(changes.at(-1).appearance.item_colors, { 'underwear:briefs': { color: '#ffffff', accent: '#d99eaf' } });
+    await click('[aria-label="Clear Underwear"]');
+    assert.equal(trials.at(-1).removedClothing, undefined);
+    assert.equal(trials.at(-1).outfit, DEFAULT_CHARACTER.outfit);
+    assert.deepEqual(trials.at(-1).appearance.item_colors, changes.at(-1).appearance.item_colors);
+    trials.length = changes.length = 0;
 
     await open('footwear');
     await click('[aria-label="Item availability"] button:last-child');
@@ -170,9 +194,18 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
       assert.equal(find('.dressing-details dd').textContent, 'Free try-on');
     }
     assert.deepEqual(trials.at(-1).garments, { top: 'top-01', skirt: 'gothic-skirt-04', socks: 'socks-01', bow: 'bowtie-14' });
-    await click('[data-remove-try-on]');
+    await click('[aria-label="Clear Bow ties"]');
     assert.deepEqual(trials.at(-1).garments, { top: 'top-01', skirt: 'gothic-skirt-04', socks: 'socks-01' }, 'removing a bow leaves the other trial pieces in place');
     assert.equal(changes.length, 0, 'trial pieces use the session preview callback');
+    await open('bottoms');
+    assert(find('[aria-label="Clear Skirts"]').disabled, 'base skirt section cannot clear a Gothic skirt');
+    await click('[aria-label="Clear Gothic skirts"]');
+    assert.deepEqual(trials.at(-1).garments, { top: 'top-01', socks: 'socks-01' }, 'section clear keeps other selections');
+    assert(find('[aria-label="Clear Gothic skirts"]').disabled);
+    await open('tops');
+    await click('[aria-label="Clear Tops"]');
+    assert.deepEqual(trials.at(-1).garments, { socks: 'socks-01' });
+    assert.deepEqual(trials.at(-1).removedClothing, ['top'], 'clearing the section hides its bundled layer too');
 
     await open('outfits');
     assert.equal(document.activeElement.dataset.wardrobeItem, 'dockwear', 'keyboard activation moves into the catalog');
@@ -203,9 +236,14 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     navigateFormRows(find('#root'), first, 'down', memory);
     assert.equal(document.activeElement.dataset.wardrobeItem, 'shop-crew');
     navigateFormRows(find('#root'), document.activeElement, 'down', memory);
+    assert.equal(document.activeElement.getAttribute('aria-label'), 'Clear Gothic collection', 'the next section starts at its clear control');
+    navigateFormRows(find('#root'), document.activeElement, 'down', memory);
     assert.equal(document.activeElement.dataset.wardrobeItem, 'gothic-05', 'down enters the next section at its equipped item');
     await click('[data-wardrobe-item=shop-crew]');
     assert.equal(changes.at(-1).wardrobe, undefined, 'complete outfit replaces the corset set');
+    await click('[aria-label="Clear Complete outfits"]');
+    assert.equal(changes.at(-1).outfit, DEFAULT_CHARACTER.outfit);
+    await click('[data-wardrobe-item=shop-crew]');
     assertPiece('corset');
 
     await click('[data-wardrobe-item=medieval-08]');
@@ -220,6 +258,16 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     assert.equal(preview.getState().camera, 'Full body');
     assert(find('[data-dressing-piece=dress]'));
     assert.equal(find('[data-dressing-piece=shoes]'), null);
+    await open('underwear');
+    await click('[data-wardrobe-remove=top]');
+    assert.deepEqual(trials.at(-1).removedClothing, ['dress', 'top', 'corset']);
+    assert.equal(characterLook(trials.at(-1)).garments, undefined);
+    assert.deepEqual(characterLook(trials.at(-1)).outfitRemovals, ['hat', 'shoes'], 'previewing the bra retains the barefoot outfit settings');
+    await click('[aria-label="Clear Underwear"]');
+    assert.equal(trials.at(-1).outfit, sleepwear.outfit);
+    assert.equal(trials.at(-1).removedClothing, undefined);
+    assert.deepEqual(characterLook(trials.at(-1)).garments, { dress: 'linen-nightgown' });
+    await open('outfits');
     await click('[aria-label="Medieval outfits"] [data-wardrobe-item=medieval-07]');
     assert.equal(changes.at(-1).outfit, 'medieval-07');
     assert.deepEqual(characterLook(changes.at(-1)).removedClothing, ['hat']);

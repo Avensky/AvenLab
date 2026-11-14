@@ -75,11 +75,11 @@ export function characterLook(choice: CharacterChoice | null | undefined) {
   const wardrobe = character.id === VILLAGER_ID ? resolveWardrobe(choice?.wardrobe) : undefined;
   const trials = character.id === VILLAGER_ID ? visibleWardrobeGarments(choice) : undefined;
   const outfitGarment = character.id === VILLAGER_ID ? getWardrobeGarment(outfit.id) : undefined;
-  const wearsOutfitGarment = outfitGarment?.outfit && !wardrobe && !choice?.wardrobeTrial
-    && !trials?.top && !trials?.skirt && !trials?.dress && wardrobeGarmentModelUrl(outfitGarment, "garage");
-  const outfitRemovals: readonly WardrobeRemoval[] = !wearsOutfitGarment ? NO_OUTFIT_REMOVALS
-    : outfitGarment.outfit?.barefoot ? SLEEPWEAR_REMOVALS : OUTFIT_REMOVALS;
   const removed = removedWardrobeLayers(choice);
+  const usesOutfitGarment = outfitGarment?.outfit && !wardrobe && !choice?.wardrobeTrial
+    && !trials?.top && !trials?.skirt && !trials?.dress && wardrobeGarmentModelUrl(outfitGarment, "garage");
+  const outfitRemovals: readonly WardrobeRemoval[] = !usesOutfitGarment ? NO_OUTFIT_REMOVALS
+    : outfitGarment.outfit?.barefoot ? SLEEPWEAR_REMOVALS : OUTFIT_REMOVALS;
   const removedClothing = !outfitRemovals.length ? removed : !removed.length ? outfitRemovals
     : [...new Set([...removed, ...outfitRemovals])];
   const showCorset = character.id === VILLAGER_ID && !removedClothing.includes("corset");
@@ -88,7 +88,7 @@ export function characterLook(choice: CharacterChoice | null | undefined) {
     wardrobe, outfitRemovals,
     corset: showCorset ? resolveWardrobe(choice?.wardrobeTrial, { includeRetired: true }) : undefined,
     overEase: showCorset ? wardrobeOverEase(choice) : 0 as const,
-    garments: wearsOutfitGarment ? { ...trials, dress: outfitGarment.id } : trials,
+    garments: usesOutfitGarment && !removed.includes("dress") ? { ...trials, dress: outfitGarment.id } : trials,
     fabric: /^#[\da-f]{6}$/i.test(appearance.color) ? appearance.color : color("color") ?? outfit.jacket,
     trim: appearance.accent ?? outfit.trim,
     hair: color("hair_color") ?? (female ? "#7c573c" : "#2b2127"),

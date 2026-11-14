@@ -32,15 +32,22 @@ type SavedOutfitsProps = {
   choice: CharacterChoice;
   onTryOn: (choice: CharacterChoice) => void;
   onEndPreview?: () => void;
+  clearPreview?: boolean;
 };
 
 export function SavedOutfits(props: SavedOutfitsProps) {
   const owner = useSocialStore(({ view }) => view?.profile.progression ? view.profile.id : undefined);
-  if (!owner) return <p className="dressing-empty" role="status">Connect your player profile to save outfits.</p>;
+  if (!owner) return <div className="saved-outfits">
+    {props.clearPreview && <div className="dressing-section-heading" data-controller-row>
+      <button type="button" className="dressing-section-clear menu-control" aria-label="Clear saved outfit preview"
+        data-clear-section disabled={!props.onEndPreview} onClick={props.onEndPreview}>Clear</button>
+    </div>}
+    <p className="dressing-empty" role="status">Connect your player profile to save outfits.</p>
+  </div>;
   return <ConnectedSavedOutfits key={owner} owner={owner} {...props} />;
 }
 
-function ConnectedSavedOutfits({ owner, choice, onTryOn, onEndPreview }: SavedOutfitsProps & { owner: string }) {
+function ConnectedSavedOutfits({ owner, choice, onTryOn, onEndPreview, clearPreview }: SavedOutfitsProps & { owner: string }) {
   const records = useSocialStore(state => state.view?.profile.progression?.character_outfits);
   const [name, setName] = useState("");
   const [pending, setPending] = useState(false);
@@ -92,13 +99,15 @@ function ConnectedSavedOutfits({ owner, choice, onTryOn, onEndPreview }: SavedOu
 
   const notice = pending ? "Updating saved outfits…" : saveProblem || message;
   return <div className="saved-outfits">
-    {onEndPreview && <div data-controller-row>
-      <button type="button" className="menu-control" onClick={() => {
-        onEndPreview();
+    {(onEndPreview || clearPreview) && <div className={clearPreview ? "dressing-section-heading" : undefined} data-controller-row>
+      <button type="button" className={clearPreview ? "dressing-section-clear menu-control" : "menu-control"}
+        aria-label={clearPreview ? "Clear saved outfit preview" : undefined} data-clear-section={clearPreview || undefined}
+        disabled={!onEndPreview} onClick={() => {
+        onEndPreview?.();
         setName("");
         setMessage("");
         nameInput.current?.focus({ preventScroll: true });
-      }}>Return to equipped</button>
+      }}>{clearPreview ? "Clear" : "Return to equipped"}</button>
     </div>}
     <form className="saved-outfit-form" aria-label="Save current outfit" onSubmit={save}>
       <label data-controller-row>Outfit name

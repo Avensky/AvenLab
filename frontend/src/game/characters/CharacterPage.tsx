@@ -18,7 +18,9 @@ import { CHARACTER_PERSONALITIES, type AnimationFit, type CharacterPersonality }
 import { FittingCameraSelect } from "./FittingCameraSelect";
 import { FittingCameraToolbar } from "./FittingCameraToolbar";
 import { DressingRoom } from "./DressingRoom";
+import { clothingColorKey, UNDERWEAR_PIECES } from "./clothingPieces";
 import { PreviewVisibilityToggle } from "../preview/PreviewVisibilityToggle";
+import { PreviewZoomSlider } from "../preview/PreviewZoomSlider";
 
 export const CHARACTER_TABS = [
   { id: "identity", label: "Identity" }, { id: "appearance", label: "Appearance" },
@@ -149,8 +151,18 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
     timer.current = setTimeout(() => void flush(), 300);
   }
 
+  function hasFittingPreview(next: CharacterChoice) {
+    return loadedOutfit || next.garments || next.wardrobeTrial || next.wardrobeEase || next.removedClothing?.length
+      || UNDERWEAR_PIECES.some(piece => {
+        const key = clothingColorKey(next, piece);
+        const preview = next.appearance?.item_colors?.[key];
+        const equipped = choice.appearance?.item_colors?.[key];
+        return preview?.color !== equipped?.color || preview?.accent !== equipped?.accent;
+      });
+  }
+
   function tryOn(next: CharacterChoice) {
-    setTrial(loadedOutfit || next.garments || next.wardrobeTrial || next.wardrobeEase || next.removedClothing?.length ? next : undefined);
+    setTrial(hasFittingPreview(next) ? next : undefined);
   }
 
   function loadOutfit(next: CharacterChoice) {
@@ -165,7 +177,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
   }
 
   function editPreviewAppearance(next: CharacterChoice) {
-    if (loadedOutfit || next.garments || next.wardrobeTrial || next.wardrobeEase || next.removedClothing?.length) tryOn(next);
+    if (hasFittingPreview(next)) setTrial(next);
     else equipOutfit(next);
   }
 
@@ -262,16 +274,18 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
     ? <FittingCameraSelect views={COCKPIT_CAMERAS} view={camera === "Whole car" ? "Whole car" : "Full body"}
       viewLabels={{ "Full body": "Driver", "Whole car": "Whole vehicle" }} onViewChange={changeCamera} />
     : <FittingCameraSelect choice={previewChoice} views={cameraViews}
-      view={!vehiclePreview && camera === "Whole car" ? "Full body" : camera} onViewChange={changeCamera} />;
+      view={!vehiclePreview && camera === "Whole car" ? "Full body" : camera} onViewChange={changeCamera} columns={fitting ? 3 : undefined} />;
+  const setZoom = (value: number) => useCharacterPreviewStore.setState({ zoom: value });
   const zoomRange = <input type="range" aria-label="Preview zoom" min={CHARACTER_ZOOM_MIN} max={CHARACTER_ZOOM_MAX} step=".05" value={zoom}
-    onChange={event => useCharacterPreviewStore.setState({ zoom: Number(event.target.value) })} />;
-  const zoomBy = (step: number) => useCharacterPreviewStore.setState({ zoom: Math.min(CHARACTER_ZOOM_MAX, Math.max(CHARACTER_ZOOM_MIN, +(zoom + step).toFixed(2))) });
+    onChange={event => setZoom(Number(event.target.value))} />;
+  const zoomBy = (step: number) => setZoom(Math.min(CHARACTER_ZOOM_MAX, Math.max(CHARACTER_ZOOM_MIN, +(zoom + step).toFixed(2))));
   const togglePose = () => useCharacterPreviewStore.setState({ playbackPaused: !playbackPaused });
   const exitCockpit = insideCar && <button type="button" className="menu-control fitting-tool-icon" data-cockpit-toggle
     aria-label={`Exit ${stationName}`} title={`Exit ${stationName}`} onClick={toggleCockpit}>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M11 4H4v16h7m2-12 4 4-4 4m4-4H8" /></svg>
   </button>;
-  const cameraTools = inspection ? cameraControls : <FittingCameraToolbar key={tab} camera={cameraSelect} zoomRange={insideCar ? undefined : zoomRange}
+  const cameraTools = inspection ? cameraControls : <FittingCameraToolbar key={tab} camera={fitting ? undefined : cameraSelect}
+    zoomRange={insideCar || fitting ? undefined : zoomRange}
     visibility={<PreviewVisibilityToggle />} paused={playbackPaused} onPause={togglePose}
     vehicle={vehiclePreview} rotationDisabled={rotationDisabled} actions={exitCockpit}
     onReframe={tab !== "emotes" ? () => useCharacterPreviewStore.setState(s => ({ zoom: 1, focusRevision: s.focusRevision + 1 })) : undefined}
@@ -305,7 +319,9 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
       <div className="character-stage" data-character-viewport data-character-preview={choice.id} data-outfit-preview={choice.outfit}
         aria-label={`Preview of ${character.name}`} />
       {fitting && <DressingRoom choice={previewChoice} onChange={editPreviewAppearance} onEquip={equipOutfit} onTryOn={tryOn} onLoad={loadOutfit}
-        onEndPreview={loadedOutfit ? endOutfitPreview : undefined} cameraTools={cameraTools} />}
+        onEndPreview={loadedOutfit ? endOutfitPreview : undefined} cameraTools={cameraTools} cameraShortcuts={inspection ? undefined : cameraSelect}
+        previewZoom={!inspection && !insideCar && <PreviewZoomSlider label="Preview zoom" min={CHARACTER_ZOOM_MIN}
+          max={CHARACTER_ZOOM_MAX} step={.05} value={zoom} valueText={`${Math.round(zoom * 100)}%`} onChange={setZoom} />} />}
       {tab !== "appearance" && <section className="character-controls menu-panel-frame character-controls--left" aria-label={tab}>
         {tab === "identity" && <>
           <header className="character-description"><h2>Identity</h2><p>Choose how your character identifies and which model they use.</p></header>

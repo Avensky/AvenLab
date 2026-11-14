@@ -7,6 +7,7 @@ import { defineConfig, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
+import { discoverWardrobeGarments, isWardrobeCatalogInput, wardrobeCatalogFile, wardrobeDirectory, wardrobePublicRoot } from "./scripts/discover-wardrobe-garments.mts";
 import { findVillagerModel, hasCharacterModel, hasCompatibleWardrobeRevision } from "./scripts/character-model-paths.mts";
 const wardrobeSets: { id: string }[] = JSON.parse(readFileSync(new URL("../avenlab-server/src/assets/character-wardrobe.json", import.meta.url), "utf8"));
 const standaloneCorsetLods = Object.fromEntries(wardrobeSets.map(({ id }) => [id, {
@@ -19,7 +20,8 @@ const bundledWardrobeLods = Object.fromEntries(wardrobeSets.map(({ id }) => [id,
 }]));
 
 const dressingRoomImports: { id: string; url: string; mobileUrl?: string; revisionUrl?: string; retired?: boolean }[] =
-  JSON.parse(readFileSync(new URL("../avenlab-server/src/assets/character-garments.json", import.meta.url), "utf8"));
+  JSON.parse(readFileSync(wardrobeCatalogFile, "utf8"));
+const discoveredImports = discoverWardrobeGarments(wardrobePublicRoot, dressingRoomImports);
 const activeImports = dressingRoomImports.filter(item => !item.retired);
 const garmentFile = (url: string) => new URL(`./public${url}`, import.meta.url);
 const installedRevisions = activeImports.filter(({ revisionUrl, url }) =>
@@ -44,6 +46,7 @@ const vesperModelUrl = vesper?.sourceUrl ?? (vesper && hasCharacterModel(vesper.
 
 export default defineConfig({
   define: {
+    __DISCOVERED_WARDROBE_GARMENTS__: JSON.stringify(discoveredImports),
     __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(activeImports.filter(item => hasCharacterModel(garmentFile(item.url))).map(item => item.id)),
     __DRESSING_ROOM_MOBILE_IDS__: JSON.stringify(activeImports.filter(item => item.mobileUrl && hasCharacterModel(garmentFile(item.mobileUrl))).map(item => item.id)),
     __DRESSING_ROOM_REVISION_IDS__: JSON.stringify(installedRevisions),
@@ -61,6 +64,14 @@ export default defineConfig({
   // The road workbench has its own virtual bundle / preview build. Scanning all
   // preview HTML at app startup wasted work and attempted to resolve that bundle.
   optimizeDeps: { entries: ["index.html"] },
+  build: {
+    rollupOptions: {
+      input: [
+        fileURLToPath(new URL("./index.html", import.meta.url)),
+        fileURLToPath(new URL("./previews/wardrobe-asset.html", import.meta.url)),
+      ],
+    },
+  },
   resolve: { dedupe: ["react", "react-dom", "three"] },
   plugins: [
     {
@@ -78,6 +89,20 @@ export default defineConfig({
           }), 200);
         };
         server.watcher.add(directory);
+        server.watcher.on("add", refresh).on("change", refresh).on("unlink", refresh);
+        server.httpServer?.once("close", () => { clearTimeout(timer); server.watcher.off("add", refresh).off("change", refresh).off("unlink", refresh); });
+      },
+    },
+    {
+      name: "installed-wardrobe-catalog",
+      configureServer(server: ViteDevServer) {
+        let timer: ReturnType<typeof setTimeout>;
+        const refresh = (file: string) => {
+          if (!isWardrobeCatalogInput(file)) return;
+          clearTimeout(timer);
+          timer = setTimeout(() => server.restart().catch(error => server.config.logger.error(String(error))), 250);
+        };
+        server.watcher.add([fileURLToPath(wardrobeCatalogFile), fileURLToPath(wardrobeDirectory)]);
         server.watcher.on("add", refresh).on("change", refresh).on("unlink", refresh);
         server.httpServer?.once("close", () => { clearTimeout(timer); server.watcher.off("add", refresh).off("change", refresh).off("unlink", refresh); });
       },

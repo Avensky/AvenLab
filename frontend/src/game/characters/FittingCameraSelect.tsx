@@ -40,6 +40,8 @@ const PIECE_ICONS: Record<ClothingPiece, string> = {
   harness: "M7 4h3l2 6 2-6h3v16h-3v-7h-4v7H7zm0 12h10",
   armor: "M7 4h3l2 3 2-3h3l2 5-2 2v8l-5 2-5-2v-8L5 9zM9 11h6m-6 4h6",
   bracer: "M8 5h8l1 14H7zM8 9h8m-8 4h8m-9 4h10",
+  bra: "M4 12l2-7m14 7-2-7M4 12q4-4 8 0 4-4 8 0v4q-4 4-8 0-4 4-8 0z",
+  briefs: "M4 7h16v4l-6 7h-4l-6-7zM4 10h16m-12 4 2 4m6-4-2 4",
 };
 
 function CameraChoiceIcon({ path }: { path: string }) {
@@ -47,19 +49,20 @@ function CameraChoiceIcon({ path }: { path: string }) {
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false"><path d={path} /></svg>;
 }
 
-export function FittingCameraSelect<View extends string>({ choice, views, view, onViewChange, label = "Preview camera", viewLabels }: {
+export function FittingCameraSelect<View extends string>({ choice, views, view, onViewChange, label = "Preview camera", viewLabels, columns = 7 }: {
   choice?: CharacterChoice;
   views: readonly View[];
   view: View;
   onViewChange: (view: View) => void;
   label?: string;
   viewLabels?: Partial<Record<View, string>>;
+  columns?: number;
 }) {
   const selected = useCharacterPreviewStore(state => state.selectedPiece);
   const pieces = choice ? wornClothing(choice) : [];
 
   return <div className="fitting-camera-select" role="group" aria-label={label}>
-    <div className="fitting-camera-choices" role="group" aria-label="Views" data-controller-row data-controller-columns="7">
+    <div className="fitting-camera-choices" role="group" aria-label="Views" data-controller-row data-controller-columns={columns}>
       {views.filter(item => item !== "Selected item").map(item => {
         const name = viewLabels?.[item] ?? item;
         const icon = item === "Whole car" ? <MenuIcon name="vehicles" />
@@ -69,7 +72,7 @@ export function FittingCameraSelect<View extends string>({ choice, views, view, 
           aria-label={name} title={name} aria-pressed={view === item} onClick={() => { if (view !== item) onViewChange(item); }}>{icon}</button>;
       })}
     </div>
-    {pieces.length > 0 && <div className="fitting-camera-choices" role="group" aria-label="Clothing close-ups" data-controller-row data-controller-columns="7">
+    {pieces.length > 0 && <div className="fitting-camera-choices" role="group" aria-label="Clothing close-ups" data-controller-row data-controller-columns={columns}>
       {pieces.map(item => {
         const name = clothingPieceLabel(item);
         return <button key={item} type="button" className="menu-control fitting-tool-icon" data-camera-choice={`piece:${item}`}

@@ -64,6 +64,12 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
       input.value = value;
       input.dispatchEvent(new Event('change', { bubbles: true }));
     });
+    const slide = (selector, value) => act(async () => {
+      const input = find(selector);
+      const setValue = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      setValue.call(input, String(value));
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
     const cameraTools = 'button[aria-label="Camera tools"]';
     const cameraView = label => [...find('[aria-label="Preview camera"]').querySelectorAll('button')]
       .find(button => button.getAttribute('aria-label') === label);
@@ -263,11 +269,18 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(preview.getState().camera, 'Selected item');
     assert.equal(cameraView('Glasses').getAttribute('aria-pressed'), 'true');
     assert.equal(find('[aria-label="Clothing piece"]'), null, 'the camera selector also inspects clothing');
-    assert(find('[aria-label="Preview camera"]').closest('[hidden]'), 'camera controls start collapsed');
+    assert(find('.dressing-room-title + .dressing-camera-shortcuts [aria-label="Preview camera"]'));
+    assert.equal(find('[aria-label="Preview camera"]').closest('[hidden]'), null, 'angle shortcuts stay open');
+    assert(find('.fitting-camera-panel').hidden, 'camera adjustments start collapsed');
+    const fittingZoom = '.dressing-preview-zoom input[aria-label="Preview zoom"][aria-orientation="vertical"]';
+    assert(find(fittingZoom));
+    await slide(fittingZoom, 1.2);
+    assert.equal(preview.getState().zoom, 1.2);
+    await slide(fittingZoom, 1);
     await click(cameraTools);
-    assert.equal(find('[aria-label="Preview camera"]').closest('[hidden]'), null);
-    assert(find('[aria-label="Preview camera"]').contains(document.activeElement), 'keyboard activation focuses a camera choice');
-    assert.equal(find('.fitting-camera-panel').textContent.trim(), '', 'the camera popup uses icons and a zoom bar');
+    assert.equal(find('.fitting-camera-panel').hidden, false);
+    assert(find('.fitting-camera-panel').contains(document.activeElement), 'keyboard activation focuses a camera adjustment');
+    assert.equal(find('.fitting-camera-panel').textContent.trim(), '', 'the camera popup uses icons');
     assert(cameraView('Glasses').querySelector('svg'), 'the clothing close-up has a labeled icon');
     await click('.fitting-camera-panel [aria-label="Zoom in"]');
     assert.equal(preview.getState().zoom, 1.05);
@@ -288,9 +301,11 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(preview.getState().camera, 'Selected item');
     assert.equal(find('.dressing-color-panel').hidden, true);
     assert.equal(find('[aria-label="Open clothing colors"]').textContent, '', 'the toolbar uses a swatch icon');
+    await click(cameraTools);
     await click('[aria-label="Open clothing colors"]');
     assert.equal(find('.dressing-color-panel').hidden, false);
-    assert(find('[aria-label="Preview camera"]').closest('[hidden]'), 'opening colors closes the camera tools');
+    assert(find('.fitting-camera-panel').hidden, 'opening colors closes the camera adjustments');
+    assert.equal(find('[aria-label="Preview camera"]').closest('[hidden]'), null);
     const initialMain = find('input[aria-label="Custom main color"]').value;
     await click('button[aria-label="Accent color: Crimson"]');
     assert.equal(find('input[aria-label="Custom main color"]').value, initialMain);
@@ -386,6 +401,13 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(loadouts.getState().defaultHero, 'brz');
     const garageCamera = () => find('button[aria-label^="Switch garage camera"]');
     assert.match(garageCamera().textContent, /Showroom/);
+    const garageZoom = '.vehicle-studio .hero-preview-zoom--vertical input[aria-label="Zoom vehicle"][aria-orientation="vertical"]';
+    assert(find(garageZoom));
+    await slide(garageZoom, 2);
+    assert.equal(zoom.getState().level, 2);
+    assert.equal(find(garageZoom).getAttribute('aria-valuetext'), '135%');
+    await click('.hero-preview-zoom--vertical [aria-label="Reset vehicle zoom"]');
+    assert.equal(zoom.getState().level, 0);
     assert(find('[aria-label="Garage camera and drive preview"] button[aria-label="Hide interface"]'), 'eye toggle lives in the bottom camera toolbar');
     await click('button[aria-label="Hide interface"]');
     assert(find('.hero-workshop').classList.contains('hero-workshop--hidden'));
@@ -450,6 +472,15 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('[aria-label="Character model"] [data-character-option="mara-vega"]');
     assert.equal(drafts.at(-1).id, 'mara-vega');
     await click('#character-editor-tab-appearance');
+    await browseWardrobe('underwear');
+    await click('[data-wardrobe-remove=bottom]');
+    assert.deepEqual(drafts.at(-1).removedClothing, ['skirt']);
+    await click('.dressing-details [aria-label="Open clothing colors"]');
+    await click('.dressing-details button[aria-label="Gothic Pink"]');
+    assert.equal(drafts.at(-1).appearance.item_colors['underwear:briefs'].accent, '#ff2d95');
+    await click('[aria-label="Clear Underwear"]');
+    assert.equal(drafts.at(-1).removedClothing, undefined);
+    assert.equal(drafts.at(-1).appearance.item_colors['underwear:briefs'].accent, '#ff2d95', 'clearing the preview leaves its separate color available to save');
     await browseWardrobe('bottoms');
     await click('[data-wardrobe-item=gothic-skirt-04]');
     await browseWardrobe('tops');
