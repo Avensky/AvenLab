@@ -74,8 +74,12 @@ struct Garment {
 }
 
 static GARMENTS: LazyLock<Vec<Garment>> = LazyLock::new(|| {
-    serde_json::from_str(include_str!("../assets/character-garments.json"))
-        .expect("the built-in garment catalog is valid")
+    let mut garments: Vec<Garment> = serde_json::from_str(include_str!("../assets/character-garments.json"))
+        .expect("the built-in garment catalog is valid");
+    let discovered: Vec<Garment> = serde_json::from_str(include_str!(concat!(env!("OUT_DIR"), "/discovered-wardrobe-garments.json")))
+        .expect("the generated garment catalog is valid");
+    garments.extend(discovered);
+    garments
 });
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]

@@ -42,7 +42,7 @@ export function setWardrobeRemoval(choice: CharacterChoice, slot: WardrobeRemova
   const next = remove ? [...removed, slot] : removed.filter(item => item !== slot);
   return { ...choice, removedClothing: next.length ? next : undefined };
 }
-type WardrobeGarment = {
+export type WardrobeGarment = {
   id: string; label: string; section: string; category: string; slot: WardrobeGarmentSlot;
   piece: ClothingPiece; url: string; mobileUrl?: string; revisionUrl?: string; retired?: boolean;
   tucksHair?: boolean;
@@ -51,13 +51,16 @@ type WardrobeGarment = {
   outfit?: { description: string; barefoot?: boolean };
 };
 
-export const importedWardrobeItems = (importedItems as WardrobeGarment[]).filter(item => !item.retired);
+const discoveredItems: WardrobeGarment[] = typeof __DISCOVERED_WARDROBE_GARMENTS__ === "undefined" ? [] : __DISCOVERED_WARDROBE_GARMENTS__;
+const discoveredIds = new Set(discoveredItems.map(item => item.id));
+export const importedWardrobeItems = [...(importedItems as WardrobeGarment[]).filter(item => !item.retired), ...discoveredItems];
 
 export function getWardrobeGarment(id?: string) {
   return importedWardrobeItems.find(item => item.id === id);
 }
 
 export function wardrobeGarmentModelUrl(item: WardrobeGarment, kind: "garage" | "portrait", { useRevision = true } = {}) {
+  if (discoveredIds.has(item.id)) return kind === "portrait" ? item.mobileUrl ?? item.url : item.url;
   if (!__DRESSING_ROOM_IMPORTED_IDS__.includes(item.id)) return undefined;
   if (useRevision && item.revisionUrl && __DRESSING_ROOM_REVISION_IDS__.includes(item.id)) return item.revisionUrl;
   if (kind === "portrait" && item.mobileUrl && __DRESSING_ROOM_MOBILE_IDS__.includes(item.id)) return item.mobileUrl;

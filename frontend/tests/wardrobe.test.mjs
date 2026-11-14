@@ -166,7 +166,7 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
   assert.equal(previews.at(-1).removedClothing,undefined,'selecting a corset restores that layer');
   assert.equal(previews.at(-1).garments.top,'top-02','reselecting the vest keeps the top');
   assert(document.querySelector('[data-dressing-piece="shirt"]'));
-  await click('[data-remove-try-on]');
+  await click('[aria-label="Clear Gothic corsets"]');
   assert.equal(previews.at(-1).wardrobeTrial,undefined);
   assert.equal(previews.at(-1).garments.top,'top-02','removing the vest keeps the top');
   await click('[data-wardrobe-item="gothic-04"]');
@@ -193,7 +193,7 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
   await showTab('appearance');
   await click('[data-category=corsets]');
   await click('[data-wardrobe-item="gothic-04"]');
-  await click('[data-remove-try-on]');
+  await click('[aria-label="Clear Gothic corsets"]');
   assert.equal(previews.at(-1).wardrobeTrial,undefined);
   assert.equal(previews.at(-1).garments.skirt,'gothic-skirt-04','removing the corset keeps the separate skirt');
   assert.equal(previews.at(-1).garments.top,'top-02');
@@ -233,7 +233,7 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
   await click('[aria-label="Try on Village"]');
   assert.equal(previews.at(-1).wardrobe,undefined,'an unlayered saved look also previews');
   await act(async()=>{
-    const button=[...document.querySelectorAll('button')].find(item=>item.textContent==='Return to equipped');
+    const button=document.querySelector('[aria-label="Clear saved outfit preview"]');
     assert(button);
     button.click();
   });

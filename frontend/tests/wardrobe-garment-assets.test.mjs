@@ -47,8 +47,9 @@ test('each loose female garment and its available model tiers are in the wardrob
     if (hasMobile) assert.equal(item.mobileUrl, item.url.replace(/\.garage\.glb$/, '.mobile.glb'));
   }
   const files = await readdir(new URL(garmentDir, publicDir), { recursive: true });
+  const revisions = new Set(catalog.flatMap(item => item.revisionUrl ? [item.revisionUrl.slice(1)] : []));
   const imports = files.map(file => file.replaceAll('\\', '/')).filter(file => file.endsWith('.glb')
-    && file !== 'vesper-body.glb' && !file.startsWith('corsets/') && !file.startsWith('corsettes/'));
+    && file !== 'vesper-body.glb' && !file.startsWith('corsets/') && !revisions.has(garmentDir + file));
   // The Sleepwear folder also stores copies of the cataloged dress exports.
   const installed = new Set(imports.map(file => garmentDir + file.replace(/^Sleepwear\//, 'dress/'))
     .filter(file => !supersededHoodFiles.has(file)));
@@ -305,10 +306,10 @@ test('turning off wardrobe layers restores the donor skin and keeps the other pi
   }
 });
 
-test('Gothic Skirts 02 and 03 prefer compatible revisions installed under corsettes', async t => {
+test('Gothic Skirts 02 and 03 keep optional revisions beside the original skirts', async t => {
   const [second, third] = ['02', '03'].map(number => catalog.find(item => item.id === `gothic-skirt-${number}`));
-  assert.equal(second.revisionUrl, `/${garmentDir}corsettes/gothic-skirt-02-update.glb`);
-  assert.equal(third.revisionUrl, `/${garmentDir}corsettes/gothic-skirt-03-update.glb`);
+  assert.equal(second.revisionUrl, second.url.replace(/\.glb$/, '-update.glb'));
+  assert.equal(third.revisionUrl, third.url.replace(/\.glb$/, '-update.glb'));
   const original = new URL(second.url.slice(1), publicDir);
   const incompatible = new URL('models/characters/female/props/bag-black-gold/bag-black-gold-mobile.glb', publicDir);
   assert.equal(hasCompatibleWardrobeRevision(incompatible, original), false);

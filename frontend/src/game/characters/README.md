@@ -231,13 +231,14 @@ the Emotes tab. Trial combinations are session-only and leave the saved outfit
 in place. Ready to wear filters out fitting trials, and search filters the
 current category.
 
-Gothic Skirts 02 and 03 can use optional authored revisions in
-`frontend/public/models/characters/female/wardrobe/corsettes/`. Use
-`gothic-skirt-02-update.glb` and `gothic-skirt-03-update.glb` for separate skirt
-exports. Keep the matching `CLOTH_GOTHIC_SKIRT_02` or `CLOTH_GOTHIC_SKIRT_03`
-mesh name and ordered Vesper skin joints. Restart Vite after adding them.
-Compatible revisions keep their authored shape. Missing or mismatched
-revisions use the original skirt and its automatic waistband fit.
+Gothic skirt models live in
+`frontend/public/models/characters/female/wardrobe/skirts/gothic-skirt/`.
+Put optional `gothic-skirt-02-update.glb` and `gothic-skirt-03-update.glb`
+exports beside the originals. Keep the matching `CLOTH_GOTHIC_SKIRT_02` or
+`CLOTH_GOTHIC_SKIRT_03` mesh name and ordered Vesper skin joints. Restart
+Vite after adding them. Compatible revisions keep their authored shape.
+Missing or mismatched revisions use the original skirt and its automatic
+waistband fit.
 
 Equipping a complete outfit uses the existing autosave. Keyboard and controller
 navigation work in the catalog and outfit details.
@@ -368,3 +369,33 @@ blender -b -t 4 --python scripts/render-fitting-audit.py -- /path/to/audit-json 
 blender -b -t 4 --python scripts/render-fitting-audit.py -- /path/to/audit-json back
 node --test tests/fit-review-mirror.test.mjs tests/fitting-controls.test.mjs
 ```
+
+
+## Automatically discovered wardrobe garments
+
+Copy a skinned, garment-only GLB into a matching folder under
+`frontend/public/models/characters/female/wardrobe/`. The catalog discovers
+loose models in `tops`, `skirts`, `skirts/gothic-skirt`, `dress`, `Sleepwear`,
+`kaftan`, `coat`, `armor`, `hats`, `hoods`, `socks`, `bowties`, `harness`, and
+`bracers`. A lowercase hyphenated filename such as `lace-top.glb` supplies the
+label and stable item ID. With `lace-top.garage.glb` and `lace-top.mobile.glb`,
+the Dressing Room lists one item and uses its fitted detail tier as available.
+Garment meshes need the matching family name or `clothingPiece` metadata, and
+the ordered 88-joint Vesper skin. Keep Blender sources and preview exports in
+separate directories.
+
+Vite refreshes the index when local wardrobe GLBs change. Rebuild and restart
+the Rust server before saving outfits that use new models. Both builds use the
+same scanner, so install the same materialized GLBs on the build machine.
+Curated items keep their existing IDs and metadata. Existing outfits keep
+working when the underlying model remains in its original family and filename.
+
+## Review the Underbust Vest strap update
+
+Start the frontend and open `/previews/wardrobe-asset.html` on the Vite URL.
+Choose `Underbust-Oval-Smooth-Front-Canonical.glb` from the review download.
+Use Front, Side and Back or drag to look at the armhole and front strap seam.
+The GLB is a garment-only garage review export and stays outside the wardrobe
+catalog while on-character shoulder overlap, layered fit and mobile LOD are
+being reviewed. The currently equipped Underbust Vest still uses the existing
+production assets.

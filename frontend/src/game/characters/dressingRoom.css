@@ -158,6 +158,20 @@
   letter-spacing: .055em;
   text-transform: uppercase;
 }
+.dressing-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 8px 0 4px;
+}
+.dressing-section-heading h3 { margin: 0; overflow-wrap: anywhere; }
+.dressing-section-heading .dressing-section-clear.menu-control {
+  margin-inline-start: auto;
+  min-height: 25px;
+  padding: 3px 6px;
+  font-size: 10px;
+}
 .dressing-items { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
 .character-page--dressing .dressing-item.menu-control {
   display: grid;

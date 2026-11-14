@@ -104,6 +104,7 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     await open('outfits');
     assert(preview.getState().focusRevision > revision, 'reopening a category restores its close-up');
 
+    assert(find('[aria-label="Clear Complete outfits"]').disabled, 'the default outfit has nothing to reset');
     const found = new Set();
     for (const category of new Set(imports.map(item => item.category))) {
       await open(category);
@@ -170,9 +171,18 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
       assert.equal(find('.dressing-details dd').textContent, 'Free try-on');
     }
     assert.deepEqual(trials.at(-1).garments, { top: 'top-01', skirt: 'gothic-skirt-04', socks: 'socks-01', bow: 'bowtie-14' });
-    await click('[data-remove-try-on]');
+    await click('[aria-label="Clear Bow ties"]');
     assert.deepEqual(trials.at(-1).garments, { top: 'top-01', skirt: 'gothic-skirt-04', socks: 'socks-01' }, 'removing a bow leaves the other trial pieces in place');
     assert.equal(changes.length, 0, 'trial pieces use the session preview callback');
+    await open('bottoms');
+    assert(find('[aria-label="Clear Skirts"]').disabled, 'base skirt section cannot clear a Gothic skirt');
+    await click('[aria-label="Clear Gothic skirts"]');
+    assert.deepEqual(trials.at(-1).garments, { top: 'top-01', socks: 'socks-01' }, 'section clear keeps other selections');
+    assert(find('[aria-label="Clear Gothic skirts"]').disabled);
+    await open('tops');
+    await click('[aria-label="Clear Tops"]');
+    assert.deepEqual(trials.at(-1).garments, { socks: 'socks-01' });
+    assert.deepEqual(trials.at(-1).removedClothing, ['top'], 'clearing the section hides its bundled layer too');
 
     await open('outfits');
     assert.equal(document.activeElement.dataset.wardrobeItem, 'dockwear', 'keyboard activation moves into the catalog');
@@ -203,9 +213,14 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     navigateFormRows(find('#root'), first, 'down', memory);
     assert.equal(document.activeElement.dataset.wardrobeItem, 'shop-crew');
     navigateFormRows(find('#root'), document.activeElement, 'down', memory);
+    assert.equal(document.activeElement.getAttribute('aria-label'), 'Clear Gothic collection', 'the next section starts at its clear control');
+    navigateFormRows(find('#root'), document.activeElement, 'down', memory);
     assert.equal(document.activeElement.dataset.wardrobeItem, 'gothic-05', 'down enters the next section at its equipped item');
     await click('[data-wardrobe-item=shop-crew]');
     assert.equal(changes.at(-1).wardrobe, undefined, 'complete outfit replaces the corset set');
+    await click('[aria-label="Clear Complete outfits"]');
+    assert.equal(changes.at(-1).outfit, DEFAULT_CHARACTER.outfit);
+    await click('[data-wardrobe-item=shop-crew]');
     assertPiece('corset');
 
     await click('[data-wardrobe-item=medieval-08]');
