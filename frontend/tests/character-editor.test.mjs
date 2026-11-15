@@ -115,6 +115,8 @@ test('character tools preserve builder drafts, frame close-ups, and wait for app
     assert(find('.fitting-camera-panel').hidden);
     assert.equal(document.activeElement, find(cameraTools));
     assert.equal(builder.getState().workspace, 'character', 'controller Back dismisses camera views before leaving the editor');
+    await click('.character-emote-toggle[aria-expanded="false"]');
+    await click('[data-emote-group="Garage"]');
     await click('.character-emotes button:first-child');
     assert.equal(preview.getState().playbackPaused, false, 'choosing an emote starts it even after holding a pose');
     await click('.dressing-toolbar button[aria-label="Hold pose"]');

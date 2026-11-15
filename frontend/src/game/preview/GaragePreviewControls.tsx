@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import type { VehicleModelId } from "../../vehicles/tools/vehicleModelPaths";
 import { GARAGE_STATIONS } from "./garageStations";
-import { GARAGE_CAMERAS, garageCamera, useGarageDrive, type DriveStage } from "./garageDriveStore";
+import { GARAGE_CAMERAS, garageCamera, useGarageDrive, type DriveStage, type GarageCamera } from "./garageDriveStore";
 import { COCKPIT_TAKES, type CockpitTake } from "../characters/cockpitEmotes";
 import { unlockVehicleAudio } from "../../audio/sharedAudio";
 import { useVehicleStudioStore } from "../heroes/vehicleStudioStore";
@@ -22,7 +22,7 @@ export function GaragePreviewControls({ vehicle }: { vehicle: VehicleModelId }) 
   const canSteer = station.kind === "wheel" && Boolean(station.steeringParts);
   const canDriveOut = vehicle === "ae86";
   const active = stage !== "idle";
-  const cameraViews = station.kind === "wheel" ? GARAGE_CAMERAS : GARAGE_CAMERAS.filter(view => view !== "Dashboard");
+  const cameraViews: readonly GarageCamera[] = station.kind === "wheel" ? GARAGE_CAMERAS : GARAGE_CAMERAS.filter(view => view !== "Dashboard");
   useEffect(() => () => leaveVehicle(), [leaveVehicle]);
 
   function playGesture(id: CockpitTake["id"]) {
