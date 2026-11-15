@@ -53,7 +53,8 @@ export function MatchScoreboard({onAbilities}:{onAbilities?:()=>void}){
   setInspect(false);
   requestAnimationFrame(()=>panel.current?.querySelector<HTMLElement>('[data-result-player][aria-pressed="true"]')?.focus());
  },[]);
- useEffect(()=>{if(!visible)setInspect(false);},[visible]);
+ const backOrClose=useCallback(()=>{if(back.current?.offsetWidth)backToList();else close();},[backToList,close]);
+ if(!visible && inspect)setInspect(false);
  useEffect(()=>{if(inspect && back.current?.offsetWidth)back.current.focus();},[inspect]);
 
  const session=useMotionView(boardSession);
@@ -79,7 +80,7 @@ export function MatchScoreboard({onAbilities}:{onAbilities?:()=>void}){
    });
   };
   update();const timer=window.setInterval(update,250);
-  const escape=(event:KeyboardEvent)=>{if(event.key==='Escape'){event.preventDefault();event.stopImmediatePropagation();if(back.current?.offsetWidth)backToList();else close();}};
+  const escape=(event:KeyboardEvent)=>{if(event.key==='Escape'){event.preventDefault();event.stopImmediatePropagation();backOrClose();}};
   const changeView=(event:KeyboardEvent)=>{
    if(isTypingTarget(event.target)||event.ctrlKey||event.altKey||event.metaKey)return;
    if ((event.code==="ArrowLeft" || event.code==="ArrowRight") && event.target instanceof HTMLElement && event.target.closest(".match-scoreboard [role=tablist] [id^=live-scoreboard-tab]")) {
@@ -92,7 +93,7 @@ export function MatchScoreboard({onAbilities}:{onAbilities?:()=>void}){
   };
   window.addEventListener('keydown',escape,true);window.addEventListener('keydown',changeView,true);
   return()=>{window.clearInterval(timer);window.removeEventListener('keydown',escape,true);window.removeEventListener('keydown',changeView,true);};
- },[visible,session,close,setView,cycleTeamFilter,backToList]);
+ },[visible,session,setView,cycleTeamFilter,backOrClose]);
  if(!visible)return null;
  const rows=data?.session===session?data.players:[];
  const shownRows=view==='composition'&&teamFilter!=='all'?rows.filter(player=>player.team===teamFilter):rows;
@@ -101,6 +102,7 @@ export function MatchScoreboard({onAbilities}:{onAbilities?:()=>void}){
   <SceneTabHeader title={view==='composition'?'TEAM COMPOSITION':'PLAYER STATISTICS'} compact
     tabs={SCOREBOARD_TABS} activeTab={view} onTabChange={id=>setView(id as MatchView)}
     idPrefix="live-scoreboard" panelId="live-scoreboard-panel" tablistLabel="Match view"
+    backAction={{onClick:backOrClose}}
     actions={onAbilities&&!staging&&<div className="match-scoreboard-tools"><button type="button" className="menu-control" onClick={()=>{close();onAbilities();}}>HERO ABILITIES</button></div>}/>
   <div className="match-scoreboard-status scoreboard-live-status" role="status"><small>{data?.mode??'SESSION'}</small>{staging?'PRE-MATCH ROSTER':data?.stale?'SNAPSHOT STALE · LAST CONFIRMED TOTALS':'LIVE SESSION TOTALS'}</div>
   {view==='composition'&&<MatchTeamFilterTabs filter={teamFilter} onChange={setTeamFilter}/>}

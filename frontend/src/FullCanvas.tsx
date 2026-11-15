@@ -50,10 +50,12 @@ export function FullCanvas({
   children,
   preview = false,
   paused = false,
+  covered = false,
 }: {
   children: ReactNode;
   preview?: boolean;
   paused?: boolean;
+  covered?: boolean;
 }) {
   const authoring = useUIStore(
     (s) => s.screen === "world_builder" || s.overlay === "world_builder",
@@ -72,13 +74,14 @@ export function FullCanvas({
         height: "100svh", // mobile-safe viewport height
         overflow: "hidden",
         touchAction: "none",
+        visibility: covered ? "hidden" : undefined,
         // background: "black",
         zIndex: 0,
       }}
     >
       <Canvas
         className={preview ? "garage-canvas" : undefined}
-        frameloop={demand ? "demand" : "always"}
+        frameloop={covered ? "never" : demand ? "demand" : "always"}
         camera={{ position: [0, 10, 20], fov: 50, far: 2000 }}
         dpr={compact ? Math.min(dpr, 1) : dpr}
         shadows={shadows && !compact}
@@ -90,7 +93,7 @@ export function FullCanvas({
         }}
       >
         {preview && <RevealPreview />}
-        {compact && !paused && !authoring && !reducedMotion && <PreviewFrameClock />}
+        {compact && !covered && !paused && !authoring && !reducedMotion && <PreviewFrameClock />}
         <ScoreboardSceneCover />
         <PerformanceProbe />
         {children}

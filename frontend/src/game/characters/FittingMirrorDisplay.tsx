@@ -8,13 +8,12 @@ import { createFittingRoomMirror, FITTING_WALL_MIRROR } from "./fittingRoomMirro
 export function FittingMirrorDisplay() {
   const theme = usePreferencesStore(s => s.theme);
   const contrast = usePreferencesStore(s => s.highContrast);
-  const reducedMotion = usePreferencesStore(s => s.reducedMotion);
   const compact = useThree(s => isCompactPreview(s.size.width));
   const clock = useThree(s => s.clock);
   const accent = contrast ? "#e9f1ff" : GARAGE_LIGHT_COLORS[theme];
   const mirror = useMemo(() => createFittingRoomMirror(compact, () => (
-    reducedMotion ? undefined : clock.elapsedTime
-  )), [compact, clock, reducedMotion]);
+    usePreferencesStore.getState().reducedMotion ? undefined : clock.elapsedTime
+  )), [compact, clock]);
   useEffect(() => () => { mirror.dispose(); mirror.geometry.dispose(); }, [mirror]);
 
   return <group name="fitting-room-mirror">

@@ -1,0 +1,10 @@
+[
+  { "id": "village-bonnet", "label": "Village bonnet", "section": "Village outfit", "category": "headwear", "slot": "hat", "piece": "hat", "villageNode": "ACC_HAT" },
+  { "id": "village-bow", "label": "Village neck bow", "section": "Village outfit", "category": "bows", "slot": "bow", "piece": "bow", "villageNode": "ACC_BOW" },
+  { "id": "village-sleeves", "label": "Village sleeves", "section": "Village outfit", "category": "tops", "slot": "sleeves", "piece": "sleeves", "villageNode": "CLOTH_ARMS_SLEEVES" },
+  { "id": "village-bodice", "label": "Village bodice", "section": "Village outfit", "category": "tops", "slot": "top", "piece": "corset", "villageNode": "CLOTH_TOP_CORSET" },
+  { "id": "village-belt", "label": "Village belt", "section": "Village outfit", "category": "accessories", "slot": "belt", "piece": "belt", "villageNode": "ACC_BELT" },
+  { "id": "village-skirt", "label": "Village skirt", "section": "Village outfit", "category": "bottoms", "slot": "skirt", "piece": "skirt", "villageNode": "CLOTH_BOTTOM_SKIRT" },
+  { "id": "village-petticoat", "label": "Village petticoat", "section": "Village outfit", "category": "bottoms", "slot": "underskirt", "piece": "underskirt", "villageNode": "CLOTH_UNDER_UNDERSKIRT" },
+  { "id": "village-shoes", "label": "Village shoes", "section": "Village outfit", "category": "footwear", "slot": "shoes", "piece": "shoes", "villageNode": "CLOTH_FEET_SHOES" }
+]

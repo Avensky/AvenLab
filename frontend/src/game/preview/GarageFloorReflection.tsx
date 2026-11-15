@@ -132,7 +132,8 @@ export function GarageFloorReflection({
       clipBias: 0,
     });
     object.name = "garage-floor-reflection";
-    gateGarageFloorCapture(object, () => getScene().clock.elapsedTime, compact ? 1 / 15 : 1 / 24);
+    gateGarageFloorCapture(object, () => usePreferencesStore.getState().reducedMotion
+      ? undefined : getScene().clock.elapsedTime, compact ? 1 / 15 : 1 / 24);
     object.rotation.x = -Math.PI / 2;
     object.position.y = 0.003;
     const material = object.material as ShaderMaterial;

@@ -24,7 +24,20 @@ test('Hero cards separate navigation, selection, team capacity and personal styl
   });
   const {createPortraitCache,portraitStyleKey}=await load('game/alpha/heroPortraitCache.ts');
   await t.test('image jobs deduplicate, serialize, separate styles and recover from failure',async()=>{
-   let calls=0,active=0,max=0;const get=createPortraitCache(async(model,style)=>{calls++;max=Math.max(max,++active);await new Promise(r=>setTimeout(r,5));active--;if(style.skin==='fail')throw Error('missing');return model+style.body;},2);const a=get('brz',factory),b=get('brz',{...factory});assert.equal(a,b);const c=get('brz',{...factory,body:'#ed258d'});assert.notEqual(a,c);await Promise.all([a,b,c]);assert.equal(calls,2);assert.equal(max,1);await assert.rejects(get('brz',{...factory,skin:'fail'}));await get('camaro',factory);assert.equal(calls,4);assert.equal(max,1);assert.notEqual(portraitStyleKey('brz',factory),portraitStyleKey('brz',{...factory,finish:'soft'}));
+   let calls=0,active=0,max=0;
+   const get=createPortraitCache(async(model,style)=>{
+    calls++;max=Math.max(max,++active);await new Promise(r=>setTimeout(r,5));active--;
+    if(style.body==='#110000')throw Error('missing');
+    return model+style.body;
+   },2);
+   const a=get('brz',factory),b=get('brz',{...factory});
+   assert.equal(a,b);
+   assert.equal(a,get('brz',{...factory,seats:'red',skin:'custom'}),'unrendered metadata reuses the portrait');
+   const c=get('brz',{...factory,body:'#ed258d'});
+   assert.notEqual(a,c);await Promise.all([a,b,c]);assert.equal(calls,2);assert.equal(max,1);
+   await assert.rejects(get('brz',{...factory,body:'#110000'}));await get('camaro',factory);
+   assert.equal(calls,4);assert.equal(max,1);
+   assert.notEqual(portraitStyleKey('brz',factory),portraitStyleKey('brz',{...factory,finish:'soft'}));
   });
  }finally{if(root)await act(async()=>root.unmount());await vite.close();dom.window.close();for(const [k,v]of old)if(v)Object.defineProperty(globalThis,k,v);else delete globalThis[k];}
 });

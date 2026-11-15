@@ -5,7 +5,7 @@ import {ProgressBadge} from '../../game/alpha/ProgressBadge';
 import {CharacterHeaderProfile,type CharacterHeaderProfileProps} from '../../game/characters/CharacterHeaderProfile';
 import type {MatchTeam} from '../../theme/matchTeamTheme';
 import {APP_ALPHA_EYEBROW} from '../../theme/branding';
-import {MenuLogo} from './MenuLogo';
+import {MenuIcon} from './MenuIcon';
 import './menuFrame.css';
 import './sceneTabHeader.css';
 
@@ -14,16 +14,24 @@ import './sceneTabHeader.css';
 export const MenuFrame=forwardRef<HTMLElement,ComponentPropsWithoutRef<'section'>>(function MenuFrame({className='',children,...props},ref){
  return <section {...props} ref={ref} className={`menu-frame ${className}`}>{children}</section>;
 });
+export function MenuHeaderBack({onClick,disabled,label='Back'}:BackShortcutAction){
+ return <button type="button" className="menu-header-back" data-header-back
+  onClick={onClick} disabled={disabled} aria-label={label} title={label}
+  onKeyDown={event=>{if(event.key==='Enter'||event.key===' ')event.stopPropagation();}}>
+  <MenuIcon name="back"/>
+ </button>;
+}
 export function MenuFrameHeader({
  title,showProgress=false,titleId,compact=false,eyebrow=compact?'':APP_ALPHA_EYEBROW,
- className='',variant='panel',team,children,titleTeam,actions,character,
+ className='',variant='panel',team,children,titleTeam,actions,character,backAction,
 }:{
  title:string;showProgress?:boolean;titleId?:string;compact?:boolean;eyebrow?:string;
  className?:string;variant?:'panel'|'scene';team?:MatchTeam;children?:ReactNode;titleTeam?:MatchTeam;actions?:ReactNode;
  character?:CharacterHeaderProfileProps;
+ backAction:BackShortcutAction;
 }){
  return <header className={`menu-frame-header alpha-header ${compact?'menu-frame-header--compact':''} ${className}`} data-menu-chrome={variant} data-team-heading={team?true:undefined}>
-  <div className="menu-frame-title" data-title-team={titleTeam}><MenuLogo compact/>{eyebrow&&<small>{eyebrow}</small>}<h1 id={titleId}>{title}</h1></div>
+  <div className="menu-frame-title" data-title-team={titleTeam}><MenuHeaderBack {...backAction}/>{eyebrow&&<small>{eyebrow}</small>}<h1 id={titleId}>{title}</h1></div>
   {children}
   {team&&<div className="menu-header-team" data-team={team}><strong>{team.toUpperCase()}</strong><span>TEAM</span></div>}
   <div className="menu-header-actions">

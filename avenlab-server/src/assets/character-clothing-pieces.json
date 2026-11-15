@@ -1,10 +1,12 @@
 [
   {"id":"corset","label":"Corset / bodice","center":0.71,"span":0.37},
   {"id":"shirt","label":"Top","center":0.72,"span":0.42},
+  {"id":"bra","label":"Bra","center":0.69,"span":0.27},
   {"id":"skirt","label":"Skirt","center":0.36,"span":0.62},
   {"id":"sleeves","label":"Sleeves","center":0.69,"span":0.58},
   {"id":"underskirt","label":"Petticoat","center":0.33,"span":0.64},
   {"id":"shorts","label":"Modesty shorts","center":0.45,"span":0.32},
+  {"id":"briefs","label":"Briefs","center":0.53,"span":0.27},
   {"id":"shoes","label":"Shoes / boots","center":0.09,"span":0.25},
   {"id":"hat","label":"Hat / bonnet","center":0.94,"span":0.23},
   {"id":"bow","label":"Bow","center":0.77,"span":0.27},

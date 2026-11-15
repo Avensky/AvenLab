@@ -1,4 +1,4 @@
-import { DoubleSide, MathUtils, Ray, Vector3, type BufferGeometry } from "three";
+import { DoubleSide, MathUtils, Ray, Vector3, type BufferGeometry, type Skeleton } from "three";
 import type { MeshBVH } from "three-mesh-bvh";
 
 const waistStart = .965;
@@ -44,8 +44,68 @@ function roundFrontPanel(source: BufferGeometry) {
   return fitted;
 }
 
+function fitLayeredHem(source: BufferGeometry, id: string, skeleton: Skeleton) {
+  if (id !== "gothic-skirt-03" && id !== "gothic-skirt-05") return;
+  const pelvis = skeleton.bones.findIndex(bone => bone.name === "pelvis");
+  const leftThigh = skeleton.bones.findIndex(bone => bone.name === "thigh_l");
+  const rightThigh = skeleton.bones.findIndex(bone => bone.name === "thigh_r");
+  const original = source.getAttribute("position");
+  const joints = source.getAttribute("skinIndex"), weights = source.getAttribute("skinWeight");
+  const hasHemRig = pelvis >= 0 && leftThigh >= 0 && rightThigh >= 0 && joints && weights;
+  const wideHem = id === "gothic-skirt-05";
+  const hemStart = wideHem ? .238 : .190, hemEnd = wideHem ? .345 : .267;
+  const influences = new Map<number, number>();
+  const addInfluence = (joint: number, weight: number) => {
+    if (weight > 0) influences.set(joint, (influences.get(joint) ?? 0) + weight);
+  };
+  let fitted: BufferGeometry | undefined;
+  for (let vertex = 0; vertex < original.count; vertex++) {
+    const x = original.getX(vertex), y = original.getY(vertex), z = original.getZ(vertex) - centerDepth;
+    if (y >= .91) continue;
+    const radius = Math.hypot(x, z);
+    const inward = (wideHem ? .032 : .017) * (1 - MathUtils.smoothstep(y, .49, .72))
+      * MathUtils.smoothstep(radius, hemStart, hemEnd);
+    const strideRoom = (wideHem ? .009 : .021) * MathUtils.smoothstep(y, .52, .62) * (1 - MathUtils.smoothstep(y, .75, .84))
+      * MathUtils.smoothstep(Math.abs(z), .055, .19);
+    const radialOffset = strideRoom - inward;
+    if (!hasHemRig && !radialOffset) continue;
+    fitted ??= source.clone();
+    if (radialOffset) {
+      const scale = 1 + radialOffset / radius;
+      fitted.getAttribute("position").setXYZ(vertex, x * scale, y, centerDepth + z * scale);
+    }
+    if (!hasHemRig) continue;
+    // Nearby pieces of the same ruffle follow a shared field through the
+    // knee, instead of snapping to different calf bones as the legs cross.
+    const blend = 1 - MathUtils.smoothstep(y, .66, .91);
+    const hold = MathUtils.lerp(.38, .68, MathUtils.smoothstep(y, .54, .91));
+    const side = MathUtils.lerp(wideHem ? .12 : .20, wideHem ? .88 : .80, MathUtils.smoothstep(x, -.23, .23));
+    const left = (1 - hold) * side, right = (1 - hold) * (1 - side);
+    const fittedJoints = fitted.getAttribute("skinIndex"), fittedWeights = fitted.getAttribute("skinWeight");
+    if (blend === 1) {
+      fittedJoints.setXYZW(vertex, pelvis, leftThigh, rightThigh, 0);
+      fittedWeights.setXYZW(vertex, hold, left, right, 0);
+      continue;
+    }
+    influences.clear();
+    for (let channel = 0; channel < 4; channel++) {
+      addInfluence(joints.getComponent(vertex, channel), weights.getComponent(vertex, channel) * (1 - blend));
+    }
+    addInfluence(pelvis, blend * hold);
+    addInfluence(leftThigh, blend * left);
+    addInfluence(rightThigh, blend * right);
+    const strongest = [...influences].sort((a, b) => b[1] - a[1]).slice(0, 4);
+    const sum = strongest.reduce((total, [, weight]) => total + weight, 0);
+    for (let channel = 0; channel < 4; channel++) {
+      fittedJoints.setComponent(vertex, channel, strongest[channel]?.[0] ?? 0);
+      fittedWeights.setComponent(vertex, channel, (strongest[channel]?.[1] ?? 0) / sum);
+    }
+  }
+  return fitted;
+}
+
 /** Use one waist adjustment for the fabric, trim, and fasteners. */
-export function prepareGothicSkirtFit(body: MeshBVH, skirt: readonly MeshBVH[], id: string) {
+export function prepareGothicSkirtFit(body: MeshBVH, skirt: readonly MeshBVH[], id: string, skeleton: Skeleton) {
   const ray = new Ray();
   const rowHeight = (waistEnd - waistStart) / (slices - 1);
   const step = 2 * Math.PI / directions;
@@ -80,7 +140,7 @@ export function prepareGothicSkirtFit(body: MeshBVH, skirt: readonly MeshBVH[], 
 
   return (source: BufferGeometry) => {
     const cloth = source.getAttribute("position");
-    let fitted = id === "gothic-skirt-04" ? roundFrontPanel(source) : undefined;
+    let fitted = id === "gothic-skirt-04" ? roundFrontPanel(source) : fitLayeredHem(source, id, skeleton);
     for (let vertex = 0; vertex < cloth.count; vertex++) {
       const y = cloth.getY(vertex);
       if (y <= waistStart || y > waistEnd) continue;

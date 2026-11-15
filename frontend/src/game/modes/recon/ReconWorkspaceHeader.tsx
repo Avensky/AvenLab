@@ -1,4 +1,5 @@
-import { MenuLogo } from "../../../components/menus/MenuLogo";
+import { MenuHeaderBack } from "../../../components/menus/MenuFrame";
+import type { BackShortcutAction } from "../../../components/controller";
 import { useMemo, type ReactNode } from "react";
 import { GameButton } from "../../../components/GameButton";
 import { CharacterHeaderProfile } from "../../characters/CharacterHeaderProfile";
@@ -29,6 +30,7 @@ type ReconWorkspaceHeaderProps = {
   setCollapsed: (collapsed: boolean) => void;
   className?: string;
   characterReadOnly?: boolean;
+  backAction?: BackShortcutAction;
 };
 
 const THEME_CLASSES: Record<
@@ -88,6 +90,7 @@ export function ReconWorkspaceHeader({
   setCollapsed,
   className = "",
   characterReadOnly = false,
+  backAction,
 }: ReconWorkspaceHeaderProps) {
   const tone = THEME_CLASSES[theme];
   const activeLabel = useMemo(
@@ -132,7 +135,7 @@ export function ReconWorkspaceHeader({
       className={`relative z-30 shrink-0 border-b bg-slate-950/95 font-mono shadow-lg ${tone.border}  ${tone.glow} ${className}`}
     >
       <div className="px-2 py-1 flex min-w-0 items-center gap-2">
-        <MenuLogo compact/>
+        {backAction && <MenuHeaderBack {...backAction} />}
         <div className="min-w-0 flex-1">
           <p className="truncate text-[9px] uppercase tracking-[0.22em] text-yellow-300 sm:text-[px]">
             {eyebrow}

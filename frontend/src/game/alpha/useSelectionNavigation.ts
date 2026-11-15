@@ -38,7 +38,7 @@ export function useSelectionNavigation(
       }
       if (next === "activate") {
         const button = active?.closest<HTMLButtonElement>("button[data-selection-action]:not(:disabled)") ?? (keyboard ? active?.closest<HTMLButtonElement>(
-          "button[role=tab], .controller-shortcut-back",
+          "button[role=tab], button[data-header-back], .controller-shortcut-back",
         ) : null);
         if (button) button.click();
         else confirm();

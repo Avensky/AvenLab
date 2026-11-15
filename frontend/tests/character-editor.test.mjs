@@ -72,9 +72,14 @@ test('character tools preserve builder drafts, frame close-ups, and wait for app
     assert.equal(find(cameraChoice('piece:bag')).getAttribute('aria-pressed'), 'true');
     await click('[data-wardrobe-item=empty-hands]');
     assert.equal(editor.getState().shot, 'Hands');
-    await click('[data-wardrobe-back]');
-    await click('[data-category=face]');
+    await click('#character-editor-tab-identity');
+    await act(async () => {
+      const eyes = find('select[aria-label="Eye color"]');
+      eyes.value = 'obsidian';
+      eyes.dispatchEvent(new Event('change', { bubbles: true }));
+    });
     assert.equal(editor.getState().shot, 'Face');
+    assert.equal(editor.getState().choice.appearance.eye_color, 'obsidian');
     assert(find('.fitting-camera-panel').hidden);
     await click('.dressing-toolbar [aria-label="Camera tools"]');
     assert.equal(find('.fitting-camera-panel').hidden, false);
@@ -110,6 +115,8 @@ test('character tools preserve builder drafts, frame close-ups, and wait for app
     assert(find('.fitting-camera-panel').hidden);
     assert.equal(document.activeElement, find(cameraTools));
     assert.equal(builder.getState().workspace, 'character', 'controller Back dismisses camera views before leaving the editor');
+    await click('.character-emote-toggle[aria-expanded="false"]');
+    await click('[data-emote-group="Garage"]');
     await click('.character-emotes button:first-child');
     assert.equal(preview.getState().playbackPaused, false, 'choosing an emote starts it even after holding a pose');
     await click('.dressing-toolbar button[aria-label="Hold pose"]');
@@ -120,6 +127,7 @@ test('character tools preserve builder drafts, frame close-ups, and wait for app
     assert.equal(editor.getState().choice.wardrobe.set, 'gothic-03');
     await click('.controller-shortcut-back');
     assert.equal(requests.length, 1);
+    assert.equal(requests[0].character.appearance.eye_color, 'obsidian');
     assert.equal(builder.getState().workspace, 'character', 'closing waits for the acknowledged save');
     await act(async () => client.receiveSocialResult({ request_id: requests[0].request_id, ok: false, error: 'Connection lost' }));
     assert.equal(builder.getState().workspace, 'character', 'failed save keeps the draft available');
@@ -159,7 +167,7 @@ test('character tools preserve builder drafts, frame close-ups, and wait for app
     const { MenuFrameHeader } = await load('components/menus/MenuFrame.tsx');
     ui.setState({ screen: 'settings', overlay: null });
     root = createRoot(document.getElementById('root'));
-    await act(async () => root.render(h(MenuFrameHeader, { title: 'Settings', showProgress: true })));
+    await act(async () => root.render(h(MenuFrameHeader, { title: 'Settings', showProgress: true, backAction: { onClick: () => {} } })));
     assert.equal(document.querySelectorAll('.character-header-portrait').length, 1);
     assert(find('.menu-header-actions [aria-label="Driver progression"]'));
     await click('.menu-header-actions [data-open-character]');

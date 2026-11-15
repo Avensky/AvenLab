@@ -33,6 +33,7 @@ export function SignalReconSetup({
   const [startAttempted, setStartAttempted] = useState(false);
   const interfaceStatus = canStatus?.[selectedInterface];
   const canStart = captureReady(selectedInterface, selectedMode, canStatus);
+  const back = () => setScreen(reconSetupParent());
 
   const startSignalRecon = useCallback(() => {
     if (!canStart) {
@@ -74,6 +75,9 @@ export function SignalReconSetup({
         className="garage-selection-header"
         collapsed={collapsed}
         setCollapsed={setCollapsed}
+        onExit={back}
+        exitLabel="Back"
+        showExit={false}
       />
       {startAttempted && !canStart && (
         <div className="pointer-events-none relative z-40">
@@ -124,7 +128,7 @@ export function SignalReconSetup({
             data-selected={selectedIndex === 4}
 
             onFocus={() => setIndex(4)}
-            onClick={() => setScreen(reconSetupParent())}
+            onClick={back}
             className="flex justify-center border-0 text-red-100"
           >
             BACK

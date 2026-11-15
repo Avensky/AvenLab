@@ -6,7 +6,10 @@ import { prepareOverSkirtEase, type OverSkirtEase } from "./overSkirtEase";
 export const WARDROBE_SETS = catalog.filter(set => !set.retired);
 export const WARDROBE_CORSETS = catalog;
 export const UNDERBUST_WARDROBE_SET = "gothic-04";
-export type WardrobeChoice = { set: string; shirt: "none" | "under" | "over"; waist: "tucked" | "over" };
+export const REBUILT_UNDERBUST_ASSET = "gothic-underbust-vest";
+export const ORIGINAL_CUT_UNDERBUST_ASSET = "gothic-underbust-vest-original-cut";
+export const TUCKED_UNDERBUST_ASSET = "gothic-underbust-vest-tucked";
+export type WardrobeChoice = { set: string; shirt: "none" | "under" | "over"; waist: "tucked" | "over"; cut?: "original" };
 type WardrobeSelection = { wardrobe?: WardrobeChoice; wardrobeTrial?: WardrobeChoice; wardrobeEase?: Exclude<OverSkirtEase, 0> };
 export const WARDROBE_WAIST_OPTIONS = [
   { waist: "tucked", ease: 0, label: "Tucked into skirt" },
@@ -19,7 +22,10 @@ export const WARDROBE_WAIST_OPTIONS = [
 export function resolveWardrobe(choice?: WardrobeChoice, { includeRetired = false } = {}): WardrobeChoice | undefined {
   const set = (includeRetired ? catalog : WARDROBE_SETS).find(item => item.id === choice?.set);
   if (!set || !choice) return undefined;
-  return { set: set.id, shirt: "none", waist: choice.waist === "over" ? "over" : "tucked" };
+  const waist = choice.waist === "over" ? "over" : "tucked";
+  const cut = set.id === UNDERBUST_WARDROBE_SET && waist === "over" && choice.cut === "original"
+    ? { cut: choice.cut } : {};
+  return { set: set.id, shirt: "none", waist, ...cut };
 }
 
 export function resolveCharacterWardrobe(choice: WardrobeSelection | null | undefined) {
@@ -30,9 +36,25 @@ export function withWardrobeWaist<T extends WardrobeSelection>(choice: T, waist:
   const selected = resolveCharacterWardrobe(choice);
   if (!selected) return choice;
   const wardrobeEase = waist === "over" && ease ? ease : undefined;
+  const next = resolveWardrobe({ ...selected, waist }, { includeRetired: true });
   return choice.wardrobeTrial?.set === selected.set
-    ? { ...choice, wardrobeTrial: { ...selected, waist }, wardrobeEase }
-    : { ...choice, wardrobe: { ...selected, waist }, wardrobeEase };
+    ? { ...choice, wardrobeTrial: next, wardrobeEase }
+    : { ...choice, wardrobe: next, wardrobeEase };
+}
+
+export function hasUnderbustCut(cut?: WardrobeChoice["cut"]) {
+  const asset = cut === "original" ? ORIGINAL_CUT_UNDERBUST_ASSET : REBUILT_UNDERBUST_ASSET;
+  const lods = __STANDALONE_CORSET_LODS__[asset];
+  return Boolean(lods?.garage || lods?.mobile);
+}
+
+export function hasTuckedUnderbust() {
+  const lods = __STANDALONE_CORSET_LODS__[TUCKED_UNDERBUST_ASSET];
+  return Boolean(lods?.garage || lods?.mobile);
+}
+
+export function isRebuiltUnderbustUrl(url: string) {
+  return [REBUILT_UNDERBUST_ASSET, ORIGINAL_CUT_UNDERBUST_ASSET, TUCKED_UNDERBUST_ASSET].some(asset => url.includes(`/${asset}.`));
 }
 
 export function wardrobeOverEase(choice?: WardrobeSelection | null): OverSkirtEase {
@@ -46,16 +68,34 @@ export function wardrobeModelUrl(choice: WardrobeChoice | undefined, kind: "gara
     ? `/models/characters/wardrobe/${resolved.set}.${kind === "portrait" ? "mobile" : "garage"}.glb` : null;
 }
 
-export function corsetModelUrl(choice: WardrobeChoice | undefined, kind: "garage" | "portrait", { useStandalone = true } = {}) {
+export function corsetModelUrls(choice: WardrobeChoice | undefined, kind: "garage" | "portrait", { useStandalone = true } = {}) {
   const resolved = resolveWardrobe(choice, { includeRetired: true });
-  if (!resolved) return null;
-  const standalone = __STANDALONE_CORSET_LODS__[resolved.set];
-  const hasStandalone = useStandalone && (standalone?.garage || standalone?.mobile);
-  const available = hasStandalone ? standalone : __BUNDLED_WARDROBE_LODS__[resolved.set];
-  if (!available?.garage && !available?.mobile) return null;
-  const tier = available.mobile && (kind === "portrait" || !available.garage) ? "mobile" : "garage";
-  const directory = hasStandalone ? "female/wardrobe/corsets" : "wardrobe";
-  return `/models/characters/${directory}/${resolved.set}.${tier}.glb`;
+  if (!resolved) return [];
+  const urls: string[] = [];
+  const add = (id: string, directory: string, available: { garage: boolean; mobile: boolean } | undefined) => {
+    if (!available?.garage && !available?.mobile) return;
+    const tier = available.mobile && (kind === "portrait" || !available.garage) ? "mobile" : "garage";
+    urls.push(`/models/characters/${directory}/${id}.${tier}.glb`);
+  };
+  if (useStandalone) {
+    const directory = "female/wardrobe/corsets";
+    if (resolved.set === UNDERBUST_WARDROBE_SET && resolved.waist === "over") {
+      if (resolved.cut === "original") {
+        add(ORIGINAL_CUT_UNDERBUST_ASSET, directory, __STANDALONE_CORSET_LODS__[ORIGINAL_CUT_UNDERBUST_ASSET]);
+      }
+      add(REBUILT_UNDERBUST_ASSET, directory, __STANDALONE_CORSET_LODS__[REBUILT_UNDERBUST_ASSET]);
+    }
+    if (resolved.set === UNDERBUST_WARDROBE_SET && resolved.waist === "tucked") {
+      add(TUCKED_UNDERBUST_ASSET, directory, __STANDALONE_CORSET_LODS__[TUCKED_UNDERBUST_ASSET]);
+    }
+    add(resolved.set, directory, __STANDALONE_CORSET_LODS__[resolved.set]);
+  }
+  add(resolved.set, "wardrobe", __BUNDLED_WARDROBE_LODS__[resolved.set]);
+  return urls;
+}
+
+export function corsetModelUrl(choice: WardrobeChoice | undefined, kind: "garage" | "portrait", options?: { useStandalone?: boolean }) {
+  return corsetModelUrls(choice, kind, options)[0] ?? null;
 }
 
 /** A garment swap changes visibility and indices once, never vertex positions per frame. */

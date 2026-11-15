@@ -81,6 +81,7 @@ export function CharacterEditorPanel() {
       <SceneTabHeader title="CHARACTER" compact tabs={ready ? CHARACTER_TABS : []} activeTab={tab}
         character={{readOnly: true, compact: true}}
         onTabChange={value => setTab(value as CharacterTab)} panelId="character-editor-panel" idPrefix="character-editor" busy={busy}
+        backAction={{onClick:back,disabled:busy}}
         actions={<div data-controller-row><button type="button" className="menu-control controller-shortcut-back" disabled={busy}
           onClick={() => void back()}>{busy ? "Saving…" : "Back"}</button></div>} />
     </div>

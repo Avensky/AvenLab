@@ -8,6 +8,7 @@ import { VehicleDrivetrainSummary } from "./VehicleDrivetrainSummary";
 import { VehicleUpgradeProgress } from "./VehicleMods";
 import { drivetrainProfileFor } from "./vehicleDrivetrainOptions";
 import { vehicleSystems } from "../../vehicles/vehicleSystems";
+import { PreviewZoom } from "../preview/PreviewZoom";
 
 export const VEHICLE_STUDIO_TABS = [
   { id: "abilities", label: "ABILITIES", description: "Weapons and abilities for this vehicle" },
@@ -75,10 +76,11 @@ export function VehicleStudio({
   const collapsed = Boolean(collapsedPanels[tab]);
   const toggle = (panel: Panel) => setCollapsedPanels(previous => ({ ...previous, [panel]: !previous[panel] }));
   const contentId = useId();
+  const zoom = <PreviewZoom vertical />;
 
   if (tab === "abilities") {
     return <div className="vehicle-studio vehicle-studio--abilities" id="vehicle-studio-tab-panel" role="tabpanel"
-      aria-labelledby="vehicle-studio-tab-abilities">{children}</div>;
+      aria-labelledby="vehicle-studio-tab-abilities">{children}{zoom}</div>;
   }
 
   const rows = getPerformanceReadouts(summary, speedUnit, vehicleId);
@@ -153,6 +155,7 @@ export function VehicleStudio({
       <div className="vehicle-studio-rotate-hint" aria-hidden="true">
         <span>↔</span> DRAG TO ROTATE
       </div>
+      {zoom}
     </div>
   );
 }

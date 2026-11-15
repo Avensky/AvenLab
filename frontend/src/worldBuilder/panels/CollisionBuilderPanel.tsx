@@ -1,4 +1,4 @@
-import { MenuLogo } from "../../components/menus/MenuLogo";
+import { MenuHeaderBack } from "../../components/menus/MenuFrame";
 import { CharacterHeaderProfile } from "../../game/characters/CharacterHeaderProfile";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { ControllerAction, ControlGlyph } from "../../components/controller";
@@ -230,7 +230,7 @@ export function CollisionBuilderPanel({
       }}
     >
       <header className="wb-header">
-        <MenuLogo compact/>
+        <MenuHeaderBack onClick={closeWorldBuilder} label="Close collision builder" />
         <strong>
           WORLD BUILDER <small>COLLISION TEMPLATE</small>
         </strong>

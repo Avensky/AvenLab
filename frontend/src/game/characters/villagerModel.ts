@@ -15,6 +15,7 @@ import { prepareVillageShoes } from "./wardrobeShoes";
 import { prepareVillageBonnet } from "./villageBonnet";
 import { prepareWardrobeGarments, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
 import { prepareStandaloneCorset, type StandaloneCorsetSource } from "./standaloneCorset";
+import { applyRebuiltUnderbustDye } from "./rebuiltUnderbustDye";
 import { getWardrobeGarment, wardrobeGarmentModelUrl, type WardrobeRemoval } from "./wardrobeGarments";
 
 export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait" = "garage") {
@@ -228,6 +229,8 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
   for (const [piece, palette] of model.pieceMaterials) {
     const colors = clothingColors(look, piece);
     for (const [source, material] of palette) {
+      if (applyRebuiltUnderbustDye(source, material, colors,
+        look.appearance.color === "original" ? undefined : look.fabric, look.appearance.accent)) continue;
       const accent = source.userData.color_slot === "accent" || source.userData.color_slot === "hardware" || /Details/.test(source.name);
       const color = accent ? colors?.accent ?? colors?.color : colors?.color;
       if (color) material.color.set(color);
@@ -240,7 +243,8 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
   if (model.hat) model.hat.visible = true;
   model.bonnet?.setBowVisible(!look.removedClothing.includes("bonnet-bow"));
   if (model.longHair) model.longHair.visible = !cropped && !tucksHair;
-  if (model.bow) model.bow.visible = Boolean(look.appearance.accent) || look.outfit.id === "shop-crew";
+  if (model.bow) model.bow.visible = !look.removedClothing.includes("bow")
+    && (Boolean(look.appearance.accent) || look.outfit.id === "shop-crew");
   if (model.crop) {
     model.crop.visible = cropped && !tucksHair && !model.scalpCap;
     model.crop.material.color.set(look.hair);

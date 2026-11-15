@@ -56,50 +56,15 @@
   gap: 2px;
 }
 .fitting-camera-choices + .fitting-camera-choices,
-.fitting-camera-panel > :is(.fitting-camera-range, .fitting-camera-adjustments) {
+.fitting-camera-select + .fitting-camera-adjustments {
   border-top: 1px solid var(--app-line);
   padding-top: 4px;
 }
-.fitting-camera-toolbar .fitting-camera-choices .menu-control[aria-pressed="true"] {
+.fitting-camera-choices .menu-control[aria-pressed="true"] {
   background: color-mix(in srgb, var(--app-raised), var(--app-accent) 18%);
   box-shadow: inset 0 -2px var(--app-accent);
 }
 .fitting-camera-range { justify-content: center; }
-.fitting-camera-range input[type="range"] {
-  appearance: none;
-  flex: 1;
-  min-width: 42px;
-  height: var(--fitting-tool-size);
-  margin: 0;
-  background: transparent;
-  cursor: ew-resize;
-}
-.fitting-camera-range input::-webkit-slider-runnable-track {
-  height: 4px;
-  background: var(--app-line);
-}
-.fitting-camera-range input::-moz-range-track {
-  height: 4px;
-  background: var(--app-line);
-}
-.fitting-camera-range input::-webkit-slider-thumb {
-  appearance: none;
-  width: 11px;
-  height: 12px;
-  margin-top: -4px;
-  border: 0;
-  border-radius: 0;
-  clip-path: polygon(3px 0, 100% 0, 100% calc(100% - 3px), calc(100% - 3px) 100%, 0 100%, 0 3px);
-  background: var(--app-accent);
-}
-.fitting-camera-range input::-moz-range-thumb {
-  width: 11px;
-  height: 12px;
-  border: 0;
-  border-radius: 0;
-  clip-path: polygon(3px 0, 100% 0, 100% calc(100% - 3px), calc(100% - 3px) 100%, 0 100%, 0 3px);
-  background: var(--app-accent);
-}
 .fitting-camera-panel .fitting-rotation-grid { display: flex; justify-content: center; }
 .fitting-camera-panel .fitting-rotation-grid [data-rotation="vehicle"] { color: var(--app-accent); }
 .fitting-camera-panel .fitting-rotation-grid [data-rotation="character"] { color: var(--app-text); }

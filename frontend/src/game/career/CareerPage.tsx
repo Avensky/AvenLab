@@ -39,7 +39,7 @@ export function CareerPage(){
   {CAREER_TABS.map(item=><MenuTabButton key={item.id} id={`${id}-${item.id}`} angled={angled} selected={tab===item.id} aria-controls={`${id}-panel`} tabIndex={tab===item.id?0:-1} onClick={()=>changeTab(item.id)}>{item.label}</MenuTabButton>)}
  </nav>;
  return <MenuFrame ref={root} className="game-ui menu-surface tabbed-menu career-page h-full w-full" role="dialog" aria-modal="true" aria-label="Career" tabIndex={-1} data-controller-rows>
-  <MenuFrameHeader title="CAREER" eyebrow="" compact={angled} showProgress className={angled?'angled-tab-header':undefined}>
+  <MenuFrameHeader title="CAREER" eyebrow="" compact={angled} showProgress className={angled?'angled-tab-header':undefined} backAction={{onClick:back}}>
    {angled&&<div className="tabbed-angled-scroll">{navigation}</div>}
   </MenuFrameHeader>
   {!angled&&navigation}

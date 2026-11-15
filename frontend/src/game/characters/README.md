@@ -109,7 +109,8 @@ Drive Out opens the door, seats the driver, closes the door, and moves into a
 short forward roll with a chase camera. The driver remains seated at the
 endpoint. Use Steer left or right there, or Reset to return to the turntable.
 
-Character → Face opens a close-up for iris color, eyebrow tint, and glasses.
+Character → Identity opens a face close-up when changing hairstyle, hair color,
+skin tone, iris color, or eyebrow tint. Glasses are under Appearance → Accessories.
 The iris palette includes Obsidian black and five other deep shades, with
 reduced iris and cornea reflections for the darkest colors.
 Both villagers use these settings in the live model and their rendered portrait.
@@ -188,8 +189,8 @@ visual review.
 Character tabs are Identity, Appearance, and Emotes. Appearance keeps the live
 character in the center, with a scrollable left wardrobe rail and one item per
 catalog row. It reuses the existing scene and draws cards with lightweight SVG
-illustrations. Face, hair, skin, and headwear categories focus the
-face camera. Leaving restores the earlier camera. Colors contains preset dyes,
+illustrations. Headwear focuses the face camera, and leaving restores the
+earlier camera. Colors contains preset dyes,
 paired palettes, and custom fabric/accent pickers.
 
 Outfits contains the complete village looks and three fitted Gothic sets.
@@ -204,7 +205,7 @@ separately chosen top. The vest and top take separate colors. Try-ons carry
 into Emotes for the session.
 
 Roomy and Wide Over skirt add 12 and 24 mm of clearance at the corset hem for
-fuller skirts. Tucked and standard Over keep their original fit. Save a named
+fuller skirts. Tucked and standard Over use their authored fits. Save a named
 look in Wardrobe > Saved outfits to store its pieces, waist fit, hair, and
 colors on the player profile. Opening a saved look starts a fitting preview.
 The × cards toggle individual layers and retain the selected piece so it can
@@ -231,13 +232,14 @@ the Emotes tab. Trial combinations are session-only and leave the saved outfit
 in place. Ready to wear filters out fitting trials, and search filters the
 current category.
 
-Gothic Skirts 02 and 03 can use optional authored revisions in
-`frontend/public/models/characters/female/wardrobe/corsettes/`. Use
-`gothic-skirt-02-update.glb` and `gothic-skirt-03-update.glb` for separate skirt
-exports. Keep the matching `CLOTH_GOTHIC_SKIRT_02` or `CLOTH_GOTHIC_SKIRT_03`
-mesh name and ordered Vesper skin joints. Restart Vite after adding them.
-Compatible revisions keep their authored shape. Missing or mismatched
-revisions use the original skirt and its automatic waistband fit.
+Gothic skirt models live in
+`frontend/public/models/characters/female/wardrobe/skirts/gothic-skirt/`.
+Put optional `gothic-skirt-02-update.glb` and `gothic-skirt-03-update.glb`
+exports beside the originals. Keep the matching `CLOTH_GOTHIC_SKIRT_02` or
+`CLOTH_GOTHIC_SKIRT_03` mesh name and ordered Vesper skin joints. Restart
+Vite after adding them. Compatible revisions keep their authored shape.
+Missing or mismatched revisions use the original skirt and its automatic
+waistband fit.
 
 Equipping a complete outfit uses the existing autosave. Keyboard and controller
 navigation work in the catalog and outfit details.
@@ -368,3 +370,49 @@ blender -b -t 4 --python scripts/render-fitting-audit.py -- /path/to/audit-json 
 blender -b -t 4 --python scripts/render-fitting-audit.py -- /path/to/audit-json back
 node --test tests/fit-review-mirror.test.mjs tests/fitting-controls.test.mjs
 ```
+
+
+## Automatically discovered wardrobe garments
+
+Copy a skinned, garment-only GLB into a matching folder under
+`frontend/public/models/characters/female/wardrobe/`. The catalog discovers
+loose models in `tops`, `skirts`, `skirts/gothic-skirt`, `dress`, `Sleepwear`,
+`kaftan`, `coat`, `armor`, `hats`, `hoods`, `socks`, `bowties`, `harness`, and
+`bracers`. A lowercase hyphenated filename such as `lace-top.glb` supplies the
+label and stable item ID. With `lace-top.garage.glb` and `lace-top.mobile.glb`,
+the Dressing Room lists one item and uses its fitted detail tier as available.
+Garment meshes need the matching family name or `clothingPiece` metadata, and
+the ordered 88-joint Vesper skin. Keep Blender sources and preview exports in
+separate directories.
+
+Vite refreshes the index when local wardrobe GLBs change. Rebuild and restart
+the Rust server before saving outfits that use new models. Both builds use the
+same scanner, so install the same materialized GLBs on the build machine.
+Curated items keep their existing IDs and metadata. Existing outfits keep
+working when the underlying model remains in its original family and filename.
+
+## Review the Underbust Vest cup and strap update
+
+From `frontend`, run `npx vite` to start the standalone viewer without the
+game's asset preparation. Open
+`http://localhost:5174/previews/wardrobe-asset.html`. The same path works on
+the production frontend build. Extract the review archive and choose or drop
+`underbust-vest-review.glb` into the viewer. For a local checkout you can also
+copy the GLB into `frontend/public/wardrobe-review/` and click **Open local
+vest review**. Select **Right ¾** to see the wearer's right cup. Drag to orbit
+and scroll to zoom in on the seam and the shoulder openings.
+
+The archive includes the editable Blender file and matched before-and-after
+views. The Fitting Room loads the integrated Gothic Underbust Vest from
+`public/models/characters/female/wardrobe/corsets/gothic-underbust-vest.garage.glb`
+or its `.mobile.glb` tier when the existing `gothic-04` item uses Over skirt.
+Tucked into skirt uses the separate `gothic-underbust-vest-tucked` asset for
+each tier. Both waist fits can fall back to their legacy geometry when the
+rebuilt file is missing or fails to load.
+
+Over skirt also exposes **Vest cut → Original Cut** when the lower-opening
+assets are installed. The cut, optional bra and individual dyes are saved in
+named outfits. In **Underwear → Bra**, use **Put on bra** or **Remove bra**.
+The bra can layer under the Gothic Underbust Vest. Choosing another top or
+corset clears the bra selection. The rebuilt vest has independent Main,
+Binding, Front panel, Lining and Hardware colors.

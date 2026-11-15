@@ -44,3 +44,7 @@
 .saved-outfit-preview small { color: var(--app-muted); font-size: 9px; }
 .saved-outfit-delete.menu-control { display: grid; place-items: center; padding: 3px; }
 .saved-outfit-delete svg { width: 15px; height: 15px; }
+
+.saved-outfit-sources { display: flex; gap: 4px; }
+.saved-outfit-sources .menu-control { flex: 1; justify-content: center; }
+.saved-outfit-form [data-controller-row]:last-child { display: grid; gap: 4px; }

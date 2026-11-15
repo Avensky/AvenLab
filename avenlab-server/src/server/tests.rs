@@ -660,7 +660,8 @@ async fn character_outfits_save_validated_fitting_room_combinations_to_the_ownin
         "garments": {"top": "top-02", "skirt": "gothic-skirt-04", "bow": "bowtie-03", "socks": "socks-01"},
         "removedClothing": ["shoes", "bonnet-bow"],
         "appearance": {"hair": "cropped", "hair_color": "copper", "skin": "warm", "headwear": "hat", "color": "original",
-            "item_colors": {"top-02:shirt": {"color": "#123456"}, "gothic-skirt-04:skirt": {"accent": "#abcdef"}}},
+            "item_colors": {"top-02:shirt": {"color": "#123456"}, "gothic-skirt-04:skirt": {"accent": "#abcdef"},
+                "underwear:bra": {"color": "#223355"}, "underwear:briefs": {"accent": "#bbccdd"}}},
     });
     let save = |name: &str, character: &Value| json!({
         "action": "character_outfit_save", "name": name, "character": character,
@@ -701,12 +702,13 @@ async fn character_outfits_save_validated_fitting_room_combinations_to_the_ownin
 
     outfit["wardrobeTrial"]["set"] = json!("gothic-01");
     outfit["wardrobeEase"] = json!(1);
-    outfit["removedClothing"] = json!(["corset", "top", "skirt", "shoes", "socks", "hat", "bow", "bonnet-bow", "harness"]);
+    outfit["removedClothing"] = json!(["corset", "top", "skirt", "shoes", "socks", "hat", "bow", "bonnet-bow", "harness", "dress"]);
     let replaced = s.handle(&player, save("Gothic layers", &outfit)).await.unwrap();
     assert_eq!(replaced["character_outfits"]["Gothic layers"], outfit);
     assert_eq!(replaced["cosmetics_revision"], 3);
-    let extra = s.handle(&player, save("Village", &equipped)).await.unwrap();
-    assert_eq!(extra["character_outfits"]["Village"], equipped);
+    let sleeveless = json!({"id": "mara-vega", "outfit": "shop-crew", "garments": {"dress": "medieval-kaftan-01"}, "removedClothing": ["sleeves"]});
+    let extra = s.handle(&player, save("Sleeveless kaftan", &sleeveless)).await.unwrap();
+    assert_eq!(extra["character_outfits"]["Sleeveless kaftan"], sleeveless);
     let remove = json!({"action": "character_outfit_delete", "name": "Gothic layers"});
     assert_eq!(s.handle(&peer, remove.clone()).await.unwrap()["character_outfits"], json!({}));
 
@@ -715,7 +717,7 @@ async fn character_outfits_save_validated_fitting_room_combinations_to_the_ownin
     assert_eq!(progression["character_outfits"], extra["character_outfits"]);
     assert_eq!(progression["character"], equipped);
     let deleted = s.handle(&player, remove).await.unwrap();
-    assert_eq!(deleted["character_outfits"], json!({"Village": equipped}));
+    assert_eq!(deleted["character_outfits"], json!({"Sleeveless kaftan": sleeveless}));
     let reloaded: SocialData = serde_json::from_slice(&tokio::fs::read(&s.path).await.unwrap()).unwrap();
     assert_eq!(reloaded.profiles[profile].progression.view()["character_outfits"], deleted["character_outfits"]);
     cleanup(s).await;

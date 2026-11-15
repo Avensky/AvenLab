@@ -16,6 +16,7 @@ import { useAppTheme } from "../theme";
 import "../theme/theme.css";
 import { FullCanvas } from "../FullCanvas";
 import { useUIStore } from "../store";
+import type { MenuScreen } from "../store/menus/uiStore";
 import { VehiclePreview } from "./preview";
 import { MainMenu } from "./menus/MainMenu";
 import { PauseMenu } from "./menus/PauseMenu";
@@ -76,6 +77,7 @@ export function GameUI() {
   const hud = useRenderSettingsStore((s) => s.hud);
   const screen = useUIStore((s) => s.screen);
   const overlay = useUIStore((s) => s.overlay);
+  const isModeLoading = useUIStore((s) => s.isModeLoading);
   const vehicleAuthoring = workspace === "vehicle" && overlay === "world_builder";
   const socialReady = useSocialStore((s) => Boolean(s.view));
   useEffect(() => {
@@ -87,21 +89,21 @@ export function GameUI() {
     window.history.replaceState(null, "", url);
     useUIStore.getState().setScreen("social");
   }, [socialReady]);
-  const needsCanvas =
-    screen === "sandbox" ||
-    screen === "sandbox_setup" ||
-    screen === "heroes" ||
-    screen === "hero_select" ||
-    screen === "mode_select" ||
-    screen === "queue" ||
-    screen === "signal_recon_setup" ||
-    screen === "world_builder";
+  const menuPreview = screen === "heroes" || screen === "hero_select" || screen === "mode_select"
+    || screen === "queue" || screen === "sandbox_setup";
+  // Remember the last preview while Main covers it. Other screens release it.
+  const [lastMenuPreview, setLastMenuPreview] = useState<MenuScreen | null>(null);
+  const retainedPreview = screen === "main" && !isModeLoading ? lastMenuPreview : null;
+  const previewScreen = menuPreview ? screen : retainedPreview;
+  if (previewScreen !== lastMenuPreview) setLastMenuPreview(previewScreen);
+  const needsCanvas = previewScreen !== null || screen === "sandbox" || screen === "signal_recon_setup"
+    || screen === "world_builder";
   const heroOwner = useSocialStore(s=>s.view?.profile.id??s.profileOwner??"guest");
   const [characterTab, setCharacterTab] = useState<CharacterTab | null>(null);
   const [characterDraft, setCharacterDraft] = useState<CharacterChoice | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [reconSidebarHidden, setReconSidebarHidden] = useState(false);
-  const previewPaused = screen === "queue";
+  const previewPaused = previewScreen === "queue";
 
   return (
     <div className="relative game-wrapper" data-live-world={screen === "sandbox" || undefined}>
@@ -113,23 +115,14 @@ export function GameUI() {
       {needsCanvas && (
         <FullCanvas
           paused={previewPaused}
-          preview={
-            screen === "sandbox_setup" ||
-            screen === "heroes" ||
-            screen === "hero_select" ||
-            screen === "mode_select" ||
-            screen === "queue" ||
-            screen === "signal_recon_setup"
-          }
+          covered={retainedPreview !== null}
+          preview={previewScreen !== null || screen === "signal_recon_setup"}
         >
-          {(screen === "sandbox_setup" ||
-            screen === "heroes" ||
-            screen === "hero_select" ||
-            screen === "mode_select" ||
-            screen === "queue") && (
+          {previewScreen !== null && (
             <VehiclePreview
-              heroLayout={screen !== "sandbox_setup"}
-              awaitingHero={screen === "hero_select" || screen === "heroes"}
+              previewScreen={previewScreen}
+              heroLayout={previewScreen !== "sandbox_setup"}
+              awaitingHero={previewScreen === "hero_select" || previewScreen === "heroes"}
               characterDraft={screen === "heroes" ? characterDraft : null}
               wardrobeOpen={screen === "heroes" && characterTab !== null}
               characterOnly={screen === "heroes" && characterTab !== null && characterTab !== "emotes"}

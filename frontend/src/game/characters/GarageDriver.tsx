@@ -18,9 +18,9 @@ import { PreviewLoadingStatus } from "../preview/PreviewLoadingSeal";
 import { isCompactPreview } from "../preview/previewBudget";
 import { failCockpitPreview, useCharacterPreviewStore } from "./characterPreviewStore";
 import { removalNeedsVillagerBody, replacesVillagerBody, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
-import { getWardrobeGarment, hasWardrobeRevisionMesh, wardrobeGarmentModelUrl } from "./wardrobeGarments";
-import { corsetModelUrl } from "./wardrobe";
-import { FITTING_BODY_URL } from "./standaloneCorset";
+import { getWardrobeGarment, hasWardrobeRevisionMesh, wardrobeGarmentModelUrl, type WardrobeRemoval } from "./wardrobeGarments";
+import { corsetModelUrls, isRebuiltUnderbustUrl } from "./wardrobe";
+import { FITTING_BODY_URL, rebuiltUnderbustPart } from "./standaloneCorset";
 
 const DRIVER_TILT: [number, number, number] = [-.095, -.16, -.045];
 const LEGACY_FITTING_BODY_URL = "/models/characters/wardrobe/gothic-02.mobile.glb";
@@ -61,10 +61,11 @@ function VillagerDriver({ url, look, compact, fallback, ...playback }: VillagerP
   const onReady = useCallback<WardrobeAssetListener>((asset, loaded) => setSources(current => current[asset] === loaded
     ? current : { ...current, [asset]: loaded }), []);
   const kind = compact ? "portrait" : "garage";
-  const preferredCorset = corsetModelUrl(look.corset, kind);
-  const corsetUrl = preferredCorset && sources[preferredCorset] === null
-    ? corsetModelUrl(look.corset, kind, { useStandalone: false }) ?? preferredCorset
-    : preferredCorset;
+  const corsetUrls = corsetModelUrls(look.corset, kind);
+  const corsetUrl = corsetUrls.find(asset => {
+    const source = sources[asset];
+    return source !== null && (!source || !isRebuiltUnderbustUrl(asset) || rebuiltUnderbustPart(source, look.corset?.waist));
+  });
   const requested = useMemo(() => Object.values(look.garments ?? {}).flatMap(id => {
     const item = getWardrobeGarment(id);
     if (!item) return [];
@@ -95,7 +96,7 @@ function VillagerDriver({ url, look, compact, fallback, ...playback }: VillagerP
   const assetUrls = [...urls];
   const garmentBody = needsBody ? bundledBody ?? sources[bodyUrl]?.getObjectByName("BODY_WARDROBE") : undefined;
   const loading = assetUrls.some(asset => sources[asset] === undefined);
-  const unavailable = assetUrls.some(asset => sources[asset] === null)
+  const unavailable = (corsetUrls.length > 0 && !corsetUrl) || assetUrls.some(asset => sources[asset] === null)
     || (needsSeparateBody && sources[bodyUrl] !== undefined && !garmentBody);
 
   // Keep the visible outfit mounted until the latest selection can replace it as a unit.
@@ -110,7 +111,7 @@ function VillagerDriver({ url, look, compact, fallback, ...playback }: VillagerP
     });
     const sameGarments = active?.garments.length === garments.length && garments.every((garment, index) => {
       const previous = active.garments[index];
-      return previous.item === garment.item && previous.scene === garment.scene;
+      return previous.item === garment.item && previous.scene === garment.scene && previous.authoredFit === garment.authoredFit;
     });
     if (active?.look !== look || active.scene !== scene || active.garmentBody !== garmentBody
       || active.corsetScene !== corsetScene || active.corsetSet !== corsetSet || !sameGarments) {
@@ -139,10 +140,13 @@ function ReadyVillager({ preview, bag, previewPacks, leanFit, mirrorFit, victory
   const femaleWithBag = look.female && bag;
   const wetEyes = !victory;
   const fitted = usesFittedAnimation(look);
+  // Appearance edits can recreate the removal array without changing the rig.
+  const removalKey = [...look.removedClothing].sort().join(",");
+  const removedClothing = useMemo(() => removalKey ? removalKey.split(",") as WardrobeRemoval[] : [], [removalKey]);
   const model = useMemo(() => prepareVillager(scene, {
-    female: look.female, animateFace: true, bag: femaleWithBag, wetEyes, fitted, garments, garmentBody, removedClothing: look.removedClothing,
+    female: look.female, animateFace: true, bag: femaleWithBag, wetEyes, fitted, garments, garmentBody, removedClothing,
     corsetSource: corsetScene && corsetSet ? { set: corsetSet, scene: corsetScene } : undefined,
-  }), [scene, look.female, look.removedClothing, femaleWithBag, wetEyes, fitted, garments, garmentBody, corsetScene, corsetSet]);
+  }), [scene, look.female, removedClothing, femaleWithBag, wetEyes, fitted, garments, garmentBody, corsetScene, corsetSet]);
   const invalidate = useThree(s => s.invalidate);
   useEffect(() => model.dispose, [model]);
   useLayoutEffect(() => {
