@@ -66,6 +66,7 @@ export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton
     over.traverse(mesh => {
       if (mesh instanceof SkinnedMesh) {
         mesh.userData.clothingPiece = "corset";
+        mesh.userData.rebuiltUnderbust = true;
         mesh.material = Array.isArray(mesh.material) ? mesh.material.map(withDyeChannel) : withDyeChannel(mesh.material);
       }
     });

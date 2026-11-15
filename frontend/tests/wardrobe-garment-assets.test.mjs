@@ -985,6 +985,64 @@ test('the rebuilt Gothic Underbust replaces the live Over fit on both tiers and 
   }
 });
 
+test('the rebuilt Gothic Underbust keeps skin at the straps and lower edge of the back opening', async t => {
+  const tiers = [['garage', 'garage'], ['mobile', 'portrait']];
+  const read = path => readFile(new URL(path, publicDir));
+  const donorBytes = await read(bundledDir + 'gothic-02.mobile.glb');
+  if (isLfsPointer(donorBytes)) return t.skip('Run git lfs pull to materialize the fitting-room donor.');
+  const donor = (await loadGeometry(donorBytes)).getObjectByName('BODY_WARDROBE');
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  try {
+    const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
+    const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { wardrobeCoverageSurface } = await vite.ssrLoadModule('/src/game/characters/wardrobeCoverage.ts');
+    const { corsetModelUrl } = await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
+    const set = 'gothic-04';
+    const donorSkin = wardrobeCoverageSurface(donor.geometry);
+    try {
+      for (const [tier, kind] of tiers) {
+        const bytes = await read(villagerDir + `villager-female.${kind}.glb`);
+        if (isLfsPointer(bytes)) return t.skip('Run git lfs pull to materialize the fitting-room character.');
+        const base = await loadGeometry(bytes);
+        for (const cut of [undefined, 'original']) {
+          const look = characterLook({ ...DEFAULT_CHARACTER, wardrobeTrial: { set, waist: 'over', shirt: 'none', cut }, bra: false });
+          const url = corsetModelUrl(look.corset, kind);
+          assert.equal(url, `/${garmentDir}corsets/gothic-underbust-vest${cut ? '-original-cut' : ''}.${tier}.glb`);
+          const bytes = await read(url.slice(1));
+          if (isLfsPointer(bytes)) return t.skip('Run git lfs pull to materialize the rebuilt vest.');
+          const scene = await loadGeometry(bytes);
+          const model = prepareVillager(base, { fitted: true, garmentBody: donor, corsetSource: { set, scene } });
+          try {
+            applyVillagerLook(model, look);
+            const skin = wardrobeCoverageSurface(model.root.getObjectByName('fitting-room-body').geometry);
+            try {
+              for (const [x, y, side, expected] of [
+                [-.105, 1.300, 1, true], [.105, 1.300, 1, true],
+                [-.045, 1.227, -1, true], [.045, 1.227, -1, true], [.090, 1.241, -1, true],
+                [0, 1.203, 1, false],
+              ]) {
+                const ray = new Ray(new Vector3(x, y, side * .30), new Vector3(0, 0, -side));
+                const donorHit = donorSkin.raycastFirst(ray, DoubleSide, 0, .30);
+                assert(donorHit, `${tier} donor includes skin at ${x}, ${y}, ${side}`);
+                const activeHit = skin.raycastFirst(ray, DoubleSide, donorHit.distance - .0001, donorHit.distance + .0001);
+                assert.equal(Boolean(activeHit), expected, `${tier} ${cut ?? 'regular'} skin visibility at ${x}, ${y}, ${side}`);
+              }
+            } finally {
+              skin.geometry.dispose();
+            }
+          } finally {
+            model.dispose();
+          }
+        }
+      }
+    } finally {
+      donorSkin.geometry.dispose();
+    }
+  } finally {
+    await vite.close();
+  }
+});
+
 test('Laced Bodice straps clear the rear shoulders and Tucked lacing shows skin', async t => {
   const set = 'gothic-01';
   const item = catalog.find(garment => garment.id === 'skirt-02');

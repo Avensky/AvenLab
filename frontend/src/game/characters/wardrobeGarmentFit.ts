@@ -51,7 +51,13 @@ const coversSkin = new Set<ClothingPiece>(["corset", "shirt", "sleeves", "skirt"
 const coversTorso = new Set<ClothingPiece>(["corset", "shirt", "sleeves", "dress", "armor"]);
 
 type RestoredSkin = { upper: boolean; skirt: boolean; feet: boolean };
-type SkinCover = { surface: MeshBVH; piece: ClothingPiece; baseLayer?: true };
+type SkinCover = { surface: MeshBVH; piece: ClothingPiece; baseLayer?: true; rebuiltUnderbust?: boolean };
+
+function isUnderbustOpening(point: Vector3) {
+  // Vesper bind space. The central back cutout extends below the armholes.
+  return point.y > 1.270
+    || (point.z < 0 && point.y > 1.215 && (point.y > 1.240 || Math.abs(point.x) < .10));
+}
 
 function fitBodyMask(
   body: SkinnedMesh, original: SkinnedMesh, full: BufferGeometry, top: boolean, skirt: boolean,
@@ -65,9 +71,13 @@ function fitBodyMask(
   const surfaces = clothes.map(({ surface }) => surface);
   const covered = prepareWardrobeCoverage(surfaces);
   const coveredShoulder = lacedBodice && prepareWardrobeCoverage(surfaces, .001);
+  const torsoClothes = restored.upper ? clothes.filter(({ piece, baseLayer }) => baseLayer || coversTorso.has(piece)) : clothes;
   const coveredTorso = restored.upper
-    ? prepareWardrobeCoverage(clothes.filter(({ piece, baseLayer }) => baseLayer || coversTorso.has(piece)).map(({ surface }) => surface))
+    ? prepareWardrobeCoverage(torsoClothes.map(({ surface }) => surface))
     : covered;
+  const coveredOpenings = torsoClothes.some(({ rebuiltUnderbust }) => rebuiltUnderbust)
+    ? prepareWardrobeCoverage(torsoClothes.filter(({ rebuiltUnderbust }) => !rebuiltUnderbust).map(({ surface }) => surface))
+    : undefined;
   let visible = 0;
   for (let i = 0; i < index.count; i += 3) {
     const ai = index.getX(i), bi = index.getX(i + 1), ci = index.getX(i + 2);
@@ -88,7 +98,11 @@ function fitBodyMask(
     // A strap or neckline can cross the middle of a skin triangle. Keep the
     // skin at that edge unless the fabric covers the face and its corners.
     // Keep the exposed torso intact through pose changes at the skirt waist.
-    const isCovered = coveredShoulder && isLacedShoulder(point) ? coveredShoulder : restoredTorso ? coveredTorso : covered;
+    // The rebuilt vest's narrow edges can expose parts of an otherwise masked
+    // triangle as the actor moves. Leave skin under these edges and still mask
+    // it against any separately equipped layer.
+    const isCovered = coveredOpenings && isUnderbustOpening(point) ? coveredOpenings
+      : coveredShoulder && isLacedShoulder(point) ? coveredShoulder : restoredTorso ? coveredTorso : covered;
     if (!openLacing && replaced && isCovered(point, a, b, c, restoredSkin || (upperBody && checkTopEdges))) continue;
     fittedIndex.array[visible++] = ai;
     fittedIndex.array[visible++] = bi;
@@ -287,7 +301,7 @@ export function prepareWardrobeGarments(
           const addSurface = (part: Object3D, piece: ClothingPiece) => {
             if (!(part instanceof SkinnedMesh) || !isFabric(part)) return;
             const surface = bodySurface(part.geometry);
-            if (surface) fittedSurfaces.push({ surface, piece });
+            if (surface) fittedSurfaces.push({ surface, piece, rebuiltUnderbust: part.userData.rebuiltUnderbust === true });
           };
           corset?.group.traverseVisible(part => addSurface(part, "corset"));
           if (restoresBody) {
