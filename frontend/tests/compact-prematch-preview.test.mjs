@@ -121,7 +121,7 @@ test('compact prematch views share a frame and keep opposing picks mysterious un
    await act(async()=>{routeMenuAction('left');ui.getState().openVehicleSelection();});
    assert.equal(document.querySelector('.team-lineup-actions button:last-child'),document.activeElement);
    assert.equal(ui.getState().overlay,'team_lineup');
-   await act(async()=>routeMenuAction('back'));
+   await click('.team-lineup-heading [data-header-back]');
    assert.equal(ui.getState().overlay,null);
    await act(async()=>network.setState({snapshot:snapshot(true)}));
    assert.equal(ui.getState().overlay,null,'returning to spawn does not replay the video');

@@ -46,6 +46,7 @@ const NO_VEHICLE_MOD_STAGES:Record<string,number>={};
 type WorkshopFilter=HeroFilter|"concepts";
 type WorkshopPage="heroes"|"garage"|"character";
 const WORKSHOP_TABS=[...heroRoleHeaderTabs(true),HERO_CONCEPT_TAB];
+const CHARACTER_HEADER_TABS=CHARACTER_TABS.filter(tab=>tab.id!=="identity");
 const MARINE_LAMPS = [
  {id:"navigation", label:"Running lights"},
  {id:"searchlights", label:"Searchlights"},
@@ -146,11 +147,11 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  useLayoutEffect(()=>{onCharacterViewChange?.(characterOpen?characterTab:null);},[characterOpen,characterTab,onCharacterViewChange]);
  useLayoutEffect(()=>()=>onCharacterViewChange?.(null),[onCharacterViewChange]);
  useEffect(()=>{
-  const target=characterOpen?root.current?.querySelector<HTMLElement>(characterReady?'[role=tab][aria-selected="true"]':'[data-character-option][aria-pressed="true"]')
+  const target=characterOpen?root.current?.querySelector<HTMLElement>(characterReady?'[role=tab][aria-selected="true"], .character-identity-nav [aria-current="page"]':'[data-character-option][aria-pressed="true"]')
    : viewingConcepts?root.current?.querySelector<HTMLElement>(".hero-guide-scroll")
    : editing?root.current?.querySelector<HTMLElement>("[role=tab][aria-selected=true]"):root.current;
   target?.focus({preventScroll:true});
- },[characterOpen,characterReady,editing,role,studioTab,viewingConcepts]);
+ },[characterOpen,characterReady,characterTab,editing,role,studioTab,viewingConcepts]);
  useEffect(()=>{
   if(!focusRoster||page!=="heroes")return;
   root.current?.querySelector<HTMLElement>("[data-hero]:not(:disabled)")?.focus({preventScroll:true});
@@ -270,13 +271,14 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  </button>;
  const customizationHeader={onOpen:openCharacter,leadingAction:vehicleAction,active:characterOpen};
  return <section ref={root} className={`game-ui menu-surface alpha-selection hero-selection hero-workshop${panelsHidden?" hero-workshop--hidden":""}${viewingConcepts?" hero-ability-guide":""}`} data-character-page={characterOpen||undefined} inert={overlay!==null} tabIndex={-1} aria-label={characterOpen?"Character":"Heroes garage"} data-controller-form data-controller-rows>
-  {characterOpen?characterReady?<SceneTabHeader title="CHARACTER" compact tabs={CHARACTER_TABS} activeTab={characterTab}
-    character={customizationHeader}
+  {characterOpen?characterReady?<SceneTabHeader title="CHARACTER" compact tabs={CHARACTER_HEADER_TABS} activeTab={characterTab}
+    character={customizationHeader} backAction={{onClick:back}}
     onTabChange={id=>setCharacterTab(id as CharacterTab)} idPrefix="character-editor" panelId="character-editor-panel"/>
-    :<SelectionHeader title="CHARACTER" compact character={customizationHeader}/>:editing&&definition
+    :<SelectionHeader title="CHARACTER" compact character={customizationHeader} backAction={{onClick:back}}/>:editing&&definition
     ? <SceneTabHeader
         title="GARAGE"
         compact
+        backAction={{onClick:back}}
         character={customizationHeader}
         activeTab={studioTab}
         onTabChange={next=>setStudioTab(next as VehicleStudioTab)}
@@ -291,11 +293,12 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
           separatorBefore:item.id==="studio",
         }))}
       />
-    : <SceneTabHeader title="HEROES" compact character={customizationHeader} tabs={WORKSHOP_TABS} activeTab={role}
+    : <SceneTabHeader title="HEROES" compact character={customizationHeader} backAction={{onClick:back}} tabs={WORKSHOP_TABS} activeTab={role}
         tablistClassName="hero-pick-tabs" onTabChange={next=>setRole(next as WorkshopFilter)}
         idPrefix="hero-workshop-role" panelId="hero-workshop-role-panel"/>}
   <div className="hero-selection-stage hero-workshop-body">
-   {characterOpen&&<CharacterPage onPreview={onCharacterPreviewChange} onReady={setCharacterReady} tab={characterTab} beforeClose={beforeCharacterClose}/>}
+   {characterOpen&&<CharacterPage onPreview={onCharacterPreviewChange} onReady={setCharacterReady} tab={characterTab}
+    beforeClose={beforeCharacterClose} onOpenIdentity={()=>setCharacterTab("identity")}/>}
    {viewingConcepts&&<div className="hero-guide-scroll" id="hero-workshop-role-panel" role="tabpanel" aria-labelledby="hero-workshop-role-tab-concepts" tabIndex={0}><HeroConceptGallery/></div>}
    {page==="heroes"&&role!=="concepts"&&<div className="hero-picker-stage hero-workshop-picker" data-hero-filter={role} id="hero-workshop-role-panel" role="tabpanel" aria-labelledby={"hero-workshop-role-tab-"+role}>
     <div className="hero-picker-scene hero-picker-preview">
@@ -389,9 +392,9 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
     {status==="error"&&<button className="menu-control" onClick={()=>void queue.flush()}>RETRY SAVE</button>}
    </VehicleStudio>}
    {editing&&definition&&<GaragePreviewControls vehicle={definition.vehicle}/>}
-   {((characterOpen&&!characterReady)||viewingConcepts||(!characterOpen&&!definition))&&<div className="hero-garage-zoom" data-controller-row><PreviewVisibilityToggle/></div>}
+   {((characterOpen&&!characterReady)||viewingConcepts||(!characterOpen&&!definition))&&<div className="hero-garage-controls" data-controller-row><PreviewVisibilityToggle/></div>}
   </div>
-  <SelectionFooter tabs={!characterOpen||characterReady} selectLabel={editing&&studioTab==="abilities"?"Toggle":undefined} hasPrimaryAction={!characterOpen&&(!editing||studioTab!=="abilities")} backAction={{onClick:()=>void back(),label:"Back"}}>{!characterOpen&&<div className="hero-workshop-actions">
+  <SelectionFooter tabs={!characterOpen||characterReady} selectLabel={editing&&studioTab==="abilities"?"Toggle":undefined} hasPrimaryAction={!characterOpen&&(!editing||studioTab!=="abilities")}>{!characterOpen&&<div className="hero-workshop-actions">
    {!viewingReference&&<ControllerAction button="A" type="button" className="menu-control" disabled={!owner} tabIndex={-1} onClick={()=>editing?setPage("heroes"):openHero()}>{editing?"APPLY":"OPEN GARAGE"}</ControllerAction>}
    <HoldMainButton key={`${owner}:${hero}:${editing}:${viewingReference}:${main===hero}:${status==="error"}`} disabled={overlay!==null||viewingReference||!owner||!hero||main===hero||status==="error"} selected={hero!==null&&main===hero} onComplete={()=>mainChoice()}/>
   </div>}</SelectionFooter>

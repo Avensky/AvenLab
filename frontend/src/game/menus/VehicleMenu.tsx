@@ -126,7 +126,7 @@ function LegacyVehicleMenu() {
         onKeyDown={trapMenuFocus}
         className="menu-vehicle-card"
       >
-        <MenuFrameHeader title="HEROES" titleId={`${id}-title`} compact
+        <MenuFrameHeader title="HEROES" titleId={`${id}-title`} compact backAction={{ onClick: back }}
           className={angled ? "angled-tab-header" : "tabbed-menu-header"} />
         <div className="menu-vehicle-list">
           {vehicleCatalog.map((vehicle, index) => (

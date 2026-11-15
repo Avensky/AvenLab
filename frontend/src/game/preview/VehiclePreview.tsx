@@ -1,4 +1,4 @@
-import {useUIStore} from "../../store/menus/uiStore";
+import { useUIStore, type MenuScreen } from "../../store/menus/uiStore";
 import {SELECTION_CRIMSON} from "../../theme/garageLighting";
 import { Suspense, useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { MathUtils, Matrix4, Quaternion, Spherical, Vector2, Vector3, type Group, type Object3D, type PerspectiveCamera as ThreePerspectiveCamera } from "three";
@@ -32,6 +32,7 @@ import { useVehicleStudioStore } from "../heroes/vehicleStudioStore";
 
 const DRIVER_STAGE_CAMERA: [number, number, number] = [2.8, 2.5, 5.8];
 const STANDARD_STAGE_CAMERA: [number, number, number] = [0, 3.2, 7.25];
+const FITTING_ACTOR_TRANSFORM = new Matrix4().makeTranslation(0, .023, 0);
 const motionQuery = "(prefers-reduced-motion: reduce)";
 const systemReducedMotion = () => window.matchMedia?.(motionQuery).matches ?? false;
 function subscribeMotion(listener: () => void) {
@@ -40,14 +41,12 @@ function subscribeMotion(listener: () => void) {
   return () => media?.removeEventListener("change", listener);
 }
 
-function MissingVehicle({ model, onSettled, cockpit, active }: {
-  model: string; onSettled: (model: string) => void; cockpit: boolean; active: boolean;
-}) {
+function MissingVehicle({ model, onSettled, cockpit, visible }: { model: string; onSettled: (model: string) => void; cockpit: boolean; visible: boolean }) {
   useLayoutEffect(() => onSettled(model), [model, onSettled]);
   useLayoutEffect(() => {
     if (cockpit) failCockpitPreview("The selected vehicle model is unavailable.");
   }, [cockpit]);
-  return active ? <Html center>
+  return visible ? <Html center>
     <p className="rounded bg-slate-950 p-3 text-sm text-amber-200">
       Vehicle model unavailable. Check Git LFS assets or select another vehicle.
     </p>
@@ -79,6 +78,7 @@ function createPreviewAim() {
 }
 
 export function VehiclePreview({
+  previewScreen,
   heroLayout = false,
   awaitingHero = false,
   characterDraft = null,
@@ -86,8 +86,8 @@ export function VehiclePreview({
   characterOnly = false,
   fittingRoom = false,
   stationary = false,
-}: { heroLayout?: boolean; awaitingHero?: boolean; characterDraft?: CharacterChoice | null; wardrobeOpen?: boolean; characterOnly?: boolean; fittingRoom?: boolean; stationary?: boolean } = {}) {
-  const screen=useUIStore(s=>s.screen);
+}: { previewScreen?: MenuScreen; heroLayout?: boolean; awaitingHero?: boolean; characterDraft?: CharacterChoice | null; wardrobeOpen?: boolean; characterOnly?: boolean; fittingRoom?: boolean; stationary?: boolean } = {}) {
+  const screen = useUIStore(s => previewScreen ?? s.screen);
   const theme=usePreferencesStore(s=>s.theme);
   const preferenceReducedMotion = usePreferencesStore(s => s.reducedMotion);
   const systemMotion = useSyncExternalStore(subscribeMotion, systemReducedMotion, () => false);
@@ -147,14 +147,11 @@ export function VehiclePreview({
   const compact = isCompactPreview(width);
   const requestFrame = useThree(s => s.invalidate);
   const cameraRef = useRef<ThreePerspectiveCamera>(null);
-  const characterCamera = useRef<ThreePerspectiveCamera>(null);
   const characterActor = useRef<Group>(null);
   const motion = useRef<Group>(null);
-  const garageAim = useRef<ReturnType<typeof createPreviewAim>>(null);
-  const characterAim = useRef<ReturnType<typeof createPreviewAim>>(null);
+  const cameraAim = useRef<ReturnType<typeof createPreviewAim>>(null);
   const fittingOrbit = useRef<{ yaw: number; pitch: number; sphere: Spherical }>(null);
-  if (garageAim.current === null) garageAim.current = createPreviewAim();
-  if (characterAim.current === null) characterAim.current = createPreviewAim();
+  if (cameraAim.current === null) cameraAim.current = createPreviewAim();
   if (fittingOrbit.current === null) fittingOrbit.current = { yaw: 0, pitch: 0, sphere: new Spherical() };
   const fittingOrbitEnabled = wardrobeOpen && characterOnly;
   const orbitCamera = (x: number, y: number) => {
@@ -162,7 +159,7 @@ export function VehiclePreview({
     const sensitivity = usePreferencesStore.getState().cameraSensitivity * .006;
     rotation.yaw = MathUtils.euclideanModulo(rotation.yaw - x * sensitivity + Math.PI, Math.PI * 2) - Math.PI;
     rotation.pitch -= y * sensitivity;
-    characterAim.current!.held = false;
+    cameraAim.current!.held = false;
     requestFrame();
   };
   const [turntable, setTurntable] = useState<Group | null>(null);
@@ -178,6 +175,8 @@ export function VehiclePreview({
   const vehicleFit = currentDriverFit?.model === vehicleId ? currentDriverFit : undefined;
   const garageDriverPose = garageStation && vehicleFit ? vehicleFit : parkedDriverFit;
   const emotePose = (insideCar || fittingToCar) && vehicleFit ? vehicleFit : parkedDriverFit;
+  const activeDriver = wardrobeOpen ? driver : garageDriver;
+  const driverPose = vehicleEmotes ? emotePose : garageDriverPose;
   const aspect = width / Math.max(1, height);
   const verticalFov = (horizontal: number) => (2 * Math.atan(Math.tan((horizontal * Math.PI) / 360) / aspect) * 180) / Math.PI;
   // Look into the authored corner from inside the room. The tighter horizontal
@@ -190,14 +189,21 @@ export function VehiclePreview({
   useLayoutEffect(() => { requestFrame(); }, [width, height, driverStage, heroLayout, sandboxPicker, wardrobeOpen, characterOnly, workshop, zoom, reducedMotion, requestFrame, garageView, garageTab, vehicleId, settledVehicle, stationActive, insideCar, panelsHidden]);
   useLayoutEffect(() => useCharacterPreviewStore.subscribe(() => requestFrame()), [requestFrame]);
   useFrame(({ frameloop, invalidate, scene }, delta) => {
-    const camera = (wardrobeOpen ? characterCamera : cameraRef).current;
+    // Keep one actor parent for cockpit motion and cancel that transform in
+    // the fitting room so the character stays centered on its own stage.
+    if (characterOnly && characterActor.current && motion.current) {
+      motion.current.updateWorldMatrix(true, false);
+      characterActor.current.matrix.copy(motion.current.matrixWorld).invert().multiply(FITTING_ACTOR_TRANSFORM);
+      characterActor.current.matrixWorldNeedsUpdate = true;
+    }
+    const camera = cameraRef.current;
     if (!camera || !width || !height) return;
-    const aim = (wardrobeOpen ? characterAim : garageAim).current!;
+    const aim = cameraAim.current!;
     const rotation = fittingOrbit.current!;
     const { position, target, offset, anchorRotation, pivot, eye, nextEye, orbit, swing, lookAt } = aim;
     const wardrobe = wardrobeOpen ? useCharacterPreviewStore.getState() : null;
     const area = !insideCar && !panelsHidden ? wardrobe?.viewport : null;
-    const viewKey = wardrobe ? `${screen}:${wardrobe.camera}:${wardrobe.focusRevision}:${insideCar}:${characterOnly}` : `${screen}:${garageView}`;
+    const viewKey = wardrobe ? `wardrobe:${wardrobe.camera}:${wardrobe.focusRevision}:${insideCar}:${characterOnly}` : `garage:${garageView}`;
     const firstFrame = aim.initializedCamera !== camera;
     if (fittingOrbitEnabled && (firstFrame || aim.renderedView !== viewKey)) {
       rotation.yaw = 0;
@@ -319,15 +325,18 @@ export function VehiclePreview({
     camera.quaternion.setFromRotationMatrix(lookAt.lookAt(camera.position, pivot, camera.up));
     const currentX = camera.view?.offsetX ?? offsetX;
     const currentY = camera.view?.offsetY ?? offsetY;
-    const reframing = Math.abs(currentX - offsetX) > .01 || Math.abs(currentY - offsetY) > .01 || Math.abs(camera.zoom - lensZoom) > .0001;
     const cameraFov = aim.held ? aim.heldFov : fov;
     const cameraNear = aim.held ? aim.heldNear : near;
-    const lensChanged = camera.fov !== cameraFov || camera.near !== cameraNear;
-    camera.fov = cameraFov;
+    const reframing = Math.abs(currentX - offsetX) > .01 || Math.abs(currentY - offsetY) > .01
+      || Math.abs(camera.zoom - lensZoom) > .0001 || Math.abs(camera.fov - cameraFov) > .01;
+    const resize = camera.view?.fullWidth !== width || camera.view?.fullHeight !== height;
+    const lensChanged = reframing || camera.fov !== cameraFov || camera.near !== cameraNear || camera.zoom !== lensZoom;
+    const lensBlend = reframing ? blend : 1;
+    camera.fov = MathUtils.lerp(camera.fov, cameraFov, lensBlend);
     camera.near = cameraNear;
-    if (reframing || camera.view?.fullWidth !== width || camera.view?.fullHeight !== height) {
-      camera.zoom = MathUtils.lerp(camera.zoom, lensZoom, blend);
-      camera.setViewOffset(width, height, MathUtils.lerp(currentX, offsetX, blend), MathUtils.lerp(currentY, offsetY, blend), width, height);
+    camera.zoom = MathUtils.lerp(camera.zoom, lensZoom, lensBlend);
+    if (resize || currentX !== offsetX || currentY !== offsetY) {
+      camera.setViewOffset(width, height, MathUtils.lerp(currentX, offsetX, lensBlend), MathUtils.lerp(currentY, offsetY, lensBlend), width, height);
     } else if (lensChanged) camera.updateProjectionMatrix();
     if (frameloop === "demand" && (!compact || stationary || reducedMotion) &&
       (reframing || camera.position.distanceToSquared(position) > .000001 || pivot.distanceToSquared(target) > .000001)) invalidate();
@@ -338,31 +347,26 @@ export function VehiclePreview({
         allowLoad={characterOnly || !waitingForCar} onSettled={roomSettled} />
       {fittingRoom && roomReady && <FittingMirrorDisplay />}
       {loadLabel && <PreviewLoadingStatus label={loadLabel} />}
-      <PerspectiveCamera ref={cameraRef} name="garage-preview-camera" makeDefault={!wardrobeOpen} />
-      {wardrobeOpen && <PerspectiveCamera ref={characterCamera} name="character-preview-camera" makeDefault>
+      <PerspectiveCamera ref={cameraRef} name="garage-preview-camera" makeDefault>
         {fittingOrbitEnabled && <FittingCameraOrbit onDrag={orbitCamera} />}
-      </PerspectiveCamera>}
-
-      {characterOnly && driver && <group ref={characterActor} position={[0, .023, 0]}>
-        <PreviewContactShadow footprint={[.55, .46]} offset={[0, 0]} />
-        <GarageDriver choice={driver} previewPacks upright />
-      </group>}
+      </PerspectiveCamera>
 
       <PreviewTurntable onReady={setTurntable} spin={!wardrobeOpen && !stationary && !reducedMotion && garageView === "Showroom"}
         locked={characterOnly || stationActive && garageView !== "Showroom"} restoreAngle={wardrobeOpen}>
         <group rotation={[0, Math.PI / 2, 0]}>
           <group ref={motion}>
-            {garageDriver && garageDriverPose && <group visible={!wardrobeOpen} position={garageDriverPose.position} scale={garageDriverPose.scale} rotation={[0, garageDriverPose.yaw, 0]}>
-              <group name="garage-driver-shadow"><PreviewContactShadow footprint={[.55, .46]} offset={[0, 0]} /></group>
-              <GarageDriver choice={garageDriver} paused={wardrobeOpen} cockpit={garageOpen ? vehicleFit?.cockpit : undefined} />
-            </group>}
-            {vehicleEmotes && driver && emotePose && <group ref={characterActor} position={emotePose.position} scale={emotePose.scale} rotation={[0, emotePose.yaw, 0]}>
-              <group name="character-driver-shadow"><PreviewContactShadow footprint={[.55, .46]} offset={[0, 0]} /></group>
-              <GarageDriver choice={driver} previewPacks leanFit={vehicleFit?.lean} mirrorFit={vehicleFit?.mirror} cockpit={vehicleFit?.cockpit} />
+            {activeDriver && (characterOnly || driverPose) && <group ref={characterActor} matrixAutoUpdate={!characterOnly}
+              position={driverPose?.position} scale={driverPose?.scale} rotation={[0, driverPose?.yaw ?? 0, 0]}>
+              <group name={wardrobeOpen ? "character-driver-shadow" : "garage-driver-shadow"}>
+                <PreviewContactShadow footprint={[.55, .46]} offset={[0, 0]} />
+              </group>
+              <GarageDriver choice={activeDriver} previewPacks={wardrobeOpen} upright={characterOnly}
+                leanFit={vehicleEmotes ? vehicleFit?.lean : undefined} mirrorFit={vehicleEmotes ? vehicleFit?.mirror : undefined}
+                cockpit={!characterOnly && (vehicleEmotes || garageOpen) ? vehicleFit?.cockpit : undefined} />
             </group>}
             {vehicleId && <AssetBoundary
               key={vehicleId}
-              fallback={<MissingVehicle model={vehicleId} onSettled={setSettledVehicle} cockpit={insideCar} active={!characterOnly} />}
+              fallback={<MissingVehicle model={vehicleId} onSettled={setSettledVehicle} cockpit={insideCar} visible={!characterOnly} />}
             >
               <Suspense fallback={null}>
                 <VehiclePreviewModel platform={platform} model={vehicleId} driver={vehicleEmotes ? driver : garageDriver} previewPacks={vehicleEmotes}

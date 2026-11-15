@@ -694,6 +694,14 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         assert.equal(ui.getState().screen, "signal_recon");
       },
     );
+    await t.test("focused Play header Back receives Enter without starting matchmaking", async () => {
+      await reset("mode_select");
+      const back = document.querySelector(".menu-frame-title [data-header-back]");
+      assert(back);
+      await act(async () => back.focus());
+      await key("Enter", "Enter");
+      assert.equal(ui.getState().screen, "main");
+    });
     await t.test(
       "Recon setup Back returns to the main menu before opening analysis",
       async () => {
@@ -707,6 +715,9 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         assert.equal(ui.getState().screen, "main");
         await reset("signal_recon_setup");
         await pointerPress(document.querySelector('[data-recon-choice="4"]'));
+        assert.equal(ui.getState().screen, "main");
+        await reset("signal_recon_setup");
+        await click(document.querySelector(".garage-selection-header [data-header-back]"));
         assert.equal(ui.getState().screen, "main");
       },
     );
@@ -855,6 +866,8 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         await act(async () => preferences.getState().update({ inputDevice: "touch" }));
         assert.equal(document.querySelector(".pause-menu kbd"), null);
         assert.ok(pauseAction("resume").querySelector(".menu-icon"));
+        await click(document.querySelector(".pause-menu-heading [data-header-back]"));
+        assert.equal(ui.getState().overlay, null);
       } finally {
         await act(async () => preferences.getState().update({ inputDevice: previousDevice }));
       }
@@ -1455,6 +1468,10 @@ test("mouse, keyboard and polled gamepad navigate the real menus and preferences
         await reset("sandbox", "leave_game");
         await click(row("cancel"));
         assert.equal(ui.getState().overlay, "pause");
+        await reset("sandbox", "leave_game");
+        await act(async () => document.querySelector("[data-header-back]").focus());
+        await key("Enter", "Enter");
+        assert.equal(ui.getState().overlay, "pause", "Enter activates the focused header Back");
         await act(async () => preferences.getState().update({inputDevice:"browser"}));
       },
     );

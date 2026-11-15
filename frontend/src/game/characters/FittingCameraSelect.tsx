@@ -16,6 +16,12 @@ const VIEW_ICONS: Record<string, string> = {
   Back: `${FRAME} M7 13l2-5 3-1 3 1 2 5m-5-6v10m-3-3h6`,
   Left: `${FRAME} M17 12H7m0 0 4-4m-4 4 4 4`,
   Right: `${FRAME} M7 12h10m0 0-4-4m4 4-4 4`,
+  Showroom: `${FRAME} M7 11l1-3h8l1 3 2 2v3H5v-3zM8 13h1m6 0h1`,
+  "High Angle": `${FRAME} M12 6v11m-4-4 4 4 4-4`,
+  "Driver Door": "M5 5h11l3 7v7H5zM5 12h14m-10 3h3",
+  Cockpit: "M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0ZM4 11h16m-8 0v9",
+  Chase: `${FRAME} M6 15v-4l2-2h8l2 2v4H6zm2-2h1m6 0h1`,
+  Dashboard: "M4 17a8 8 0 1 1 16 0zm8-1 4-5m-8 2h.01m4-4h.01",
 };
 const PIECE_ICONS: Record<ClothingPiece, string> = {
   corset: "M5 5l3 2 4 1 4-1 3-2-2 9 1 5-6 2-6-2 1-5zm4 4 6 7m0-7-6 7",

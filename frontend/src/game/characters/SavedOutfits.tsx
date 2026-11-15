@@ -33,9 +33,10 @@ type SavedOutfitsProps = {
   choice: CharacterChoice;
   onTryOn: (choice: CharacterChoice) => void;
   onEndPreview?: () => void;
+  clearPreview?: boolean;
 };
 
-export function SavedOutfits({ choice, onTryOn, onEndPreview }: SavedOutfitsProps) {
+export function SavedOutfits({ choice, onTryOn, onEndPreview, clearPreview }: SavedOutfitsProps) {
   const owner = useSocialStore(({ view }) => view?.profile.progression ? view.profile.id : undefined);
   const profileOutfits = useSocialStore(state => state.view ? state.view.profile.progression?.character_outfits : state.cachedCosmetics?.character_outfits);
   const [localOutfits, setLocalOutfits] = useState(readLocalOutfits);
@@ -136,13 +137,15 @@ export function SavedOutfits({ choice, onTryOn, onEndPreview }: SavedOutfitsProp
           setMessage("");
         }}>{location === "device" ? "This device" : "Profile"}</button>)}
     </div>
-    {onEndPreview && <div data-controller-row>
-      <button type="button" className="menu-control" onClick={() => {
-        onEndPreview();
+    {(onEndPreview || clearPreview) && <div className={clearPreview ? "dressing-section-heading" : undefined} data-controller-row>
+      <button type="button" className={clearPreview ? "dressing-section-clear menu-control" : "menu-control"}
+        aria-label={clearPreview ? "Clear saved outfit preview" : undefined} data-clear-section={clearPreview || undefined}
+        disabled={!onEndPreview} onClick={() => {
+        onEndPreview?.();
         setName("");
         setMessage("");
         nameInput.current?.focus({ preventScroll: true });
-      }}>Return to equipped</button>
+      }}>{clearPreview ? "Clear" : "Return to equipped"}</button>
     </div>}
     <form className="saved-outfit-form" aria-label="Save current outfit" onSubmit={save}>
       <label data-controller-row>Outfit name

@@ -1,9 +1,8 @@
-import { MenuLogo } from "../../components/menus/MenuLogo";
 import { CharacterHeaderProfile } from "../characters/CharacterHeaderProfile";
 import { ControlGlyph, MenuShortcuts } from "../../components/controller";
 import { useMenuInputDevice } from "../../components/controller/useMenuInputDevice";
 import { trapMenuFocus } from "../../components/menus/menuFocus";
-import { MenuFooter } from "../../components/menus/MenuFrame";
+import { MenuFooter, MenuHeaderBack } from "../../components/menus/MenuFrame";
 import { useEffect, useId, useRef } from "react";
 import { useUIStore } from "../../store/menus/uiStore";
 import { useVehicleSelectionAvailable } from "../../store/alpha/matchHeroChange";
@@ -18,6 +17,7 @@ export function PauseMenu() {
   const selectedIndex = useUIStore((s) => s.selectedMenuIndexById.pause);
   const setIndex = useUIStore((s) => s.setActiveMenuIndex);
   const activate = useUIStore((s) => s.activateActiveMenuSelection);
+  const resume = useUIStore((s) => s.closeOverlay);
   const vehicleSelectionAvailable = useVehicleSelectionAvailable();
   const match = useSocialStore(s => isMatchMode(s.view?.alpha?.active?.mode ?? ""));
   const inputDevice = useMenuInputDevice();
@@ -86,7 +86,7 @@ export function PauseMenu() {
         data-input-device={inputDevice}
       >
         <header className="pause-menu-heading pause-menu-glass menu-panel-frame menu-title-with-logo">
-          <MenuLogo compact/>
+          <MenuHeaderBack onClick={resume} label="Resume game" />
           <h2 id={headingId}>Game menu</h2>
           <CharacterHeaderProfile compact />
         </header>

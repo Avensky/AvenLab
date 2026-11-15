@@ -828,6 +828,7 @@ export function SignalReconBrainConsole({
           theme="purple"
           eyebrow={`${missionCode} // AVENLAB AI`}
           title={resultModeLabel}
+          backAction={{ onClick: onClose }}
           collapsed={collapsed}
           setCollapsed={setCollapsed}
           meta={`${missionTitle} · ${signalName}`}

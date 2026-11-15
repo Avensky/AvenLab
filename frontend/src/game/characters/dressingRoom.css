@@ -64,6 +64,16 @@
   color: var(--app-text);
   pointer-events: none;
 }
+.dressing-preview-zoom {
+  grid-area: 1 / 2;
+  align-self: start;
+  justify-self: end;
+  z-index: 1;
+  pointer-events: auto;
+}
+.character-page--editor.character-page--dressing > .dressing-preview-zoom { grid-column: 3; }
+.character-page--setup .dressing-preview-zoom { grid-area: 1 / 1; }
+.character-page--editor:not(.character-page--dressing, .character-page--emotes) .dressing-preview-zoom { grid-column: 2 / 4; }
 .dressing-room-title small, .dressing-details header small {
   color: var(--app-accent);
   font-size: 9px;
@@ -184,6 +194,20 @@
   font-weight: 750;
   letter-spacing: .055em;
   text-transform: uppercase;
+}
+.dressing-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 8px 0 4px;
+}
+.dressing-section-heading h3 { margin: 0; overflow-wrap: anywhere; }
+.dressing-section-heading .dressing-section-clear.menu-control {
+  margin-inline-start: auto;
+  min-height: 25px;
+  padding: 3px 6px;
+  font-size: 10px;
 }
 .dressing-items { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
 .character-page--dressing .dressing-item.menu-control {
@@ -428,3 +452,27 @@
 }
 .fit-review-actions .menu-control:first-child:not(:disabled) { border-color: var(--app-accent); }
 .fit-review-actions svg { width: 12px; height: 12px; }
+
+.character-page--editor.character-page--sidebar-identity {
+  grid-template-rows: [sidebar] auto [content] minmax(0, 1fr) [toolbar] auto [save-status] auto;
+}
+.character-identity-nav { grid-area: sidebar / 1; pointer-events: auto; }
+.character-identity-nav .menu-control { width: 100%; text-align: left; }
+.character-identity-nav .menu-control[aria-current="page"] { border-color: var(--app-accent); }
+.character-page--sidebar-identity > :is(.dressing-wardrobe, .character-controls--left) { grid-row-start: content; }
+.character-page--sidebar-identity > :is(.character-stage, .dressing-camera-block, .dressing-preview-zoom) { grid-row: sidebar / toolbar; }
+.character-page--sidebar-identity > .dressing-toolbar { grid-row: toolbar; }
+.character-page--editor.character-page--sidebar-identity > .character-controls--bottom { grid-row: save-status; }
+
+.character-page--editor.character-page--identity.character-page--sidebar-identity {
+  grid-template-columns: minmax(124px, 21%) minmax(0, 1fr) minmax(116px, 19%);
+}
+.character-page--editor.character-page--identity.character-page--sidebar-identity > :is(.character-stage, .dressing-toolbar, .character-controls--bottom) {
+  grid-column: 2;
+}
+.character-page--identity.character-page--sidebar-identity .character-identity-style { grid-area: content / 1 / -1; }
+@media (max-width: 600px) {
+  .character-page--editor.character-page--identity.character-page--sidebar-identity {
+    grid-template-columns: minmax(96px, 26%) minmax(0, 1fr) minmax(88px, 22%);
+  }
+}

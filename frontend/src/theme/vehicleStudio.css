@@ -17,13 +17,14 @@
 
 .vehicle-studio {
   --vehicle-studio-column: clamp(215px, 23vw, 310px);
+  --vehicle-studio-inset: 10px;
   position: absolute;
   inset: 0;
   z-index: 2;
   display: grid;
   grid-template-rows: minmax(0, 1fr);
   gap: var(--vehicle-studio-gap);
-  padding: 4px 10px 6px;
+  padding: 4px var(--vehicle-studio-inset) 6px;
   box-sizing: border-box;
   color: var(--vehicle-studio-ink);
   pointer-events: none;
@@ -319,7 +320,7 @@
 }
 
 @media(max-width:760px) {
-  .vehicle-studio { --vehicle-studio-column: clamp(145px, 38vw, 245px); }
+  .vehicle-studio { --vehicle-studio-column: min(clamp(145px, 38vw, 245px), calc((100vw - 64px) / 2)); }
 }
 
 /* Short landscape viewports paginate the upgrade controls instead of shrinking touch targets. */

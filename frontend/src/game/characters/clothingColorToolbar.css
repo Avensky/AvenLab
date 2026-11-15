@@ -45,6 +45,12 @@
   scrollbar-width: thin;
 }
 .dressing-color-panel[hidden] { display: none; }
+.dressing-details .dressing-color-panel {
+  position: static;
+  width: 100%;
+  transform: none;
+  margin-bottom: 5px;
+}
 .dressing-color-bar {
   display: grid;
   grid-template-columns: 2.75rem minmax(0, 1fr);

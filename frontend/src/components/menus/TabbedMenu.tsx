@@ -185,7 +185,7 @@ export function TabbedMenu({
         className="menu-shell tabbed-menu-shell flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden bg-slate-950"
       >
         <MenuFrameHeader title={title} titleId={`${panelId}-title`} eyebrow={eyebrow} compact={angled && !eyebrow}
-          showProgress={!angled}
+          showProgress={!angled} backAction={{ onClick: onBack, label: backLabel }}
           className={angled ? `angled-tab-header${chamferTitle ? " angled-tab-header--chamfered" : ""}` : "tabbed-menu-header"}>
           {angled && <div className="tabbed-angled-scroll">{navigation}</div>}
         </MenuFrameHeader>

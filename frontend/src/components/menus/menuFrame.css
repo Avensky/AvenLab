@@ -29,7 +29,15 @@ img.menu-logo--header {
  flex:none;object-fit:contain;filter:none;
 }
 :is(.alpha-queue-card,.team-lineup-heading) .menu-title-with-logo { justify-content:center; }
-.menu-frame-title > .menu-logo { grid-area:1 / 1 / span 2; }
+.menu-header-back {
+ display:grid;place-items:center;flex:none;width:32px;height:32px;padding:0;
+ border:1px solid var(--app-line);background:var(--app-raised);color:var(--app-text);cursor:pointer;
+}
+.menu-header-back .menu-icon {width:19px;height:19px}
+.menu-header-back:hover:not(:disabled),.menu-header-back:focus-visible{border-color:var(--app-accent);color:var(--app-accent)}
+.menu-header-back:focus-visible{outline:2px solid var(--app-accent);outline-offset:-2px}
+.menu-header-back:disabled{opacity:.5;cursor:default}
+.menu-frame-title > .menu-header-back { grid-area:1 / 1 / span 2; }
 .menu-frame-title > :is(small,h1) { grid-column:2; }
 .menu-frame-header small{margin:0;color:var(--app-accent);font-size:10px;font-weight:750;letter-spacing:.16em}
 .menu-frame-header>div:first-child>small{display:block;line-height:1.1}

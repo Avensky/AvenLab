@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import type { BackShortcutAction } from "../controller";
 import { APP_BRANDING } from "../../theme/branding";
 import type { MatchTeam } from "../../theme/matchTeamTheme";
 import type { CharacterHeaderProfileProps } from "../../game/characters/CharacterHeaderProfile";
@@ -33,6 +34,7 @@ export function SceneTabHeader({
   character,
   busy = false,
   titleTeam,
+  backAction,
 }: {
   title: string;
   eyebrow?: string;
@@ -49,6 +51,7 @@ export function SceneTabHeader({
   character?: CharacterHeaderProfileProps;
   busy?: boolean;
   titleTeam?: MatchTeam;
+  backAction: BackShortcutAction;
 }) {
   const angled = useAngledMenuHeader();
   const navigation = (
@@ -88,6 +91,7 @@ export function SceneTabHeader({
         actions={actions}
         character={{ compact: showProgress, ...character, readOnly: busy || character?.readOnly }}
         titleTeam={titleTeam}
+        backAction={backAction}
         variant="scene"
         className={angled ? "angled-tab-header" : undefined}
       >

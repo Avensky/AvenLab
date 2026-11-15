@@ -2,11 +2,11 @@ import { FitBadge, FitReview } from "./FitReview";
 import { useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { CHARACTER_APPEARANCE_OPTIONS, ROOK_ID, VILLAGER_ID, characterLook, type CharacterChoice, type CharacterStyleField } from "./characterCatalog";
 import { focusClothingPiece, useCharacterPreviewStore } from "./characterPreviewStore";
-import { UNDERBUST_WARDROBE_SET, WARDROBE_CORSETS, WARDROBE_SETS, WARDROBE_WAIST_OPTIONS, corsetModelUrl, resolveWardrobe, withWardrobeWaist, type WardrobeChoice } from "./wardrobe";
+import { UNDERBUST_WARDROBE_SET, WARDROBE_CORSETS, WARDROBE_SETS, WARDROBE_WAIST_OPTIONS, corsetModelUrl, hasUnderbustCut, resolveWardrobe, withWardrobeWaist, type WardrobeChoice } from "./wardrobe";
 import { ClothingColorToolbar } from "./ClothingColorToolbar";
-import { CLOTHING_PIECES, clothingPieceLabel, UNDERWEAR_PIECES, underwearColors, wornClothing, type ClothingPiece, type UnderwearPiece } from "./clothingPieces";
+import { braFitsWith, CLOTHING_PIECES, clothingPieceLabel, UNDERWEAR_PIECES, underwearColors, wornClothing, type ClothingPiece, type UnderwearPiece } from "./clothingPieces";
 import { FittingWearableShortcuts } from "./FittingCameraSelect";
-import { getWardrobeGarment, importedWardrobeItems, setWardrobeGarment, setWardrobeRemoval, wardrobeGarmentModelUrl, villageWardrobeItems, type WardrobeGarmentSlot, type WardrobeRemoval } from "./wardrobeGarments";
+import { getWardrobeGarment, importedWardrobeItems, setWardrobeGarment, setWardrobeRemoval, wardrobeGarmentModelUrl, villageWardrobeItems, wardrobeRemovalPieces, type WardrobeGarmentSlot, type WardrobeRemoval } from "./wardrobeGarments";
 import { SavedOutfits } from "./SavedOutfits";
 import "./dressingRoom.css";
 
@@ -23,9 +23,6 @@ const CATEGORIES = [
   { id: "bows", label: "Bows", group: "Finishing touches", icon: "bows", femaleOnly: true },
   { id: "accessories", label: "Accessories", group: "Finishing touches", icon: "accessories" },
   { id: "props", label: "Handheld props", group: "Finishing touches", icon: "props" },
-  { id: "hair", label: "Hair", group: "Character", icon: "hair" },
-  { id: "face", label: "Face", group: "Character", icon: "face" },
-  { id: "skin", label: "Skin tone", group: "Character", icon: "skin" },
 ] as const;
 type Category = typeof CATEGORIES[number]["id"];
 type Icon = typeof CATEGORIES[number]["icon"] | "remove";
@@ -42,9 +39,6 @@ const ICON_PATHS: Record<Icon, string> = {
   bows: "m10 10-6-4v12l6-4m4-4 6-4v12l-6-4 M10 10h4v4h-4z",
   accessories: "m2 10 3-1 2 1h3l2 2 2-2h3l2-1 3 1 M4 10l1 6h5l2-4 2 4h5l1-6",
   props: "M5 8h14l1 13H4z M8 8V6a4 4 0 0 1 8 0v2",
-  hair: "M5 19V10a7 7 0 0 1 14 0v9l-4 2 M5 19l4 2 M6 10c5 0 7-5 7-5s1 5 5 6 M8 12v3a4 4 0 0 0 8 0v-3",
-  face: "M6 9a6 6 0 0 1 12 0v6a6 6 0 0 1-12 0z M8 11h1 M15 11h1 M10 17h4",
-  skin: "M12 3S5 11 5 15a7 7 0 0 0 14 0c0-4-7-12-7-12z M9 15c0 2 1 3 3 3",
 };
 
 function WardrobeIcon({ name }: { name: Icon }) {
@@ -76,7 +70,7 @@ const REMOVAL_CARDS: { category: Category; slot: WardrobeRemoval; label: string;
 type Item = {
   id: string; label: string; section: string; icon: Icon; description: string;
   selected?: boolean; detail?: string; unavailable?: "Pack not installed";
-  color?: string; accent?: string; focus?: WardrobeFocus; choose?: () => void; remove?: () => void; trial?: boolean;
+  color?: string; accent?: string; focus?: WardrobeFocus; choose?: () => void; remove?: () => void; clear?: (choice: CharacterChoice) => CharacterChoice; trial?: boolean;
   pieces?: "outfit" | readonly ClothingPiece[]; included?: boolean; set?: string; layer?: ClothingLayer;
   underwear?: UnderwearPiece;
 };
@@ -140,6 +134,15 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
   const selectedPiece = useCharacterPreviewStore(s => s.selectedPiece);
   const camera = useCharacterPreviewStore(s => s.camera);
   const pieces = wornClothing(choice);
+  const sleevesRemoved = removedClothing.includes("sleeves");
+  const stockSleeves = pieces.includes("sleeves")
+    || (sleevesRemoved && wornClothing(setWardrobeRemoval(choice, "sleeves", false)).includes("sleeves"));
+  const sleeveSource = getWardrobeGarment(garments?.dress)?.detachableSleeves ? garments?.dress : stockSleeves ? outfit.id : undefined;
+  const sleeveToggle = <button type="button" className="menu-control" data-wardrobe-remove="sleeves"
+    onClick={() => onTryOn(setWardrobeRemoval(choice, "sleeves", !sleevesRemoved))}>
+    {sleevesRemoved ? "Restore sleeves" : "Remove sleeves"}
+  </button>;
+  const canWearBra = braFitsWith(pieces, corset?.set);
   const piece = pieces.includes(selectedPiece) ? selectedPiece : pieces[0];
   const female = choice.id === VILLAGER_ID;
   const categories = CATEGORIES.filter(item => female || !("femaleOnly" in item));
@@ -147,9 +150,10 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
   const hasAuthoredMale = choice.id === ROOK_ID && Boolean(__ROOK_MODEL_URL__);
   const upperPiece = female ? "corset" : "coat";
   const categoryFocus: Record<Category, WardrobeFocus> = {
-    outfits: garments?.dress ? "Full body" : upperPiece, saved: "Full body", layers: "Full body", underwear: "Full body", corsets: "corset", tops: "shirt", bottoms: "skirt", bows: "bow",
+    outfits: garments?.dress ? "Full body" : upperPiece, saved: "Full body", layers: "Full body", underwear: "Full body",
+    corsets: "corset", tops: "shirt", bottoms: "skirt", bows: "bow",
     footwear: "shoes", headwear: pieces.includes("hat") ? "hat" : "Face", accessories: pieces.includes("glasses") ? "glasses" : "Face",
-    props: pieces.includes("bag") ? "bag" : "Hands", hair: "Face", face: "Face", skin: "Face",
+    props: pieces.includes("bag") ? "bag" : "Hands",
   };
 
   useLayoutEffect(() => {
@@ -176,7 +180,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
   }
   function wearSet(set: string) {
     onEquip({ ...choice, wardrobe: resolveWardrobe({ set, shirt: "none", waist: waistForSet(set) }), garments: undefined,
-      wardrobeTrial: undefined, wardrobeEase: undefined, removedClothing: undefined });
+      wardrobeTrial: undefined, wardrobeEase: undefined, removedClothing: undefined, bra: undefined });
   }
   function tryCorset(set: string) {
     const compatible = { ...choice.garments };
@@ -184,21 +188,37 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
     if (getWardrobeGarment(compatible.top)?.piece === "armor") delete compatible.top;
     const current = choice.wardrobeTrial;
     const waist = current?.set === set ? current.waist : FITTED_PRESETS[set]?.waist ?? "over";
-    onTryOn({ ...setWardrobeRemoval(choice, "corset", false), wardrobeTrial: { set, shirt: "none", waist },
+    const cut = current?.set === set ? current.cut : undefined;
+    onTryOn({ ...setWardrobeRemoval(choice, "corset", false), wardrobeTrial: resolveWardrobe({ set, shirt: "none", waist, cut }, { includeRetired: true }),
       wardrobeEase: current?.set === set ? choice.wardrobeEase : undefined,
+      bra: corset?.set === set ? choice.bra : undefined,
       garments: Object.keys(compatible).length ? compatible : undefined });
   }
+  function revealUnderwear(piece: UnderwearPiece) {
+    let next = garments?.dress ? setWardrobeRemoval(choice, "dress", true) : choice;
+    if (piece === "bra") {
+      next = { ...setWardrobeRemoval(setWardrobeRemoval(next, "top", true), "corset", true), bra: true };
+    } else {
+      next = setWardrobeRemoval(next, "skirt", true);
+    }
+    if (next !== choice) onTryOn(next);
+    setInspectedId(`underwear-${piece}`);
+    focusClothingPiece(piece);
+  }
   function options(field: CharacterStyleField, section: string, icon: Icon): Item[] {
+    const defaultOption = CHARACTER_APPEARANCE_OPTIONS[field][0].id;
     return CHARACTER_APPEARANCE_OPTIONS[field].map(option => ({
       id: `${field}:${option.id}`, label: option.label, section, icon,
       description: field === "glasses" ? (option.id === "none" ? "Remove the current glasses." : `Wear ${option.label.toLowerCase()} frames with the current outfit.`)
         : `Apply ${option.label.toLowerCase()} to the character’s ${section.toLowerCase()}.`,
-      selected: appearance[field] === option.id || (!appearance[field] && option.id === (field === "glasses" ? "none" : "original")),
+      selected: (appearance[field] ?? defaultOption) === option.id,
       color: "color" in option ? option.color : undefined,
       focus: field === "glasses" ? (option.id === "none" ? "Face" : "glasses")
         : field === "headwear" ? (option.id === "hat" ? "hat" : "Face") : undefined,
       pieces: field === "glasses" && option.id !== "none" ? ["glasses"] : field === "headwear" && option.id === "hat" ? ["hat"] : undefined,
       choose: () => edit(field, option.id),
+      clear: option.id === defaultOption && (appearance[field] ?? defaultOption) !== defaultOption
+        ? next => ({ ...next, appearance: { ...(next.appearance ?? appearance), [field]: defaultOption } }) : undefined,
     }));
   }
   const fittedSets = female ? WARDROBE_SETS.flatMap((set): Item[] => {
@@ -210,6 +230,8 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
       description: preset.description, pieces: "outfit",
       detail: "Matched corset + skirt", unavailable: installed ? undefined : "Pack not installed",
       choose: installed ? () => wearSet(set.id) : undefined,
+      clear: wardrobe?.set === set.id ? next => ({ ...next, wardrobe: undefined,
+        wardrobeEase: next.wardrobeTrial ? next.wardrobeEase : undefined }) : undefined,
     }];
   }) : [];
   const completeOutfits = character.outfits.map((item): Item => {
@@ -224,7 +246,9 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
       unavailable: installed ? undefined : "Pack not installed",
       remove: selected && preset ? () => onTryOn(setWardrobeRemoval(choice, "dress", true)) : undefined,
       choose: installed ? () => onEquip({ ...choice, outfit: item.id, wardrobe: undefined, garments: undefined,
-        wardrobeTrial: undefined, wardrobeEase: undefined, removedClothing: undefined }) : undefined,
+        wardrobeTrial: undefined, wardrobeEase: undefined, removedClothing: undefined, bra: undefined }) : undefined,
+      clear: !wardrobe && outfit.id === item.id && outfit.id !== character.outfits[0].id
+        ? next => ({ ...next, outfit: character.outfits[0].id }) : undefined,
     };
   });
   const outfitRemoved = OUTFIT_LAYERS.every(slot => choice.removedClothing?.includes(slot));
@@ -241,25 +265,35 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
       ...completeOutfits.filter(item => item.section !== "Complete outfits"),
     ],
     saved: [], layers: [],
-    underwear: female ? UNDERWEAR_PIECES.map((piece): Item => ({
-      id: `underwear-${piece}`, label: clothingPieceLabel(piece), section: "Underwear", icon: "layers",
-      description: piece === "bra" ? "Strapless base layer." : "Base layer with contrast trim.",
-      selected: pieces.includes(piece), included: true, detail: "Base layer", focus: piece, pieces: [piece],
-      layer: "Underwear", underwear: piece, ...underwearColors(look, piece),
-    })) : [],
+    underwear: female ? UNDERWEAR_PIECES.map((item): Item => {
+      const revealed = pieces.includes(item);
+      return {
+        id: `underwear-${item}`, label: clothingPieceLabel(item), section: "Underwear", icon: "layers",
+        description: item === "bra" ? "A close-fitting strapless layer you can wear on its own or under the Gothic Underbust Vest." : "Full-coverage base layer with a bound waist and leg openings.",
+        focus: item, layer: "Underwear", underwear: item, pieces: [item], included: true,
+        selected: revealed, detail: "Base layer", ...underwearColors(look, item),
+        clear: revealed || (item === "bra" && choice.bra !== undefined) ? next => {
+          const covered = setWardrobeRemoval(next, "dress", false);
+          return item === "bra"
+            ? { ...setWardrobeRemoval(setWardrobeRemoval(covered, "top", false), "corset", false), bra: undefined }
+            : setWardrobeRemoval(covered, "skirt", false);
+        } : undefined,
+      };
+    }) : [],
     corsets: female ? WARDROBE_CORSETS.map((set): Item => {
       const installed = Boolean(corsetModelUrl({ set: set.id, shirt: "none", waist: "over" }, "garage"));
       const selected = corset?.set === set.id;
       const underbust = set.id === UNDERBUST_WARDROBE_SET;
       return {
-        id: set.id, set: set.id, label: set.name, section: "Gothic corsets", icon: "corsets",
+        id: set.id, set: set.id, label: underbust ? "Gothic Underbust Vest" : set.name, section: "Gothic corsets", icon: "corsets",
         trial: true, selected, detail: "Try-on", focus: "corset", pieces: selected && garments?.top ? ["corset", "shirt"] : ["corset"], layer: "Outer",
         unavailable: installed ? undefined : "Pack not installed",
         description: underbust
-          ? "An open Underbust Vest. Try it on by itself or layer it over a fitted piece from Tops."
+          ? "The rebuilt vest appears in Over skirt. Tucked into skirt uses the original fit. Wear it alone or layer it over a fitted piece from Tops."
           : "Try this corset with your current skirt or choose another skirt from the wardrobe.",
         choose: installed ? () => tryCorset(set.id) : undefined,
-        remove: selected ? () => onTryOn({ ...choice, wardrobeTrial: undefined, wardrobeEase: undefined }) : undefined,
+        clear: choice.wardrobeTrial?.set === set.id
+          ? next => ({ ...next, wardrobeTrial: undefined, wardrobeEase: undefined }) : undefined,
       };
     }) : [],
     tops: [],
@@ -270,14 +304,12 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
     headwear: female ? []
       : hasAuthoredMale ? [] : options("headwear", "Headwear", "headwear"),
     bows: [],
-    accessories: options("glasses", "Glasses", "face"),
+    accessories: options("glasses", "Glasses", "accessories"),
     props: [
       { id: "empty-hands", label: "Empty hands", section: "Handheld props", icon: "props", focus: "Hands", description: "Remove the current handheld prop.", selected: !choice.prop, choose: () => onChange({ ...choice, prop: undefined }) },
-      { id: "shop-bag", label: "Shop bag", section: "Handheld props", icon: "props", focus: "bag", description: "Carry a shop bag to use the bag emotes.", pieces: ["bag"], selected: choice.prop === "shop-bag", detail: "Unlocks bag emotes", choose: () => onChange({ ...choice, prop: "shop-bag" }) },
+      { id: "shop-bag", label: "Shop bag", section: "Handheld props", icon: "props", focus: "bag", description: "Carry a shop bag to use the bag emotes.", pieces: ["bag"], selected: choice.prop === "shop-bag", detail: "Unlocks bag emotes", choose: () => onChange({ ...choice, prop: "shop-bag" }),
+        clear: choice.prop ? next => ({ ...next, prop: undefined }) : undefined },
     ],
-    hair: [...(hasAuthoredMale ? [] : options("hair", "Hairstyle", "hair")), ...options("hair_color", "Hair color", "hair")],
-    face: [...options("eye_color", "Eye color", "face"), ...options("brow_color", "Eyebrow tint", "face")],
-    skin: options("skin", "Skin tone", "skin"),
   };
   if (female) for (const item of importedWardrobeItems) {
     if (item.outfit) continue;
@@ -296,6 +328,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
       choose: modelUrl ? () => onTryOn(setWardrobeGarment(choice, item.slot, item.id)) : undefined,
       remove: selected ? () => onTryOn(item.slot === "dress" ? setWardrobeRemoval(choice, "dress", true)
         : setWardrobeGarment(choice, item.slot)) : undefined,
+      clear: choice.garments?.[item.slot] === item.id ? next => setWardrobeGarment(next, item.slot) : undefined,
     });
   }
   if (female) for (const item of villageWardrobeItems) {
@@ -318,6 +351,12 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
     if (slot === "bracer" && !choice.garments?.bracer) continue;
     const name = slot === "hat" && !choice.garments?.hat ? "bonnet" : label;
     const selected = removedClothing.includes(slot) || (slot === "skirt" && removedClothing.includes("village-skirt"));
+    const wornInOtherSection = Object.values(garments ?? {}).some(id => {
+      const garment = getWardrobeGarment(id);
+      return garment?.slot === slot && garment.section !== section;
+    });
+    const hasBundledLayer = slot === "corset" || slot === "top" || slot === "skirt" || slot === "shoes"
+      || slot === "hat" || slot === "bow";
     allItems[category].unshift({
       id: `remove-${slot}`, label: selected ? `Restore ${name}` : `Remove ${name}`, section, focus, layer,
       icon: "remove", selected, description: "",
@@ -325,21 +364,35 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
         const next = slot === "skirt" ? setWardrobeRemoval(choice, "village-skirt", false) : choice;
         onTryOn(setWardrobeRemoval(next, slot, !selected));
       },
+      clear: hasBundledLayer && !selected && !wornInOtherSection && wardrobeRemovalPieces[slot].some(piece => pieces.includes(piece))
+        ? next => setWardrobeRemoval(next, slot, true) : undefined,
     });
   }
   allItems.layers = Object.values(allItems).flat().filter(item => item.layer);
+  const categoryItems = allItems[category].filter(item => category !== "layers" || item.layer === layer);
   const query = search.trim().toLocaleLowerCase();
-  const items = allItems[category].filter(item => (category !== "layers" || item.layer === layer)
-    && (!readyOnly || (!item.unavailable && !item.trial) || item.selected)
+  const items = categoryItems.filter(item => (!readyOnly || (!item.unavailable && !item.trial) || item.selected)
     && (!query || `${item.label} ${item.section}`.toLocaleLowerCase().includes(query)));
   const sections = [...new Set(items.map(item => item.section))];
   const inspected = catalogOpen ? allItems[category].find(item => item.id === inspectedId) : undefined;
-  const colorPiece = inspected?.underwear ?? piece;
+  const underwearColor = inspected?.underwear;
+  const underbustOver = corset?.set === UNDERBUST_WARDROBE_SET && corset.waist === "over" && inspected?.set === corset.set;
   const itemPieces = inspected?.unavailable ? [] : inspected?.pieces === "outfit"
     ? pieces.filter(item => item !== "glasses" && item !== "bag") : inspected?.pieces?.filter(item => pieces.includes(item)) ?? [];
 
   const reviewPieces = inspected?.pieces === "outfit" ? itemPieces : inspected?.pieces ?? [];
   const reviewPiece = reviewPieces.includes(piece) ? piece : reviewPieces[0];
+
+  function clearedSection(section: string) {
+    return categoryItems.reduce((next, item) => item.section === section ? item.clear?.(next) ?? next : next, choice);
+  }
+
+  function clearSection(next: CharacterChoice) {
+    setInspectedId(undefined);
+    if (next.appearance !== choice.appearance || next.prop !== choice.prop || next.outfit !== choice.outfit || next.wardrobe !== choice.wardrobe) onChange(next);
+    else onTryOn(next);
+    inspectWardrobe(categoryFocus[category]);
+  }
 
   function openCategory(next: Category) {
     focusLayer.current = true;
@@ -367,18 +420,6 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
     setSearch("");
   }
 
-  function revealUnderwear(piece: UnderwearPiece) {
-    let next = garments?.dress ? setWardrobeRemoval(choice, "dress", true) : choice;
-    if (piece === "bra") {
-      next = setWardrobeRemoval(setWardrobeRemoval(next, "top", true), "corset", true);
-    } else {
-      next = setWardrobeRemoval(next, "skirt", true);
-    }
-    onTryOn(next);
-    setInspectedId(`underwear-${piece}`);
-    focusClothingPiece(piece);
-  }
-
   function controls(title: string, children: ReactNode, columns?: number) {
     return <section className="dressing-layer-group" aria-label={title}><h3>{title}</h3><div className="dressing-layer-options" data-controller-row data-controller-columns={columns}>{children}</div></section>;
   }
@@ -402,7 +443,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
           </button>
           <h3>{currentCategory.label}</h3>
         </header>
-        {category === "saved" ? <SavedOutfits choice={choice} onTryOn={onLoad} onEndPreview={onEndPreview} /> : <>
+        {category === "saved" ? <SavedOutfits choice={choice} onTryOn={onLoad} onEndPreview={onEndPreview} clearPreview /> : <>
         {category === "outfits" && female && <div className="dressing-layer-options" data-controller-row>
           <button type="button" className="menu-control" data-remove-outfit disabled={outfitRemoved} onClick={removeOutfit}>Remove outfit</button>
         </div>}
@@ -412,7 +453,9 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
         </div>}
         {(category === "underwear" || category === "layers" && layer === "Underwear") &&
           <div className="dressing-layer-options" role="group" aria-label="Underwear preview" data-controller-row>
-            <button type="button" className="menu-control" data-wardrobe-remove="top" disabled={pieces.includes("bra")} onClick={() => revealUnderwear("bra")}>Remove tops</button>
+            <button type="button" className="menu-control" data-wardrobe-remove="top" disabled={!pieces.some(piece =>
+              ["corset", "shirt", "dress", "armor"].includes(piece))} onClick={() => revealUnderwear("bra")}>Remove tops</button>
+            {(sleeveSource || sleevesRemoved) && sleeveToggle}
             <button type="button" className="menu-control" data-wardrobe-remove="bottom" disabled={pieces.includes("briefs")} onClick={() => revealUnderwear("briefs")}>Remove skirt / pants</button>
           </div>}
         <div className="dressing-search" data-controller-row><input type="search" aria-label={`Search ${currentCategory.label}`} placeholder="Find an item…" value={search} onChange={event => setSearch(event.target.value)} /></div>
@@ -420,30 +463,42 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
           <button type="button" className="menu-control" aria-pressed={!readyOnly} onClick={() => setReadyOnly(false)}>All items</button>
           <button type="button" className="menu-control" aria-pressed={readyOnly} onClick={() => setReadyOnly(true)}>Ready to wear</button>
         </div>
-        {sections.map(section => <section className="dressing-section" key={section} aria-label={section}>
-          <h3>{section}</h3>
-          <div className="dressing-items" data-controller-row data-controller-columns="1">
-            {items.filter(item => item.section === section).map(item => <button key={item.id} type="button" data-wardrobe-item={item.id}
-              data-inspected={inspected?.id === item.id || undefined} data-unavailable={item.unavailable ? true : undefined}
-              className={`dressing-item menu-control${item.icon === "remove" ? " dressing-item--remove" : ""}`} aria-pressed={item.selected ?? false}
-              aria-controls={item.icon === "remove" ? undefined : detailsId} onClick={() => {
-                setInspectedId(item.icon === "remove" ? undefined : item.id);
-                item.choose?.();
-                inspectWardrobe(item.focus ?? categoryFocus[category]);
-              }}>
-              <span className="dressing-item-art" style={{ "--item-color": item.color ?? "var(--app-muted)", "--item-accent": item.accent ?? item.color ?? "var(--app-accent)" } as CSSProperties}>
-                <WardrobeIcon name={item.icon} />{item.color && <i className="dressing-swatch" />}
-              </span>
-              <span className="dressing-item-copy">
-                <span className="dressing-item-name">{item.label}</span>
-                {item.set && !item.unavailable && (!item.trial || item.selected) && <FitBadge choice={item.trial ? choice : {
-                  ...choice, wardrobe: resolveWardrobe({ set: item.set, shirt: "none", waist: waistForSet(item.set) }), garments: undefined, wardrobeTrial: undefined, wardrobeEase: undefined,
-                }} piece="corset" itemId={item.id} />}
-                {item.icon !== "remove" && <small>{item.unavailable ?? (item.selected ? (item.trial ? "Trying on" : "Wearing") : item.detail ?? "Ready to wear")}</small>}
-              </span>
-            </button>)}
-          </div>
-        </section>)}
+        {sections.map(section => {
+          const cleared = clearedSection(section);
+          return <section className="dressing-section" key={section} aria-label={section}>
+            <header className="dressing-section-heading" data-controller-row>
+              <h3>{section}</h3>
+              <button type="button" className="dressing-section-clear menu-control" data-clear-section
+                aria-label={`Clear ${section}`} disabled={cleared === choice} onClick={event => {
+                  const firstItem = event.currentTarget.closest("section")?.querySelector<HTMLButtonElement>("[data-wardrobe-item]:not([data-unavailable])");
+                  const target = readyOnly || query ? catalogRef.current?.querySelector("[data-wardrobe-back]") : firstItem;
+                  if (target instanceof HTMLElement) target.focus({ preventScroll: true });
+                  clearSection(cleared);
+                }}>Clear</button>
+            </header>
+            <div className="dressing-items" data-controller-row data-controller-columns="1">
+              {items.filter(item => item.section === section).map(item => <button key={item.id} type="button" data-wardrobe-item={item.id}
+                data-inspected={inspected?.id === item.id || undefined} data-unavailable={item.unavailable ? true : undefined}
+                className={`dressing-item menu-control${item.icon === "remove" ? " dressing-item--remove" : ""}`} aria-pressed={item.selected ?? false}
+                aria-controls={item.icon === "remove" ? undefined : detailsId} onClick={() => {
+                  setInspectedId(item.icon === "remove" ? undefined : item.id);
+                  item.choose?.();
+                  inspectWardrobe(item.focus ?? categoryFocus[category]);
+                }}>
+                <span className="dressing-item-art" style={{ "--item-color": item.color ?? "var(--app-muted)", "--item-accent": item.accent ?? item.color ?? "var(--app-accent)" } as CSSProperties}>
+                  <WardrobeIcon name={item.icon} />{item.color && <i className="dressing-swatch" />}
+                </span>
+                <span className="dressing-item-copy">
+                  <span className="dressing-item-name">{item.label}</span>
+                  {item.set && !item.unavailable && (!item.trial || item.selected) && <FitBadge choice={item.trial ? choice : {
+                    ...choice, wardrobe: resolveWardrobe({ set: item.set, shirt: "none", waist: waistForSet(item.set) }), garments: undefined, wardrobeTrial: undefined, wardrobeEase: undefined,
+                  }} piece="corset" itemId={item.id} />}
+                  {item.icon !== "remove" && <small>{item.unavailable ?? (item.selected ? (item.trial ? "Trying on" : "Wearing") : item.detail ?? "Ready to wear")}</small>}
+                </span>
+              </button>)}
+            </div>
+          </section>;
+        })}
         {!items.length && <p className="dressing-empty" role="status">{query ? "No items match your search." : readyOnly ? "No separate pieces are ready in this category yet." : "No separate pieces for this character yet."}</p>}
         </>}
       </section>
@@ -463,6 +518,10 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
       {inspected && <>
         <header><small>{currentCategory.label}</small><h2>{inspected.label}</h2></header>
         <p>{inspected.description}</p>
+        {underbustOver && !hasUnderbustCut(corset.cut) &&
+          <p className="dressing-note" role="status">This vest cut is missing. Pull the wardrobe models with Git LFS and restart AvenLab.</p>}
+        {underbustOver &&
+          <p className="dressing-note">Changing linked dye groups together still needs testing.</p>}
         <dl><dt>Price</dt><dd>{inspected.unavailable ? "Not listed" : inspected.trial ? "Free try-on" : inspected.included ? "Included" : "0 credits"}</dd>
           <dt>Item ID</dt><dd className="dressing-item-id">{inspected.id}</dd>
           {inspected.layer && <><dt>Layer</dt><dd>{inspected.layer}</dd></>}</dl>
@@ -474,6 +533,14 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
             catalogRef.current?.querySelector<HTMLButtonElement>(readyOnly ? "[data-wardrobe-back]" : "[data-inspected]")?.focus();
           }}>{inspected.included ? "Remove piece" : inspected.focus === "dress" || inspected.pieces === "outfit" ? "Remove dress" : "Clear try-on"}</button>
         </div>}
+        {(underwearColor === "bra" || underbustOver) && <div data-controller-row>
+          <button type="button" className="menu-control" data-wardrobe-toggle="bra" disabled={!canWearBra}
+            onClick={() => onTryOn({ ...choice, bra: !pieces.includes("bra") })}>
+            {pieces.includes("bra") ? "Remove bra" : "Put on bra"}
+          </button>
+        </div>}
+        {inspected.id === sleeveSource && <div data-controller-row>{sleeveToggle}</div>}
+        {underwearColor && <ClothingColorToolbar choice={choice} piece={underwearColor} onChange={onColors} />}
         {itemPieces.length > 0 && controls(itemPieces.length > 1 ? "Outfit pieces" : "Piece", itemPieces.map(item => <button key={item} type="button" className="menu-control"
           data-dressing-piece={item} aria-pressed={camera === "Selected item" && selectedPiece === item} onClick={() => focusClothingPiece(item)}>
           {clothingPieceLabel(item)}</button>), 2)}
@@ -486,13 +553,18 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
               else onChange(next);
               focusClothingPiece("corset");
             }}>{label}</button>), 2)}
+        {underbustOver && (hasUnderbustCut("original") || corset.cut === "original") &&
+          controls("Vest cut", ([undefined, "original"] as const).map(cut => <button key={cut ?? "restored"} type="button" className="menu-control"
+            aria-pressed={corset.cut === cut} onClick={() => {
+              if (corset.cut !== cut) onTryOn({ ...choice, wardrobeTrial: { ...corset, cut } });
+            }}>{cut === "original" ? "Original Cut" : "Restored Cut"}</button>), 2)}
         <FitReview choice={choice} piece={reviewPiece}
           subject={{ id: inspected.id, label: inspected.label, kind: "garment" }} />
       </>}
     </aside>
     <div className="dressing-toolbar">
       {cameraTools}
-      {colorPiece && <ClothingColorToolbar choice={choice} piece={colorPiece} onChange={onColors} />}
+      {!underwearColor && piece && <ClothingColorToolbar choice={choice} piece={piece} onChange={onColors} />}
     </div>
   </>;
 }

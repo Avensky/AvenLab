@@ -181,7 +181,7 @@ export function fitUnderbustVest(root: Object3D, body: BufferGeometry) {
 }
 
 /** Add only the room needed by the separately selected top at each point. */
-export function fitUnderbustOverTop(root: Object3D, body: BufferGeometry, tops: readonly MeshBVH[]) {
+export function fitUnderbustOverTop(root: Object3D, body: BufferGeometry, tops: readonly MeshBVH[], { preserveNormals = false } = {}) {
   const bvhOptions = { indirect: true, setBoundingBox: false };
   const surface = new MeshBVH(body, bvhOptions);
   const skin = body.getAttribute("position"), index = body.getIndex()!;
@@ -218,7 +218,7 @@ export function fitUnderbustOverTop(root: Object3D, body: BufferGeometry, tops: 
       fitted.getAttribute("position").setXYZ(vertex, point.x, point.y, point.z);
     }
     if (!fitted) return;
-    fitted.computeVertexNormals();
+    if (!preserveNormals) fitted.computeVertexNormals();
     fitted.computeBoundingBox();
     fitted.computeBoundingSphere();
     mesh.geometry = fitted;

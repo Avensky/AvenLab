@@ -32,7 +32,7 @@ function wardrobePreviewServer() {
           import { Group, SkinnedMesh } from "three";
 
           const assets = new Map(), invalidate = () => {};
-          export const prepared = [], committed = [], loadedGarments = [], loadedBodies = [];
+          export const prepared = [], committed = [], appliedLooks = [], loadedGarments = [], loadedBodies = [];
           export const useThree = selector => selector({ size: { width: 1200 }, invalidate });
           export const Html = ({ children }) => children;
           export const CharacterTurntable = ({ children }) => children;
@@ -40,7 +40,7 @@ function wardrobePreviewServer() {
           export const PreviewLoadingStatus = ({ label }) => createElement("span", { role: "status" }, label);
           export const StylizedDriver = () => null;
           export const villagerModelUrl = look => look.wardrobe?.set ?? "village";
-          export const applyVillagerLook = () => {};
+          export const applyVillagerLook = (model, look) => { appliedLooks.push(look); };
 
           export function makeAssetAvailable(url, meshName, fullBody = true) {
             const scene = new Group(), body = new Group();
@@ -103,7 +103,7 @@ test("the fitting room keeps the last complete outfit until the latest selection
     const { DEFAULT_CHARACTER } = await vite.ssrLoadModule("/src/game/characters/characterCatalog.ts");
     const { getWardrobeGarment } = await vite.ssrLoadModule("/src/game/characters/wardrobeGarments.ts");
     const { useCharacterPreviewStore: preview } = await vite.ssrLoadModule("/src/game/characters/characterPreviewStore.ts");
-    const { committed, prepared, loadedGarments, loadedBodies, makeAssetAvailable, delayAsset } =
+    const { committed, prepared, appliedLooks, loadedGarments, loadedBodies, makeAssetAvailable, delayAsset } =
       await vite.ssrLoadModule("virtual:wardrobe-preview");
     const url = id => getWardrobeGarment(id).url;
     makeAssetAvailable("village");
@@ -146,6 +146,16 @@ test("the fitting room keeps the last complete outfit until the latest selection
     assert.equal(status(), "Character model unavailable");
     assert.deepEqual(prepared, ["village skirt-01 bowtie-01", "village skirt-03 bowtie-01"]);
     assert.deepEqual(committed, prepared, "only one complete replacement commits");
+
+    const removedHat = { ...DEFAULT_CHARACTER, garments: { skirt: "skirt-03", bow: "bowtie-01" }, removedClothing: ["hat"] };
+    await choose("skirt-03", undefined, { choice: removedHat });
+    const withoutHat = model();
+    assert.notEqual(withoutHat, thirdModel, "changing a removal prepares the revised outfit");
+    await choose("skirt-03", undefined, { choice: {
+      ...removedHat, removedClothing: ["hat"], appearance: { ...DEFAULT_CHARACTER.appearance, color: "#826911" },
+    } });
+    assert.equal(model(), withoutHat, "redyeing an equivalent fit keeps the same skinned character");
+    assert.equal(appliedLooks.at(-1).appearance.color, "#826911", "the new dye still reaches the mounted rig");
 
     const secondGothic = getWardrobeGarment("gothic-skirt-02");
     const thirdGothic = getWardrobeGarment("gothic-skirt-03");

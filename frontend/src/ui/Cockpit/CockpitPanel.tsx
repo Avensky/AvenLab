@@ -101,7 +101,7 @@ export function CockpitPanel() {
             event.stopPropagation();
         }}
       >
-        <MenuFrameHeader title="COCKPIT" titleId="cockpit-title" eyebrow="" compact={angled}
+        <MenuFrameHeader title="COCKPIT" titleId="cockpit-title" eyebrow="" compact={angled} backAction={{ onClick: close, label: "Close" }}
           className={angled ? "cockpit-header angled-tab-header" : "cockpit-header"}
           actions={<>
             <ThemePreferences />

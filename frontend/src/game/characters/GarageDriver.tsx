@@ -19,8 +19,8 @@ import { isCompactPreview } from "../preview/previewBudget";
 import { failCockpitPreview, useCharacterPreviewStore } from "./characterPreviewStore";
 import { removalNeedsVillagerBody, replacesVillagerBody, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
 import { getWardrobeGarment, hasWardrobeRevisionMesh, wardrobeGarmentModelUrl, type WardrobeRemoval } from "./wardrobeGarments";
-import { corsetModelUrl } from "./wardrobe";
-import { FITTING_BODY_URL } from "./standaloneCorset";
+import { corsetModelUrls, isRebuiltUnderbustUrl } from "./wardrobe";
+import { FITTING_BODY_URL, rebuiltUnderbustPart } from "./standaloneCorset";
 
 const DRIVER_TILT: [number, number, number] = [-.095, -.16, -.045];
 const LEGACY_FITTING_BODY_URL = "/models/characters/wardrobe/gothic-02.mobile.glb";
@@ -61,10 +61,11 @@ function VillagerDriver({ url, look, compact, fallback, ...playback }: VillagerP
   const onReady = useCallback<WardrobeAssetListener>((asset, loaded) => setSources(current => current[asset] === loaded
     ? current : { ...current, [asset]: loaded }), []);
   const kind = compact ? "portrait" : "garage";
-  const preferredCorset = corsetModelUrl(look.corset, kind);
-  const corsetUrl = preferredCorset && sources[preferredCorset] === null
-    ? corsetModelUrl(look.corset, kind, { useStandalone: false }) ?? preferredCorset
-    : preferredCorset;
+  const corsetUrls = corsetModelUrls(look.corset, kind);
+  const corsetUrl = corsetUrls.find(asset => {
+    const source = sources[asset];
+    return source !== null && (!source || !isRebuiltUnderbustUrl(asset) || rebuiltUnderbustPart(source));
+  });
   const requested = useMemo(() => Object.values(look.garments ?? {}).flatMap(id => {
     const item = getWardrobeGarment(id);
     if (!item) return [];
@@ -95,7 +96,7 @@ function VillagerDriver({ url, look, compact, fallback, ...playback }: VillagerP
   const assetUrls = [...urls];
   const garmentBody = needsBody ? bundledBody ?? sources[bodyUrl]?.getObjectByName("BODY_WARDROBE") : undefined;
   const loading = assetUrls.some(asset => sources[asset] === undefined);
-  const unavailable = assetUrls.some(asset => sources[asset] === null)
+  const unavailable = (corsetUrls.length > 0 && !corsetUrl) || assetUrls.some(asset => sources[asset] === null)
     || (needsSeparateBody && sources[bodyUrl] !== undefined && !garmentBody);
 
   // Keep the visible outfit mounted until the latest selection can replace it as a unit.

@@ -2446,6 +2446,7 @@ export function SignalReconMission({
           theme="green"
           eyebrow={`${selectedMission.mission_code} // TACTICAL TERMINAL`}
           title={selectedMission.title}
+          backAction={onExit && { onClick: onExit, disabled: busy || isRunning || Boolean(activeSessionId) }}
           characterReadOnly={isRunning || Boolean(activeSessionId) || busy}
           meta={displayStep?.label ?? selectedMission.target}
           collapsed={collapsed}

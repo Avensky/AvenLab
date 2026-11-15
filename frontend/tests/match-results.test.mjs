@@ -71,7 +71,10 @@ test('saved/live results use server outcomes and preserve modal/action ownership
    let keys=0;const underneathKey=()=>{keys++;};window.addEventListener('keydown',underneathKey);
    await act(async()=>window.dispatchEvent(new KeyboardEvent('keydown',{code:'Escape',key:'Escape',bubbles:true,cancelable:true})));
    assert.equal(keys,0);assert.equal(ui.getState().screen,'career');assert.equal(ui.getState().overlay,null);assert.equal(sent.length,before);window.removeEventListener('keydown',underneathKey);
-   await act(async()=>store.openStoredMatch(match('history-actions')));await act(async()=>playAgainFromResults());assert.equal(sent.length,before);assert.equal(ui.getState().screen,'career');
+   await act(async()=>store.openStoredMatch(match('history-actions')));
+   await act(async()=>document.querySelector('.match-results-header [data-header-back]').click());
+   assert.equal(ui.getState().overlay,null);assert.equal(sent.length,before);assert.equal(ui.getState().screen,'career');
+   await act(async()=>store.openStoredMatch(match('history-replay')));await act(async()=>playAgainFromResults());assert.equal(sent.length,before);assert.equal(ui.getState().screen,'career');
   });
   await t.test('live leave waits for acknowledgement; errors keep the archived result retryable',async()=>{
    await act(async()=>{ui.setState({screen:'sandbox',overlay:null});store.receiveMatchResult(match('leave'));});

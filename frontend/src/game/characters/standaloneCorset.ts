@@ -1,9 +1,10 @@
-import { Group, Mesh, SkinnedMesh, type Object3D, type Skeleton } from "three";
+import { Group, Mesh, SkinnedMesh, type Material, type Object3D, type Skeleton } from "three";
 import { fitLacedBodiceToSkirt } from "./lacedStrapFit";
 import { prepareWardrobeLining } from "./wardrobeLining";
 import { bindWardrobeGarmentMesh } from "./wardrobeGarmentFit";
 import { prepareWardrobe, UNDERBUST_WARDROBE_SET, type WardrobeChoice } from "./wardrobe";
 import { fitUnderbustOverTop } from "./underbustFit";
+import { tagRebuiltUnderbustMaterial } from "./rebuiltUnderbustDye";
 import type { OverSkirtEase } from "./overSkirtEase";
 import type { MeshBVH } from "three-mesh-bvh";
 
@@ -22,23 +23,58 @@ function bindCorsetPart(part: Object3D, skeleton: Skeleton): Object3D | undefine
 
 export type StandaloneCorsetSource = { set: string; scene: Object3D };
 
-/** Bind the two authored fits and reuse their style-specific garment fitting on the live actor. */
+export function rebuiltUnderbustPart(scene: Object3D) {
+  const part = scene.getObjectByName("UNDERBUST_SOURCE_REFIT");
+  if (part?.userData.wardrobeRole !== "corset-over") return;
+  let hasCloth = false;
+  part.traverse(object => { hasCloth ||= object instanceof SkinnedMesh; });
+  return hasCloth ? part : undefined;
+}
+
+/** Bind the loaded fits to the actor and retain the authored Over shell. */
 export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton: Skeleton, fullBody: Object3D | undefined) {
   if (!(fullBody instanceof SkinnedMesh)) return;
+  const underbust = source.set === UNDERBUST_WARDROBE_SET;
+  const rebuilt = underbust ? rebuiltUnderbustPart(source.scene) : undefined;
   const tuckedSource = source.scene.getObjectByName("CLOTH_CORSET_TUCKED");
-  const overSource = source.scene.getObjectByName("CLOTH_CORSET_OVER");
-  if (!tuckedSource || !overSource) return;
-  const tucked = bindCorsetPart(tuckedSource, skeleton);
+  const overSource = rebuilt ?? source.scene.getObjectByName("CLOTH_CORSET_OVER");
+  if (!overSource) return;
+  const tucked = tuckedSource && bindCorsetPart(tuckedSource, skeleton);
   const over = bindCorsetPart(overSource, skeleton);
   const body = bindWardrobeGarmentMesh(fullBody, skeleton);
-  if (!tucked || !over || !body) return;
+  if ((!rebuilt && !tucked) || !over || !body) return;
 
   const group = new Group();
   group.name = `wardrobe-corset-${source.set}`;
-  group.add(tucked, over, body);
-  const disposeFit = prepareWardrobeLining(group);
+  const materials = new Map<Material, Material>();
+  if (tucked) group.add(tucked);
+  if (rebuilt) {
+    const authored = new Group();
+    authored.name = "CLOTH_CORSET_OVER";
+    authored.userData.wardrobeRole = "corset-over";
+    authored.add(over);
+    group.add(authored);
+    const withDyeChannel = (material: Material) => {
+      let copy = materials.get(material);
+      if (!copy) {
+        copy = material.clone();
+        tagRebuiltUnderbustMaterial(copy);
+        materials.set(material, copy);
+      }
+      return copy;
+    };
+    over.traverse(mesh => {
+      if (mesh instanceof SkinnedMesh) {
+        mesh.userData.clothingPiece = "corset";
+        mesh.userData.rebuiltUnderbust = true;
+        mesh.material = Array.isArray(mesh.material) ? mesh.material.map(withDyeChannel) : withDyeChannel(mesh.material);
+      }
+    });
+  } else {
+    group.add(over, body);
+  }
+  const disposeFit = rebuilt ? undefined : prepareWardrobeLining(group);
   body.removeFromParent();
-  const underbust = source.set === UNDERBUST_WARDROBE_SET;
   const laced = source.set === "gothic-01";
   let wardrobe = underbust || laced ? undefined : prepareWardrobe(group);
   let disposeTopFit: (() => void) | undefined;
@@ -46,7 +82,7 @@ export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton
   return {
     group,
     fitTop: underbust ? (tops: readonly MeshBVH[]) => {
-      disposeTopFit = fitUnderbustOverTop(group, body.geometry, tops);
+      disposeTopFit = fitUnderbustOverTop(group, body.geometry, tops, { preserveNormals: Boolean(rebuilt) });
     } : undefined,
     fitSkirt: laced ? (skirts: readonly MeshBVH[]) => {
       disposeSkirtFit = fitLacedBodiceToSkirt(group, body.geometry, skirts);
@@ -61,6 +97,7 @@ export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton
       disposeTopFit?.();
       disposeSkirtFit?.();
       disposeFit?.();
+      materials.forEach(material => material.dispose());
     },
   };
 }

@@ -5,7 +5,9 @@ import { DEFAULT_WINDOW_TONE, type WindowTone } from "../preview/windowTones";
 
 export function portraitStyleKey(model: string, appearance: HeroAppearance, tone: WindowTone = DEFAULT_WINDOW_TONE): string {
   const style=normalizeHeroAppearance(appearance);
-  return JSON.stringify([model, style.body.toLowerCase(), style.finish, style.seats, style.skin, style.metallic, tone]);
+  // The portrait uses the resolved body color. Seat requests and the skin ID
+  // do not render independently, so changing either can reuse the image.
+  return JSON.stringify([model, style.body.toLowerCase(), style.finish, style.metallic, tone]);
 }
 export function needsStyledPortrait(appearance: HeroAppearance): boolean {
   // Seat colors remain pending asset mapping in both showroom and portrait.

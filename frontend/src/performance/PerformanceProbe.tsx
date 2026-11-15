@@ -14,14 +14,16 @@ import { sampleHudFrame, resetHudFrames } from "./frameReadout";
 export function PerformanceProbe() {
   const gl = useThree((s) => s.gl);
   const overlay = useRenderSettingsStore((s) => s.overlay);
+  const driving = useUIStore((s) => s.screen === "sandbox");
   useEffect(() => {
-    recorder.enabled = overlay;
+    recorder.enabled = driving && overlay;
     return () => {
       recorder.enabled = false;
     };
-  }, [overlay]);
+  }, [driving, overlay]);
+  useEffect(initializeCaptureArchive, []);
   useEffect(() => {
-    initializeCaptureArchive();
+    if (!driving) return;
     let previous: number | null = null;
     let started = 0;
     const before = addEffect(() => {
@@ -99,6 +101,6 @@ export function PerformanceProbe() {
       document.removeEventListener("visibilitychange", hidden);
       recorder.cancel("Canvas stopped");
     };
-  }, [gl]);
+  }, [driving, gl]);
   return null;
 }

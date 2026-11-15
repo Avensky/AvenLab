@@ -1,8 +1,7 @@
-import { MenuLogo } from "../../components/menus/MenuLogo";
 import { useEffect, useId, useMemo, useRef, type CSSProperties } from "react";
 import { AttackIcon } from "../../combat/AttackIcon";
 import { ControllerAction } from "../../components/controller";
-import { MenuFooter } from "../../components/menus/MenuFrame";
+import { MenuFooter, MenuHeaderBack } from "../../components/menus/MenuFrame";
 import { MenuIcon } from "../../components/menus/MenuIcon";
 import { MenuVideoBackground } from "../../components/menus/MenuVideoBackground";
 import { trapMenuFocus } from "../../components/menus/menuFocus";
@@ -77,7 +76,7 @@ export function TeamLineup() {
       <header className="team-lineup-heading">
         <p>{matchModeLabel(active.mode, active.team_size)} <span data-team={active.team}>{active.team} team</span></p>
         <div className="menu-title-with-logo">
-          <MenuLogo compact />
+          <MenuHeaderBack onClick={close} label="Close team lineup" />
           <h1 id={title}>Team assembled</h1>
           <CharacterHeaderProfile compact readOnly />
         </div>

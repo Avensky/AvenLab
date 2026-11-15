@@ -42,6 +42,7 @@ export type CharacterChoice = {
   wardrobeTrial?: WardrobeChoice;
   wardrobeEase?: Exclude<OverSkirtEase, 0>;
   removedClothing?: WardrobeRemoval[];
+  bra?: boolean;
 };
 
 export const VILLAGER_ID = "mara-vega";
@@ -75,16 +76,18 @@ export function characterLook(choice: CharacterChoice | null | undefined) {
   const wardrobe = character.id === VILLAGER_ID ? resolveWardrobe(choice?.wardrobe) : undefined;
   const trials = character.id === VILLAGER_ID ? visibleWardrobeGarments(choice) : undefined;
   const outfitGarment = character.id === VILLAGER_ID ? getWardrobeGarment(outfit.id) : undefined;
-  const wearsOutfitGarment = outfitGarment?.outfit && !choice?.removedClothing?.includes("dress") && !wardrobe && !choice?.wardrobeTrial
-    && !trials?.top && !trials?.skirt && !trials?.dress && wardrobeGarmentModelUrl(outfitGarment, "garage");
-  const outfitRemovals: readonly WardrobeRemoval[] = !wearsOutfitGarment ? NO_OUTFIT_REMOVALS
-    : outfitGarment.outfit?.barefoot ? SLEEPWEAR_REMOVALS : OUTFIT_REMOVALS;
   const removed = removedWardrobeLayers(choice);
+  const usesOutfitGarment = outfitGarment?.outfit && !wardrobe && !choice?.wardrobeTrial
+    && !trials?.top && !trials?.skirt && !trials?.dress && wardrobeGarmentModelUrl(outfitGarment, "garage");
+  const wearsOutfitGarment = usesOutfitGarment && !removed.includes("dress");
+  const outfitRemovals: readonly WardrobeRemoval[] = !usesOutfitGarment ? NO_OUTFIT_REMOVALS
+    : outfitGarment.outfit?.barefoot ? SLEEPWEAR_REMOVALS : OUTFIT_REMOVALS;
   const removedClothing = !outfitRemovals.length ? removed : !removed.length ? outfitRemovals
     : [...new Set([...removed, ...outfitRemovals])];
   const showCorset = character.id === VILLAGER_ID && !removedClothing.includes("corset");
   return {
     character, outfit, appearance, female, removedClothing,
+    bra: character.id === VILLAGER_ID ? choice?.bra : undefined,
     wardrobe, outfitRemovals,
     corset: showCorset ? resolveWardrobe(choice?.wardrobeTrial, { includeRetired: true }) : undefined,
     overEase: showCorset ? wardrobeOverEase(choice) : 0 as const,

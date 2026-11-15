@@ -226,6 +226,7 @@ export function HeroSelection({ overlay = false }: { overlay?: boolean } = {}) {
         idPrefix="hero-selection-role"
         panelId="hero-role-panel"
         busy={busy}
+        backAction={{ onClick: back, disabled: busy }}
       />
       <div className="hero-selection-stage hero-picker-stage" data-hero-filter={role} id="hero-role-panel" role="tabpanel" aria-labelledby={"hero-selection-role-tab-"+role}>
         {(!match || inMode || overlay) && (

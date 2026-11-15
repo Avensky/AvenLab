@@ -198,6 +198,7 @@ export function ModeSelection() {
         compact
         character={{ showProgress: true }}
         busy={busy}
+        backAction={{ onClick: back, disabled: busy }}
         tablistLabel="Game mode"
         tablistClassName="alpha-mode-tabs"
         idPrefix="mode-selection"

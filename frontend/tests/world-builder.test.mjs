@@ -363,6 +363,9 @@ test("world builder edits drafts without changing live physics or stealing drivi
         await act(async () => routeMenuAction("back"));
         assert.equal(ui.getState().overlay, "pause");
         assert.equal(world.getState().map, live);
+        await act(async () => ui.setState({ overlay: "world_builder" }));
+        await act(async () => document.querySelector(".wb-header [data-header-back]").click());
+        assert.equal(ui.getState().overlay, "pause");
       },
     );
   } finally {

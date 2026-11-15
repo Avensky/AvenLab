@@ -16,6 +16,7 @@ declare const __CHARACTER_BAG_URL__: string | null;
 declare const __ROOK_MODEL_URL__: string | null;
 declare const __ROOK_PORTRAIT_URL__: string | null;
 
+declare const __DISCOVERED_WARDROBE_GARMENTS__: import("./src/game/characters/wardrobeGarments").WardrobeGarment[];
 declare const __DRESSING_ROOM_IMPORTED_IDS__: string[];
 declare const __DRESSING_ROOM_MOBILE_IDS__: string[];
 declare const __DRESSING_ROOM_REVISION_IDS__: string[];

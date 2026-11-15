@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { CHARACTER_APPEARANCE_OPTIONS, OUTFIT_THEMES, characterLook, type CharacterChoice } from "./characterCatalog";
 import { clothingColors, clothingPieceLabel, isUnderwearPiece, underwearColors, withClothingColors, type ClothingPiece, type PieceColors } from "./clothingPieces";
+import { corsetModelUrl, isRebuiltUnderbustUrl } from "./wardrobe";
 import "./clothingColorToolbar.css";
 
 const colorPresets = CHARACTER_APPEARANCE_OPTIONS.color.map(({ id, label, color }) => ({ label: id === "original" ? "White" : label, color }));
@@ -22,13 +23,21 @@ export function ClothingColorToolbar({ choice, piece, onChange }: {
   const look = characterLook(choice)!;
   const colors = clothingColors(look, piece);
   const underwear = isUnderwearPiece(piece) ? underwearColors(look, piece) : undefined;
-  const fabric = underwear?.color ?? colors?.color ?? look.fabric;
-  const trim = underwear?.accent ?? colors?.accent ?? colors?.color ?? look.trim;
+  const corset = piece === "corset" ? corsetModelUrl(look.corset, "garage") : null;
+  const rebuilt = Boolean(corset && isRebuiltUnderbustUrl(corset));
+  const outfitFabric = look.appearance.color === "original" ? undefined : look.fabric;
+  const fabric = underwear?.color ?? colors?.color ?? (rebuilt ? outfitFabric ?? "#30282a" : look.fabric);
+  const trim = underwear?.accent ?? colors?.accent ?? (rebuilt ? look.appearance.accent ?? "#362d2c" : colors?.color ?? look.trim);
   const pieceName = clothingPieceLabel(piece);
   const dye = (value?: PieceColors) => onChange(withClothingColors(choice, piece, value));
   const bars = [
-    { label: "Main", value: fabric, apply: (color: string) => dye(underwear ? { color } : { color, accent: trim }) },
-    { label: "Accent", value: trim, apply: (accent: string) => dye({ accent }) },
+    { label: "Main", value: fabric, apply: (color: string) => dye(rebuilt || underwear ? { color } : { color, accent: trim }) },
+    { label: rebuilt ? "Binding" : "Accent", value: trim, apply: (accent: string) => dye({ accent }) },
+    ...(rebuilt ? [
+      { label: "Front panel", value: colors?.panel ?? outfitFabric ?? "#40302c", apply: (panel: string) => dye({ panel }) },
+      { label: "Lining", value: colors?.lining ?? outfitFabric ?? "#2a262b", apply: (lining: string) => dye({ lining }) },
+      { label: "Hardware", value: colors?.hardware ?? "#ad8451", apply: (hardware: string) => dye({ hardware }) },
+    ] : []),
   ];
 
   useEffect(() => {
@@ -54,7 +63,8 @@ export function ClothingColorToolbar({ choice, piece, onChange }: {
         <div className="dressing-color-chips">
           {OUTFIT_THEMES.map(theme => <button key={theme.name} type="button" className="menu-control menu-panel-frame dressing-color-preset"
             aria-label={theme.name} title={theme.name} aria-pressed={fabric === theme.color && trim === theme.accent}
-            onClick={() => dye({ color: theme.color, accent: theme.accent })}>
+            onClick={() => dye(rebuilt ? { color: theme.color, accent: theme.accent, panel: theme.color, lining: theme.color, hardware: theme.accent }
+              : { color: theme.color, accent: theme.accent })}>
             <i className="dressing-color-swatch" style={swatch(theme.color, theme.accent)} aria-hidden="true" />
           </button>)}
           <button type="button" className="menu-control menu-panel-frame dressing-color-reset" disabled={!colors}

@@ -11,14 +11,14 @@ export function wardrobeCoverageSurface(geometry: BufferGeometry) {
     .setIndex(new BufferAttribute(indices, 1)));
 }
 
-export function prepareWardrobeCoverage(surfaces: readonly MeshBVH[], minimumClearance = -.012) {
+export function prepareWardrobeCoverage(surfaces: readonly MeshBVH[], minimumClearance = -.012, cornerSample = .8) {
   const ray = new Ray();
   const normal = new Vector3(), edge = new Vector3();
   const near = .012 + minimumClearance;
 
   function covered(center: Vector3, corner?: Vector3) {
     ray.origin.copy(center);
-    if (corner) ray.origin.lerp(corner, .8);
+    if (corner) ray.origin.lerp(corner, cornerSample);
     ray.origin.addScaledVector(normal, -.012);
     return surfaces.some(surface => surface.raycastFirst(ray, DoubleSide, near, .052));
   }
