@@ -31,7 +31,7 @@ type VillagerPlayback = {
 };
 type VillagerPreview = {
   look: CharacterLook; scene: Object3D; garments: WardrobeGarmentSource[]; garmentBody?: Object3D;
-  corsetScene?: Object3D; corsetSet?: string;
+  corsetScene?: Object3D; corsetSet?: string; removedClothing: CharacterLook["removedClothing"];
 };
 
 function WardrobeAsset({ url, onReady }: { url: string; onReady: WardrobeAssetListener }) {
@@ -113,9 +113,13 @@ function VillagerDriver({ url, look, compact, fallback, ...playback }: VillagerP
       const previous = active.garments[index];
       return previous.item === garment.item && previous.scene === garment.scene;
     });
+    const removals = look.removedClothing;
+    const sameRemovals = active?.removedClothing.length === removals.length
+      && removals.every((layer, index) => active.removedClothing[index] === layer);
     if (active?.look !== look || active.scene !== scene || active.garmentBody !== garmentBody
       || active.corsetScene !== corsetScene || active.corsetSet !== corsetSet || !sameGarments) {
-      setActive({ look, scene, garments: sameGarments ? active.garments : garments, garmentBody, corsetScene, corsetSet });
+      setActive({ look, scene, garments: sameGarments ? active.garments : garments, garmentBody, corsetScene, corsetSet,
+        removedClothing: sameRemovals ? active.removedClothing : removals });
     }
   }
 
@@ -136,14 +140,14 @@ function VillagerDriver({ url, look, compact, fallback, ...playback }: VillagerP
 }
 
 function ReadyVillager({ preview, bag, previewPacks, leanFit, mirrorFit, victory, cockpit, paused, upright }: VillagerPlayback & { preview: VillagerPreview }) {
-  const { look, scene, garments, garmentBody, corsetScene, corsetSet } = preview;
+  const { look, scene, garments, garmentBody, corsetScene, corsetSet, removedClothing } = preview;
   const femaleWithBag = look.female && bag;
   const wetEyes = !victory;
   const fitted = usesFittedAnimation(look);
   const model = useMemo(() => prepareVillager(scene, {
-    female: look.female, animateFace: true, bag: femaleWithBag, wetEyes, fitted, garments, garmentBody, removedClothing: look.removedClothing,
+    female: look.female, animateFace: true, bag: femaleWithBag, wetEyes, fitted, garments, garmentBody, removedClothing,
     corsetSource: corsetScene && corsetSet ? { set: corsetSet, scene: corsetScene } : undefined,
-  }), [scene, look.female, look.removedClothing, femaleWithBag, wetEyes, fitted, garments, garmentBody, corsetScene, corsetSet]);
+  }), [scene, look.female, removedClothing, femaleWithBag, wetEyes, fitted, garments, garmentBody, corsetScene, corsetSet]);
   const invalidate = useThree(s => s.invalidate);
   useEffect(() => model.dispose, [model]);
   useLayoutEffect(() => {

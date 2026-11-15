@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { HEROES, heroForVehicle } from "../../store/alpha/alphaStore";
-import { normalizeHeroAppearance, useHeroLoadouts, type HeroAppearance } from "../../vehicles/cosmetics/heroLoadouts";
+import { FACTORY_APPEARANCE, normalizeHeroAppearance, useHeroLoadouts, type HeroAppearance } from "../../vehicles/cosmetics/heroLoadouts";
 import type { VehicleModelId } from "../../vehicles/tools/vehicleModelPaths";
 import { getStyledPortrait, needsStyledPortrait, peekStyledPortrait, portraitStyleKey, subscribeStyledPortrait } from "./heroPortraitCache";
 import { isDrivingScreen, useUIStore } from "../../store/menus/uiStore";
@@ -24,7 +24,8 @@ export const HeroPortrait = memo(function HeroPortrait({ hero, className = "", a
   const saved = useHeroLoadouts(s => item ? (s.draft?.vehicle === item.vehicle ? s.draft.appearance : s.loadouts[item.vehicle]) : undefined);
   const style = normalizeHeroAppearance(appearance === undefined ? saved : appearance);
   const model = item?.vehicle as VehicleModelId | undefined;
-  const key = portraitStyleKey(model ?? "empty", style, windowTone);
+  // Keep the subscription keyed to a primitive when the appearance object changes.
+  const key = String(portraitStyleKey(model ?? "empty", style, windowTone));
   const custom = Boolean(model && (needsStyledPortrait(style) || windowTone !== DEFAULT_WINDOW_TONE));
   const subscribe = useCallback((listener:()=>void)=>subscribeStyledPortrait(key,listener),[key]);
   const cached = useSyncExternalStore(subscribe,
@@ -34,9 +35,8 @@ export const HeroPortrait = memo(function HeroPortrait({ hero, className = "", a
   useEffect(() => {
     if (deferred || !custom || !model || cached) return;
     let live = true;
-    // The key snapshots all style fields and rejects late work after switching.
-    const selectedStyle = JSON.parse(key) as string[];
-    const value: HeroAppearance = { body: selectedStyle[1], finish: selectedStyle[2] as HeroAppearance["finish"], seats: selectedStyle[3] as HeroAppearance["seats"], skin: selectedStyle[4], metallic: Number(selectedStyle[5]) };
+    const [, body, finish, metallic] = JSON.parse(key) as [string, string, HeroAppearance["finish"], number, WindowTone];
+    const value = { ...FACTORY_APPEARANCE, body, finish, metallic };
     const timer = window.setTimeout(() => {
       // The store can change before React runs this effect's cleanup.
       if (!live || isDrivingScreen(useUIStore.getState().screen)) return;
