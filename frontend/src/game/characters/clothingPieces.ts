@@ -7,7 +7,7 @@ import { getWardrobeGarment, wardrobeGarmentReplacements, wardrobeRemovalPieces 
 export const UNDERWEAR_PIECES = ["bra", "briefs"] as const;
 export type UnderwearPiece = typeof UNDERWEAR_PIECES[number];
 export type ClothingPiece = "corset" | "shirt" | "skirt" | "sleeves" | "underskirt" | "shorts" | "shoes" | "hat" | "bow" | "belt" | "coat" | "pants" | "gloves" | "collar" | "pouches" | "glasses" | "bag" | "dress" | "socks" | "harness" | "armor" | "bracer" | UnderwearPiece;
-export type PieceColors = { color?: string; accent?: string };
+export type PieceColors = { color?: string; accent?: string; panel?: string; lining?: string; hardware?: string };
 export const CLOTHING_PIECES = catalog as { id: ClothingPiece; label: string; center: number; span: number }[];
 export const clothingPieceLabel = (piece: ClothingPiece) => CLOTHING_PIECES.find(item => item.id === piece)!.label;
 
@@ -31,7 +31,7 @@ export function clothingColors(look: CharacterLook, piece: ClothingPiece) {
   }, piece)];
 }
 
-export function underwearColors(look: CharacterLook, piece: UnderwearPiece): Required<PieceColors> {
+export function underwearColors(look: CharacterLook, piece: UnderwearPiece): Required<Pick<PieceColors, "color" | "accent">> {
   const dye = clothingColors(look, piece);
   const skirtDye = piece === "briefs" && skirtUsesUnderwear(look.garments?.skirt) ? clothingColors(look, "skirt") : undefined;
   return {
@@ -47,6 +47,12 @@ export function withClothingColors(choice: CharacterChoice, piece: ClothingPiece
   else delete item_colors[key];
   return { ...choice, appearance: { ...characterAppearance(choice), item_colors: Object.keys(item_colors).length ? item_colors : undefined } };
 }
+
+export function braFitsWith(pieces: readonly ClothingPiece[], corsetSet?: string) {
+  return !pieces.some(piece => piece === "shirt" || piece === "dress" || piece === "armor"
+    || (piece === "corset" && corsetSet !== UNDERBUST_WARDROBE_SET));
+}
+
 export function wornClothing(choice: CharacterChoice): ClothingPiece[] {
   const female = choice.id === "mara-vega";
   const look = characterLook(choice);
@@ -74,10 +80,9 @@ export function wornClothing(choice: CharacterChoice): ClothingPiece[] {
   const hidden = new Set<ClothingPiece>(removed.flatMap(slot => wardrobeRemovalPieces[slot]));
   const shown = pieces.filter(piece => !hidden.has(piece));
   if (female) {
-    const coveredTop = shown.some(piece => piece === "shirt" || piece === "dress" || piece === "armor"
-      || (piece === "corset" && corset?.set !== UNDERBUST_WARDROBE_SET));
     const coveredBottom = shown.some(piece => piece === "skirt" || piece === "dress" || piece === "shorts");
-    if (!coveredTop && (removed.includes("top") || removed.includes("corset"))) shown.push("bra");
+    const autoBra = !corset && (removed.includes("top") || removed.includes("corset"));
+    if (braFitsWith(shown, corset?.set) && (look?.bra ?? autoBra)) shown.push("bra");
     if (!coveredBottom && removed.includes("skirt")) shown.push("briefs");
   }
   return shown;

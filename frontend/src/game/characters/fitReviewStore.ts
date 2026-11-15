@@ -10,14 +10,16 @@ export type FitCheck = typeof FIT_CHECKS[number];
 type Review = { checks: Partial<Record<FitCheck, boolean>>; issue: string; updated: string };
 export function fitReviewKey(owner: string | undefined, choice: CharacterChoice, piece: string, pose = "standing") {
  const w = resolveCharacterWardrobe(choice);
- const revision = w?.set === "gothic-03" && w.waist === "tucked" ? FIT_REVISION : (w && setFitRevisions[w.set]) ?? "wardrobe-6";
+ const revision = w?.set === "gothic-04" && w.waist === "over" ? "wardrobe-17"
+  : w?.set === "gothic-03" && w.waist === "tucked" ? FIT_REVISION : (w && setFitRevisions[w.set]) ?? "wardrobe-6";
  const garments = Object.entries(choice.garments ?? {}).sort(([a], [b]) => a.localeCompare(b));
  const base = choice.wardrobeTrial ? ["separates", choice.wardrobe?.set ?? choice.outfit, choice.wardrobe?.waist ?? "original"] : [];
  const ease = wardrobeOverEase(choice);
  const removed = [...removedWardrobeLayers(choice)].sort();
  return JSON.stringify([revision, owner ?? "local", choice.id, w?.set ?? choice.outfit, w?.shirt ?? "original", w?.waist ?? "original",
   choice.appearance?.animation_fit ?? "auto", choice.appearance?.glasses ?? "none", choice.prop ?? "none", piece, pose, ...base,
-  ...(garments.length ? [garments] : []), ...(ease ? [ease] : []), ...(removed.length ? [{ removed }] : [])]);
+  ...(garments.length ? [garments] : []), ...(ease ? [ease] : []), ...(removed.length ? [{ removed }] : []),
+  ...(w?.cut ? [{ cut: w.cut }] : []), ...(choice.bra !== undefined ? [{ bra: choice.bra }] : [])]);
 }
 export function fitReviewStatus(review?: Review) { return review?.issue.trim() ? "issue" : FIT_CHECKS.every(check => review?.checks[check]) ? "passed" : review ? "partial" : "untested"; }
 export const useFitReviewStore = create(persist<{

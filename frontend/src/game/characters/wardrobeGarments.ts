@@ -41,7 +41,8 @@ export function setWardrobeRemoval(choice: CharacterChoice, slot: WardrobeRemova
   const removed = removedWardrobeLayers(choice);
   if (removed.includes(slot) === remove) return choice;
   const next = remove ? [...removed, slot] : removed.filter(item => item !== slot);
-  return { ...choice, removedClothing: next.length ? next : undefined };
+  return { ...choice, removedClothing: next.length ? next : undefined,
+    ...(!remove && (slot === "top" || slot === "corset" || slot === "dress") && { bra: undefined }) };
 }
 export type WardrobeGarment = {
   id: string; label: string; section: string; category: string; slot: WardrobeGarmentSlot;
@@ -98,5 +99,6 @@ export function setWardrobeGarment(choice: CharacterChoice, slot: WardrobeGarmen
     && (slot !== "dress" || (layer !== "top" && layer !== "corset" && layer !== "skirt"))));
   return { ...choice, garments: Object.keys(garments).length ? garments : undefined,
     removedClothing: removed?.length ? removed : undefined, wardrobeTrial: replacesBodice ? undefined : choice.wardrobeTrial,
+    ...(id && (slot === "top" || slot === "dress") && { bra: undefined }),
     wardrobeEase: replacesBodice || (id && slot === "top" && !choice.wardrobeTrial) ? undefined : choice.wardrobeEase };
 }

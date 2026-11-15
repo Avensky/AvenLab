@@ -9,7 +9,7 @@ import { promisify } from 'node:util';
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
-import { AnimationMixer, Box3, BufferGeometry, DoubleSide, Float32BufferAttribute, Matrix4, Ray, Vector3 } from 'three';
+import { AnimationMixer, Box3, BufferGeometry, DoubleSide, Float32BufferAttribute, Matrix4, Ray, Texture, Vector3 } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshBVH } from 'three-mesh-bvh';
 import { createServer } from 'vite';
@@ -259,8 +259,35 @@ test('turning off wardrobe layers fits underwear and keeps the other pieces', as
       assert.equal(root.getObjectByName('CLOTH_BOTTOM_SKIRT').visible, true);
       assert(root.getObjectByName('wardrobe-underwear-bra')?.visible);
       assert.equal(root.getObjectByName('wardrobe-underwear-briefs'), undefined);
+      const bra = root.getObjectByName('wardrobe-underwear-bra');
+      const visibleWithBra = body.geometry.drawRange.count;
+      const removed = { ...DEFAULT_CHARACTER, wardrobe: { set: 'gothic-02', waist: 'over', shirt: 'none' }, removedClothing: ['corset'] };
+      applyVillagerLook(exposedTorso, characterLook({ ...removed, bra: false }));
+      assert.equal(bra.visible, false, 'the bra can come off independently of the removed corset');
+      assert(body.geometry.drawRange.count > visibleWithBra, 'removing the bra restores the skin beneath it');
+      applyVillagerLook(exposedTorso, characterLook({ ...removed, bra: true }));
+      assert.equal(root.getObjectByName('wardrobe-underwear-bra'), bra, 'the same rigged bra can be put back on');
+      assert.equal(bra.visible, true);
+      assert.equal(body.geometry.drawRange.count, visibleWithBra);
     } finally {
       exposedTorso.dispose();
+    }
+
+    const vest = await readFile(new URL(`${garmentDir}corsets/gothic-underbust-vest.garage.glb`, publicDir));
+    if (!isLfsPointer(vest)) {
+      const choice = { ...DEFAULT_CHARACTER, wardrobeTrial: { set: 'gothic-04', waist: 'over', shirt: 'none' } };
+      const model = build(village, choice, { garmentBody: donor, corsetSource: { set: 'gothic-04', scene: await loadGeometry(vest) } });
+      try {
+        const bra = model.root.getObjectByName('wardrobe-underwear-bra');
+        const body = model.root.getObjectByName('fitting-room-body');
+        const over = model.root.getObjectByName('CLOTH_CORSET_OVER');
+        assert(bra && !bra.visible && over.visible, 'equipping the rebuilt vest starts with the bra off');
+        applyVillagerLook(model, characterLook({ ...choice, bra: true }));
+        assert(bra.visible && over.visible, 'the rebuilt vest and optional bra can be worn together');
+        assert(bra.children.every(mesh => mesh.skeleton === body.skeleton), 'the close-fitting bra uses the same bones as the body');
+      } finally {
+        model.dispose();
+      }
     }
 
     const withoutSkirt = build(bundle, { wardrobe: { set: 'gothic-02', shirt: 'none', waist: 'over' }, removedClothing: ['skirt'] });
@@ -871,6 +898,10 @@ test('the rebuilt Gothic Underbust replaces the live Over fit on both tiers and 
           `/${garmentDir}corsets/${set}.${tier}.glb`, 'missing rebuilt assets fall back to the legacy Over fit');
         const bytes = await readFile(new URL(url.slice(1), publicDir));
         const scene = await loadGeometry(bytes);
+        const colorMap = waist === 'over' ? new Texture() : undefined;
+        if (colorMap) scene.traverse(mesh => {
+          if (mesh.isSkinnedMesh && mesh.material.name === '1_FRONT_1652') mesh.material.map = colorMap;
+        });
         const model = prepareVillager(base, { fitted: true, garmentBody, garments, corsetSource: { set, scene } });
         try {
           applyVillagerLook(model, look);
@@ -901,6 +932,21 @@ test('the rebuilt Gothic Underbust replaces the live Over fit on both tiers and 
           assert(shirt?.visible && shirt.children.every(mesh => mesh.skeleton === outfitSkin.skeleton),
             'the fitted top stays equipped under the rebuilt vest');
           const fabric = visibleMeshes.find(mesh => mesh.material.userData.color_slot === 'fabric');
+          const dyeShader = { uniforms: {}, fragmentShader: '#include <map_fragment>' };
+          fabric.material.onBeforeCompile(dyeShader);
+          assert.match(dyeShader.fragmentShader, /stitchTone \* underbustDyeGain/);
+          assert(dyeShader.uniforms.underbustDyeGain.value > 20, 'dyes remove the baked dark base tint');
+          assert.equal(fabric.material.map, colorMap, 'dyes keep the same stitched color map');
+          const colors = { color: '#ffffff', accent: '#225577', panel: '#993355', lining: '#008844', hardware: '#ccaa55' };
+          applyVillagerLook(model, characterLook(withClothingColors(choice, 'corset', colors)));
+          for (const [group, color] of Object.entries(colors)) {
+            const materials = visibleMeshes.filter(mesh => mesh.material.userData.underbustDyeGroup === group);
+            assert(materials.length > 0 && materials.every(mesh => mesh.material.color.getHexString() === color.slice(1)),
+              `${tier} Over applies the ${group} dye independently`);
+          }
+          applyVillagerLook(model, characterLook(withClothingColors(choice, 'corset')));
+          assert.equal(dyeShader.uniforms.underbustDyeGain.value, 0, 'reset restores the original map sampling');
+          applyVillagerLook(model, look);
           const regular = fabric.geometry;
           applyVillagerLook(model, { ...look, overEase: 2 });
           assert.notEqual(fabric.geometry, regular, 'wide Over uses a separate hem geometry');
@@ -930,6 +976,7 @@ test('the rebuilt Gothic Underbust replaces the live Over fit on both tiers and 
           mixer.stopAllAction();
         } finally {
           model.dispose();
+          colorMap?.dispose();
         }
       }
     }

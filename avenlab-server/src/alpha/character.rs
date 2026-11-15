@@ -23,6 +23,8 @@ pub struct CharacterChoice {
     pub wardrobe_ease: Option<u8>,
     #[serde(rename = "removedClothing", default, skip_serializing_if = "Option::is_none")]
     pub removed_clothing: Option<Vec<WardrobeRemoval>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bra: Option<bool>,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -36,7 +38,19 @@ pub struct WardrobeChoice {
     #[serde(deserialize_with = "ShirtLayer::deserialize_legacy")]
     pub shirt: ShirtLayer,
     pub waist: WaistLayer,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cut: Option<WardrobeCut>,
 }
+
+impl WardrobeChoice {
+    fn has_valid_cut(&self) -> bool {
+        self.cut.is_none() || (self.set == "gothic-04" && self.waist == WaistLayer::Over)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum WardrobeCut { Original }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -125,6 +139,12 @@ pub struct ClothingColors {
     color: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     accent: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    panel: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    lining: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    hardware: Option<String>,
 }
 #[derive(Deserialize)]
 struct ClothingPiece { id: String }
@@ -163,7 +183,7 @@ fn hex_color(value: &str) -> bool {
 impl CharacterChoice {
     pub fn is_equippable(&self) -> bool {
         self.garments.is_none() && self.wardrobe_trial.is_none() && self.wardrobe_ease.is_none()
-            && self.removed_clothing.is_none() && self.is_available()
+            && self.removed_clothing.is_none() && self.bra.is_none() && self.is_available()
     }
 
     fn has_valid_garments(&self) -> bool {
@@ -186,7 +206,7 @@ impl CharacterChoice {
             return false;
         }
         if !self.wardrobe_trial.as_ref().is_none_or(|trial| {
-            self.id == "mara-vega" && WARDROBE.iter().any(|set| set.id == trial.set)
+            self.id == "mara-vega" && trial.has_valid_cut() && WARDROBE.iter().any(|set| set.id == trial.set)
         }) {
             return false;
         }
@@ -213,8 +233,8 @@ impl CharacterChoice {
                     .iter()
                     .any(|outfit| outfit.id == self.outfit)
         }) && self.wardrobe.as_ref().is_none_or(|wardrobe| {
-            self.id == "mara-vega" && WARDROBE.iter().any(|set| set.id == wardrobe.set)
-        }) && self.has_valid_garments() && self.appearance.as_ref().is_none_or(|appearance| {
+            self.id == "mara-vega" && wardrobe.has_valid_cut() && WARDROBE.iter().any(|set| set.id == wardrobe.set)
+        }) && (self.bra.is_none() || self.id == "mara-vega") && self.has_valid_garments() && self.appearance.as_ref().is_none_or(|appearance| {
             if !appearance.personality.as_deref().is_none_or(|value| ["friendly", "playful", "shy", "tsundere", "stoic", "elegant", "racer", "scientist"].contains(&value))
                 || !appearance.animation_fit.as_deref().is_none_or(|value| ["auto", "full", "fitted"].contains(&value)) {
                 return false;
@@ -230,7 +250,11 @@ impl CharacterChoice {
                         || (piece == "glasses" && ["round", "aviator"].contains(&variant))
                         || (piece == "bag" && variant == "shop-bag"),
                 };
+                let vest_groups = [&colors.panel, &colors.lining, &colors.hardware];
                 known_piece && known_variant && colors.color.as_deref().is_none_or(hex_color) && colors.accent.as_deref().is_none_or(hex_color)
+                    && vest_groups.into_iter().all(|group| group.as_deref().is_none_or(|color| {
+                        variant == "gothic-04" && piece == "corset" && hex_color(color)
+                    }))
             })) { return false; }
             if !appearance.accent.as_deref().is_none_or(hex_color) {
                 return false;
@@ -267,6 +291,21 @@ mod wardrobe_tests {
     }
 
     #[test]
+    fn optional_bra_round_trips_in_saved_looks() {
+        let mut look = choice(serde_json::Value::Null);
+        assert!(look.bra.is_none() && look.is_equippable());
+        for on in [false, true] {
+            look.bra = Some(on);
+            let encoded = serde_json::to_value(&look).unwrap();
+            assert_eq!(encoded["bra"], json!(on));
+            let restored = serde_json::from_value::<CharacterChoice>(encoded).unwrap();
+            assert_eq!(restored, look);
+            assert!(restored.is_available());
+            assert!(!restored.is_equippable());
+        }
+    }
+
+    #[test]
     fn wardrobe_round_trips_and_preserves_legacy_profiles() {
         assert!(choice(serde_json::Value::Null).is_available());
         for set in WARDROBE.iter() {
@@ -292,13 +331,29 @@ mod wardrobe_tests {
         assert!(serde_json::from_value::<WardrobeChoice>(json!({"set":"gothic-01","shirt":"invisible","waist":"over"})).is_err());
         assert!(serde_json::from_value::<WardrobeChoice>(json!({"set":"gothic-01","shirt":"under","waist":"over","shorts":false})).is_err());
     }
+
+    #[test]
+    fn original_underbust_cut_round_trips_only_with_over_fit() {
+        let mut value = serde_json::to_value(choice(serde_json::Value::Null)).unwrap();
+        value["wardrobeTrial"] = json!({"set":"gothic-04","shirt":"none","waist":"over","cut":"original"});
+        let trial: CharacterChoice = serde_json::from_value(value.clone()).unwrap();
+        assert!(trial.is_available());
+        assert_eq!(serde_json::to_value(&trial).unwrap()["wardrobeTrial"], value["wardrobeTrial"]);
+
+        value["wardrobeTrial"]["waist"] = json!("tucked");
+        assert!(!serde_json::from_value::<CharacterChoice>(value.clone()).unwrap().is_available());
+        value["wardrobeTrial"]["waist"] = json!("over");
+        value["wardrobeTrial"]["set"] = json!("gothic-01");
+        assert!(!serde_json::from_value::<CharacterChoice>(value).unwrap().is_available());
+    }
     #[test]
     fn piece_colors_personality_and_fit_round_trip_and_validate() {
         let mut value = serde_json::to_value(choice(serde_json::Value::Null)).unwrap();
         value["appearance"] = json!({ "hair":"natural", "hair_color":"original", "skin":"original",
             "headwear":"hat", "color":"original", "personality":"tsundere", "animation_fit":"fitted",
             "item_colors": {"gothic-01:skirt":{"color":"#123aBC","accent":"#abcdef"}, "aviator:glasses":{"color":"#112233"},
-                "underwear:bra":{"color":"#445566"}, "underwear:briefs":{"accent":"#778899"}} });
+                "underwear:bra":{"color":"#445566"}, "underwear:briefs":{"accent":"#778899"},
+                "gothic-04:corset":{"color":"#ffffff","accent":"#223344","panel":"#005588","lining":"#445533","hardware":"#886644"}} });
         let good: CharacterChoice = serde_json::from_value(value.clone()).unwrap();
         assert!(good.is_available());
         assert_eq!(serde_json::from_value::<CharacterChoice>(serde_json::to_value(&good).unwrap()).unwrap(), good);
@@ -306,7 +361,9 @@ mod wardrobe_tests {
             ("item_colors", json!({"gothic-01:skin":{"color":"#112233"}})),
             ("item_colors", json!({"gothic-01:bra":{"color":"#112233"}})),
             ("item_colors", json!({"unknown:skirt":{"color":"#112233"}})),
-            ("item_colors", json!({"gothic-01:skirt":{"color":"transparent"}}))] {
+            ("item_colors", json!({"gothic-01:skirt":{"color":"transparent"}})),
+            ("item_colors", json!({"gothic-04:corset":{"panel":"transparent"}})),
+            ("item_colors", json!({"gothic-01:skirt":{"panel":"#112233"}}))] {
             let mut invalid = value.clone(); invalid["appearance"][field] = bad;
             assert!(!serde_json::from_value::<CharacterChoice>(invalid).unwrap().is_available());
         }

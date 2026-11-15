@@ -4,6 +4,7 @@ import { prepareWardrobeLining } from "./wardrobeLining";
 import { bindWardrobeGarmentMesh } from "./wardrobeGarmentFit";
 import { prepareWardrobe, UNDERBUST_WARDROBE_SET, type WardrobeChoice } from "./wardrobe";
 import { fitUnderbustOverTop } from "./underbustFit";
+import { tagRebuiltUnderbustMaterial } from "./rebuiltUnderbustDye";
 import type { OverSkirtEase } from "./overSkirtEase";
 import type { MeshBVH } from "three-mesh-bvh";
 
@@ -57,8 +58,7 @@ export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton
       let copy = materials.get(material);
       if (!copy) {
         copy = material.clone();
-        copy.userData.color_slot = /^Material\d+$/.test(material.name) ? "hardware"
-          : ["2_FRONT_1657", "5_FRONT_1672"].includes(material.name) ? "accent" : "fabric";
+        tagRebuiltUnderbustMaterial(copy);
         materials.set(material, copy);
       }
       return copy;

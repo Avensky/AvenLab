@@ -408,3 +408,10 @@ views. The Fitting Room loads the integrated Gothic Underbust Vest from
 or its `.mobile.glb` tier when the existing `gothic-04` item uses Over skirt.
 Tucked into skirt uses its original authored model. The legacy Over asset
 serves as a fallback when the rebuilt file is missing or fails to load.
+
+Over skirt also exposes **Vest cut → Original Cut** when the lower-opening
+assets are installed. The cut, optional bra and individual dyes are saved in
+named outfits. In **Underwear → Bra**, use **Put on bra** or **Remove bra**.
+The bra can layer under the Gothic Underbust Vest. Choosing another top or
+corset clears the bra selection. The rebuilt vest has independent Main,
+Binding, Front panel, Lining and Hardware colors.

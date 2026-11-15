@@ -46,7 +46,7 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     vite = await createServer({ define: {
       __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(inventory.filter(item => item.id !== missingImport && item.id !== missingOutfit).map(item => item.id)),
       __DRESSING_ROOM_REVISION_IDS__: JSON.stringify([revisedImport]),
-      __STANDALONE_CORSET_LODS__: JSON.stringify({ 'gothic-05': { garage: true, mobile: true } }),
+      __STANDALONE_CORSET_LODS__: JSON.stringify({ 'gothic-04': { garage: true, mobile: true }, 'gothic-05': { garage: true, mobile: true } }),
       __WARDROBE_SET_IDS__: JSON.stringify(['gothic-01', 'gothic-03', 'gothic-04', 'gothic-05']),
     }, server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
     const { DressingRoom } = await vite.ssrLoadModule('/src/game/characters/DressingRoom.tsx');
@@ -306,6 +306,40 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     await act(async () => root.unmount()); root = null;
     assert.equal(preview.getState().camera, 'Hands', 'leaving restores the previous camera');
     assert.equal(preview.getState().zoom, 1.2);
+
+    root = createRoot(find('#root'));
+    await act(async () => root.render(h(Harness, { initial: DEFAULT_CHARACTER })));
+    const braToggle = '[data-wardrobe-toggle=bra]';
+    const braCard = '[data-wardrobe-item=underwear-bra]';
+    const wearingBra = () => find(braCard).getAttribute('aria-pressed') === 'true';
+    await open('underwear');
+    await click(braCard);
+    assert(find(braToggle).disabled, 'the bundled bodice blocks the bra');
+    await click('[data-wardrobe-remove=top]');
+    assert(wearingBra());
+    await click(braToggle);
+    assert(!wearingBra(), 'removing the bra does not restore the removed tops');
+    assert.deepEqual(trials.at(-1).removedClothing, ['top', 'corset']);
+    await click(braToggle);
+    await open('corsets');
+    await click('[data-wardrobe-item=gothic-04]');
+    assert.equal(trials.at(-1).bra, undefined, 'choosing the vest removes the bra');
+    await open('underwear');
+    await click(braCard);
+    assert(!wearingBra() && !find(braToggle).disabled, 'the Underbust Vest allows an optional bra');
+    await click(braToggle);
+    assert(wearingBra());
+    assert.equal(characterLook(trials.at(-1)).corset.set, 'gothic-04', 'the bra does not remove the vest');
+    await open('corsets');
+    await click('[data-wardrobe-item=gothic-04]');
+    assert.equal(trials.at(-1).bra, true, 'inspecting the same vest retains the bra layering choice');
+    await open('tops');
+    await click('[data-wardrobe-item=top-02]');
+    assert.equal(trials.at(-1).bra, undefined, 'choosing a top removes the bra');
+    await open('underwear');
+    await click(braCard);
+    assert(!wearingBra() && find(braToggle).disabled, 'the selected top blocks the bra');
+    await act(async () => root.unmount()); root = null;
 
     const rook = CHARACTERS.find(character => character.id === ROOK_ID);
     root = createRoot(find('#root'));

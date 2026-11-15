@@ -42,6 +42,7 @@ export type CharacterChoice = {
   wardrobeTrial?: WardrobeChoice;
   wardrobeEase?: Exclude<OverSkirtEase, 0>;
   removedClothing?: WardrobeRemoval[];
+  bra?: boolean;
 };
 
 export const VILLAGER_ID = "mara-vega";
@@ -85,6 +86,7 @@ export function characterLook(choice: CharacterChoice | null | undefined) {
   const showCorset = character.id === VILLAGER_ID && !removedClothing.includes("corset");
   return {
     character, outfit, appearance, female, removedClothing,
+    bra: character.id === VILLAGER_ID ? choice?.bra : undefined,
     wardrobe, outfitRemovals,
     corset: showCorset ? resolveWardrobe(choice?.wardrobeTrial, { includeRetired: true }) : undefined,
     overEase: showCorset ? wardrobeOverEase(choice) : 0 as const,

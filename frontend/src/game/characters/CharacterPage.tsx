@@ -182,7 +182,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
   }
 
   function hasFittingPreview(next: CharacterChoice) {
-    return loadedOutfit || next.garments || next.wardrobeTrial || next.wardrobeEase || next.removedClothing?.length
+    return loadedOutfit || next.garments || next.wardrobeTrial || next.wardrobeEase || next.removedClothing?.length || next.bra !== undefined
       || UNDERWEAR_PIECES.some(piece => {
         const key = clothingColorKey(next, piece);
         const preview = next.appearance?.item_colors?.[key];

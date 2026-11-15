@@ -9,7 +9,7 @@ test('saved Underbust presets fall back and standalone corsets select an availab
   __BUNDLED_WARDROBE_LODS__:JSON.stringify({'gothic-01':{garage:true,mobile:false},'gothic-05':{garage:true,mobile:true}})},
   server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});
  try {
-  const {corsetModelUrl,resolveWardrobe,wardrobeModelUrl}=await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
+  const {corsetModelUrl,hasOriginalUnderbustCut,resolveWardrobe,wardrobeModelUrl}=await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
   const {DEFAULT_CHARACTER,characterLook}=await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
   const {villagerModelUrl}=await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
   const {wornClothing}=await vite.ssrLoadModule('/src/game/characters/clothingPieces.ts');
@@ -37,6 +37,10 @@ test('saved Underbust presets fall back and standalone corsets select an availab
   assert.equal(corsetModelUrl({...archived,set:'gothic-01'},'garage'),'/models/characters/wardrobe/gothic-01.garage.glb');
   assert.equal(corsetModelUrl({...archived,set:'gothic-01'},'portrait'),'/models/characters/wardrobe/gothic-01.garage.glb');
   assert.equal(corsetModelUrl({...archived,set:'gothic-03'},'garage'),null);
+  assert.equal(hasOriginalUnderbustCut(),false);
+  assert.equal(corsetModelUrl({...archived,cut:'original'},'garage'),
+    corsetModelUrl(archived,'garage'),'a saved Original Cut still loads if its models are absent');
+  assert.equal(resolveWardrobe({...archived,waist:'tucked',cut:'original'},{includeRetired:true}).cut,undefined);
   assert.deepEqual(saved.wardrobe,{set:'gothic-04',shirt:'under',waist:'over'},'loading a retired preset preserves the saved selection');
  }finally{await vite.close();}
 });
@@ -100,10 +104,12 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
  HTMLElement.prototype.detachEvent=()=>{};
  try{
   vite=await createServer({define:{__WARDROBE_SET_IDS__:JSON.stringify(['gothic-01','gothic-02','gothic-03','gothic-04','gothic-05']),
-   __STANDALONE_CORSET_LODS__:JSON.stringify({'gothic-02':{garage:true,mobile:false},'gothic-04':{garage:true,mobile:true}}),
+   __STANDALONE_CORSET_LODS__:JSON.stringify({'gothic-02':{garage:true,mobile:false},'gothic-04':{garage:true,mobile:true},
+    'gothic-underbust-vest':{garage:true,mobile:true},'gothic-underbust-vest-original-cut':{garage:true,mobile:true}}),
    __DRESSING_ROOM_IMPORTED_IDS__:JSON.stringify(['gothic-skirt-04','top-02'])},server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});
   const {CharacterPage}=await vite.ssrLoadModule('/src/game/characters/CharacterPage.tsx');
   const {DEFAULT_CHARACTER,characterLook}=await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+  const {corsetModelUrls}=await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
   const {useCharacterPreviewStore:camera}=await vite.ssrLoadModule('/src/game/characters/characterPreviewStore.ts');
   const {useSocialStore:social}=await vite.ssrLoadModule('/src/store/social/socialStore.ts');
   const client=await vite.ssrLoadModule('/src/net/socialClient.ts');const requests=[],previews=[];
@@ -128,13 +134,25 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
   assert.deepEqual(previews.at(-1).wardrobeTrial,{set:'gothic-02',shirt:'none',waist:'tucked'},'Sweetheart tries on tucked with one installed model tier');
   await click('[aria-label="Gothic corsets"] [data-wardrobe-item="gothic-04"]');
   assert.deepEqual(previews.at(-1).wardrobeTrial,{set:'gothic-04',shirt:'none',waist:'over'});
+  const cutButtons='[aria-label="Vest cut"] button';
+  assert.equal(document.querySelector(`${cutButtons}:first-child`).getAttribute('aria-pressed'),'true');
+  await click(`${cutButtons}:last-child`);
+  const originalCut=characterLook(previews.at(-1)).corset;
+  assert.deepEqual(originalCut,{set:'gothic-04',shirt:'none',waist:'over',cut:'original'});
+  for (const [view,tier] of [['garage','garage'],['portrait','mobile']]) {
+    assert.deepEqual(corsetModelUrls(originalCut,view).slice(0,2).map(url=>url.split('/').at(-1)),
+      [`gothic-underbust-vest-original-cut.${tier}.glb`,`gothic-underbust-vest.${tier}.glb`]);
+  }
   assert.equal(document.querySelector('[data-dressing-piece="shirt"]'),null);
   await layer('Roomy over skirt');
   assert.equal(previews.at(-1).wardrobeEase,1);
   await layer('Wide over skirt');
   assert.equal(previews.at(-1).wardrobeEase,2);
+  assert.equal(previews.at(-1).wardrobeTrial.cut,'original','waist ease preserves the Over cut');
   await layer('Tucked into skirt');
   assert.equal(previews.at(-1).wardrobeTrial.waist,'tucked');
+  assert.equal(previews.at(-1).wardrobeTrial.cut,undefined);
+  assert.equal(document.querySelector(cutButtons),null,'Tucked has one authored cut');
   assert.equal(previews.at(-1).wardrobeEase,undefined);
   assert.deepEqual(previews.at(-1).wardrobe,character.wardrobe);
   await click('[data-wardrobe-back]');

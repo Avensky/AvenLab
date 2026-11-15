@@ -19,7 +19,7 @@ import { isCompactPreview } from "../preview/previewBudget";
 import { failCockpitPreview, useCharacterPreviewStore } from "./characterPreviewStore";
 import { removalNeedsVillagerBody, replacesVillagerBody, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
 import { getWardrobeGarment, hasWardrobeRevisionMesh, wardrobeGarmentModelUrl } from "./wardrobeGarments";
-import { corsetModelUrls, REBUILT_UNDERBUST_ASSET } from "./wardrobe";
+import { corsetModelUrls, isRebuiltUnderbustUrl } from "./wardrobe";
 import { FITTING_BODY_URL, rebuiltUnderbustPart } from "./standaloneCorset";
 
 const DRIVER_TILT: [number, number, number] = [-.095, -.16, -.045];
@@ -64,7 +64,7 @@ function VillagerDriver({ url, look, compact, fallback, ...playback }: VillagerP
   const corsetUrls = corsetModelUrls(look.corset, kind);
   const corsetUrl = corsetUrls.find(asset => {
     const source = sources[asset];
-    return source !== null && (!source || !asset.includes(`/${REBUILT_UNDERBUST_ASSET}.`) || rebuiltUnderbustPart(source));
+    return source !== null && (!source || !isRebuiltUnderbustUrl(asset) || rebuiltUnderbustPart(source));
   });
   const requested = useMemo(() => Object.values(look.garments ?? {}).flatMap(id => {
     const item = getWardrobeGarment(id);
