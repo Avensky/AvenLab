@@ -54,14 +54,15 @@ type RestoredSkin = { upper: boolean; skirt: boolean; feet: boolean };
 type SkinCover = { surface: MeshBVH; piece: ClothingPiece; baseLayer?: true; rebuiltUnderbust?: boolean };
 
 function isUnderbustOpening(point: Vector3) {
-  // Vesper bind space. The central back cutout extends below the armholes.
+  // Vesper bind space. The inner armhole curves forward below the upper edge.
+  const underarm = point.y > 1.234 && Math.abs(point.x) > .10 && point.z > -.05 && point.z < .065;
   return point.y > 1.270
-    || (point.z < 0 && point.y > 1.215 && (point.y > 1.240 || Math.abs(point.x) < .10));
+    || underarm || (point.z < 0 && point.y > 1.215 && (point.y > 1.240 || Math.abs(point.x) < .10));
 }
 
 function fitBodyMask(
   body: SkinnedMesh, original: SkinnedMesh, full: BufferGeometry, top: boolean, skirt: boolean,
-  restored: RestoredSkin, clothes: SkinCover[], checkTopEdges: boolean, lacedBodice: "tucked" | "over" | undefined,
+  restored: RestoredSkin, clothes: SkinCover[], bra: MeshBVH[], checkTopEdges: boolean, lacedBodice: "tucked" | "over" | undefined,
 ) {
   const position = full.getAttribute("position"), index = full.getIndex()!;
   const baseline = bodySurface(original.geometry);
@@ -78,6 +79,9 @@ function fitBodyMask(
   const coveredOpenings = torsoClothes.some(({ rebuiltUnderbust }) => rebuiltUnderbust)
     ? prepareWardrobeCoverage(torsoClothes.filter(({ rebuiltUnderbust }) => !rebuiltUnderbust).map(({ surface }) => surface))
     : undefined;
+  // The close-fitting bra is offset from the same skin. Keep any body face
+  // that extends beyond its binding instead of cutting away its exposed tip.
+  const coveredBra = bra.length ? prepareWardrobeCoverage(bra, 0, 1) : undefined;
   let visible = 0;
   for (let i = 0; i < index.count; i += 3) {
     const ai = index.getX(i), bi = index.getX(i + 1), ci = index.getX(i + 2);
@@ -103,7 +107,8 @@ function fitBodyMask(
     // it against any separately equipped layer.
     const isCovered = coveredOpenings && isUnderbustOpening(point) ? coveredOpenings
       : coveredShoulder && isLacedShoulder(point) ? coveredShoulder : restoredTorso ? coveredTorso : covered;
-    if (!openLacing && replaced && isCovered(point, a, b, c, restoredSkin || (upperBody && checkTopEdges))) continue;
+    if (!openLacing && replaced && (isCovered(point, a, b, c, restoredSkin || (upperBody && checkTopEdges))
+      || coveredBra?.(point, a, b, c, true))) continue;
     fittedIndex.array[visible++] = ai;
     fittedIndex.array[visible++] = bi;
     fittedIndex.array[visible++] = ci;
@@ -244,14 +249,16 @@ export function prepareWardrobeGarments(
   const bra = (restored.upper || Boolean(corset)) && !upperGarment && !stockBodice && (!corset || Boolean(corset.fitTop));
   const briefs = skirtNeedsBriefs ? "under-skirt" : restored.skirt && !skirt && "standalone";
   const underwear = body && (bra || briefs) ? prepareWardrobeUnderwear(body, { bra, briefs }) : undefined;
-  const braShapes: SkinCover[] = [];
+  const braShapes: MeshBVH[] = [];
   if (underwear) {
     group.add(underwear.group);
     for (const [part, piece] of [[underwear.bra, "bra"], [underwear.briefs, "briefs"]] as const) {
       part?.traverse(mesh => {
         if (!(mesh instanceof SkinnedMesh) || Array.isArray(mesh.material) || mesh.material.userData.color_slot !== "fabric") return;
         const surface = bodySurface(mesh.geometry);
-        if (surface) (piece === "bra" ? braShapes : shapes).push({ surface, piece, baseLayer: true });
+        if (!surface) return;
+        if (piece === "bra") braShapes.push(surface);
+        else shapes.push({ surface, piece, baseLayer: true });
       });
     }
   }
@@ -315,9 +322,9 @@ export function prepareWardrobeGarments(
           fittedShapes.set(waist, fittedSurfaces);
           surfaces = fittedSurfaces;
         }
-        const visibleShapes = [...shapes, ...(showBra ? braShapes : []), ...(surfaces ?? [])];
+        const visibleShapes = [...shapes, ...(surfaces ?? [])];
         fitBodyMask(body, original, full, top, skirt, restored, visibleShapes,
-          checkTopEdges, corset?.group.userData.lacedBodiceStraps ? corsetWaist : undefined);
+          showBra ? braShapes : [], checkTopEdges, corset?.group.userData.lacedBodiceStraps ? corsetWaist : undefined);
         maskedWaist = waist;
         maskedBra = showBra;
       }
@@ -336,7 +343,7 @@ export function prepareWardrobeGarments(
       body?.geometry.dispose();
       for (const geometry of fittedGarments) geometry.dispose();
       for (const { surface } of shapes) surface.geometry.dispose();
-      for (const { surface } of braShapes) surface.geometry.dispose();
+      for (const { geometry } of braShapes) geometry.dispose();
       for (const surfaces of fittedShapes.values()) for (const { surface } of surfaces) surface.geometry.dispose();
       for (const material of ownedMaterials) material.dispose();
     },

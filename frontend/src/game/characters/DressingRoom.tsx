@@ -450,6 +450,8 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
       {inspected && <>
         <header><small>{currentCategory.label}</small><h2>{inspected.label}</h2></header>
         <p>{inspected.description}</p>
+        {inspected.set === UNDERBUST_WARDROBE_SET && corset?.set === inspected.set && corset.waist === "over" &&
+          <p className="dressing-note">Changing linked dye groups together still needs testing.</p>}
         <dl><dt>Price</dt><dd>{inspected.unavailable ? "Not listed" : inspected.trial ? "Free try-on" : inspected.included ? "Included" : "0 credits"}</dd>
           {inspected.layer && <><dt>Layer</dt><dd>{inspected.layer}</dd></>}</dl>
         {inspected.unavailable && <p className="dressing-note">{inspected.unavailable}</p>}

@@ -132,13 +132,17 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
   assert.equal(document.querySelectorAll('[aria-label="Gothic corsets"] [data-wardrobe-item]').length,6);
   await click('[aria-label="Gothic corsets"] [data-wardrobe-item="gothic-02"]');
   assert.deepEqual(previews.at(-1).wardrobeTrial,{set:'gothic-02',shirt:'none',waist:'tucked'},'Sweetheart tries on tucked with one installed model tier');
+  const detailsDyeNote=()=>document.querySelector('[aria-label="Item details"]')?.textContent.includes('Changing linked dye groups together still needs testing.');
+  assert.equal(detailsDyeNote(),false);
   await click('[aria-label="Gothic corsets"] [data-wardrobe-item="gothic-04"]');
   assert.deepEqual(previews.at(-1).wardrobeTrial,{set:'gothic-04',shirt:'none',waist:'over'});
   const cutButtons='[aria-label="Vest cut"] button';
   assert.equal(document.querySelector(`${cutButtons}:first-child`).getAttribute('aria-pressed'),'true');
+  assert.equal(detailsDyeNote(),true);
   await click(`${cutButtons}:last-child`);
   const originalCut=characterLook(previews.at(-1)).corset;
   assert.deepEqual(originalCut,{set:'gothic-04',shirt:'none',waist:'over',cut:'original'});
+  assert.equal(detailsDyeNote(),true);
   for (const [view,tier] of [['garage','garage'],['portrait','mobile']]) {
     assert.deepEqual(corsetModelUrls(originalCut,view).slice(0,2).map(url=>url.split('/').at(-1)),
       [`gothic-underbust-vest-original-cut.${tier}.glb`,`gothic-underbust-vest.${tier}.glb`]);
@@ -153,6 +157,7 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
   assert.equal(previews.at(-1).wardrobeTrial.waist,'tucked');
   assert.equal(previews.at(-1).wardrobeTrial.cut,undefined);
   assert.equal(document.querySelector(cutButtons),null,'Tucked has one authored cut');
+  assert.equal(detailsDyeNote(),false);
   assert.equal(previews.at(-1).wardrobeEase,undefined);
   assert.deepEqual(previews.at(-1).wardrobe,character.wardrobe);
   await click('[data-wardrobe-back]');

@@ -985,7 +985,7 @@ test('the rebuilt Gothic Underbust replaces the live Over fit on both tiers and 
   }
 });
 
-test('the rebuilt Gothic Underbust keeps skin at the straps and lower edge of the back opening', async t => {
+test('the rebuilt Gothic Underbust and bra keep skin around the armholes and binding', async t => {
   const tiers = [['garage', 'garage'], ['mobile', 'portrait']];
   const read = path => readFile(new URL(path, publicDir));
   const donorBytes = await read(bundledDir + 'gothic-02.mobile.glb');
@@ -1004,28 +1004,49 @@ test('the rebuilt Gothic Underbust keeps skin at the straps and lower edge of th
         const bytes = await read(villagerDir + `villager-female.${kind}.glb`);
         if (isLfsPointer(bytes)) return t.skip('Run git lfs pull to materialize the fitting-room character.');
         const base = await loadGeometry(bytes);
-        for (const cut of [undefined, 'original']) {
-          const look = characterLook({ ...DEFAULT_CHARACTER, wardrobeTrial: { set, waist: 'over', shirt: 'none', cut }, bra: false });
-          const url = corsetModelUrl(look.corset, kind);
-          assert.equal(url, `/${garmentDir}corsets/gothic-underbust-vest${cut ? '-original-cut' : ''}.${tier}.glb`);
-          const bytes = await read(url.slice(1));
-          if (isLfsPointer(bytes)) return t.skip('Run git lfs pull to materialize the rebuilt vest.');
-          const scene = await loadGeometry(bytes);
-          const model = prepareVillager(base, { fitted: true, garmentBody: donor, corsetSource: { set, scene } });
+        for (const style of ['regular', 'original', 'bra']) {
+          const braOnly = style === 'bra';
+          const cut = style === 'original' ? style : undefined;
+          const look = characterLook(braOnly
+            ? { ...DEFAULT_CHARACTER, removedClothing: ['corset'], bra: true }
+            : { ...DEFAULT_CHARACTER, wardrobeTrial: { set, waist: 'over', shirt: 'none', cut }, bra: false });
+          let scene;
+          if (!braOnly) {
+            const url = corsetModelUrl(look.corset, kind);
+            assert.equal(url, `/${garmentDir}corsets/gothic-underbust-vest${cut ? '-original-cut' : ''}.${tier}.glb`);
+            const bytes = await read(url.slice(1));
+            if (isLfsPointer(bytes)) return t.skip('Run git lfs pull to materialize the rebuilt vest.');
+            scene = await loadGeometry(bytes);
+          }
+          const model = prepareVillager(base, { fitted: true, garmentBody: donor, removedClothing: look.removedClothing,
+            corsetSource: scene ? { set, scene } : undefined });
           try {
             applyVillagerLook(model, look);
             const skin = wardrobeCoverageSurface(model.root.getObjectByName('fitting-room-body').geometry);
             try {
-              for (const [x, y, side, expected] of [
+              const assertSkin = (ray, expected) => {
+                const probe = `${tier} ${style} at ${ray.origin.toArray().map(value => value.toFixed(3)).join(', ')}`;
+                const donorHit = donorSkin.raycastFirst(ray, DoubleSide, 0, .40);
+                assert(donorHit, `donor includes skin ${probe}`);
+                const activeHit = skin.raycastFirst(ray, DoubleSide, donorHit.distance - .0001, donorHit.distance + .0001);
+                assert.equal(Boolean(activeHit), expected, `skin visibility ${probe}`);
+              };
+              if (!braOnly) for (const [x, y, side, expected] of [
                 [-.105, 1.300, 1, true], [.105, 1.300, 1, true],
                 [-.045, 1.227, -1, true], [.045, 1.227, -1, true], [.090, 1.241, -1, true],
                 [0, 1.203, 1, false],
               ]) {
                 const ray = new Ray(new Vector3(x, y, side * .30), new Vector3(0, 0, -side));
-                const donorHit = donorSkin.raycastFirst(ray, DoubleSide, 0, .30);
-                assert(donorHit, `${tier} donor includes skin at ${x}, ${y}, ${side}`);
-                const activeHit = skin.raycastFirst(ray, DoubleSide, donorHit.distance - .0001, donorHit.distance + .0001);
-                assert.equal(Boolean(activeHit), expected, `${tier} ${cut ?? 'regular'} skin visibility at ${x}, ${y}, ${side}`);
+                assertSkin(ray, expected);
+              }
+              // Inspect the inner wall of each armhole from the angles where the slivers were exposed.
+              for (const side of [-1, 1]) {
+                const angle = (braOnly ? 25 : 160) * side * Math.PI / 180;
+                const direction = new Vector3(-Math.sin(angle), 0, -Math.cos(angle));
+                const sideways = new Vector3(Math.cos(angle), 0, -Math.sin(angle));
+                const origin = direction.clone().multiplyScalar(-.40).addScaledVector(sideways, (braOnly ? .107 : -.114) * side);
+                origin.y = braOnly ? 1.248 : 1.255;
+                assertSkin(new Ray(origin, direction), true);
               }
             } finally {
               skin.geometry.dispose();
