@@ -2,7 +2,7 @@ import { FitBadge, FitReview } from "./FitReview";
 import { useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { CHARACTER_APPEARANCE_OPTIONS, ROOK_ID, VILLAGER_ID, characterLook, type CharacterChoice, type CharacterStyleField } from "./characterCatalog";
 import { focusClothingPiece, useCharacterPreviewStore } from "./characterPreviewStore";
-import { UNDERBUST_WARDROBE_SET, WARDROBE_CORSETS, WARDROBE_SETS, WARDROBE_WAIST_OPTIONS, corsetModelUrl, hasUnderbustCut, resolveWardrobe, withWardrobeWaist, type WardrobeChoice } from "./wardrobe";
+import { UNDERBUST_WARDROBE_SET, WARDROBE_CORSETS, WARDROBE_SETS, WARDROBE_WAIST_OPTIONS, corsetModelUrl, hasTuckedUnderbust, hasUnderbustCut, resolveWardrobe, withWardrobeWaist, type WardrobeChoice } from "./wardrobe";
 import { ClothingColorToolbar } from "./ClothingColorToolbar";
 import { braFitsWith, CLOTHING_PIECES, clothingPieceLabel, UNDERWEAR_PIECES, underwearColors, wornClothing, type ClothingPiece, type UnderwearPiece } from "./clothingPieces";
 import { FittingWearableShortcuts } from "./FittingCameraSelect";
@@ -289,7 +289,9 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
         trial: true, selected, detail: "Try-on", focus: "corset", pieces: selected && garments?.top ? ["corset", "shirt"] : ["corset"], layer: "Outer",
         unavailable: installed ? undefined : "Pack not installed",
         description: underbust
-          ? "The rebuilt vest appears in Over skirt. Tucked into skirt uses the original fit. Wear it alone or layer it over a fitted piece from Tops."
+          ? (hasTuckedUnderbust()
+            ? "Choose Tucked into skirt or Over skirt. Wear the vest alone or layer it over a fitted piece from Tops."
+            : "The rebuilt vest appears in Over skirt. Tucked into skirt uses the original fit. Wear it alone or layer it over a fitted piece from Tops.")
           : "Try this corset with your current skirt or choose another skirt from the wardrobe.",
         choose: installed ? () => tryCorset(set.id) : undefined,
         clear: choice.wardrobeTrial?.set === set.id
@@ -376,7 +378,8 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
   const sections = [...new Set(items.map(item => item.section))];
   const inspected = catalogOpen ? allItems[category].find(item => item.id === inspectedId) : undefined;
   const underwearColor = inspected?.underwear;
-  const underbustOver = corset?.set === UNDERBUST_WARDROBE_SET && corset.waist === "over" && inspected?.set === corset.set;
+  const underbust = corset?.set === UNDERBUST_WARDROBE_SET && inspected?.set === corset.set;
+  const underbustOver = underbust && corset.waist === "over";
   const itemPieces = inspected?.unavailable ? [] : inspected?.pieces === "outfit"
     ? pieces.filter(item => item !== "glasses" && item !== "bag") : inspected?.pieces?.filter(item => pieces.includes(item)) ?? [];
 
@@ -533,7 +536,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
             catalogRef.current?.querySelector<HTMLButtonElement>(readyOnly ? "[data-wardrobe-back]" : "[data-inspected]")?.focus();
           }}>{inspected.included ? "Remove piece" : inspected.focus === "dress" || inspected.pieces === "outfit" ? "Remove dress" : "Clear try-on"}</button>
         </div>}
-        {(underwearColor === "bra" || underbustOver) && <div data-controller-row>
+        {(underwearColor === "bra" || underbust) && <div data-controller-row>
           <button type="button" className="menu-control" data-wardrobe-toggle="bra" disabled={!canWearBra}
             onClick={() => onTryOn({ ...choice, bra: !pieces.includes("bra") })}>
             {pieces.includes("bra") ? "Remove bra" : "Put on bra"}

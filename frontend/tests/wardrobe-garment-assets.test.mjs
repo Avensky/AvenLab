@@ -949,12 +949,13 @@ test('standalone corsets and a selected skirt share the live rig and switch wais
   }
 });
 
-test('the rebuilt Gothic Underbust replaces the live Over fit on both tiers and Tucked still loads', async t => {
+test('the rebuilt Gothic Underbust uses independent Over and Tucked fits on both tiers', async t => {
   const set = 'gothic-04';
   const tiers = [['garage', 'garage'], ['mobile', 'portrait']];
-  const rebuiltPath = tier => `${garmentDir}corsets/gothic-underbust-vest.${tier}.glb`;
+  const rebuiltPath = (tier, waist) => `${garmentDir}corsets/gothic-underbust-vest${waist === 'tucked' ? '-tucked' : ''}.${tier}.glb`;
   const top = catalog.find(item => item.id === 'top-02');
-  const inputs = [top.url.slice(1), bundledDir + 'gothic-02.mobile.glb', ...tiers.map(([tier]) => rebuiltPath(tier))];
+  const inputs = [top.url.slice(1), bundledDir + 'gothic-02.mobile.glb',
+    ...tiers.flatMap(([tier]) => ['over', 'tucked'].map(waist => rebuiltPath(tier, waist)))];
   const sources = await Promise.all(inputs.map(path => readFile(new URL(path, publicDir))));
   if (sources.some(isLfsPointer)) return t.skip('Run git lfs pull to materialize the fitting-room models.');
   const topScene = await loadGeometry(sources[0]);
@@ -967,6 +968,7 @@ test('the rebuilt Gothic Underbust replaces the live Over fit on both tiers and 
     const { prepareVillager, applyVillagerLook, villagerModelUrl } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
     const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
     const { corsetModelUrl, corsetModelUrls } = await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
+    const { rebuiltUnderbustPart } = await vite.ssrLoadModule('/src/game/characters/standaloneCorset.ts');
     const { withClothingColors } = await vite.ssrLoadModule('/src/game/characters/clothingPieces.ts');
     const { buildEmoteClips, findGaragePreviewEmote } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
 
@@ -979,18 +981,22 @@ test('the rebuilt Gothic Underbust replaces the live Over fit on both tiers and 
       for (const waist of ['over', 'tucked']) {
         const garments = waist === 'over' ? [{ item: top, scene: topScene }] : [];
         const choice = withClothingColors({ ...DEFAULT_CHARACTER, wardrobeTrial: { set, waist, shirt: 'none' },
+          ...(waist === 'tucked' && { bra: true }),
           ...(garments.length && { garments: { top: top.id } }) },
           'corset', { color: '#305080' });
         const look = characterLook(choice);
         assert.equal(villagerModelUrl(look, kind), baseUrl);
         const url = corsetModelUrl(look.corset, kind);
-        assert.equal(url, waist === 'over' ? `/${rebuiltPath(tier)}` : `/${garmentDir}corsets/${set}.${tier}.glb`);
-        if (waist === 'over') assert.equal(corsetModelUrls(look.corset, kind)[1],
-          `/${garmentDir}corsets/${set}.${tier}.glb`, 'missing rebuilt assets fall back to the legacy Over fit');
+        assert.equal(url, `/${rebuiltPath(tier, waist)}`);
+        assert.equal(corsetModelUrls(look.corset, kind)[1],
+          `/${garmentDir}corsets/${set}.${tier}.glb`, `missing rebuilt ${waist} falls back to the legacy fit`);
         const bytes = await readFile(new URL(url.slice(1), publicDir));
         const scene = await loadGeometry(bytes);
-        const colorMap = waist === 'over' ? new Texture() : undefined;
-        if (colorMap) scene.traverse(mesh => {
+        assert(rebuiltUnderbustPart(scene, waist), 'the requested asset has the expected fit role');
+        assert.equal(rebuiltUnderbustPart(scene, waist === 'over' ? 'tucked' : 'over'), undefined,
+          'a mismatched rebuilt role is ineligible for this fit');
+        const colorMap = new Texture();
+        scene.traverse(mesh => {
           if (mesh.isSkinnedMesh && mesh.material.name === '1_FRONT_1652') mesh.material.map = colorMap;
         });
         const model = prepareVillager(base, { fitted: true, garmentBody, garments, corsetSource: { set, scene } });
@@ -1008,20 +1014,26 @@ test('the rebuilt Gothic Underbust replaces the live Over fit on both tiers and 
           assert(visibleMeshes.length > 0 && visibleMeshes.every(mesh => mesh.skeleton === outfitSkin.skeleton));
           if (waist === 'tucked') {
             assert.notEqual(corset.getObjectByName('CLOTH_CORSET_OVER')?.visible, true, 'Tucked does not draw Over');
-            continue;
+            const bra = root.getObjectByName('wardrobe-underwear-bra');
+            assert(bra?.visible, 'the optional bra binds under Tucked');
+            applyVillagerLook(model, characterLook({ ...choice, bra: false }));
+            assert.equal(bra.visible, false, 'the bra can be removed independently of Tucked');
+            assert(fit.visible);
+            applyVillagerLook(model, look);
+          } else {
+            const shirt = root.getObjectByName(`wardrobe-${top.id}`);
+            assert(shirt?.visible && shirt.children.every(mesh => mesh.skeleton === outfitSkin.skeleton),
+              'the fitted top stays equipped under the rebuilt vest');
           }
 
           const authored = scene.getObjectByName('UNDERBUST_SOURCE_REFIT');
           const authoredNames = new Set();
-          assert(authored, 'the selected Over model contains the rebuilt garment');
+          assert(authored, `the selected ${waist} model contains the rebuilt garment`);
           authored.traverse(mesh => { if (mesh.isSkinnedMesh) authoredNames.add(mesh.name); });
-          assert(visibleMeshes.some(mesh => authoredNames.has(mesh.name)), 'Over draws the rebuilt garment primitives');
+          assert(visibleMeshes.some(mesh => authoredNames.has(mesh.name)), `${waist} draws the rebuilt garment primitives`);
           assert(visibleMeshes.some(mesh => mesh.material.userData.color_slot === 'fabric'
             && mesh.material.color.getHexString() === '305080'), 'the rebuilt fabric follows the corset color');
           assert(visibleMeshes.some(mesh => mesh.material.userData.color_slot === 'hardware'), 'buckles keep a separate color channel');
-          const shirt = root.getObjectByName(`wardrobe-${top.id}`);
-          assert(shirt?.visible && shirt.children.every(mesh => mesh.skeleton === outfitSkin.skeleton),
-            'the fitted top stays equipped under the rebuilt vest');
           const fabric = visibleMeshes.find(mesh => mesh.material.userData.color_slot === 'fabric');
           const dyeShader = { uniforms: {}, fragmentShader: '#include <map_fragment>' };
           fabric.material.onBeforeCompile(dyeShader);
@@ -1033,16 +1045,18 @@ test('the rebuilt Gothic Underbust replaces the live Over fit on both tiers and 
           for (const [group, color] of Object.entries(colors)) {
             const materials = visibleMeshes.filter(mesh => mesh.material.userData.underbustDyeGroup === group);
             assert(materials.length > 0 && materials.every(mesh => mesh.material.color.getHexString() === color.slice(1)),
-              `${tier} Over applies the ${group} dye independently`);
+              `${tier} ${waist} applies the ${group} dye independently`);
           }
           applyVillagerLook(model, characterLook(withClothingColors(choice, 'corset')));
           assert.equal(dyeShader.uniforms.underbustDyeGain.value, 0, 'reset restores the original map sampling');
           applyVillagerLook(model, look);
-          const regular = fabric.geometry;
-          applyVillagerLook(model, { ...look, overEase: 2 });
-          assert.notEqual(fabric.geometry, regular, 'wide Over uses a separate hem geometry');
-          applyVillagerLook(model, look);
-          assert.equal(fabric.geometry, regular, 'regular Over restores the same layered geometry');
+          if (waist === 'over') {
+            const regular = fabric.geometry;
+            applyVillagerLook(model, { ...look, overEase: 2 });
+            assert.notEqual(fabric.geometry, regular, 'wide Over uses a separate hem geometry');
+            applyVillagerLook(model, look);
+            assert.equal(fabric.geometry, regular, 'regular Over restores the same layered geometry');
+          }
 
           const samples = [];
           root.updateMatrixWorld(true);
@@ -1067,8 +1081,55 @@ test('the rebuilt Gothic Underbust replaces the live Over fit on both tiers and 
           mixer.stopAllAction();
         } finally {
           model.dispose();
-          colorMap?.dispose();
+          colorMap.dispose();
         }
+      }
+    }
+  } finally {
+    await vite.close();
+  }
+});
+
+test('rebuilt Tucked hardware clears the fitted skirt waist', async t => {
+  const rebuilt = `${garmentDir}corsets/gothic-underbust-vest-tucked.garage.glb`;
+  const read = path => readFile(new URL(path, publicDir));
+  const bytes = await Promise.all([rebuilt, `${villagerDir}villager-female.garage.glb`, `${bundledDir}gothic-02.mobile.glb`].map(read));
+  if (bytes.some(isLfsPointer)) return t.skip('Run git lfs pull to materialize the fitting-room models.');
+  const [scene, base, donor] = await Promise.all(bytes.map(loadGeometry));
+  const garmentBody = donor.getObjectByName('BODY_WARDROBE');
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  try {
+    const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
+    const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { getWardrobeGarment, wardrobeGarmentModelUrl } = await vite.ssrLoadModule('/src/game/characters/wardrobeGarments.ts');
+    const set = 'gothic-04';
+    for (const [number, middle, lower] of [
+      ['01', false, false], ['02', false, false], ['03', true, false], ['04', true, true], ['05', false, false],
+    ]) {
+      const skirt = `gothic-skirt-${number}`;
+      const item = getWardrobeGarment(skirt);
+      const url = wardrobeGarmentModelUrl(item, 'garage');
+      assert(url, `${skirt} has a fitting-room model`);
+      const skirtBytes = await read(url.slice(1));
+      if (isLfsPointer(skirtBytes)) return t.skip('Run git lfs pull to materialize the Gothic skirts.');
+      const garments = [{ item, scene: await loadGeometry(skirtBytes), authoredFit: url === item.revisionUrl }];
+      const model = prepareVillager(base, { fitted: true, garments, garmentBody, corsetSource: { set, scene } });
+      try {
+        const look = characterLook({ ...DEFAULT_CHARACTER, garments: { skirt }, wardrobeTrial: { set, shirt: 'none', waist: 'tucked' } });
+        applyVillagerLook(model, look);
+        const tuck = model.root.getObjectByName('CLOTH_CORSET_TUCKED');
+        assert(tuck?.visible && model.root.getObjectByName(`wardrobe-${skirt}`)?.visible);
+        const buckles = new Map();
+        tuck.traverse(mesh => {
+          if (mesh.isSkinnedMesh && !Array.isArray(mesh.material)) buckles.set(mesh.material.name, mesh);
+        });
+        const tags = [...buckles].filter(([, mesh]) => mesh.material.userData.tuckedLowerHardware).map(([name]) => name).sort();
+        assert.deepEqual(tags, ['Material2307089', 'Material2308903']);
+        assert.equal(buckles.get('Material2303515')?.visible, true, `${skirt} keeps the upper buckle`);
+        assert.equal(buckles.get('Material2307089')?.visible, middle, `${skirt} middle buckle`);
+        assert.equal(buckles.get('Material2308903')?.visible, lower, `${skirt} lower buckle`);
+      } finally {
+        model.dispose();
       }
     }
   } finally {

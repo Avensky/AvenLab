@@ -177,6 +177,7 @@ export function prepareWardrobeGarments(
   const shapes: SkinCover[] = [];
   const topSurfaces: MeshBVH[] = [];
   const shortSkirtSurfaces: MeshBVH[] = [];
+  const tuckedSkirtSurfaces: MeshBVH[] = [];
   const fittedShapes = new Map<string, SkinCover[]>();
   if (corset) {
     group.add(corset.group);
@@ -257,6 +258,7 @@ export function prepareWardrobeGarments(
           shapes.push({ surface, piece: item.piece });
           if (item.slot === "top" && corset?.fitTop) topSurfaces.push(surface);
           if (fitShortSkirt && !lining && corset?.fitSkirt) shortSkirtSurfaces.push(surface);
+          if (item.slot === "skirt" && !lining && corset?.fitTuckedHardware) tuckedSkirtSurfaces.push(surface);
         }
       }
       if (item.slot === "skirt" || item.slot === "dress") {
@@ -279,6 +281,7 @@ export function prepareWardrobeGarments(
   }
   if (topSurfaces.length) corset?.fitTop?.(topSurfaces);
   if (shortSkirtSurfaces.length) corset?.fitSkirt?.(shortSkirtSurfaces);
+  if (tuckedSkirtSurfaces.length) corset?.fitTuckedHardware?.(tuckedSkirtSurfaces);
   if (!group.children.length && !replacements.size) return;
   const top = Boolean(corset) || upperGarment;
   const body = (top || skirt || restoresBody) && full && fullBody instanceof SkinnedMesh ? bindWardrobeGarmentMesh(fullBody, original.skeleton) : undefined;

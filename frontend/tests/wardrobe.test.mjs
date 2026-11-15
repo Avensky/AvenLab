@@ -9,7 +9,7 @@ test('saved Underbust presets fall back and standalone corsets select an availab
   __BUNDLED_WARDROBE_LODS__:JSON.stringify({'gothic-01':{garage:true,mobile:false},'gothic-05':{garage:true,mobile:true}})},
   server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});
  try {
-  const {corsetModelUrl,hasUnderbustCut,resolveWardrobe,wardrobeModelUrl}=await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
+  const {corsetModelUrl,hasTuckedUnderbust,hasUnderbustCut,resolveWardrobe,wardrobeModelUrl}=await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
   const {DEFAULT_CHARACTER,characterLook}=await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
   const {villagerModelUrl}=await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
   const {wornClothing}=await vite.ssrLoadModule('/src/game/characters/clothingPieces.ts');
@@ -27,6 +27,8 @@ test('saved Underbust presets fall back and standalone corsets select an availab
    assert.equal(villagerModelUrl(look,view),villagerModelUrl(stock,view));
    assert.equal(villagerModelUrl(trialLook,view),villagerModelUrl(stock,view));
    assert.equal(corsetModelUrl(trialLook.corset,view),`/models/characters/female/wardrobe/corsets/gothic-04.${view==='garage'?'garage':'mobile'}.glb`);
+   assert.equal(corsetModelUrl({...trialLook.corset,waist:'tucked'},view),corsetModelUrl(trialLook.corset,view),
+    'missing rebuilt Tucked loads the original standalone model');
   }
   assert(!wornClothing(trial).includes('shirt'));
   const layered = wornClothing({ ...trial, garments: { top: 'top-02' } });
@@ -39,6 +41,7 @@ test('saved Underbust presets fall back and standalone corsets select an availab
   assert.equal(corsetModelUrl({...archived,set:'gothic-03'},'garage'),null);
   assert.equal(hasUnderbustCut(),false);
   assert.equal(hasUnderbustCut("original"),false);
+  assert.equal(hasTuckedUnderbust(),false);
   assert.equal(corsetModelUrl({...archived,cut:'original'},'garage'),
     corsetModelUrl(archived,'garage'),'a saved Original Cut still loads if its models are absent');
   assert.equal(resolveWardrobe({...archived,waist:'tucked',cut:'original'},{includeRetired:true}).cut,undefined);
@@ -106,7 +109,8 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
  try{
   vite=await createServer({define:{__WARDROBE_SET_IDS__:JSON.stringify(['gothic-01','gothic-02','gothic-03','gothic-04','gothic-05']),
    __STANDALONE_CORSET_LODS__:JSON.stringify({'gothic-02':{garage:true,mobile:false},'gothic-04':{garage:true,mobile:true},
-    'gothic-underbust-vest':{garage:true,mobile:true},'gothic-underbust-vest-original-cut':{garage:true,mobile:true}}),
+    'gothic-underbust-vest':{garage:true,mobile:true},'gothic-underbust-vest-original-cut':{garage:true,mobile:true},
+    'gothic-underbust-vest-tucked':{garage:true,mobile:true}}),
    __DRESSING_ROOM_IMPORTED_IDS__:JSON.stringify(['gothic-skirt-04','top-02'])},server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});
   const {CharacterPage}=await vite.ssrLoadModule('/src/game/characters/CharacterPage.tsx');
   const {DEFAULT_CHARACTER,characterLook}=await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
@@ -168,6 +172,18 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
   assert.equal(detailsDyeNote(),false);
   assert.equal(previews.at(-1).wardrobeEase,undefined);
   assert.deepEqual(previews.at(-1).wardrobe,character.wardrobe);
+  for (const [view,tier] of [['garage','garage'],['portrait','mobile']]) {
+    assert.deepEqual(corsetModelUrls(characterLook(previews.at(-1)).corset,view).slice(0,2).map(url=>url.split('/').at(-1)),
+      [`gothic-underbust-vest-tucked.${tier}.glb`,`gothic-04.${tier}.glb`]);
+  }
+  assert.equal(document.querySelector(braToggle).textContent.trim(),'Put on bra');
+  await click(braToggle);
+  assert.equal(previews.at(-1).bra,true,'the rebuilt Tucked fit accepts the optional bra');
+  await click(braToggle);
+  assert.equal(previews.at(-1).bra,false);
+  for (const slot of ['Main','Binding','Front panel','Lining','Hardware']) {
+    assert(document.querySelector(`.dressing-color-toolbar [aria-label="${slot} color"]`), `Tucked exposes the ${slot} dye group`);
+  }
   await click('[data-wardrobe-back]');
   await click('[data-category=tops]');
   await click('[data-wardrobe-item="top-02"]');

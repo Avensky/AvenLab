@@ -64,7 +64,7 @@ function VillagerDriver({ url, look, compact, fallback, ...playback }: VillagerP
   const corsetUrls = corsetModelUrls(look.corset, kind);
   const corsetUrl = corsetUrls.find(asset => {
     const source = sources[asset];
-    return source !== null && (!source || !isRebuiltUnderbustUrl(asset) || rebuiltUnderbustPart(source));
+    return source !== null && (!source || !isRebuiltUnderbustUrl(asset) || rebuiltUnderbustPart(source, look.corset?.waist));
   });
   const requested = useMemo(() => Object.values(look.garments ?? {}).flatMap(id => {
     const item = getWardrobeGarment(id);

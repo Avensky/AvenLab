@@ -205,7 +205,7 @@ separately chosen top. The vest and top take separate colors. Try-ons carry
 into Emotes for the session.
 
 Roomy and Wide Over skirt add 12 and 24 mm of clearance at the corset hem for
-fuller skirts. Tucked and standard Over keep their original fit. Save a named
+fuller skirts. Tucked and standard Over use their authored fits. Save a named
 look in Wardrobe > Saved outfits to store its pieces, waist fit, hair, and
 colors on the player profile. Opening a saved look starts a fitting preview.
 The × cards toggle individual layers and retain the selected piece so it can
@@ -406,8 +406,9 @@ The archive includes the editable Blender file and matched before-and-after
 views. The Fitting Room loads the integrated Gothic Underbust Vest from
 `public/models/characters/female/wardrobe/corsets/gothic-underbust-vest.garage.glb`
 or its `.mobile.glb` tier when the existing `gothic-04` item uses Over skirt.
-Tucked into skirt uses its original authored model. The legacy Over asset
-serves as a fallback when the rebuilt file is missing or fails to load.
+Tucked into skirt uses the separate `gothic-underbust-vest-tucked` asset for
+each tier. Both waist fits can fall back to their legacy geometry when the
+rebuilt file is missing or fails to load.
 
 Over skirt also exposes **Vest cut → Original Cut** when the lower-opening
 assets are installed. The cut, optional bra and individual dyes are saved in

@@ -8,6 +8,7 @@ export const WARDROBE_CORSETS = catalog;
 export const UNDERBUST_WARDROBE_SET = "gothic-04";
 export const REBUILT_UNDERBUST_ASSET = "gothic-underbust-vest";
 export const ORIGINAL_CUT_UNDERBUST_ASSET = "gothic-underbust-vest-original-cut";
+export const TUCKED_UNDERBUST_ASSET = "gothic-underbust-vest-tucked";
 export type WardrobeChoice = { set: string; shirt: "none" | "under" | "over"; waist: "tucked" | "over"; cut?: "original" };
 type WardrobeSelection = { wardrobe?: WardrobeChoice; wardrobeTrial?: WardrobeChoice; wardrobeEase?: Exclude<OverSkirtEase, 0> };
 export const WARDROBE_WAIST_OPTIONS = [
@@ -47,8 +48,13 @@ export function hasUnderbustCut(cut?: WardrobeChoice["cut"]) {
   return Boolean(lods?.garage || lods?.mobile);
 }
 
+export function hasTuckedUnderbust() {
+  const lods = __STANDALONE_CORSET_LODS__[TUCKED_UNDERBUST_ASSET];
+  return Boolean(lods?.garage || lods?.mobile);
+}
+
 export function isRebuiltUnderbustUrl(url: string) {
-  return [REBUILT_UNDERBUST_ASSET, ORIGINAL_CUT_UNDERBUST_ASSET].some(asset => url.includes(`/${asset}.`));
+  return [REBUILT_UNDERBUST_ASSET, ORIGINAL_CUT_UNDERBUST_ASSET, TUCKED_UNDERBUST_ASSET].some(asset => url.includes(`/${asset}.`));
 }
 
 export function wardrobeOverEase(choice?: WardrobeSelection | null): OverSkirtEase {
@@ -78,6 +84,9 @@ export function corsetModelUrls(choice: WardrobeChoice | undefined, kind: "garag
         add(ORIGINAL_CUT_UNDERBUST_ASSET, directory, __STANDALONE_CORSET_LODS__[ORIGINAL_CUT_UNDERBUST_ASSET]);
       }
       add(REBUILT_UNDERBUST_ASSET, directory, __STANDALONE_CORSET_LODS__[REBUILT_UNDERBUST_ASSET]);
+    }
+    if (resolved.set === UNDERBUST_WARDROBE_SET && resolved.waist === "tucked") {
+      add(TUCKED_UNDERBUST_ASSET, directory, __STANDALONE_CORSET_LODS__[TUCKED_UNDERBUST_ASSET]);
     }
     add(resolved.set, directory, __STANDALONE_CORSET_LODS__[resolved.set]);
   }
