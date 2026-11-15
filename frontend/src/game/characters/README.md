@@ -109,7 +109,8 @@ Drive Out opens the door, seats the driver, closes the door, and moves into a
 short forward roll with a chase camera. The driver remains seated at the
 endpoint. Use Steer left or right there, or Reset to return to the turntable.
 
-Character → Face opens a close-up for iris color, eyebrow tint, and glasses.
+Character → Identity opens a face close-up when changing hairstyle, hair color,
+skin tone, iris color, or eyebrow tint. Glasses are under Appearance → Accessories.
 The iris palette includes Obsidian black and five other deep shades, with
 reduced iris and cornea reflections for the darkest colors.
 Both villagers use these settings in the live model and their rendered portrait.
@@ -188,8 +189,8 @@ visual review.
 Character tabs are Identity, Appearance, and Emotes. Appearance keeps the live
 character in the center, with a scrollable left wardrobe rail and one item per
 catalog row. It reuses the existing scene and draws cards with lightweight SVG
-illustrations. Face, hair, skin, and headwear categories focus the
-face camera. Leaving restores the earlier camera. Colors contains preset dyes,
+illustrations. Headwear focuses the face camera, and leaving restores the
+earlier camera. Colors contains preset dyes,
 paired palettes, and custom fabric/accent pickers.
 
 Outfits contains the complete village looks and three fitted Gothic sets.

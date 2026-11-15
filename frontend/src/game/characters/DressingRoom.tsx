@@ -22,9 +22,6 @@ const CATEGORIES = [
   { id: "bows", label: "Bows", group: "Finishing touches", icon: "bows", femaleOnly: true },
   { id: "accessories", label: "Accessories", group: "Finishing touches", icon: "accessories" },
   { id: "props", label: "Handheld props", group: "Finishing touches", icon: "props" },
-  { id: "hair", label: "Hair", group: "Character", icon: "hair" },
-  { id: "face", label: "Face", group: "Character", icon: "face" },
-  { id: "skin", label: "Skin tone", group: "Character", icon: "skin" },
 ] as const;
 type Category = typeof CATEGORIES[number]["id"];
 type Icon = typeof CATEGORIES[number]["icon"] | "remove";
@@ -41,9 +38,6 @@ const ICON_PATHS: Record<Icon, string> = {
   bows: "m10 10-6-4v12l6-4m4-4 6-4v12l-6-4 M10 10h4v4h-4z",
   accessories: "m2 10 3-1 2 1h3l2 2 2-2h3l2-1 3 1 M4 10l1 6h5l2-4 2 4h5l1-6",
   props: "M5 8h14l1 13H4z M8 8V6a4 4 0 0 1 8 0v2",
-  hair: "M5 19V10a7 7 0 0 1 14 0v9l-4 2 M5 19l4 2 M6 10c5 0 7-5 7-5s1 5 5 6 M8 12v3a4 4 0 0 0 8 0v-3",
-  face: "M6 9a6 6 0 0 1 12 0v6a6 6 0 0 1-12 0z M8 11h1 M15 11h1 M10 17h4",
-  skin: "M12 3S5 11 5 15a7 7 0 0 0 14 0c0-4-7-12-7-12z M9 15c0 2 1 3 3 3",
 };
 
 function WardrobeIcon({ name }: { name: Icon }) {
@@ -110,11 +104,10 @@ function inspectWardrobe(focus: WardrobeFocus) {
 }
 
 /** One live scene; browsing the catalog never changes or saves the equipped look. */
-export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, onLoad = onTryOn, onEndPreview, cameraTools, cameraShortcuts, previewZoom }: {
+export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, onLoad = onTryOn, onEndPreview, cameraTools }: {
   choice: CharacterChoice; onChange: (choice: CharacterChoice) => void;
   onEquip?: (choice: CharacterChoice) => void; onTryOn: (choice: CharacterChoice) => void;
   onLoad?: (choice: CharacterChoice) => void; onEndPreview?: () => void; cameraTools?: ReactNode;
-  cameraShortcuts?: ReactNode; previewZoom?: ReactNode;
 }) {
   const [category, setCategory] = useState<Category>("outfits");
   const [catalogOpen, setCatalogOpen] = useState(false);
@@ -142,7 +135,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
     outfits: garments?.dress ? "Full body" : upperPiece, saved: "Full body", layers: "Full body", underwear: "Full body",
     corsets: "corset", tops: "shirt", bottoms: "skirt", bows: "bow",
     footwear: "shoes", headwear: pieces.includes("hat") ? "hat" : "Face", accessories: pieces.includes("glasses") ? "glasses" : "Face",
-    props: pieces.includes("bag") ? "bag" : "Hands", hair: "Face", face: "Face", skin: "Face",
+    props: pieces.includes("bag") ? "bag" : "Hands",
   };
 
   useLayoutEffect(() => {
@@ -285,15 +278,12 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
       choose: garments?.hat || removedClothing.includes("hat") ? () => onTryOn(setWardrobeGarment(setWardrobeRemoval(choice, "hat", false), "hat")) : undefined }])
       : hasAuthoredMale ? [] : options("headwear", "Headwear", "headwear"),
     bows: [],
-    accessories: options("glasses", "Glasses", "face"),
+    accessories: options("glasses", "Glasses", "accessories"),
     props: [
       { id: "empty-hands", label: "Empty hands", section: "Handheld props", icon: "props", focus: "Hands", description: "Remove the current handheld prop.", selected: !choice.prop, choose: () => onChange({ ...choice, prop: undefined }) },
       { id: "shop-bag", label: "Shop bag", section: "Handheld props", icon: "props", focus: "bag", description: "Carry a shop bag to use the bag emotes.", pieces: ["bag"], selected: choice.prop === "shop-bag", detail: "Unlocks bag emotes", choose: () => onChange({ ...choice, prop: "shop-bag" }),
         clear: choice.prop ? next => ({ ...next, prop: undefined }) : undefined },
     ],
-    hair: [...(hasAuthoredMale ? [] : options("hair", "Hairstyle", "hair")), ...options("hair_color", "Hair color", "hair")],
-    face: [...options("eye_color", "Eye color", "face"), ...options("brow_color", "Eyebrow tint", "face")],
-    skin: options("skin", "Skin tone", "skin"),
   };
   if (female) for (const item of importedWardrobeItems) {
     if (item.outfit) continue;
@@ -378,7 +368,6 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
         <small>Fitting room</small>
         <h2>{character.name}</h2>
       </header>
-      {cameraShortcuts && <div className="dressing-camera-shortcuts">{cameraShortcuts}</div>}
     </div>
     <aside className="dressing-wardrobe" aria-label="Wardrobe">
       <h2>Wardrobe</h2>
@@ -476,7 +465,6 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
         {itemPieces.length > 0 && <FitReview choice={choice} piece={itemPieces.includes(piece) ? piece : itemPieces[0]} />}
       </>}
     </aside>
-    {previewZoom && <div className="dressing-preview-zoom" data-controller-row>{previewZoom}</div>}
     <div className="dressing-toolbar">
       {cameraTools}
       {!underwearColor && piece && <ClothingColorToolbar choice={choice} piece={piece} onChange={onChange} />}

@@ -1,11 +1,14 @@
 import { useEffect } from "react";
 import type { VehicleModelId } from "../../vehicles/tools/vehicleModelPaths";
 import { GARAGE_STATIONS } from "./garageStations";
-import { garageCamera, useGarageDrive, type DriveStage } from "./garageDriveStore";
+import { GARAGE_CAMERAS, garageCamera, useGarageDrive, type DriveStage } from "./garageDriveStore";
 import { COCKPIT_TAKES, type CockpitTake } from "../characters/cockpitEmotes";
 import { unlockVehicleAudio } from "../../audio/sharedAudio";
 import { useVehicleStudioStore } from "../heroes/vehicleStudioStore";
 import { PreviewVisibilityToggle } from "./PreviewVisibilityToggle";
+import { PreviewControlDisclosure } from "./PreviewControlDisclosure";
+import { FittingCameraSelect } from "../characters/FittingCameraSelect";
+import { ToolIcon } from "../characters/FittingCameraToolbar";
 
 const stageLabel: Record<DriveStage, string> = {
   idle: "", station: "At the controls", opening: "Opening door", entering: "Getting in", closing: "Closing door",
@@ -13,12 +16,13 @@ const stageLabel: Record<DriveStage, string> = {
 };
 
 export function GaragePreviewControls({ vehicle }: { vehicle: VehicleModelId }) {
-  const { stage, ready, error, nextCamera, enterStation, start, reset, leaveVehicle } = useGarageDrive();
+  const { stage, ready, error, enterStation, start, reset, leaveVehicle } = useGarageDrive();
   const camera = useGarageDrive(garageCamera);
   const station = GARAGE_STATIONS[vehicle];
   const canSteer = station.kind === "wheel" && Boolean(station.steeringParts);
   const canDriveOut = vehicle === "ae86";
   const active = stage !== "idle";
+  const cameraViews = station.kind === "wheel" ? GARAGE_CAMERAS : GARAGE_CAMERAS.filter(view => view !== "Dashboard");
   useEffect(() => () => leaveVehicle(), [leaveVehicle]);
 
   function playGesture(id: CockpitTake["id"]) {
@@ -28,9 +32,13 @@ export function GaragePreviewControls({ vehicle }: { vehicle: VehicleModelId }) 
 
   return <div className="hero-garage-controls">
     {(error || active) && <span className="garage-drive-status" role="status">{error || stageLabel[stage]}</span>}
-    <div className="garage-preview-buttons" role="group" aria-label="Garage camera and drive preview" data-controller-row>
-      <button type="button" className="menu-control" aria-label={`Switch garage camera. Current view: ${camera}`}
-        onClick={() => nextCamera(station.kind === "wheel")}>Camera · {camera}</button>
+    <div className="fitting-camera-toolbar fitting-camera-row" role="group" aria-label="Garage camera and drive preview" data-controller-row>
+      <PreviewControlDisclosure label="Camera angles" icon={<ToolIcon icon="camera" />} panelClass="fitting-camera-panel fitting-camera-angles">
+        <FittingCameraSelect views={cameraViews} view={cameraViews.includes(camera) ? camera : "Showroom"}
+          onViewChange={view => useGarageDrive.setState({ camera: view })} />
+      </PreviewControlDisclosure>
+      <PreviewControlDisclosure label="Drive preview controls" icon={<ToolIcon icon="adjustments" />}>
+        <div className="garage-preview-buttons" data-controller-row>
       {active ? <button type="button" className="menu-control" onClick={reset}>Reset</button> : <>
         <button type="button" className="menu-control" disabled={!ready}
           title={ready ? undefined : "Requires a loaded driver, motion enabled."}
@@ -50,6 +58,8 @@ export function GaragePreviewControls({ vehicle }: { vehicle: VehicleModelId }) 
           {COCKPIT_TAKES.filter(take => take.id.startsWith("drive-")).map(take =>
             <option key={take.id} value={take.id}>{take.name}</option>)}
         </select>}
+        </div>
+      </PreviewControlDisclosure>
       <PreviewVisibilityToggle />
     </div>
   </div>;
