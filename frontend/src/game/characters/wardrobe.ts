@@ -6,6 +6,7 @@ import { prepareOverSkirtEase, type OverSkirtEase } from "./overSkirtEase";
 export const WARDROBE_SETS = catalog.filter(set => !set.retired);
 export const WARDROBE_CORSETS = catalog;
 export const UNDERBUST_WARDROBE_SET = "gothic-04";
+export const REBUILT_UNDERBUST_ASSET = "gothic-underbust-vest";
 export type WardrobeChoice = { set: string; shirt: "none" | "under" | "over"; waist: "tucked" | "over" };
 type WardrobeSelection = { wardrobe?: WardrobeChoice; wardrobeTrial?: WardrobeChoice; wardrobeEase?: Exclude<OverSkirtEase, 0> };
 export const WARDROBE_WAIST_OPTIONS = [
@@ -46,16 +47,28 @@ export function wardrobeModelUrl(choice: WardrobeChoice | undefined, kind: "gara
     ? `/models/characters/wardrobe/${resolved.set}.${kind === "portrait" ? "mobile" : "garage"}.glb` : null;
 }
 
-export function corsetModelUrl(choice: WardrobeChoice | undefined, kind: "garage" | "portrait", { useStandalone = true } = {}) {
+export function corsetModelUrls(choice: WardrobeChoice | undefined, kind: "garage" | "portrait", { useStandalone = true } = {}) {
   const resolved = resolveWardrobe(choice, { includeRetired: true });
-  if (!resolved) return null;
-  const standalone = __STANDALONE_CORSET_LODS__[resolved.set];
-  const hasStandalone = useStandalone && (standalone?.garage || standalone?.mobile);
-  const available = hasStandalone ? standalone : __BUNDLED_WARDROBE_LODS__[resolved.set];
-  if (!available?.garage && !available?.mobile) return null;
-  const tier = available.mobile && (kind === "portrait" || !available.garage) ? "mobile" : "garage";
-  const directory = hasStandalone ? "female/wardrobe/corsets" : "wardrobe";
-  return `/models/characters/${directory}/${resolved.set}.${tier}.glb`;
+  if (!resolved) return [];
+  const urls: string[] = [];
+  const add = (id: string, directory: string, available: { garage: boolean; mobile: boolean } | undefined) => {
+    if (!available?.garage && !available?.mobile) return;
+    const tier = available.mobile && (kind === "portrait" || !available.garage) ? "mobile" : "garage";
+    urls.push(`/models/characters/${directory}/${id}.${tier}.glb`);
+  };
+  if (useStandalone) {
+    const directory = "female/wardrobe/corsets";
+    if (resolved.set === UNDERBUST_WARDROBE_SET && resolved.waist === "over") {
+      add(REBUILT_UNDERBUST_ASSET, directory, __STANDALONE_CORSET_LODS__[REBUILT_UNDERBUST_ASSET]);
+    }
+    add(resolved.set, directory, __STANDALONE_CORSET_LODS__[resolved.set]);
+  }
+  add(resolved.set, "wardrobe", __BUNDLED_WARDROBE_LODS__[resolved.set]);
+  return urls;
+}
+
+export function corsetModelUrl(choice: WardrobeChoice | undefined, kind: "garage" | "portrait", options?: { useStandalone?: boolean }) {
+  return corsetModelUrls(choice, kind, options)[0] ?? null;
 }
 
 /** A garment swap changes visibility and indices once, never vertex positions per frame. */

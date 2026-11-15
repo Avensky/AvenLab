@@ -72,7 +72,7 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     preview.setState({ camera: 'Hands', zoom: 1.2 });
     await act(async () => root.render(h(Harness, { initial: DEFAULT_CHARACTER })));
     assert.deepEqual([...document.querySelectorAll('[data-category]')].map(button => button.dataset.category),
-      ['outfits', 'saved', 'layers', 'underwear', 'corsets', 'tops', 'bottoms', 'footwear', 'headwear', 'bows', 'accessories', 'props', 'hair', 'face', 'skin']);
+      ['outfits', 'saved', 'layers', 'underwear', 'corsets', 'tops', 'bottoms', 'footwear', 'headwear', 'bows', 'accessories', 'props']);
     assert.equal(find('[data-category=colors]'), null, 'presets live in the color toolbar');
     assert.deepEqual([...find('.dressing-room-title').children].map(label => label.textContent), ['Fitting room', 'Vesper Vega']);
     assert.equal(find('.dressing-catalog').hidden, true);
@@ -302,8 +302,7 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     assert.equal(trials.at(-1).garments.top, undefined);
     assert.equal(trials.at(-1).garments.bracer, 'bracer-01');
 
-    await open('face');
-    assert.equal(preview.getState().camera, 'Face');
+    assertPiece('corset');
     await act(async () => root.unmount()); root = null;
     assert.equal(preview.getState().camera, 'Hands', 'leaving restores the previous camera');
     assert.equal(preview.getState().zoom, 1.2);

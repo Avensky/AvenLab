@@ -257,11 +257,11 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
       const selected = corset?.set === set.id;
       const underbust = set.id === UNDERBUST_WARDROBE_SET;
       return {
-        id: set.id, set: set.id, label: set.name, section: "Gothic corsets", icon: "corsets",
+        id: set.id, set: set.id, label: underbust ? "Gothic Underbust Vest" : set.name, section: "Gothic corsets", icon: "corsets",
         trial: true, selected, detail: "Try-on", focus: "corset", pieces: selected && garments?.top ? ["corset", "shirt"] : ["corset"], layer: "Outer",
         unavailable: installed ? undefined : "Pack not installed",
         description: underbust
-          ? "An open Underbust Vest. Try it on by itself or layer it over a fitted piece from Tops."
+          ? "The rebuilt vest appears in Over skirt. Tucked into skirt uses the original fit. Wear it alone or layer it over a fitted piece from Tops."
           : "Try this corset with your current skirt or choose another skirt from the wardrobe.",
         choose: installed ? () => tryCorset(set.id) : undefined,
         clear: choice.wardrobeTrial?.set === set.id

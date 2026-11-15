@@ -403,6 +403,8 @@ vest review**. Select **Right ¾** to see the wearer's right cup. Drag to orbit
 and scroll to zoom in on the seam and the shoulder openings.
 
 The archive includes the editable Blender file and matched before-and-after
-views. The GLB is a garment-only garage review export. It stays outside the
-wardrobe catalog pending approval, layered and posed fit, and mobile LOD
-verification.
+views. The Fitting Room loads the integrated Gothic Underbust Vest from
+`public/models/characters/female/wardrobe/corsets/gothic-underbust-vest.garage.glb`
+or its `.mobile.glb` tier when the existing `gothic-04` item uses Over skirt.
+Tucked into skirt uses its original authored model. The legacy Over asset
+serves as a fallback when the rebuilt file is missing or fails to load.

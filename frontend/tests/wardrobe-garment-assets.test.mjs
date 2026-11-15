@@ -831,6 +831,113 @@ test('standalone corsets and a selected skirt share the live rig and switch wais
   }
 });
 
+test('the rebuilt Gothic Underbust replaces the live Over fit on both tiers and Tucked still loads', async t => {
+  const set = 'gothic-04';
+  const tiers = [['garage', 'garage'], ['mobile', 'portrait']];
+  const rebuiltPath = tier => `${garmentDir}corsets/gothic-underbust-vest.${tier}.glb`;
+  const top = catalog.find(item => item.id === 'top-02');
+  const inputs = [top.url.slice(1), bundledDir + 'gothic-02.mobile.glb', ...tiers.map(([tier]) => rebuiltPath(tier))];
+  const sources = await Promise.all(inputs.map(path => readFile(new URL(path, publicDir))));
+  if (sources.some(isLfsPointer)) return t.skip('Run git lfs pull to materialize the fitting-room models.');
+  const topScene = await loadGeometry(sources[0]);
+  await promisify(execFile)(process.execPath, [fileURLToPath(new URL('../scripts/build-wardrobe-pieces.mjs', import.meta.url))]);
+  const donor = await readFile(new URL(garmentDir + 'vesper-body.glb', publicDir)).then(loadGeometry);
+  const garmentBody = donor.getObjectByName('BODY_WARDROBE');
+  assert(garmentBody, 'standalone fits use the generated complete Vesper body');
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  try {
+    const { prepareVillager, applyVillagerLook, villagerModelUrl } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
+    const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { corsetModelUrl, corsetModelUrls } = await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
+    const { withClothingColors } = await vite.ssrLoadModule('/src/game/characters/clothingPieces.ts');
+    const { buildEmoteClips, findGaragePreviewEmote } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
+
+    for (const [tier, kind] of tiers) {
+      const baseUrl = villagerModelUrl(characterLook(DEFAULT_CHARACTER), kind);
+      assert(baseUrl, `${tier} has a live Vesper model`);
+      const baseBytes = await readFile(new URL(baseUrl.slice(1), publicDir));
+      if (isLfsPointer(baseBytes)) return t.skip('Run git lfs pull to materialize the character models.');
+      const base = await loadGeometry(baseBytes);
+      for (const waist of ['over', 'tucked']) {
+        const garments = waist === 'over' ? [{ item: top, scene: topScene }] : [];
+        const choice = withClothingColors({ ...DEFAULT_CHARACTER, wardrobeTrial: { set, waist, shirt: 'none' },
+          ...(garments.length && { garments: { top: top.id } }) },
+          'corset', { color: '#305080' });
+        const look = characterLook(choice);
+        assert.equal(villagerModelUrl(look, kind), baseUrl);
+        const url = corsetModelUrl(look.corset, kind);
+        assert.equal(url, waist === 'over' ? `/${rebuiltPath(tier)}` : `/${garmentDir}corsets/${set}.${tier}.glb`);
+        if (waist === 'over') assert.equal(corsetModelUrls(look.corset, kind)[1],
+          `/${garmentDir}corsets/${set}.${tier}.glb`, 'missing rebuilt assets fall back to the legacy Over fit');
+        const bytes = await readFile(new URL(url.slice(1), publicDir));
+        const scene = await loadGeometry(bytes);
+        const model = prepareVillager(base, { fitted: true, garmentBody, garments, corsetSource: { set, scene } });
+        try {
+          applyVillagerLook(model, look);
+          const { root } = model;
+          const corset = root.getObjectByName(`wardrobe-corset-${set}`);
+          const outfitSkin = root.getObjectByName('BODY_OUTFIT_CUT');
+          assert(corset && outfitSkin, `${tier} ${waist} attaches to the live Vesper rig`);
+          assert.equal(root.getObjectByName('CLOTH_TOP_CORSET').visible, false, 'the stock bodice is replaced');
+          const fit = corset.getObjectByName(`CLOTH_CORSET_${waist.toUpperCase()}`);
+          assert(fit?.visible, `${tier} ${waist} displays its fit`);
+          const visibleMeshes = [];
+          fit.traverseVisible(mesh => { if (mesh.isSkinnedMesh) visibleMeshes.push(mesh); });
+          assert(visibleMeshes.length > 0 && visibleMeshes.every(mesh => mesh.skeleton === outfitSkin.skeleton));
+          if (waist === 'tucked') {
+            assert.notEqual(corset.getObjectByName('CLOTH_CORSET_OVER')?.visible, true, 'Tucked does not draw Over');
+            continue;
+          }
+
+          const authored = scene.getObjectByName('UNDERBUST_SOURCE_REFIT');
+          const authoredNames = new Set();
+          assert(authored, 'the selected Over model contains the rebuilt garment');
+          authored.traverse(mesh => { if (mesh.isSkinnedMesh) authoredNames.add(mesh.name); });
+          assert(visibleMeshes.some(mesh => authoredNames.has(mesh.name)), 'Over draws the rebuilt garment primitives');
+          assert(visibleMeshes.some(mesh => mesh.material.userData.color_slot === 'fabric'
+            && mesh.material.color.getHexString() === '305080'), 'the rebuilt fabric follows the corset color');
+          assert(visibleMeshes.some(mesh => mesh.material.userData.color_slot === 'hardware'), 'buckles keep a separate color channel');
+          const shirt = root.getObjectByName(`wardrobe-${top.id}`);
+          assert(shirt?.visible && shirt.children.every(mesh => mesh.skeleton === outfitSkin.skeleton),
+            'the fitted top stays equipped under the rebuilt vest');
+          const fabric = visibleMeshes.find(mesh => mesh.material.userData.color_slot === 'fabric');
+          const regular = fabric.geometry;
+          applyVillagerLook(model, { ...look, overEase: 2 });
+          assert.notEqual(fabric.geometry, regular, 'wide Over uses a separate hem geometry');
+          applyVillagerLook(model, look);
+          assert.equal(fabric.geometry, regular, 'regular Over restores the same layered geometry');
+
+          const samples = [];
+          root.updateMatrixWorld(true);
+          const point = new Vector3();
+          for (const mesh of visibleMeshes) {
+            const positions = mesh.geometry.getAttribute('position');
+            for (let i = 0; i < positions.count; i += 53) {
+              if (positions.getY(i) >= 1.17 && positions.getY(i) <= 1.34 && positions.getZ(i) > .035) {
+                samples.push({ mesh, i, before: mesh.getVertexPosition(i, point).applyMatrix4(mesh.matrixWorld).clone() });
+              }
+            }
+          }
+          assert(samples.length > 0, 'the upper cup has skinned samples');
+          const [clip] = buildEmoteClips(root, [findGaragePreviewEmote('010', false)]);
+          const mixer = new AnimationMixer(root);
+          mixer.clipAction(clip).play();
+          mixer.setTime(clip.duration * .49);
+          root.updateMatrixWorld(true);
+          assert(samples.some(({ mesh, i, before }) =>
+            mesh.getVertexPosition(i, point).applyMatrix4(mesh.matrixWorld).distanceTo(before) > .001),
+          'the rebuilt cup follows live emote playback');
+          mixer.stopAllAction();
+        } finally {
+          model.dispose();
+        }
+      }
+    }
+  } finally {
+    await vite.close();
+  }
+});
+
 test('Laced Bodice straps clear the rear shoulders and Tucked lacing shows skin', async t => {
   const set = 'gothic-01';
   const item = catalog.find(garment => garment.id === 'skirt-02');
