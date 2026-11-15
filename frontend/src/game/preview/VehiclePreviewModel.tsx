@@ -294,7 +294,8 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
       <group ref={revealRoot} scale={revealActive ? .001 : 1} visible={active}>
         <PreviewContactShadow footprint={display.footprint} offset={display.shadowOffset} />
         <group position={display.position} scale={display.scale} name="selection-vehicle-glb">
-          <primitive object={prepared.root} dispose={null} />
+          {/* Keep the prepared car alive while omitting its meshes from scene traversal. */}
+          {active && <primitive object={prepared.root} dispose={null} />}
           {active && diagnostics && garageOpen && vehicleSystems(model) === "road" && <GarageVehicleDiagnosticsScene vehicle={model} popup={popup} />}
         </group>
       </group>

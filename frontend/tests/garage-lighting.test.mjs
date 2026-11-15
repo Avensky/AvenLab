@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { Group, Mesh, MeshStandardMaterial, BoxGeometry } from "three";
+import { Group, Mesh, MeshStandardMaterial, BoxGeometry, PerspectiveCamera, Scene } from "three";
 import { prepareGarageDisplay } from "../src/game/preview/prepareGarageDisplay.ts";
 import {
   GARAGE_LIGHT_COLORS,
@@ -11,6 +11,7 @@ import { configureGarageBloom } from "../src/game/preview/garagePostprocessing.t
 import {
   configureGarageFloor,
   gateGarageFloorCapture,
+  gatePlanarReflectionCapture,
 } from "../src/game/preview/garageFloorEffects.ts";
 import {
   DEFAULT_GARAGE_EFFECTS,
@@ -228,4 +229,45 @@ test("turning off garage mirrors skips their capture and keeps the tile shader a
   floor.onBeforeRender();
   assert.equal(captures, 3);
   assert.equal(floor.material.uniforms.reflectionBlur.value, 0.75);
+});
+
+test("the floor and fitting mirror share one capture per moving frame without starving", () => {
+  const scene = new Scene();
+  const camera = new PerspectiveCamera();
+  camera.position.z = 3;
+  camera.updateMatrixWorld();
+  let time = 0;
+  const captures = [];
+  const mirror = label => {
+    const object = new Group();
+    object.onBeforeRender = () => captures.push(label);
+    gatePlanarReflectionCapture(object, () => time, 1 / 24);
+    return object;
+  };
+  const floor = mirror("floor"), wall = mirror("wall");
+  const render = () => {
+    floor.onBeforeRender(null, scene, camera);
+    wall.onBeforeRender(null, scene, camera);
+  };
+  for (let frame = 0; frame < 8; frame++) {
+    time = frame * .05; // Both are due on every frame at 20 Hz.
+    const previous = captures.length;
+    render();
+    assert.equal(captures.length, previous + 1);
+  }
+  assert.deepEqual(captures, ["floor", "wall", "floor", "wall", "floor", "wall", "floor", "wall"]);
+
+  wall.rotation.y = Math.PI;
+  wall.updateMatrixWorld();
+  for (const now of [.40, .45, .50]) {
+    time = now;
+    render();
+  }
+  assert.deepEqual(captures.slice(8), ["floor", "floor", "floor"], "a back-facing wall leaves the floor its usual refresh");
+
+  wall.rotation.y = 0;
+  wall.updateMatrixWorld();
+  time = undefined; // A single demand-mode frame must refresh both.
+  render();
+  assert.deepEqual(captures.slice(-2), ["floor", "wall"]);
 });
