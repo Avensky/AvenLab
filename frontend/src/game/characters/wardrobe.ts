@@ -41,8 +41,9 @@ export function withWardrobeWaist<T extends WardrobeSelection>(choice: T, waist:
     : { ...choice, wardrobe: next, wardrobeEase };
 }
 
-export function hasOriginalUnderbustCut() {
-  const lods = __STANDALONE_CORSET_LODS__[ORIGINAL_CUT_UNDERBUST_ASSET];
+export function hasUnderbustCut(cut?: WardrobeChoice["cut"]) {
+  const asset = cut === "original" ? ORIGINAL_CUT_UNDERBUST_ASSET : REBUILT_UNDERBUST_ASSET;
+  const lods = __STANDALONE_CORSET_LODS__[asset];
   return Boolean(lods?.garage || lods?.mobile);
 }
 

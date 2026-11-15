@@ -18,7 +18,7 @@ export const wardrobeGarmentReplacements = {
 export type WardrobeGarmentSlot = keyof typeof wardrobeGarmentReplacements;
 export type WardrobeGarmentChoice = Partial<Record<WardrobeGarmentSlot, string>>;
 export const wardrobeRemovalPieces = {
-  top: ["shirt", "sleeves"], corset: ["corset"], skirt: ["skirt", "underskirt", "shorts", "belt"],
+  top: ["shirt", "sleeves"], sleeves: ["sleeves"], corset: ["corset"], skirt: ["skirt", "underskirt", "shorts", "belt"],
   dress: ["dress"],
   shoes: ["shoes"], socks: ["socks"], hat: ["hat"], bow: ["bow"], harness: ["harness"], bracer: ["bracer"], "bonnet-bow": [],
 } satisfies Record<string, ClothingPiece[]>;
@@ -49,6 +49,7 @@ export type WardrobeGarment = {
   piece: ClothingPiece; url: string; mobileUrl?: string; revisionUrl?: string; retired?: boolean;
   tucksHair?: boolean;
   scalpCap?: boolean;
+  detachableSleeves?: boolean;
   description?: string; hideLongHair?: boolean;
   outfit?: { description: string; barefoot?: boolean };
 };

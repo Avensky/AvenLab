@@ -114,6 +114,7 @@ export default function SignalReconHeader({
       theme={theme}
       eyebrow={title}
       title={subtitle}
+      backAction={onExit && { onClick: onExit, disabled: exitDisabled, label: exitLabel }}
       characterReadOnly={controlsDisabled || exitDisabled}
       collapsed={collapsed}
       setCollapsed={setCollapsed}

@@ -20,7 +20,7 @@ export function replacesVillagerBody(slot: WardrobeGarmentSlot) {
 }
 
 export function removalNeedsVillagerBody(slot: WardrobeRemoval) {
-  return slot === "top" || slot === "corset" || slot === "skirt" || slot === "dress" || slot === "shoes";
+  return slot === "top" || slot === "sleeves" || slot === "corset" || slot === "skirt" || slot === "dress" || slot === "shoes";
 }
 
 function sharesWardrobeRig(source: SkinnedMesh, skeleton: Skeleton) {
@@ -50,7 +50,7 @@ function isFabric(mesh: SkinnedMesh) {
 const coversSkin = new Set<ClothingPiece>(["corset", "shirt", "sleeves", "skirt", "underskirt", "shorts", "shoes", "socks", "dress"]);
 const coversTorso = new Set<ClothingPiece>(["corset", "shirt", "sleeves", "dress", "armor"]);
 
-type RestoredSkin = { upper: boolean; skirt: boolean; feet: boolean };
+type RestoredSkin = { upper: boolean; arms: boolean; skirt: boolean; feet: boolean };
 type SkinCover = { surface: MeshBVH; piece: ClothingPiece; baseLayer?: true; rebuiltUnderbust?: boolean };
 
 function isUnderbustOpening(point: Vector3) {
@@ -58,6 +58,20 @@ function isUnderbustOpening(point: Vector3) {
   const underarm = point.y > 1.234 && Math.abs(point.x) > .10 && point.z > -.05 && point.z < .065;
   return point.y > 1.270
     || underarm || (point.z < 0 && point.y > 1.215 && (point.y > 1.240 || Math.abs(point.x) < .10));
+}
+
+function armVertices(body: SkinnedMesh, geometry: BufferGeometry) {
+  const joints = geometry.getAttribute("skinIndex"), weights = geometry.getAttribute("skinWeight");
+  const armBones = body.skeleton.bones.map(({ name }) => /^(?:clavicle|upperarm|lowerarm|hand)_/.test(name));
+  const arms = new Uint8Array(joints.count);
+  for (let i = 0; i < joints.count; i++) {
+    let influence = 0;
+    for (let channel = 0; channel < joints.itemSize; channel++) {
+      if (armBones[joints.getComponent(i, channel)]) influence += weights.getComponent(i, channel);
+    }
+    if (influence >= .5) arms[i] = 1;
+  }
+  return arms;
 }
 
 function fitBodyMask(
@@ -82,6 +96,7 @@ function fitBodyMask(
   // The close-fitting bra is offset from the same skin. Keep any body face
   // that extends beyond its binding instead of cutting away its exposed tip.
   const coveredBra = bra.length ? prepareWardrobeCoverage(bra, 0, 1) : undefined;
+  const arms = restored.arms ? armVertices(body, full) : undefined;
   let visible = 0;
   for (let i = 0; i < index.count; i += 3) {
     const ai = index.getX(i), bi = index.getX(i + 1), ci = index.getX(i + 2);
@@ -93,7 +108,8 @@ function fitBodyMask(
     // The long corset and high-waisted skirt overlap the usual upper/lower
     // split. Restore both sides of that seam and let the remaining cloth mask it.
     const restoredTorso = restored.upper && point.y > .92;
-    const restoredSkin = restoredTorso
+    const restoredArms = arms && (arms[ai] || arms[bi] || arms[ci]);
+    const restoredSkin = Boolean(restoredTorso || restoredArms)
       || (restored.skirt && point.y > .075 && point.y < 1.24)
       || (restored.feet && point.y < .115);
     const replaced = restoredSkin || (upperBody ? top : skirt && point.y > .075);
@@ -106,7 +122,7 @@ function fitBodyMask(
     // triangle as the actor moves. Leave skin under these edges and still mask
     // it against any separately equipped layer.
     const isCovered = coveredOpenings && isUnderbustOpening(point) ? coveredOpenings
-      : coveredShoulder && isLacedShoulder(point) ? coveredShoulder : restoredTorso ? coveredTorso : covered;
+      : coveredShoulder && isLacedShoulder(point) ? coveredShoulder : restoredTorso && !restoredArms ? coveredTorso : covered;
     if (!openLacing && replaced && (isCovered(point, a, b, c, restoredSkin || (upperBody && checkTopEdges))
       || coveredBra?.(point, a, b, c, true))) continue;
     fittedIndex.array[visible++] = ai;
@@ -135,8 +151,13 @@ export function prepareWardrobeGarments(
   const removals = removedClothing.filter(slot => (full || !removalNeedsVillagerBody(slot))
     && (((slot === "top" || slot === "skirt") && removedClothing.includes("dress"))
       || wardrobeRemovalPieces[slot].some(piece => stock.some(part => part.piece === piece))));
-  const restored = { upper: removals.includes("top") || removals.includes("corset"), skirt: removals.includes("skirt"), feet: removals.includes("shoes") };
-  const restoresBody = restored.upper || restored.skirt || restored.feet;
+  const removeSleeves = Boolean(full) && removedClothing.includes("sleeves");
+  const restored = {
+    upper: removals.includes("top") || removals.includes("corset"),
+    arms: removeSleeves && (removals.includes("sleeves") || sources.some(({ item }) => item.detachableSleeves)),
+    skirt: removals.includes("skirt"), feet: removals.includes("shoes"),
+  };
+  const restoresBody = restored.upper || restored.arms || restored.skirt || restored.feet;
   const replacements = new Set<ClothingPiece>(removals.flatMap(slot => wardrobeRemovalPieces[slot]));
   const group = new Group();
   group.name = "fitting-room-garments";
@@ -169,6 +190,7 @@ export function prepareWardrobeGarments(
     let fabricColor: Color | undefined;
     scene.traverse(part => {
       if (!(part instanceof SkinnedMesh)) return;
+      if (removeSleeves && item.detachableSleeves && /_SLEEVE(?:_|$)/.test(part.name)) return;
       const data = { ...part.parent?.userData, ...part.userData };
       if (!Array.isArray(part.material) && part.material.userData.runtimeExclude) return;
       // The first two wrap skirts open at the center during normal movement.
@@ -214,7 +236,8 @@ export function prepareWardrobeGarments(
         mesh.geometry = fitted;
         fittedGarments.push(fitted);
       }
-      if ((replacesVillagerBody(item.slot) || (restoresBody && coversSkin.has(item.piece))) && isFabric(mesh)) {
+      const coversRestoredSkin = restoresBody && (coversSkin.has(item.piece) || (restored.arms && item.piece === "coat"));
+      if ((replacesVillagerBody(item.slot) || coversRestoredSkin) && isFabric(mesh)) {
         const surface = bodySurface(mesh.geometry);
         if (surface) {
           shapes.push({ surface, piece: item.piece });
@@ -313,7 +336,7 @@ export function prepareWardrobeGarments(
           corset?.group.traverseVisible(part => addSurface(part, "corset"));
           if (restoresBody) {
             for (const { part, piece } of stock) {
-              if (!coversSkin.has(piece)) continue;
+              if (!coversSkin.has(piece) && !(restored.arms && piece === "coat")) continue;
               let ancestor: Object3D | null = part;
               while (ancestor?.visible) ancestor = ancestor.parent;
               if (!ancestor) addSurface(part, piece);

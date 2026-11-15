@@ -202,10 +202,24 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
       });
     };
     await acknowledge(requests[0], choice);
-    assert.deepEqual([...document.querySelectorAll('[role=tab]')].map(node => node.textContent), ['Identity', 'Appearance', 'Emotes']);
-    await click('#character-editor-tab-identity');
+    assert.deepEqual([...document.querySelectorAll('[role=tab]')].map(node => node.textContent), ['Appearance', 'Emotes']);
+    const identityControl = find('.character-identity-nav #character-editor-tab-identity');
+    assert.equal(identityControl.textContent, 'Identity');
+    await move('previous_tab');
+    assert.equal(characterViews.at(-1), 'identity');
+    assert.equal(document.activeElement, identityControl);
+    assert.equal(identityControl.getAttribute('aria-current'), 'page');
+    await move('down');
+    assert(document.activeElement.closest('[aria-label="Character model"]'));
+    await move('next_tab');
+    assert.equal(characterViews.at(-1), 'appearance');
+    assert.equal(identityControl.getAttribute('aria-current'), null);
+    await click('.character-identity-nav button');
     assert.equal(find('[aria-label="Character model"] [data-character-option="jules-okafor"]').getAttribute('aria-pressed'), 'true');
+    assert.deepEqual([...document.querySelectorAll('[aria-label="Character model"] button')].map(node => node.textContent),
+      ['Vesper Vega', 'Rook Okafor']);
     await click('#character-editor-tab-emotes');
+    assert.equal(find('.character-identity-nav button'), identityControl);
     assert(find('[aria-label="Emote results"]').classList.contains('character-controls--right'));
     assert(find('[aria-label="Emote collection"]').closest('.character-controls--left'));
     assert.equal(find('[data-character-option]'), null, 'Emotes uses the model chosen in Identity');

@@ -929,6 +929,17 @@ test("alpha selection, queue and HUD route to their own state owners", async (t)
           }),
         );
         assert.equal(ui.getState().screen, "mode_select");
+        await act(async () => ui.setState({ screen: "queue" }));
+        const back = document.querySelector(".alpha-queue-card [data-header-back]");
+        await act(async () => back.click());
+        const headerCommand = sent.at(-1);
+        assert.equal(headerCommand.action, "mode_cancel");
+        assert.notEqual(headerCommand.request_id, command.request_id);
+        assert.equal(back.disabled, true);
+        await act(async () => client.receiveSocialResult({
+          request_id: headerCommand.request_id, ok: true, data: {},
+        }));
+        assert.equal(ui.getState().screen, "mode_select");
       },
     );
     await t.test(

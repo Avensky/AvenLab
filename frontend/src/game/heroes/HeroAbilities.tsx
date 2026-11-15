@@ -119,7 +119,7 @@ export function HeroAbilities(){
  useEffect(()=>scroll.current?.scrollTo({top:0}),[selected,tab]);
  if(!selected)return null;
  return <section ref={root} className="game-ui menu-surface alpha-selection hero-selection hero-ability-guide" role="dialog" aria-modal="true" data-controller-rows aria-label="Hero abilities" tabIndex={-1} onKeyDown={trapMenuFocus}>
-  <SceneTabHeader title="ABILITIES" compact tabs={GUIDE_TABS} activeTab={tab} onTabChange={setTab} idPrefix="hero-guide" panelId="hero-guide-panel"/>
+  <SceneTabHeader title="ABILITIES" compact tabs={GUIDE_TABS} activeTab={tab} onTabChange={setTab} idPrefix="hero-guide" panelId="hero-guide-panel" backAction={{onClick:closeHeroGuide,label:"Back to game"}}/>
   <div ref={scroll} className="hero-guide-scroll" tabIndex={0} role="tabpanel" id="hero-guide-panel" aria-labelledby={`hero-guide-tab-${tab}`}>
    {tab==='concepts'?<HeroConceptGallery/>:<HeroAbilityDetails heroId={selected}/>}
   </div>

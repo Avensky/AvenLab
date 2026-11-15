@@ -241,7 +241,7 @@ export function SocialPanel() {
           root.current?.querySelector<HTMLButtonElement>('[data-social-refresh]:not(:disabled)')?.click();
         }}
       >
-        <MenuFrameHeader title="SOCIAL" titleId="social-title" eyebrow="" compact={angled}
+        <MenuFrameHeader title="SOCIAL" titleId="social-title" eyebrow="" compact={angled} backAction={{ onClick: back }}
           showProgress className={angled ? "angled-tab-header" : undefined}>
           {angled && <div className="tabbed-angled-scroll">{navigation}</div>}
         </MenuFrameHeader>

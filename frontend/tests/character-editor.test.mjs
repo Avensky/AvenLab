@@ -167,7 +167,7 @@ test('character tools preserve builder drafts, frame close-ups, and wait for app
     const { MenuFrameHeader } = await load('components/menus/MenuFrame.tsx');
     ui.setState({ screen: 'settings', overlay: null });
     root = createRoot(document.getElementById('root'));
-    await act(async () => root.render(h(MenuFrameHeader, { title: 'Settings', showProgress: true })));
+    await act(async () => root.render(h(MenuFrameHeader, { title: 'Settings', showProgress: true, backAction: { onClick: () => {} } })));
     assert.equal(document.querySelectorAll('.character-header-portrait').length, 1);
     assert(find('.menu-header-actions [aria-label="Driver progression"]'));
     await click('.menu-header-actions [data-open-character]');

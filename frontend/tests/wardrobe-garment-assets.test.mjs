@@ -387,6 +387,75 @@ test('turning off wardrobe layers fits underwear and keeps the other pieces', as
   }
 });
 
+test('removing detachable sleeves preserves the bodice or dress and exposes both skinned arms', async t => {
+  const item = catalog.find(({ id }) => id === 'medieval-kaftan-01');
+  assert(item.detachableSleeves);
+  const tiers = [['garage', item.url], ['portrait', item.mobileUrl]];
+  const inputs = [bundledDir + 'gothic-02.mobile.glb', ...tiers.flatMap(([kind, path]) => [
+    villagerDir + `villager-female.${kind}.glb`, path.slice(1),
+  ])];
+  const files = await Promise.all(inputs.map(path => readFile(new URL(path, publicDir))));
+  if (files.some(isLfsPointer)) return t.skip('Run git lfs pull to materialize the fitting-room models.');
+  const [donor, ...scenes] = await Promise.all(files.map(loadGeometry));
+  const garmentBody = donor.getObjectByName('BODY_WARDROBE');
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  try {
+    const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
+    const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { wardrobeCoverageSurface } = await vite.ssrLoadModule('/src/game/characters/wardrobeCoverage.ts');
+    const completeSkin = wardrobeCoverageSurface(garmentBody.geometry);
+    try {
+      for (const [i, [kind]] of tiers.entries()) {
+        const [base, dress] = scenes.slice(i * 2, i * 2 + 2);
+        for (const garments of [[], [{ item, scene: dress }]]) {
+          const build = removedClothing => {
+            const choice = { ...DEFAULT_CHARACTER, removedClothing, ...(garments.length && { garments: { dress: item.id } }) };
+            const model = prepareVillager(base, { fitted: Boolean(garments.length), garmentBody, garments, removedClothing });
+            applyVillagerLook(model, characterLook(choice));
+            return model;
+          };
+          const withSleeves = build([]), withoutSleeves = build(['sleeves']);
+          const root = withoutSleeves.root;
+          const from = garments.length ? withSleeves.root.getObjectByName('fitting-room-body') : withSleeves.root.getObjectByName('BODY_OUTFIT_CUT');
+          const to = root.getObjectByName('fitting-room-body');
+          const beforeSkin = wardrobeCoverageSurface(from.geometry), afterSkin = wardrobeCoverageSurface(to.geometry);
+          try {
+            if (garments.length) {
+              const sleeves = root => root.getObjectByName(`wardrobe-${item.id}`).children.filter(mesh => /_SLEEVE_/.test(mesh.name));
+              assert.equal(sleeves(withSleeves.root).length, 2, `${kind} draws the sleeve fabric and trim`);
+              assert.equal(sleeves(root).length, 0, `${kind} hides both sleeve primitives`);
+              assert(root.getObjectByName('CLOTH_KAFTAN_01_BODY_FABRIC').visible, `${kind} keeps the dress body`);
+            } else {
+              assert(withSleeves.root.getObjectByName('CLOTH_ARMS_SLEEVES').visible);
+              assert.equal(root.getObjectByName('CLOTH_ARMS_SLEEVES').visible, false);
+              assert(root.getObjectByName('CLOTH_TOP_CORSET').visible);
+              assert(root.getObjectByName('CLOTH_BOTTOM_SKIRT').visible);
+            }
+            assert(root.getObjectByName('CLOTH_FEET_SHOES').visible);
+            assert.equal(root.getObjectByName('wardrobe-underwear-bra'), undefined);
+            for (const side of [-1, 1]) {
+              let exposed = 0;
+              for (const x of [.205, .235, .265, .295, .325, .355]) for (const y of [1.08, 1.13, 1.18, 1.23, 1.28, 1.33]) {
+                const ray = new Ray(new Vector3(side * x, y, .40), new Vector3(0, 0, -1));
+                const donorHit = completeSkin.raycastFirst(ray, DoubleSide, 0, .60);
+                if (!donorHit) continue;
+                const hit = surface => surface.raycastFirst(ray, DoubleSide, donorHit.distance - .001, donorHit.distance + .001);
+                if (!hit(beforeSkin) && hit(afterSkin)) exposed++;
+              }
+              assert(exposed > 1, `${kind} restores donor faces under each removed sleeve`);
+            }
+          } finally {
+            beforeSkin.geometry.dispose();
+            afterSkin.geometry.dispose();
+            withSleeves.dispose();
+            withoutSleeves.dispose();
+          }
+        }
+      }
+    } finally { completeSkin.geometry.dispose(); }
+  } finally { await vite.close(); }
+});
+
 test('Gothic Skirts 02 and 03 keep optional revisions beside the original skirts', async t => {
   const [second, third] = ['02', '03'].map(number => catalog.find(item => item.id === `gothic-skirt-${number}`));
   assert.equal(second.revisionUrl, second.url.replace(/\.glb$/, '-update.glb'));

@@ -20,16 +20,20 @@ test('Career, Settings and Worlds/Social share themed controller chrome without 
   root=createRoot(document.getElementById('root'));
   const render=async(component,screen)=>{await act(async()=>{ui.setState({screen,overlay:null});root.render(h('div',null,h(ThemeController),h(component)));});};
   prefs.getState().update({inputDevice:'controller',menuHeaderStyle:'angled'});
-  for(const [Component,screen,title]of [[CareerMenu,'career','CAREER'],[SettingsMenu,'settings','SETTINGS'],[SocialPanel,'social','SOCIAL']])await t.test(`${title} uses the shared angled header and a native B action`,async()=>{
+  for(const [Component,screen,title]of [[CareerMenu,'career','CAREER'],[SettingsMenu,'settings','SETTINGS'],[SocialPanel,'social','SOCIAL']])await t.test(`${title} uses shared header Back and keeps the footer B action`,async()=>{
    await render(Component,screen);assert(document.querySelector('.menu-frame[role="dialog"]'));assert.equal(document.querySelector('.menu-frame-header h1').textContent.toUpperCase(),title);
    const header=document.querySelector('.menu-frame-header.angled-tab-header');
    assert(header.querySelector('[role="tab"][aria-selected="true"]'));
-   assert.equal(header.querySelector('.menu-frame-title').firstElementChild.getAttribute('src'),'/images/logo.png');
+   assert(header.querySelector('.menu-frame-title > button:first-child[aria-label="Back"]'));
+   assert.equal(header.querySelector('.menu-frame-title .menu-logo'),null);
    assert.equal(header.querySelector(':scope > div:first-child > small'),null);
    for(const style of ['angled','classic']){
     await act(async()=>prefs.getState().update({menuHeaderStyle:style}));
     assert.equal(document.querySelector('.menu-frame-header [data-controller-key="B"]'),null);
     assert(document.querySelector('.menu-frame-footer button[aria-label="Back"] [data-controller-key="B"]'));
+    await act(async()=>document.querySelector('.menu-frame-title > button[aria-label="Back"]').click());
+    assert.equal(ui.getState().screen,'main');
+    await render(Component,screen);
    }
    await act(async()=>prefs.getState().update({menuHeaderStyle:'angled'}));
    for(const theme of ['white','strawberry','deep-purple','pit-wall','navy']){await act(async()=>prefs.getState().update({theme}));assert.equal(document.documentElement.dataset.uiTheme,theme);assert(document.documentElement.style.getPropertyValue('--app-panel'));}
@@ -46,7 +50,8 @@ test('Career, Settings and Worlds/Social share themed controller chrome without 
   await t.test('Play and Hero chrome reuse the same controller components without an opaque scene shell',async()=>{
    let backs=0;
    for(const title of ['PLAY','HEROES']){
-    await act(async()=>root.render(h('section',{className:'hero-selection'},h(SelectionHeader,{title,eyebrow:`${title} LABEL`}),h('main',{'aria-label':'Open garage scene'}),h(SelectionFooter,{chat:true,secondaryTabs:true,selectLabel:'Choose hero',backAction:{onClick:()=>backs++}},h('button',null,'CONTINUE')))));
+    const backAction={onClick:()=>backs++};
+    await act(async()=>root.render(h('section',{className:'hero-selection'},h(SelectionHeader,{title,eyebrow:`${title} LABEL`,backAction}),h('main',{'aria-label':'Open garage scene'}),h(SelectionFooter,{chat:true,secondaryTabs:true,selectLabel:'Choose hero',backAction},h('button',null,'CONTINUE')))));
     assert.equal(document.querySelector('.menu-frame'),null,'shared chrome must not add the opaque full-screen panel');
     assert.equal(document.querySelector('.menu-frame-header h1').textContent,title);
     assert.equal(document.querySelector('.menu-frame-header small').textContent,`${title} LABEL`);
@@ -55,9 +60,10 @@ test('Career, Settings and Worlds/Social share themed controller chrome without 
     const shortcuts=document.querySelector('[aria-label="Menu shortcuts"]');
     assert.match(shortcuts.textContent,/Choose hero/);assert.match(shortcuts.textContent,/Chat/);assert.match(shortcuts.textContent,/Field/);
     assert.equal(document.querySelector('.menu-frame-header [data-controller-key="B"]'),null);
+    await act(async()=>document.querySelector('.menu-frame-header button[aria-label="Back"]').click());
     await act(async()=>document.querySelector('.menu-frame-footer button[aria-label="Back"]').click());
    }
-   assert.equal(backs,2);assert.equal(social.getState().view.profile.id,'player');
+   assert.equal(backs,4);assert.equal(social.getState().view.profile.id,'player');
   });
   await t.test('input choice persists and renders one prompt family with an accessible touch Back',async()=>{
    assert.equal(sanitizePreferences({}).inputDevice,'browser');

@@ -1,10 +1,9 @@
-import { MenuLogo } from "../../components/menus/MenuLogo";
 import { CharacterHeaderProfile } from "../characters/CharacterHeaderProfile";
 import { useConnectionView } from "../../store/session/networkViews";
 import { useCallback, useRef, useState } from "react";
 import { MenuVideoBackground } from "../../components/menus/MenuVideoBackground";
 import { MenuShortcuts, ControllerAction } from "../../components/controller";
-import { MenuFooter } from "../../components/menus/MenuFrame";
+import { MenuFooter, MenuHeaderBack } from "../../components/menus/MenuFrame";
 import { useSocialStore } from "../../store/social/socialStore";
 import { useNetworkStore } from "../../store/session/networkStore";
 import { useUIStore } from "../../store/menus/uiStore";
@@ -61,7 +60,7 @@ export function QueueScreen() {
       <section className="alpha-queue-card" aria-label="Alpha waiting line">
         <small>REDLINE VECTOR · LIMITED ALPHA</small>
         <header className="menu-title-with-logo">
-          <MenuLogo compact />
+          <MenuHeaderBack onClick={cancel} disabled={busy} label="Leave queue" />
           <h1>{queue ? "YOU’RE IN LINE" : "FINDING A SERVER"}</h1>
           <CharacterHeaderProfile compact readOnly />
         </header>

@@ -2,7 +2,7 @@ import { FitBadge, FitReview } from "./FitReview";
 import { useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { CHARACTER_APPEARANCE_OPTIONS, ROOK_ID, VILLAGER_ID, characterLook, type CharacterChoice, type CharacterStyleField } from "./characterCatalog";
 import { focusClothingPiece, useCharacterPreviewStore } from "./characterPreviewStore";
-import { UNDERBUST_WARDROBE_SET, WARDROBE_CORSETS, WARDROBE_SETS, WARDROBE_WAIST_OPTIONS, corsetModelUrl, hasOriginalUnderbustCut, resolveWardrobe, withWardrobeWaist, type WardrobeChoice } from "./wardrobe";
+import { UNDERBUST_WARDROBE_SET, WARDROBE_CORSETS, WARDROBE_SETS, WARDROBE_WAIST_OPTIONS, corsetModelUrl, hasUnderbustCut, resolveWardrobe, withWardrobeWaist, type WardrobeChoice } from "./wardrobe";
 import { ClothingColorToolbar } from "./ClothingColorToolbar";
 import { braFitsWith, clothingPieceLabel, UNDERWEAR_PIECES, underwearColors, wornClothing, type ClothingPiece, type UnderwearPiece } from "./clothingPieces";
 import { getWardrobeGarment, importedWardrobeItems, setWardrobeGarment, setWardrobeRemoval, wardrobeGarmentModelUrl, wardrobeRemovalPieces, type WardrobeGarmentSlot, type WardrobeRemoval } from "./wardrobeGarments";
@@ -125,6 +125,14 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
   const selectedPiece = useCharacterPreviewStore(s => s.selectedPiece);
   const camera = useCharacterPreviewStore(s => s.camera);
   const pieces = wornClothing(choice);
+  const sleevesRemoved = removedClothing.includes("sleeves");
+  const stockSleeves = pieces.includes("sleeves")
+    || (sleevesRemoved && wornClothing(setWardrobeRemoval(choice, "sleeves", false)).includes("sleeves"));
+  const sleeveSource = getWardrobeGarment(garments?.dress)?.detachableSleeves ? garments?.dress : stockSleeves ? outfit.id : undefined;
+  const sleeveToggle = <button type="button" className="menu-control" data-wardrobe-remove="sleeves"
+    onClick={() => onTryOn(setWardrobeRemoval(choice, "sleeves", !sleevesRemoved))}>
+    {sleevesRemoved ? "Restore sleeves" : "Remove sleeves"}
+  </button>;
   const canWearBra = braFitsWith(pieces, corset?.set);
   const piece = pieces.includes(selectedPiece) ? selectedPiece : pieces[0];
   const female = choice.id === VILLAGER_ID;
@@ -333,6 +341,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
   const sections = [...new Set(items.map(item => item.section))];
   const inspected = catalogOpen ? allItems[category].find(item => item.id === inspectedId) : undefined;
   const underwearColor = inspected?.underwear;
+  const underbustOver = corset?.set === UNDERBUST_WARDROBE_SET && corset.waist === "over" && inspected?.set === corset.set;
   const itemPieces = inspected?.unavailable ? [] : inspected?.pieces === "outfit"
     ? pieces.filter(item => item !== "glasses" && item !== "bag") : inspected?.pieces?.filter(item => pieces.includes(item)) ?? [];
 
@@ -399,6 +408,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
           <div className="dressing-layer-options" role="group" aria-label="Underwear preview" data-controller-row>
             <button type="button" className="menu-control" data-wardrobe-remove="top" disabled={!pieces.some(piece =>
               ["corset", "shirt", "dress", "armor"].includes(piece))} onClick={() => revealUnderwear("bra")}>Remove tops</button>
+            {(sleeveSource || sleevesRemoved) && sleeveToggle}
             <button type="button" className="menu-control" data-wardrobe-remove="bottom" disabled={pieces.includes("briefs")} onClick={() => revealUnderwear("briefs")}>Remove skirt</button>
           </div>}
         <div className="dressing-search" data-controller-row><input type="search" aria-label={`Search ${currentCategory.label}`} placeholder="Find an item…" value={search} onChange={event => setSearch(event.target.value)} /></div>
@@ -450,17 +460,20 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
       {inspected && <>
         <header><small>{currentCategory.label}</small><h2>{inspected.label}</h2></header>
         <p>{inspected.description}</p>
-        {inspected.set === UNDERBUST_WARDROBE_SET && corset?.set === inspected.set && corset.waist === "over" &&
+        {underbustOver && !hasUnderbustCut(corset.cut) &&
+          <p className="dressing-note" role="status">This vest cut is missing. Pull the wardrobe models with Git LFS and restart AvenLab.</p>}
+        {underbustOver &&
           <p className="dressing-note">Changing linked dye groups together still needs testing.</p>}
         <dl><dt>Price</dt><dd>{inspected.unavailable ? "Not listed" : inspected.trial ? "Free try-on" : inspected.included ? "Included" : "0 credits"}</dd>
           {inspected.layer && <><dt>Layer</dt><dd>{inspected.layer}</dd></>}</dl>
         {inspected.unavailable && <p className="dressing-note">{inspected.unavailable}</p>}
-        {underwearColor === "bra" && <div data-controller-row>
+        {(underwearColor === "bra" || underbustOver) && <div data-controller-row>
           <button type="button" className="menu-control" data-wardrobe-toggle="bra" disabled={!canWearBra}
             onClick={() => onTryOn({ ...choice, bra: !pieces.includes("bra") })}>
             {pieces.includes("bra") ? "Remove bra" : "Put on bra"}
           </button>
         </div>}
+        {inspected.id === sleeveSource && <div data-controller-row>{sleeveToggle}</div>}
         {underwearColor && <ClothingColorToolbar choice={choice} piece={underwearColor} onChange={onChange} />}
         {itemPieces.length > 0 && controls(itemPieces.length > 1 ? "Outfit pieces" : "Piece", itemPieces.map(item => <button key={item} type="button" className="menu-control"
           data-dressing-piece={item} aria-pressed={camera === "Selected item" && selectedPiece === item} onClick={() => focusClothingPiece(item)}>
@@ -474,7 +487,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
               else onChange(next);
               focusClothingPiece("corset");
             }}>{label}</button>), 2)}
-        {corset?.set === UNDERBUST_WARDROBE_SET && corset.waist === "over" && inspected.set === corset.set && hasOriginalUnderbustCut() &&
+        {underbustOver && (hasUnderbustCut("original") || corset.cut === "original") &&
           controls("Vest cut", ([undefined, "original"] as const).map(cut => <button key={cut ?? "restored"} type="button" className="menu-control"
             aria-pressed={corset.cut === cut} onClick={() => {
               if (corset.cut !== cut) onTryOn({ ...choice, wardrobeTrial: { ...corset, cut } });

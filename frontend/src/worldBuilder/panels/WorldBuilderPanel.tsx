@@ -1,7 +1,7 @@
 import { CharacterEditorPanel } from "../characterEditor/CharacterEditorPanel";
 import { CharacterHeaderProfile } from "../../game/characters/CharacterHeaderProfile";
 import { useCharacterEditorStore } from "../characterEditor/characterEditorStore";
-import { MenuLogo } from "../../components/menus/MenuLogo";
+import { MenuHeaderBack } from "../../components/menus/MenuFrame";
 import { kitAsset } from "../mapKit/catalog";
 import { ExcavationTools } from './ExcavationTools';
 import {
@@ -393,9 +393,7 @@ function LayoutPanel({
     >
       <header className="le-header" inert={Boolean(confirm || preview)}>
         <div className="le-brand">
-          <span className="le-brand-mark">
-            <MenuLogo compact/>
-          </span>
+          <MenuHeaderBack onClick={closeWorldBuilder} label="Close world layout editor" />
           <strong>World editor</strong>
         </div>
 

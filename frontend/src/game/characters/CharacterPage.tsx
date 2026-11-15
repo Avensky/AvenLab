@@ -28,7 +28,7 @@ export const CHARACTER_TABS = [
 ] as const;
 export type CharacterTab = typeof CHARACTER_TABS[number]["id"];
 
-const PREVIEW_CAST = CHARACTERS.map(item => ({ gender: item.gender, choice: { id: item.id, outfit: item.outfits[0].id } }));
+const PREVIEW_CAST = CHARACTERS.map(item => ({ name: item.name, gender: item.gender, choice: { id: item.id, outfit: item.outfits[0].id } }));
 const COCKPIT_CAMERAS = ["Full body", "Whole car"] as const;
 const EMOTE_PACKS = EMOTE_GROUPS.filter(group => group !== "Garage");
 type PreviewEmoteGroup = EmoteGroup | CharacterPersonality | "Best" | "All" | "Personality";
@@ -46,11 +46,12 @@ function revealCharacterControl(event: FocusEvent<HTMLElement>) {
   event.target.scrollIntoView?.({ block: "nearest", inline: "nearest" });
 }
 
-export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection = false, cameraControls }: {
+export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection = false, cameraControls, onOpenIdentity }: {
   cameraControls?: ReactNode;
   inspection?: boolean;
   onPreview?: (choice: CharacterChoice | null) => void;
   onReady: (ready: boolean) => void;
+  onOpenIdentity?: () => void;
   tab: CharacterTab;
   beforeClose: Ref<() => Promise<boolean>>;
 }) {
@@ -226,7 +227,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
 
   const modelPicker = <div className={locked ? "character-outfits" : "character-cast"} role="group"
     aria-label={locked ? "Character model" : "Gender"} data-controller-row>
-    {PREVIEW_CAST.map(({ gender, choice: next }) => <button key={next.id} type="button" className="menu-control"
+    {PREVIEW_CAST.map(({ name, gender, choice: next }) => <button key={next.id} type="button" className="menu-control"
       disabled={!locked && status === "saving"} data-character-option={next.id} aria-pressed={choice.id === next.id}
       onClick={() => {
         if (next.id === choice.id) return;
@@ -238,7 +239,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
         update({ ...(preset && characterLook(preset) ? preset : next), identity: choice.identity });
       }}>
       {!locked && <CharacterPortrait choice={next} compact />}
-      <span>{gender === "female" ? "Female" : "Male"}</span>
+      <span>{locked ? name : gender === "female" ? "Female" : "Male"}</span>
     </button>)}
   </div>;
   const bag = Boolean(previewChoice.prop);
@@ -408,8 +409,13 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
   );
 
   return (
-    <div ref={page} className={`character-page character-page--editor${tab === "appearance" ? " character-page--dressing" : tab === "emotes" ? " character-page--emotes" : ""}`} role="tabpanel" id="character-editor-panel" aria-labelledby={"character-editor-tab-" + tab}
+    <div ref={page} className={`character-page character-page--editor${tab === "appearance" ? " character-page--dressing" : tab === "emotes" ? " character-page--emotes" : ""}${onOpenIdentity ? " character-page--sidebar-identity" : ""}`}
+      role={onOpenIdentity && tab === "identity" ? "region" : "tabpanel"} id="character-editor-panel" aria-labelledby={"character-editor-tab-" + tab}
       onFocus={revealCharacterControl}>
+      {onOpenIdentity && <div className="character-identity-nav" data-controller-row>
+        <button type="button" id="character-editor-tab-identity" className="menu-control" aria-controls="character-editor-panel"
+          aria-current={tab === "identity" ? "page" : undefined} onClick={onOpenIdentity}>Identity</button>
+      </div>}
       <div className="character-stage" data-character-viewport data-character-preview={choice.id} data-outfit-preview={choice.outfit}
         aria-label={`Preview of ${character.name}`} />
       {fitting && <DressingRoom choice={previewChoice} onChange={editPreviewAppearance} onEquip={equipOutfit} onTryOn={tryOn} onLoad={loadOutfit}

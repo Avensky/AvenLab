@@ -45,6 +45,7 @@ const NO_VEHICLE_MOD_STAGES:Record<string,number>={};
 type WorkshopFilter=HeroFilter|"concepts";
 type WorkshopPage="heroes"|"garage"|"character";
 const WORKSHOP_TABS=[...heroRoleHeaderTabs(true),HERO_CONCEPT_TAB];
+const CHARACTER_HEADER_TABS=CHARACTER_TABS.filter(tab=>tab.id!=="identity");
 const MARINE_LAMPS = [
  {id:"navigation", label:"Running lights"},
  {id:"searchlights", label:"Searchlights"},
@@ -142,11 +143,11 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  useLayoutEffect(()=>{onCharacterViewChange?.(characterOpen?characterTab:null);},[characterOpen,characterTab,onCharacterViewChange]);
  useLayoutEffect(()=>()=>onCharacterViewChange?.(null),[onCharacterViewChange]);
  useEffect(()=>{
-  const target=characterOpen?root.current?.querySelector<HTMLElement>(characterReady?'[role=tab][aria-selected="true"]':'[data-character-option][aria-pressed="true"]')
+  const target=characterOpen?root.current?.querySelector<HTMLElement>(characterReady?'[role=tab][aria-selected="true"], .character-identity-nav [aria-current="page"]':'[data-character-option][aria-pressed="true"]')
    : viewingConcepts?root.current?.querySelector<HTMLElement>(".hero-guide-scroll")
    : editing?root.current?.querySelector<HTMLElement>("[role=tab][aria-selected=true]"):root.current;
   target?.focus({preventScroll:true});
- },[characterOpen,characterReady,editing,role,studioTab,viewingConcepts]);
+ },[characterOpen,characterReady,characterTab,editing,role,studioTab,viewingConcepts]);
  useLayoutEffect(()=>{if(hero)useAlphaStore.getState().preview(hero);else useAlphaStore.setState({previewHero:null});},[hero]);
  useEffect(()=>{setStudioTab("performance");setStudioSummary(vehicle?getVehicleStockPerformance(vehicle):STOCK_VEHICLE_SUMMARY);setStudioFooter(null);},[vehicle]);
  useLayoutEffect(()=>{useHeroLoadouts.setState({draft:vehicle?{vehicle,appearance}:null});},[vehicle,appearance]);
@@ -231,13 +232,14 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
   : null;
  const currentFooter=studioTab==="performance"?studioFooter:studioTab==="body"?bodyFooter:studioTab==="lighting"?lightingFooter:null;
  return <section ref={root} className={`game-ui menu-surface alpha-selection hero-selection hero-workshop${panelsHidden?" hero-workshop--hidden":""}${viewingConcepts?" hero-ability-guide":""}`} data-character-page={characterOpen||undefined} inert={overlay!==null} tabIndex={-1} aria-label={characterOpen?"Character":"Heroes garage"} data-controller-form data-controller-rows>
-  {characterOpen?characterReady?<SceneTabHeader title="CHARACTER" compact tabs={CHARACTER_TABS} activeTab={characterTab}
-    character={{readOnly:true}}
+  {characterOpen?characterReady?<SceneTabHeader title="CHARACTER" compact tabs={CHARACTER_HEADER_TABS} activeTab={characterTab}
+    character={{readOnly:true}} backAction={{onClick:back}}
     onTabChange={id=>setCharacterTab(id as CharacterTab)} idPrefix="character-editor" panelId="character-editor-panel"/>
-    :<SelectionHeader title="CHARACTER" compact character={{readOnly:true}}/>:editing&&definition
+    :<SelectionHeader title="CHARACTER" compact character={{readOnly:true}} backAction={{onClick:back}}/>:editing&&definition
     ? <SceneTabHeader
         title="GARAGE"
         compact
+        backAction={{onClick:back}}
         character={{onOpen:openCharacter}}
         activeTab={studioTab}
         onTabChange={next=>setStudioTab(next as VehicleStudioTab)}
@@ -252,11 +254,12 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
           separatorBefore:item.id==="studio",
         }))}
       />
-    : <SceneTabHeader title="HEROES" compact character={{onOpen:openCharacter}} tabs={WORKSHOP_TABS} activeTab={role}
+    : <SceneTabHeader title="HEROES" compact character={{onOpen:openCharacter}} backAction={{onClick:back}} tabs={WORKSHOP_TABS} activeTab={role}
         tablistClassName="hero-pick-tabs" onTabChange={next=>setRole(next as WorkshopFilter)}
         idPrefix="hero-workshop-role" panelId="hero-workshop-role-panel"/>}
   <div className="hero-selection-stage hero-workshop-body">
-   {characterOpen&&<CharacterPage onPreview={onCharacterPreviewChange} onReady={setCharacterReady} tab={characterTab} beforeClose={beforeCharacterClose}/>}
+   {characterOpen&&<CharacterPage onPreview={onCharacterPreviewChange} onReady={setCharacterReady} tab={characterTab}
+    beforeClose={beforeCharacterClose} onOpenIdentity={()=>setCharacterTab("identity")}/>}
    {viewingConcepts&&<div className="hero-guide-scroll" id="hero-workshop-role-panel" role="tabpanel" aria-labelledby="hero-workshop-role-tab-concepts" tabIndex={0}><HeroConceptGallery/></div>}
    {page==="heroes"&&role!=="concepts"&&<div className="hero-picker-stage hero-workshop-picker" data-hero-filter={role} id="hero-workshop-role-panel" role="tabpanel" aria-labelledby={"hero-workshop-role-tab-"+role}>
     <div className="hero-picker-scene hero-picker-preview">

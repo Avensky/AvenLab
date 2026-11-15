@@ -1,4 +1,4 @@
-import { MenuLogo } from "../../components/menus/MenuLogo";
+import { MenuHeaderBack } from "../../components/menus/MenuFrame";
 import { CharacterHeaderProfile } from "../characters/CharacterHeaderProfile";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ControllerAction } from "../../components/controller";
@@ -72,13 +72,13 @@ export function SessionMenu() {
           event.preventDefault();
           event.stopPropagation();
           if (event.repeat || key === "Tab") return;
-          if (key === "Escape") cancel();
+          if (key === "Escape" || (event.target as HTMLElement).closest("[data-header-back]")) cancel();
           else confirm();
         }}
         className="menu-confirm-card"
       >
         <header className="menu-title-with-logo">
-          <MenuLogo compact/>
+          <MenuHeaderBack onClick={cancel} disabled={busy} label="Cancel" />
           <h1 id={`${id}-title`}>LEAVE GAME?</h1>
           <CharacterHeaderProfile compact readOnly />
         </header>
