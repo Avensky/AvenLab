@@ -1,8 +1,9 @@
-import { Suspense, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { Suspense, useEffect, useEffectEvent, useMemo, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { useGLTF } from "@react-three/drei";
 import type { Object3D } from "three";
 import { AssetBoundary } from "../../components/debugger/AssetBoundary";
-import { bakeCharacterPortrait, type PortraitOutfit } from "./bakeCharacterPortrait";
+import { useUIStore } from "../../store/menus/uiStore";
+import { bakeCharacterPortrait, peekCharacterPortrait, subscribeCharacterPortrait, type PortraitOutfit } from "./bakeCharacterPortrait";
 import { FITTING_BODY_URL } from "./standaloneCorset";
 import { getWardrobeGarment, wardrobeGarmentModelUrl } from "./wardrobeGarments";
 import { villagerModelUrl } from "./villagerModel";
@@ -43,36 +44,89 @@ const faces: Record<string, { neck: string; shadow: string; art: ReactNode }> = 
   },
 };
 
-type PortraitProps = { look: CharacterLook; fallback: ReactNode; pending?: ReactNode; label?: string };
+type PortraitProps = { look: CharacterLook; cacheKey: string; fallback: ReactNode; pending?: ReactNode; label?: string };
+const PORTRAIT_QUIET_MS = 900;
+const portraitActivity = ["pointerdown", "pointerup", "pointermove", "click", "wheel", "keydown", "avenlab:main-menu-action"] as const;
 
-function schedulePortraitWork(work: () => void, delay: number) {
-  let idle: number | undefined;
-  const timer = window.setTimeout(() => {
-    if (window.requestIdleCallback) idle = window.requestIdleCallback(work, { timeout: 1200 });
-    else work();
-  }, delay);
-  return () => {
-    window.clearTimeout(timer);
-    if (idle !== undefined) window.cancelIdleCallback(idle);
-  };
+// Play, the fitting room and live scenes can display a finished portrait.
+// New GLTF and WebGL work belongs in the quiet main menu.
+function portraitMenuAllowsWork({ screen, overlay, isModeLoading }: ReturnType<typeof useUIStore.getState>) {
+  return screen === "main" && overlay === null && !isModeLoading;
 }
 
-function ModelPortrait({ source, outfit, look, fallback, pending = fallback, label }: PortraitProps & { source?: Object3D; outfit?: PortraitOutfit }) {
-  const key = JSON.stringify([Boolean(source), outfit?.garment.item.id, look.character.id, look.outfit.id, look.appearance, look.wardrobe]);
-  const [portrait, setPortrait] = useState<{ key: string; image: string | null; characterId: string }>();
+function schedulePortraitWork(work: () => void) {
+  let timer: number | undefined, idle: number | undefined;
+  let quietUntil = performance.now() + PORTRAIT_QUIET_MS;
+  const canRun = () => document.visibilityState !== "hidden" && portraitMenuAllowsWork(useUIStore.getState());
+  const cancel = () => {
+    if (timer !== undefined) window.clearTimeout(timer);
+    if (idle !== undefined) window.cancelIdleCallback(idle);
+    timer = idle = undefined;
+  };
+  const stop = () => {
+    cancel();
+    for (const event of portraitActivity) window.removeEventListener(event, activity, true);
+    document.removeEventListener("visibilitychange", visibility);
+  };
+  const start = () => {
+    idle = undefined;
+    if (!canRun()) return;
+    if (performance.now() < quietUntil) { schedule(); return; }
+    stop();
+    work();
+  };
+  const schedule = () => {
+    if (!canRun()) return;
+    timer = window.setTimeout(() => {
+      timer = undefined;
+      if (!canRun()) return;
+      if (performance.now() < quietUntil) { schedule(); return; }
+      if (window.requestIdleCallback) idle = window.requestIdleCallback(start);
+      else start();
+    }, Math.max(0, quietUntil - performance.now()));
+  };
+  function activity(event: Event) {
+    if (event.type === "pointermove" && !(event as PointerEvent).buttons) return;
+    quietUntil = performance.now() + PORTRAIT_QUIET_MS;
+    if (idle !== undefined) { cancel(); schedule(); }
+  }
+  function visibility() {
+    cancel();
+    quietUntil = performance.now() + PORTRAIT_QUIET_MS;
+    schedule();
+  }
+  for (const event of portraitActivity) window.addEventListener(event, activity, { capture: true, passive: true });
+  document.addEventListener("visibilitychange", visibility);
+  schedule();
+  return stop;
+}
+
+function portraitKey(look: CharacterLook, url: string | null, outfitUrl?: string | false) {
+  const { hair, hair_color, skin, headwear, color, eye_color, brow_color, glasses, accent, item_colors } = look.appearance;
+  const colors = Object.entries(item_colors ?? {}).sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, values]) => [key, Object.entries(values).sort(([a], [b]) => a.localeCompare(b))]);
+  const { wardrobe } = look;
+  return JSON.stringify([look.character.id, look.outfit.id, url, outfitUrl || null, hair, hair_color, skin, headwear,
+    color, eye_color, brow_color, glasses, accent, colors, wardrobe && [wardrobe.set, wardrobe.shirt, wardrobe.waist]]);
+}
+
+function PortraitImage({ src, label }: { src: string; label?: string }) {
+  return <img className="character-portrait character-portrait--model" src={src} alt={label ?? ""} decoding="async" />;
+}
+
+function ModelPortrait({ source, outfit, look, cacheKey, fallback, pending = fallback, label }: PortraitProps & { source?: Object3D; outfit?: PortraitOutfit }) {
+  const cached = useSyncExternalStore(subscribeCharacterPortrait, () => peekCharacterPortrait(cacheKey), () => null);
+  const [failedKey, setFailedKey] = useState<string>();
+  const bake = useEffectEvent(() => bakeCharacterPortrait(look, cacheKey, source, outfit));
   useEffect(() => {
-    return schedulePortraitWork(() => {
-      try {
-        setPortrait({ key, image: bakeCharacterPortrait(look, key, source, outfit), characterId: look.character.id });
-      } catch {
-        setPortrait({ key, image: null, characterId: look.character.id });
-      }
-    }, 160);
-  }, [key, look, source, outfit]);
-  if (portrait?.key !== key && (!portrait?.image || portrait.characterId !== look.character.id)) return pending;
-  return portrait?.image
-    ? <img className="character-portrait character-portrait--model" src={portrait.image} alt={label ?? ""} />
-    : fallback;
+    if (cached) return;
+    let active = true;
+    const cancel = schedulePortraitWork(() => {
+      void bake().catch(() => { if (active) setFailedKey(cacheKey); });
+    });
+    return () => { active = false; cancel(); };
+  }, [cacheKey, cached, source, outfit]);
+  return cached ? <PortraitImage src={cached} label={label} /> : failedKey === cacheKey ? fallback : pending;
 }
 
 function OutfitPortrait({ source, url, item, ...props }: PortraitProps & {
@@ -87,7 +141,7 @@ function VillagerPortrait({ url, ...props }: PortraitProps & { url: string }) {
   const { scene } = useGLTF(url);
   const item = getWardrobeGarment(props.look.garments?.dress);
   const outfitUrl = item?.outfit && wardrobeGarmentModelUrl(item, "portrait");
-  const stock = <ModelPortrait {...props} source={scene} />;
+  const stock = <ModelPortrait {...props} cacheKey={portraitKey(props.look, url)} source={scene} />;
   return item && outfitUrl ? <AssetBoundary key={outfitUrl} fallback={stock}>
     <OutfitPortrait {...props} source={scene} item={item} url={outfitUrl} />
   </AssetBoundary> : stock;
@@ -103,16 +157,16 @@ export function CharacterPortrait({ choice, compact = false, label }: {
   const look = useMemo(() => characterLook(id && outfit ? { id, outfit, appearance, wardrobe } : null), [id, outfit, appearance, wardrobe]);
   const canBake = typeof WebGL2RenderingContext !== "undefined";
   const url = canBake && look ? villagerModelUrl(look, "portrait") : null;
+  const canRefresh = useUIStore(portraitMenuAllowsWork);
+  const garment = getWardrobeGarment(look?.garments?.dress);
+  const outfitUrl = garment?.outfit && wardrobeGarmentModelUrl(garment, "portrait");
+  const key = look ? portraitKey(look, url, outfitUrl) : "";
+  const cached = useSyncExternalStore(subscribeCharacterPortrait, () => key ? peekCharacterPortrait(key) : null, () => null);
   const [requestedUrl, setRequestedUrl] = useState<string | null>(null);
   useEffect(() => {
-    if (!url) return;
-    return schedulePortraitWork(() => {
-      // Start the shared GLTF request after commit. Its loading manager
-      // notifies the mode loading screen as soon as a request starts.
-      useGLTF.preload(url);
-      setRequestedUrl(url);
-    }, 320);
-  }, [url]);
+    if (!canRefresh || !url || cached || requestedUrl === url) return;
+    return schedulePortraitWork(() => setRequestedUrl(url));
+  }, [canRefresh, url, cached, requestedUrl]);
   const originalOnly = id === VILLAGER_ID;
   const face = look && faces[look.character.id];
   const alternate = look?.outfit.id === look?.character.outfits[1]?.id;
@@ -147,12 +201,13 @@ export function CharacterPortrait({ choice, compact = false, label }: {
         </g>}
       </> : <path fill="var(--app-muted, #889aa9)" opacity=".64" d="M120 42a28 28 0 1 0 0 56 28 28 0 0 0 0-56Zm-54 83c10-16 32-22 54-22s44 6 54 22l14 57H52Z" />}
     </svg>;
-  if (!look || !canBake) return fallback;
-  const unavailable = originalOnly ? fallback : <ModelPortrait look={look} fallback={fallback} label={label} />;
+  if (cached) return <PortraitImage src={cached} label={label} />;
+  if (!look || !canBake || !canRefresh) return fallback;
+  const unavailable = originalOnly ? fallback : <ModelPortrait look={look} cacheKey={portraitKey(look, null)} fallback={fallback} label={label} />;
   const loading = <span className="character-portrait character-portrait--loading" role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true} />;
   return url && requestedUrl !== url ? loading : url ? (
     <AssetBoundary key={url} fallback={unavailable}>
-      <Suspense fallback={loading}><VillagerPortrait url={url} look={look} fallback={fallback} pending={loading} label={label} /></Suspense>
+      <Suspense fallback={loading}><VillagerPortrait url={url} look={look} cacheKey={key} fallback={fallback} pending={loading} label={label} /></Suspense>
     </AssetBoundary>
   ) : unavailable;
 }

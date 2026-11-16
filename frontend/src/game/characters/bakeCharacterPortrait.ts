@@ -8,15 +8,49 @@ import { applyVillagerLook, prepareVillager } from "./villagerModel";
 import { prepareStylizedDriver } from "./stylizedDriverModel";
 
 const portraits = new Map<string, string>();
+const pendingPortraits = new Map<string, Promise<string>>();
+const listeners = new Set<() => void>();
 const CACHE_SIZE = 24;
 let renderer: WebGLRenderer | undefined;
 let release: number | undefined;
 
 export type PortraitOutfit = { garment: WardrobeGarmentSource; body?: Object3D };
 
+export const peekCharacterPortrait = (key: string) => portraits.get(key) ?? null;
+export function subscribeCharacterPortrait(listener: () => void) {
+  listeners.add(listener);
+  return () => { listeners.delete(listener); };
+}
+
 export function bakeCharacterPortrait(look: CharacterLook, key: string, source?: Object3D, outfit?: PortraitOutfit) {
-  const cached = portraits.get(key);
-  if (cached) return cached;
+  const cached = peekCharacterPortrait(key);
+  if (cached) return Promise.resolve(cached);
+  const pending = pendingPortraits.get(key);
+  if (pending) return pending;
+  const result = renderPortrait(look, source, outfit);
+  pendingPortraits.set(key, result);
+  void result.then(image => {
+    pendingPortraits.delete(key);
+    if (portraits.size >= CACHE_SIZE) portraits.delete(portraits.keys().next().value!);
+    portraits.set(key, image);
+    for (const listener of listeners) listener();
+  }, () => { pendingPortraits.delete(key); });
+  return result;
+}
+
+function encodePortrait(canvas: HTMLCanvasElement) {
+  return new Promise<string>((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (!blob) { reject(Error("Character portrait encoding failed.")); return; }
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    }, "image/webp", .90);
+  });
+}
+
+async function renderPortrait(look: CharacterLook, source?: Object3D, outfit?: PortraitOutfit) {
   if (!renderer) {
     renderer = new WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
     renderer.setSize(192, 192);
@@ -60,10 +94,7 @@ export function bakeCharacterPortrait(look: CharacterLook, key: string, source?:
     camera.position.copy(center).add(new Vector3(.4, .08, 2));
     camera.lookAt(center);
     renderer.render(scene, camera);
-    const image = renderer.domElement.toDataURL("image/webp", .90);
-    if (portraits.size >= CACHE_SIZE) portraits.delete(portraits.keys().next().value!);
-    portraits.set(key, image);
-    return image;
+    return encodePortrait(renderer.domElement);
   } finally {
     model.dispose();
   }
