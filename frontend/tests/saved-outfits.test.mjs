@@ -21,6 +21,8 @@ test('saved outfits preserve a tuned look through a confirmed save, reconnect, a
     vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
     const { SavedOutfits } = await vite.ssrLoadModule('/src/game/characters/SavedOutfits.tsx');
     const { useSocialStore } = await vite.ssrLoadModule('/src/store/social/socialStore.ts');
+    const { useUIStore: ui } = await vite.ssrLoadModule('/src/store/menus/uiStore.ts');
+    const { LOCAL_OUTFITS_KEY } = await vite.ssrLoadModule('/src/game/characters/localOutfits.ts');
     client = await vite.ssrLoadModule('/src/net/socialClient.ts');
     const sent = [], previews = [];
     let ended = 0;
@@ -55,6 +57,7 @@ test('saved outfits preserve a tuned look through a confirmed save, reconnect, a
       ...oldProgression, character_outfits: { ...oldProgression.character_outfits, [name]: tuned }, cosmetics_revision: 3,
     };
     await act(async () => {
+      ui.getState().setScreen('heroes');
       connect();
       receive(oldProgression);
       root.render(createElement(SavedOutfits, { choice: tuned, onTryOn: choice => previews.push(choice), onEndPreview: () => ended++ }));
@@ -72,6 +75,14 @@ test('saved outfits preserve a tuned look through a confirmed save, reconnect, a
       input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
     });
     assert(!button('Save outfit').disabled);
+    const form = document.querySelector('form');
+    const submit = () => form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+    await act(async () => {
+      ui.getState().setScreen('mode_select');
+      submit();
+    });
+    assert.equal(sent.length, 0, 'a stale form cannot save a profile outfit outside Heroes');
+    await act(async () => ui.getState().setScreen('heroes'));
     await act(async () => button('Save outfit').click());
     assert.deepEqual(sent[0], {
       type: 'social_request', request_id: sent[0].request_id, action: 'character_outfit_save', name, character: tuned,
@@ -96,6 +107,14 @@ test('saved outfits preserve a tuned look through a confirmed save, reconnect, a
     assert.deepEqual(previews, [tuned]);
     assert.equal(sent.length, 1, 'previewing a saved combination sends no equip command');
     assert(button('Update outfit'));
+    await act(async () => {
+      ui.getState().setOverlay('settings');
+      document.querySelector('[aria-label="Delete Harbor practice"]').click();
+      button('Copy profile outfit to this device').click();
+    });
+    assert.equal(sent.length, 1, 'a stale delete cannot change profile outfits while an overlay is open');
+    assert.equal(window.localStorage.getItem(LOCAL_OUTFITS_KEY), null, 'a stale copy cannot change device outfits');
+    await act(async () => ui.getState().closeOverlay());
     await act(async () => button('Return to equipped').click());
     assert.equal(ended, 1);
     assert.equal(sent.length, 1);
@@ -117,10 +136,15 @@ test('saved outfits preserve a tuned look through a confirmed save, reconnect, a
       set.call(input, 'Offline fit');
       input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
     });
+    await act(async () => {
+      ui.setState({ isModeLoading: true });
+      submit();
+    });
+    assert.equal(window.localStorage.getItem(LOCAL_OUTFITS_KEY), null, 'a stale form cannot save a device outfit while loading');
+    await act(async () => ui.setState({ isModeLoading: false }));
     await act(async () => button('Save outfit').click());
     assert.match(document.body.textContent, /Saved Offline fit on this device/);
     assert.equal(sent.length, 2, 'local saves send no network request');
-    const { LOCAL_OUTFITS_KEY } = await vite.ssrLoadModule('/src/game/characters/localOutfits.ts');
     assert.deepEqual(JSON.parse(window.localStorage.getItem(LOCAL_OUTFITS_KEY))['Offline fit'], tuned);
     await act(async () => root.render(null));
     await act(async () => root.render(createElement(SavedOutfits, { choice: equipped, onTryOn: choice => previews.push(choice) })));

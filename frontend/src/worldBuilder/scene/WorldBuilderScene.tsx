@@ -8,7 +8,6 @@ import { useEditorScenePalette } from "./useEditorScenePalette";
 import { useBuilderStore } from "../state/builderStore";
 import { useLayoutStore } from "../state/layoutStore";
 import LayoutScene from "./LayoutScene";
-import CharacterEditorScene from "../characterEditor/CharacterEditorScene";
 
 function BoxReference() {
   const doc = useBuilderStore((s) => s.doc),
@@ -134,7 +133,6 @@ export default function WorldBuilderScene() {
     revision = useLayoutStore((s) => s.cameraRevision),
     camera = useLayoutStore((s) => s.camera),
     reference = useLayoutStore((s) => s.reference);
-  if (workspace === "character") return <CharacterEditorScene />;
   return workspace === "layout" ? (
     view === "3d" ? (
       <LayoutScene key={`${revision}-${camera}-${reference}`} />

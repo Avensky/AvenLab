@@ -2,7 +2,6 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { MenuAction } from "../../controls/inputRouting";
 import { createGuestProfile, signInDeviceProfile } from "../../net/socialClient";
 import { selectEquippedCharacter, useSocialStore } from "../../store/social/socialStore";
-import { openCharacterEditor } from "../../worldBuilder/characterEditor/characterEditorStore";
 import { CharacterPortrait } from "../characters/CharacterPortrait";
 import { DEFAULT_CHARACTER } from "../characters/characterCatalog";
 import "./mainMenuProfile.css";
@@ -92,10 +91,6 @@ export function MainMenuProfile({ focusMenu }: { focusMenu: () => void }) {
           onClick={() => void connect(signInDeviceProfile)}>Sign in on this device</button>}
         {!guest && <button type="button" className="menu-control menu-panel-frame" disabled={busy}
           onClick={() => available ? void connect(createGuestProfile) : close()}>Continue as guest</button>}
-        <button type="button" className="menu-control menu-panel-frame" data-open-character disabled={busy} onClick={() => {
-          close();
-          openCharacterEditor();
-        }}>Edit character</button>
       </div>
     </section>
   </header>;

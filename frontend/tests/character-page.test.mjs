@@ -575,6 +575,48 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert(find('.vehicle-studio'));
     assert(find('[data-customize-vehicle][aria-current="page"]'));
 
+    await click('[data-open-character]');
+    await click('#character-editor-tab-identity');
+    await select('Eye color', 'original');
+    assert.equal(drafts.at(-1).appearance.eye_color, 'original');
+    const requestCount = requests.length;
+    const draftCount = drafts.length;
+    const staleEyes = find('select[aria-label="Eye color"]');
+    await act(async () => {
+      ui.getState().setScreen('mode_select');
+      staleEyes.value = 'obsidian';
+      staleEyes.dispatchEvent(new Event('change', { bubbles: true }));
+      t.mock.timers.tick(350);
+    });
+    assert.equal(requests.length, requestCount, 'a queued equip cannot dispatch after leaving Heroes');
+    assert(!drafts.slice(draftCount).some(choice => choice?.appearance?.eye_color === 'obsidian'),
+      'a stale control cannot change the character preview outside Heroes');
+    assert.equal(social.getState().view.profile.progression.character.appearance.eye_color, 'obsidian');
+
+    await act(async () => root.render(null));
+    await act(async () => {
+      ui.getState().setScreen('heroes');
+      root.render(h(HeroWorkshop));
+    });
+    await click('[data-open-character]');
+    await click('#character-editor-tab-identity');
+    await select('Eye color', 'original');
+    await act(async () => t.mock.timers.tick(350));
+    const inFlight = requests.at(-1);
+    assert.equal(requests.length, requestCount + 1);
+    assert.equal(inFlight.character.appearance.eye_color, 'original');
+    await select('Skin tone', 'original');
+    await act(async () => ui.getState().setOverlay('settings'));
+    await acknowledge(inFlight, inFlight.character, false);
+    assert.equal(requests.length, requestCount + 1, 'an in-flight save cannot dispatch later queued edits under an overlay');
+    assert.equal(social.getState().view.profile.progression.character.appearance.eye_color, 'original',
+      'the profile still acknowledges a request dispatched while Heroes was active');
+    assert.equal(social.getState().view.profile.progression.character.appearance.skin, 'deep');
+    await act(async () => ui.getState().closeOverlay());
+    assert.equal(requests.length, requestCount + 2, 'queued edits resume when Heroes becomes active again');
+    const resumed = requests.at(-1);
+    assert.equal(resumed.character.appearance.skin, 'original');
+    await acknowledge(resumed, resumed.character, false);
   } finally {
     t.mock.timers.reset();
     if (root) await act(async () => root.unmount());

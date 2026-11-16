@@ -1,13 +1,14 @@
 import { MIRROR_CHECK_ID, MIRROR_CHECK_NAME } from "./mirrorCheck";
 import { useFittingTurnStore } from "./fittingControlsStore";
 import { FitBadge, FitReview } from "./FitReview";
-import { useCallback, useEffect, useId, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type Ref, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type Ref } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { readLocalCharacter, writeLocalCharacter } from "./localOutfits";
 import { ControllerAction } from "../../components/controller";
 import { requestSocial } from "../../net/socialClient";
 import { selectEquippedCharacter, useSocialStore } from "../../store/social/socialStore";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
+import { canEditCharacter, useUIStore } from "../../store/menus/uiStore";
 import { CHARACTERS, CHARACTER_APPEARANCE_OPTIONS, CHARACTER_IDENTITIES, DEFAULT_CHARACTER, ROOK_ID, characterAppearance, characterLook, type CharacterChoice } from "./characterCatalog";
 import { CharacterPortrait } from "./CharacterPortrait";
 import { CHARACTER_CAMERAS, CHARACTER_ZOOM_MIN, CHARACTER_ZOOM_MAX, useCharacterPreviewStore } from "./characterPreviewStore";
@@ -46,9 +47,7 @@ function revealCharacterControl(event: FocusEvent<HTMLElement>) {
   event.target.scrollIntoView?.({ block: "nearest", inline: "nearest" });
 }
 
-export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection = false, cameraControls, onOpenIdentity }: {
-  cameraControls?: ReactNode;
-  inspection?: boolean;
+export function CharacterPage({ onPreview, onReady, tab, beforeClose, onOpenIdentity }: {
   onPreview?: (choice: CharacterChoice | null) => void;
   onReady: (ready: boolean) => void;
   onOpenIdentity?: () => void;
@@ -59,6 +58,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
   const owner = useSocialStore(state => state.view?.profile.id ?? state.profileOwner);
   const connectedOwner = useSocialStore(state => state.view?.profile.id);
   const saved = useSocialStore(selectEquippedCharacter);
+  const editingAllowed = useUIStore(canEditCharacter);
   const reducedMotion = usePreferencesStore(state => state.reducedMotion);
   const [initialChoice] = useState(() => characterLook(saved) ? saved! : readLocalCharacter());
   const [choice, setChoice] = useState(initialChoice ?? DEFAULT_CHARACTER);
@@ -112,6 +112,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
     const drain = async () => {
       setStatus("saving");
       while (queued.current.size) {
+        if (!canEditCharacter()) return false;
         const [id, next] = queued.current.entries().next().value!;
         queued.current.delete(id);
         try {
@@ -145,8 +146,10 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
       setLocked(true);
     }
   }, [saved]);
-  useEffect(() => { if (connectedOwner && queued.current.size) void flush(); }, [connectedOwner, flush]);
-  useImperativeHandle(beforeClose, () => () => locked ? flush() : Promise.resolve(true), [flush, locked]);
+  useEffect(() => {
+    if (editingAllowed && connectedOwner && queued.current.size) void flush();
+  }, [editingAllowed, connectedOwner, flush]);
+  useImperativeHandle(beforeClose, () => () => locked ? flush() : running.current ?? Promise.resolve(true), [flush, locked]);
   useLayoutEffect(() => { onPreview?.(previewChoice); }, [previewChoice, onPreview]);
   useLayoutEffect(() => { onReady(locked); }, [locked, onReady]);
   useLayoutEffect(() => {
@@ -172,14 +175,18 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
       useCharacterPreviewStore.setState({ insideCar: false, emote: null });
     }
   }, [locked, tab, reducedMotion, insideCar]);
-  useEffect(() => () => {
+  useLayoutEffect(() => () => {
     clearTimeout(timer.current);
+    queued.current.clear();
+  }, []);
+  useEffect(() => () => {
     onPreview?.(null);
     onReady(false);
     useCharacterPreviewStore.setState({ camera: "Full body", zoom: 1, emote: null, insideCar: false, cockpitError: null });
   }, [onPreview, onReady]);
 
   function saveLocalCharacter(next: CharacterChoice) {
+    if (!canEditCharacter()) return;
     try {
       writeLocalCharacter(next);
       acknowledged.current = next;
@@ -192,6 +199,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
   }
 
   function update(next: CharacterChoice, preview?: CharacterChoice) {
+    if (!canEditCharacter()) return;
     if (!preview) setLoadedOutfit(false);
     setTrial(preview);
     setChoice(next);
@@ -220,21 +228,25 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
   }
 
   function tryOn(next: CharacterChoice) {
+    if (!canEditCharacter()) return;
     setTrial(hasFittingPreview(next) ? next : undefined);
   }
 
   function loadOutfit(next: CharacterChoice) {
+    if (!canEditCharacter()) return;
     setLoadedOutfit(true);
     setTrial(next);
     useCharacterPreviewStore.setState({ camera: "Full body", zoom: 1 });
   }
 
   function endOutfitPreview() {
+    if (!canEditCharacter()) return;
     setLoadedOutfit(false);
     setTrial(undefined);
   }
 
   function editPreviewAppearance(next: CharacterChoice) {
+    if (!canEditCharacter()) return;
     if (hasFittingPreview(next)) setTrial(next);
     else equipOutfit(next);
   }
@@ -360,7 +372,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
         <button type="button" className="menu-control" data-controller-row data-cockpit-toggle disabled={!canEnterCar || !cockpitVehicle}
           onClick={toggleCockpit}>Enter {stationName}</button>
       </>}
-      {insideCar && (inspection || !locked) && <button type="button" className="menu-control" data-controller-row data-cockpit-toggle
+      {insideCar && !locked && <button type="button" className="menu-control" data-controller-row data-cockpit-toggle
         onClick={toggleCockpit}>Exit {stationName}</button>}
       {reducedMotion && <p>Emote playback is paused by Reduced Motion.</p>}
       {cockpitError && <p role="status">{cockpitError}</p>}
@@ -419,7 +431,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
     : <FittingCameraSelect choice={fitting ? undefined : previewChoice} views={cameraViews} vertical={fitting}
       view={!vehiclePreview && camera === "Whole car" ? "Full body" : camera} onViewChange={changeCamera} />;
   const setZoom = (value: number) => useCharacterPreviewStore.setState({ zoom: value });
-  const previewZoom = !inspection && !insideCar && <div className="dressing-preview-zoom" data-controller-row>
+  const previewZoom = !insideCar && <div className="dressing-preview-zoom" data-controller-row>
     <PreviewZoomSlider label="Preview zoom" min={CHARACTER_ZOOM_MIN} max={CHARACTER_ZOOM_MAX} step={.05}
       value={zoom} valueText={`${Math.round(zoom * 100)}%`} onChange={setZoom} />
   </div>;
@@ -429,7 +441,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
     aria-label={`Exit ${stationName}`} title={`Exit ${stationName}`} onClick={toggleCockpit}>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M11 4H4v16h7m2-12 4 4-4 4m4-4H8" /></svg>
   </button>;
-  const cameraTools = inspection ? cameraControls : <FittingCameraToolbar key={tab} camera={fitting ? undefined : cameraSelect} splitCamera
+  const cameraTools = <FittingCameraToolbar key={tab} camera={fitting ? undefined : cameraSelect} splitCamera
     visibility={<PreviewVisibilityToggle />} paused={playbackPaused} onPause={togglePose}
     vehicle={vehiclePreview} rotationDisabled={rotationDisabled} actions={exitCockpit}
     onReframe={tab !== "emotes" ? () => useCharacterPreviewStore.setState(s => ({ zoom: 1, focusRevision: s.focusRevision + 1 })) : undefined}
@@ -443,11 +455,16 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
         <header className="character-description"><h2>Choose gender</h2><p>You can switch models any time during alpha.</p></header>
         {modelPicker}
         <div className="character-equip" data-controller-row>
-          <ControllerAction button="A" className="menu-control" disabled={!connectedOwner || saved === undefined || status === "saving"}
-            onClick={() => { queued.current.clear(); queued.current.set(choice.id, choice); void flush(); }}>
+          <ControllerAction button="A" className="menu-control" disabled={!editingAllowed || !connectedOwner || saved === undefined || status === "saving"}
+            onClick={() => {
+              if (!canEditCharacter()) return;
+              queued.current.clear();
+              queued.current.set(choice.id, choice);
+              void flush();
+            }}>
             {status === "saving" ? "Saving…" : `Confirm ${character.gender}`}
           </ControllerAction>
-          {(!connectedOwner || saved === undefined) && <button type="button" className="menu-control" onClick={() => saveLocalCharacter(choice)}>
+          {(!connectedOwner || saved === undefined) && <button type="button" className="menu-control" disabled={!editingAllowed} onClick={() => saveLocalCharacter(choice)}>
             Use locally
           </button>}
           <p role="status">{message || (!connectedOwner ? "Connect your player profile to confirm." : saved === undefined ? "Update the game server to choose a character." : "")}</p>
@@ -474,7 +491,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
         aria-label={`Preview of ${character.name}`} />
       {fitting && <DressingRoom choice={previewChoice} onChange={editPreviewAppearance} onEquip={equipOutfit} onTryOn={tryOn} onLoad={loadOutfit}
         onEndPreview={loadedOutfit ? endOutfitPreview : undefined} cameraTools={cameraTools}
-        cameraViews={inspection ? undefined : cameraSelect} onColors={saveClothingColors} />}
+        cameraViews={cameraSelect} onColors={saveClothingColors} />}
       {tab === "identity" && <section className="character-controls menu-panel-frame character-identity-style" aria-label="Identity appearance">
         <h2>Identity</h2>
         {IDENTITY_STYLE.map(([section, fields]) => <fieldset key={section}>
@@ -517,6 +534,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, inspection
           {status === "error" && <>
             <button type="button" className="menu-control" onClick={() => owner ? void flush() : saveLocalCharacter(choice)}>Retry</button>
             <button type="button" className="menu-control" onClick={() => {
+              if (!canEditCharacter()) return;
               queued.current.clear();
               drafts.current.clear();
               setTrial(undefined);

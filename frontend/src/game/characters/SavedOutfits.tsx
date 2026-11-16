@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { requestSocial } from "../../net/socialClient";
+import { canEditCharacter, useUIStore } from "../../store/menus/uiStore";
 import { useSocialStore } from "../../store/social/socialStore";
 import { characterLook, type CharacterChoice } from "./characterCatalog";
 import { clothingPieceLabel, wornClothing } from "./clothingPieces";
@@ -37,6 +38,7 @@ type SavedOutfitsProps = {
 };
 
 export function SavedOutfits({ choice, onTryOn, onEndPreview, clearPreview }: SavedOutfitsProps) {
+  const editingAllowed = useUIStore(canEditCharacter);
   const owner = useSocialStore(({ view }) => view?.profile.progression ? view.profile.id : undefined);
   const profileOutfits = useSocialStore(state => state.view ? state.view.profile.progression?.character_outfits : state.cachedCosmetics?.character_outfits);
   const [localOutfits, setLocalOutfits] = useState(readLocalOutfits);
@@ -69,6 +71,7 @@ export function SavedOutfits({ choice, onTryOn, onEndPreview, clearPreview }: Sa
         : "";
 
   function saveDeviceCopy(name: string, outfit: CharacterChoice) {
+    if (!canEditCharacter()) return;
     if (Object.hasOwn(localOutfits, name)) {
       setMessage(`A device outfit named ${name} already exists. Use This device to update it.`);
       return;
@@ -86,6 +89,7 @@ export function SavedOutfits({ choice, onTryOn, onEndPreview, clearPreview }: Sa
   }
 
   async function changeOutfits(action: "character_outfit_save" | "character_outfit_delete", name: string, character?: CharacterChoice) {
+    if (!canEditCharacter()) return;
     if (source === "device") {
       try {
         setLocalOutfits(writeLocalOutfit(name, character));
@@ -126,7 +130,8 @@ export function SavedOutfits({ choice, onTryOn, onEndPreview, clearPreview }: Sa
     if (trimmedName && !saveProblem) void changeOutfits("character_outfit_save", trimmedName, choice);
   }
 
-  const readOnly = source === "profile" && !owner;
+  const profileReadOnly = source === "profile" && !owner;
+  const readOnly = !editingAllowed || profileReadOnly;
   const notice = pending ? "Updating saved outfits…" : message || saveProblem;
 
   return <div className="saved-outfits">
@@ -156,17 +161,18 @@ export function SavedOutfits({ choice, onTryOn, onEndPreview, clearPreview }: Sa
         <button type="submit" className="menu-control" disabled={readOnly || pending || !trimmedName || Boolean(saveProblem)}>
           {existing?.id === choice.id ? "Update outfit" : "Save outfit"}
         </button>
-        {source === "profile" && existing?.id === choice.id && <button type="button" className="menu-control" disabled={pending}
+        {source === "profile" && existing?.id === choice.id && <button type="button" className="menu-control" disabled={pending || !editingAllowed}
           onClick={() => saveDeviceCopy(trimmedName, existing)}>Copy profile outfit to this device</button>}
       </div>
     </form>
-    {readOnly && <p className="saved-outfit-message">Connect your profile to change profile saves. Cached outfits can still be tried on.</p>}
+    {profileReadOnly && <p className="saved-outfit-message">Connect your profile to change profile saves. Cached outfits can still be tried on.</p>}
     {notice && <p className="saved-outfit-message" role="status">{notice}</p>}
     {looks.length > 0 ? <ul className="saved-outfit-list" aria-label="Saved outfits">
       {looks.map(([outfitName, outfit]) => {
         const details = outfitDetails(outfit);
         return <li key={outfitName} data-controller-row data-controller-columns="2">
-          <button type="button" className="menu-control saved-outfit-preview" aria-label={`Try on ${outfitName}`} onClick={() => {
+          <button type="button" className="menu-control saved-outfit-preview" aria-label={`Try on ${outfitName}`} disabled={!editingAllowed} onClick={() => {
+            if (!canEditCharacter()) return;
             onTryOn(outfit);
             setName(outfitName);
             setMessage(`Previewing ${outfitName}.`);

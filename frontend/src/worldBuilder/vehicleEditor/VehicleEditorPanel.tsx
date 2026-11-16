@@ -29,7 +29,7 @@ type Reply = {
     current: Tuning;
 };
 /** One panel owns draft settings. Only Apply sends physics to the server. */
-export function VehicleEditorPanel({ suspended = false }: { suspended?: boolean }) {
+export function VehicleEditorPanel() {
     const root = useRef<HTMLElement>(null);
     const active = useSocialStore(s => s.view?.alpha?.active);
     const [reply, setReply] = useState<Reply | null>(null);
@@ -96,7 +96,6 @@ export function VehicleEditorPanel({ suspended = false }: { suspended?: boolean 
     });
     const test = () => { useInputStore.getState().releaseControls(); useUIStore.getState().closeOverlay(); };
     useEffect(() => {
-        if (suspended) return;
         const navigate = (event: Event) => {
             const action = (event as CustomEvent<MenuAction>).detail;
             if (action === 'back') {
@@ -130,7 +129,7 @@ export function VehicleEditorPanel({ suspended = false }: { suspended?: boolean 
         };
         window.addEventListener('avenlab:panel-action', navigate);
         return () => window.removeEventListener('avenlab:panel-action', navigate);
-    }, [suspended]);
+    }, []);
     const stopKeys = (e: React.KeyboardEvent) => {
         e.stopPropagation();
         if (e.key === 'Escape') {

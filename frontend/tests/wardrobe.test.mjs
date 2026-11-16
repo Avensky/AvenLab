@@ -117,6 +117,8 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
   const {corsetModelUrls}=await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
   const {useCharacterPreviewStore:camera}=await vite.ssrLoadModule('/src/game/characters/characterPreviewStore.ts');
   const {useSocialStore:social}=await vite.ssrLoadModule('/src/store/social/socialStore.ts');
+  const {useUIStore:ui}=await vite.ssrLoadModule('/src/store/menus/uiStore.ts');
+  ui.getState().setScreen('heroes');
   const client=await vite.ssrLoadModule('/src/net/socialClient.ts');const requests=[],previews=[];
   client.setSocialConnection({readyState:WebSocket.OPEN,send:value=>requests.push(JSON.parse(value))});
   const character={...DEFAULT_CHARACTER,prop:'shop-bag',identity:'nonbinary',wardrobe:{set:'gothic-04',shirt:'under',waist:'tucked'}};

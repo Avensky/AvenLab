@@ -169,6 +169,10 @@ export const useUIStore = create<UIState>()((set, get, api) => ({
     set({ selectedMission: mission }),
 }));
 
+export function canEditCharacter(state: Pick<UIState, "screen" | "overlay" | "isModeLoading"> = useUIStore.getState()) {
+  return state.screen === "heroes" && state.overlay === null && !state.isModeLoading;
+}
+
 // Route changes, including Escape, controller Start, pointer clicks and child
 // menus, have one brake policy. Multiplayer keeps simulating while menus open.
 // This subscription is event-driven; it introduces no polling or extra sender.
