@@ -19,8 +19,8 @@ import { isCompactPreview } from "../preview/previewBudget";
 import { failCockpitPreview, useCharacterPreviewStore } from "./characterPreviewStore";
 import { removalNeedsVillagerBody, replacesVillagerBody, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
 import { getWardrobeGarment, hasWardrobeRevisionMesh, wardrobeGarmentModelUrl, type WardrobeRemoval } from "./wardrobeGarments";
-import { corsetModelUrls, isRebuiltUnderbustUrl } from "./wardrobe";
-import { FITTING_BODY_URL, rebuiltUnderbustPart } from "./standaloneCorset";
+import { corsetModelUrls, corsetRenderChoice, isRebuiltLacedBodiceUrl, isRebuiltUnderbustUrl } from "./wardrobe";
+import { FITTING_BODY_URL, hasAuthoredLacedBodiceFit, rebuiltUnderbustPart } from "./standaloneCorset";
 
 const DRIVER_TILT: [number, number, number] = [-.095, -.16, -.045];
 const LEGACY_FITTING_BODY_URL = "/models/characters/wardrobe/gothic-02.mobile.glb";
@@ -61,10 +61,13 @@ function VillagerDriver({ url, look, compact, fallback, ...playback }: VillagerP
   const onReady = useCallback<WardrobeAssetListener>((asset, loaded) => setSources(current => current[asset] === loaded
     ? current : { ...current, [asset]: loaded }), []);
   const kind = compact ? "portrait" : "garage";
-  const corsetUrls = corsetModelUrls(look.corset, kind);
+  const corset = corsetRenderChoice(look);
+  const corsetUrls = corsetModelUrls(corset, kind);
   const corsetUrl = corsetUrls.find(asset => {
     const source = sources[asset];
-    return source !== null && (!source || !isRebuiltUnderbustUrl(asset) || rebuiltUnderbustPart(source, look.corset?.waist));
+    if (!source) return source !== null;
+    if (isRebuiltUnderbustUrl(asset)) return Boolean(rebuiltUnderbustPart(source, corset?.waist));
+    return !isRebuiltLacedBodiceUrl(asset) || hasAuthoredLacedBodiceFit(source);
   });
   const requested = useMemo(() => Object.values(look.garments ?? {}).flatMap(id => {
     const item = getWardrobeGarment(id);
@@ -103,7 +106,7 @@ function VillagerDriver({ url, look, compact, fallback, ...playback }: VillagerP
   // Resolutions for earlier selections can fill the cache without changing the preview.
   if (scene && !loading && (!unavailable || !active)) {
     const corsetScene = !needsBody || garmentBody ? loadedCorset ?? undefined : undefined;
-    const corsetSet = corsetScene ? look.corset?.set : undefined;
+    const corsetSet = corsetScene ? corset?.set : undefined;
     const garments = requested.flatMap(({ item, url }): WardrobeGarmentSource[] => {
       const source = sources[url];
       if (!source || (needsBody && !garmentBody && replacesVillagerBody(item.slot))) return [];

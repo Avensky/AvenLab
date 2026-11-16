@@ -5,6 +5,8 @@ import { prepareOverSkirtEase, type OverSkirtEase } from "./overSkirtEase";
 
 export const WARDROBE_SETS = catalog.filter(set => !set.retired);
 export const WARDROBE_CORSETS = catalog;
+export const LACED_BODICE_WARDROBE_SET = "gothic-01";
+export const REBUILT_LACED_BODICE_ASSET = "gothic-laced-bodice";
 export const UNDERBUST_WARDROBE_SET = "gothic-04";
 export const REBUILT_UNDERBUST_ASSET = "gothic-underbust-vest";
 export const ORIGINAL_CUT_UNDERBUST_ASSET = "gothic-underbust-vest-original-cut";
@@ -57,6 +59,27 @@ export function isRebuiltUnderbustUrl(url: string) {
   return [REBUILT_UNDERBUST_ASSET, ORIGINAL_CUT_UNDERBUST_ASSET, TUCKED_UNDERBUST_ASSET].some(asset => url.includes(`/${asset}.`));
 }
 
+export function isRebuiltLacedBodiceUrl(url: string) {
+  return url.includes(`/${REBUILT_LACED_BODICE_ASSET}.`);
+}
+
+export function hasRebuiltLacedBodice() {
+  const lods = __STANDALONE_CORSET_LODS__[REBUILT_LACED_BODICE_ASSET];
+  return Boolean(lods?.garage || lods?.mobile);
+}
+
+/** A matched Gothic outfit still uses its bundled skirt and only substitutes the rebuilt bodice. */
+export function corsetRenderChoice(look: {
+  corset?: WardrobeChoice;
+  wardrobe?: WardrobeChoice;
+  garments?: { top?: string; dress?: string };
+  removedClothing: readonly string[];
+}) {
+  if (look.corset) return look.corset;
+  if (look.wardrobe?.set === LACED_BODICE_WARDROBE_SET && !look.garments?.top && !look.garments?.dress
+    && !look.removedClothing.includes("corset") && hasRebuiltLacedBodice()) return look.wardrobe;
+}
+
 export function wardrobeOverEase(choice?: WardrobeSelection | null): OverSkirtEase {
   const ease = choice?.wardrobeEase;
   return (ease === 1 || ease === 2) && resolveCharacterWardrobe(choice)?.waist === "over" ? ease : 0;
@@ -79,6 +102,9 @@ export function corsetModelUrls(choice: WardrobeChoice | undefined, kind: "garag
   };
   if (useStandalone) {
     const directory = "female/wardrobe/corsets";
+    if (resolved.set === LACED_BODICE_WARDROBE_SET) {
+      add(REBUILT_LACED_BODICE_ASSET, directory, __STANDALONE_CORSET_LODS__[REBUILT_LACED_BODICE_ASSET]);
+    }
     if (resolved.set === UNDERBUST_WARDROBE_SET && resolved.waist === "over") {
       if (resolved.cut === "original") {
         add(ORIGINAL_CUT_UNDERBUST_ASSET, directory, __STANDALONE_CORSET_LODS__[ORIGINAL_CUT_UNDERBUST_ASSET]);

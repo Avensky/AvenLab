@@ -10,7 +10,8 @@ import tailwindcss from "@tailwindcss/vite";
 import { discoverWardrobeGarments, isWardrobeCatalogInput, wardrobeCatalogFile, wardrobeDirectory, wardrobePublicRoot } from "./scripts/discover-wardrobe-garments.mts";
 import { findVillagerModel, hasCharacterModel, hasCompatibleWardrobeRevision } from "./scripts/character-model-paths.mts";
 const wardrobeSets: { id: string }[] = JSON.parse(readFileSync(new URL("../avenlab-server/src/assets/character-wardrobe.json", import.meta.url), "utf8"));
-const standaloneCorsetIds = [...wardrobeSets.map(({ id }) => id), "gothic-underbust-vest", "gothic-underbust-vest-original-cut", "gothic-underbust-vest-tucked"];
+const standaloneCorsetIds = [...wardrobeSets.map(({ id }) => id),
+  "gothic-laced-bodice", "gothic-underbust-vest", "gothic-underbust-vest-original-cut", "gothic-underbust-vest-tucked"];
 const standaloneCorsetLods = Object.fromEntries(standaloneCorsetIds.map(id => [id, {
   garage: hasCharacterModel(new URL(`./public/models/characters/female/wardrobe/corsets/${id}.garage.glb`, import.meta.url)),
   mobile: hasCharacterModel(new URL(`./public/models/characters/female/wardrobe/corsets/${id}.mobile.glb`, import.meta.url)),

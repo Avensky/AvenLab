@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { CHARACTER_APPEARANCE_OPTIONS, OUTFIT_THEMES, characterLook, type CharacterChoice } from "./characterCatalog";
 import { clothingColors, clothingPieceLabel, isUnderwearPiece, underwearColors, withClothingColors, type ClothingPiece, type PieceColors } from "./clothingPieces";
-import { corsetModelUrl, isRebuiltUnderbustUrl } from "./wardrobe";
+import { LACED_BODICE_FINISHES } from "./lacedBodiceAppearance";
+import { corsetModelUrl, corsetRenderChoice, isRebuiltLacedBodiceUrl, isRebuiltUnderbustUrl } from "./wardrobe";
 import "./clothingColorToolbar.css";
 
 const colorPresets = CHARACTER_APPEARANCE_OPTIONS.color.map(({ id, label, color }) => ({ label: id === "original" ? "White" : label, color }));
@@ -23,14 +24,25 @@ export function ClothingColorToolbar({ choice, piece, onChange }: {
   const look = characterLook(choice)!;
   const colors = clothingColors(look, piece);
   const underwear = isUnderwearPiece(piece) ? underwearColors(look, piece) : undefined;
-  const corset = piece === "corset" ? corsetModelUrl(look.corset, "garage") : null;
+  const corsetFit = piece === "corset" ? corsetRenderChoice(look) : undefined;
+  const corset = corsetModelUrl(corsetFit, "garage");
   const rebuilt = Boolean(corset && isRebuiltUnderbustUrl(corset));
+  const laced = Boolean(corset && isRebuiltLacedBodiceUrl(corset));
   const outfitFabric = look.appearance.color === "original" ? undefined : look.fabric;
-  const fabric = underwear?.color ?? colors?.color ?? (rebuilt ? outfitFabric ?? "#30282a" : look.fabric);
-  const trim = underwear?.accent ?? colors?.accent ?? (rebuilt ? look.appearance.accent ?? "#362d2c" : colors?.color ?? look.trim);
+  const fabric = underwear?.color ?? colors?.color ?? (laced ? outfitFabric ?? "#6e6660" : rebuilt ? outfitFabric ?? "#30282a" : look.fabric);
+  const trim = underwear?.accent ?? (laced ? colors?.laces ?? colors?.accent ?? look.appearance.accent ?? "#cdb693"
+    : colors?.accent ?? (rebuilt ? look.appearance.accent ?? "#362d2c" : colors?.color ?? look.trim));
   const pieceName = clothingPieceLabel(piece);
   const dye = (value?: PieceColors) => onChange(withClothingColors(choice, piece, value));
-  const bars = [
+  const bars = laced ? [
+    { label: "Fabric", value: fabric, apply: (color: string) => dye({ color }) },
+    { label: "Trim", value: colors?.panel ?? outfitFabric ?? "#635a54", apply: (panel: string) => dye({ panel }) },
+    { label: "Laces", value: trim, apply: (laces: string) => dye({ laces }) },
+    { label: "Eyelets", value: colors?.hardware ?? "#b18e61", apply: (hardware: string) => dye({ hardware }) },
+    ...(corsetFit?.waist === "over" ? [
+      { label: "Zipper", value: colors?.closure ?? "#a6906f", apply: (closure: string) => dye({ closure }) },
+    ] : []),
+  ] : [
     { label: "Main", value: fabric, apply: (color: string) => dye(rebuilt || underwear ? { color } : { color, accent: trim }) },
     { label: rebuilt ? "Binding" : "Accent", value: trim, apply: (accent: string) => dye({ accent }) },
     ...(rebuilt ? [
@@ -63,18 +75,29 @@ export function ClothingColorToolbar({ choice, piece, onChange }: {
         <div className="dressing-color-chips">
           {OUTFIT_THEMES.map(theme => <button key={theme.name} type="button" className="menu-control menu-panel-frame dressing-color-preset"
             aria-label={theme.name} title={theme.name} aria-pressed={fabric === theme.color && trim === theme.accent}
-            onClick={() => dye(rebuilt ? { color: theme.color, accent: theme.accent, panel: theme.color, lining: theme.color, hardware: theme.accent }
+            onClick={() => dye(laced ? { color: theme.color, panel: theme.color, laces: theme.accent }
+              : rebuilt ? { color: theme.color, accent: theme.accent, panel: theme.color, lining: theme.color, hardware: theme.accent }
               : { color: theme.color, accent: theme.accent })}>
             <i className="dressing-color-swatch" style={swatch(theme.color, theme.accent)} aria-hidden="true" />
           </button>)}
           <button type="button" className="menu-control menu-panel-frame dressing-color-reset" disabled={!colors}
-            aria-label="Reset piece colors" title="Reset piece colors" onClick={() => dye()}>
+            aria-label={laced ? "Reset piece appearance" : "Reset piece colors"}
+            title={laced ? "Reset piece appearance" : "Reset piece colors"} onClick={() => dye()}>
             <svg className="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
               <path d="M4 6v5h5M4.4 10a8 8 0 1 1 1.2 7" />
             </svg>
           </button>
         </div>
       </div>
+      {laced && <div className="dressing-color-bar" role="group" aria-label="Fabric finish" data-controller-row>
+        <span aria-hidden="true">Finish</span>
+        <div className="dressing-color-chips">
+          {LACED_BODICE_FINISHES.map(({ id, label }) => <button key={id} type="button"
+            className="menu-control menu-panel-frame dressing-color-finish"
+            aria-pressed={(colors?.finish ?? "original") === id}
+            onClick={() => dye({ finish: id })}>{label}</button>)}
+        </div>
+      </div>}
       {bars.map(({ label, value, apply }) => <div key={label} className="dressing-color-bar" role="group" aria-label={`${label} color`} data-controller-row>
         <span aria-hidden="true">{label}</span>
         <div className="dressing-color-chips">

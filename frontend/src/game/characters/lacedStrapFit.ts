@@ -208,13 +208,16 @@ export function fitLacedBodice(root: Object3D, body: BufferGeometry) {
   } };
 }
 
-/** Keep the selected short skirt's waistband on its side of the bodice hem. */
-export function fitLacedBodiceToSkirt(root: Object3D, body: BufferGeometry, skirt: readonly MeshBVH[]) {
-  const torso = wardrobeCoverageSurface(body);
+/** Keep a skirt's waistband on its side of the bodice hem. */
+export function fitLacedBodiceToSkirt(root: Object3D, body: BufferGeometry, skirt: readonly MeshBVH[], fit?: "village-tucked") {
+  const villageTuck = fit === "village-tucked";
+  const sections = 72, rows = villageTuck ? 53 : 27, base = villageTuck ? 1.080 : 1.032, step = villageTuck ? .001 : .0055;
+  // Every waistband ray holds its height, so triangles outside this band cannot contribute.
+  const height = [base, base + (rows - 1) * step] as const;
+  const torso = wardrobeCoverageSurface(body, height);
   if (!torso) return;
   const altered: { mesh: SkinnedMesh; source: BufferGeometry; fitted: BufferGeometry }[] = [];
   const ray = new Ray();
-  const sections = 72, rows = 27, base = 1.032, step = .0055;
   const outerRadius = (surfaces: readonly MeshBVH[]) => {
     let distance = Infinity;
     for (const surface of surfaces) {
@@ -222,19 +225,22 @@ export function fitLacedBodiceToSkirt(root: Object3D, body: BufferGeometry, skir
     }
     return Number.isFinite(distance) ? .24 - distance : undefined;
   };
-  for (const mode of ["TUCKED", "OVER"]) {
+  for (const mode of villageTuck ? ["TUCKED"] : ["TUCKED", "OVER"]) {
     const meshes: SkinnedMesh[] = [], cloth: MeshBVH[] = [];
     for (const name of [`CLOTH_CORSET_${mode}`, `CLOTH_CORSET_WAIST_${mode}`]) {
       root.getObjectByName(name)?.traverse(part => {
         if (!(part instanceof SkinnedMesh) || Array.isArray(part.material)) return;
         meshes.push(part);
-        if (part.material.userData.color_slot !== "fabric") return;
-        const surface = wardrobeCoverageSurface(part.geometry);
+        if (part.material.userData.color_slot !== "fabric" && !villageTuck) return;
+        const surface = wardrobeCoverageSurface(part.geometry, height);
         if (surface) cloth.push(surface);
       });
     }
     const over = mode === "OVER";
     const adjustments = new Float32Array(sections * rows);
+    const rimFeatherRows = 12;
+    const lastBeltRow = new Int16Array(sections).fill(-rimFeatherRows);
+    const lastBelt = new Float32Array(sections);
     for (let row = 0; row < rows; row++) {
       const y = base + row * step;
       for (let section = 0; section < sections; section++) {
@@ -242,9 +248,22 @@ export function fitLacedBodiceToSkirt(root: Object3D, body: BufferGeometry, skir
         const x = Math.sin(angle), z = Math.cos(angle);
         ray.origin.set(.24 * x, y, waistCenter + .24 * z);
         ray.direction.set(-x, 0, -z);
-        const belt = outerRadius(skirt), bodice = outerRadius(cloth);
-        if (belt === undefined || bodice === undefined) continue;
-        const blend = MathUtils.smoothstep(y, base, 1.057) * (1 - MathUtils.smoothstep(y, 1.155, 1.175));
+        let belt = outerRadius(skirt);
+        let skirtFalloff = 1;
+        if (villageTuck && belt !== undefined) {
+          lastBelt[section] = belt;
+          lastBeltRow[section] = row;
+        } else if (villageTuck && row - lastBeltRow[section] < rimFeatherRows) {
+          // Feather the inset above the narrow waistband so the last row
+          // beneath the rim stays tucked when the garment moves.
+          belt = lastBelt[section];
+          skirtFalloff = 1 - MathUtils.smoothstep(row - lastBeltRow[section], 1, rimFeatherRows);
+        }
+        if (belt === undefined) continue;
+        const bodice = outerRadius(cloth);
+        if (bodice === undefined) continue;
+        const blend = villageTuck ? skirtFalloff
+          : MathUtils.smoothstep(y, base, 1.057) * (1 - MathUtils.smoothstep(y, 1.155, 1.175));
         let move: number;
         if (over) {
           move = MathUtils.clamp(belt + .010 - bodice, 0, .024);
@@ -253,13 +272,15 @@ export function fitLacedBodiceToSkirt(root: Object3D, body: BufferGeometry, skir
           ray.direction.negate();
           const skin = torso.raycastFirst(ray, DoubleSide, 0, .22)?.distance;
           if (skin === undefined) continue;
-          move = MathUtils.clamp(Math.max(skin + .0045, belt - .006) - bodice, -.016, 0);
+          const target = villageTuck ? Math.max(skin + .0018, belt - .009) : Math.max(skin + .0045, belt - .006);
+          move = MathUtils.clamp(target - bodice, -.016, 0);
         }
         adjustments[row * sections + section] = move * blend;
       }
     }
     for (const mesh of meshes) {
-      const source = mesh.geometry, fitted = source.clone(), position = fitted.getAttribute("position");
+      const source = mesh.geometry, position = source.getAttribute("position");
+      let fitted: BufferGeometry | undefined;
       for (let i = 0; i < position.count; i++) {
         const row = (position.getY(i) - base) / step;
         if (row <= 0 || row >= rows - 1) continue;
@@ -270,10 +291,15 @@ export function fitLacedBodiceToSkirt(root: Object3D, body: BufferGeometry, skir
         const low = Math.floor(row), left = Math.floor(section), right = (left + 1) % sections;
         const lower = MathUtils.lerp(adjustments[low * sections + left], adjustments[low * sections + right], section - left);
         const upper = MathUtils.lerp(adjustments[(low + 1) * sections + left], adjustments[(low + 1) * sections + right], section - left);
-        const scale = 1 + MathUtils.lerp(lower, upper, row - low) / radius;
-        position.setX(i, x * scale);
-        position.setZ(i, z * scale + waistCenter);
+        const move = MathUtils.lerp(lower, upper, row - low);
+        if (!move) continue;
+        fitted ??= source.clone();
+        const target = fitted.getAttribute("position");
+        const scale = 1 + move / radius;
+        target.setX(i, x * scale);
+        target.setZ(i, z * scale + waistCenter);
       }
+      if (!fitted) continue;
       fitted.computeBoundingBox();
       fitted.computeBoundingSphere();
       mesh.geometry = fitted;
@@ -290,6 +316,41 @@ export function fitLacedBodiceToSkirt(root: Object3D, body: BufferGeometry, skir
   };
 }
 
+/** Give the tucked hem room inside the Village waistband at the rear hips. */
+export function prepareLacedBodiceVillageWaist(skirts: readonly SkinnedMesh[]) {
+  const fittedSkirts = skirts.map(mesh => {
+    const source = mesh.geometry, fitted = source.clone(), position = fitted.getAttribute("position");
+    for (let i = 0; i < position.count; i++) {
+      const x = position.getX(i), y = position.getY(i), z = position.getZ(i) - waistCenter;
+      if (y <= 1.052) continue;
+      const radius = Math.hypot(x, z);
+      if (!radius) continue;
+      // The waist turns toward the front of the hip during a weight shift.
+      const sideAndRear = MathUtils.smoothstep(-z / radius, -.42, .25);
+      const side = MathUtils.smoothstep(Math.abs(x) / radius, .27, .65);
+      // Fade into the folds below the waistband while keeping the center back seam aligned.
+      const room = .0055 * sideAndRear * side * MathUtils.smoothstep(y, 1.052, 1.102);
+      const scale = 1 + room / radius;
+      position.setX(i, x * scale);
+      position.setZ(i, waistCenter + z * scale);
+    }
+    fitted.computeBoundingBox();
+    fitted.computeBoundingSphere();
+    return { mesh, source, fitted };
+  });
+  return {
+    apply(tucked: boolean) {
+      for (const { mesh, source, fitted } of fittedSkirts) mesh.geometry = tucked ? fitted : source;
+    },
+    dispose() {
+      for (const { mesh, source, fitted } of fittedSkirts) {
+        mesh.geometry = source;
+        fitted.dispose();
+      }
+    },
+  };
+}
+
 export function prepareLacedBodyMask(root: Object3D, waist: "tucked" | "over") {
   if (!root.userData.lacedBodiceStraps) return;
   const surfaces: MeshBVH[] = [];
@@ -297,7 +358,7 @@ export function prepareLacedBodyMask(root: Object3D, waist: "tucked" | "over") {
   for (const name of [`CLOTH_CORSET_${waist.toUpperCase()}`, "CLOTH_CORSET_FACING"]) {
     root.getObjectByName(name)?.traverse(mesh => {
       if (!(mesh instanceof SkinnedMesh) || Array.isArray(mesh.material) || mesh.material.transparent
-        || mesh.material.userData.color_slot === "hardware") return;
+        || ["hardware", "laces", "closure"].includes(mesh.material.userData.color_slot)) return;
       const surface = wardrobeCoverageSurface(mesh.geometry);
       if (surface) surfaces.push(surface);
     });

@@ -2,7 +2,7 @@ import { Group, Matrix4, Mesh, SkinnedMesh, type Material, type Object3D, type S
 import { fitLacedBodiceToSkirt } from "./lacedStrapFit";
 import { prepareWardrobeLining } from "./wardrobeLining";
 import { bindWardrobeGarmentMesh } from "./wardrobeGarmentFit";
-import { prepareWardrobe, UNDERBUST_WARDROBE_SET, type WardrobeChoice } from "./wardrobe";
+import { LACED_BODICE_WARDROBE_SET, prepareWardrobe, UNDERBUST_WARDROBE_SET, type WardrobeChoice } from "./wardrobe";
 import { fitUnderbustOverTop } from "./underbustFit";
 import { tagRebuiltUnderbustMaterial } from "./rebuiltUnderbustDye";
 import type { OverSkirtEase } from "./overSkirtEase";
@@ -32,10 +32,22 @@ export function rebuiltUnderbustPart(scene: Object3D, waist?: WardrobeChoice["wa
   return hasCloth ? part : undefined;
 }
 
+export function hasAuthoredLacedBodiceFit(scene: Object3D) {
+  return (["over", "tucked"] as const).every(waist => {
+    const part = scene.getObjectByName(`CLOTH_CORSET_${waist.toUpperCase()}`);
+    if (part?.userData.authoredFit !== true || part.userData.wardrobeRole !== `corset-${waist}`) return false;
+    let hasCloth = false;
+    part.traverse(object => { hasCloth ||= object instanceof SkinnedMesh; });
+    return hasCloth;
+  });
+}
+
 /** Bind the loaded fit to the actor. */
 export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton: Skeleton, fullBody: Object3D | undefined) {
   if (!(fullBody instanceof SkinnedMesh)) return;
   const underbust = source.set === UNDERBUST_WARDROBE_SET;
+  const laced = source.set === LACED_BODICE_WARDROBE_SET;
+  const authoredLacedBodice = laced && hasAuthoredLacedBodiceFit(source.scene);
   const rebuilt = underbust ? rebuiltUnderbustPart(source.scene) : undefined;
   const body = bindWardrobeGarmentMesh(fullBody, skeleton);
   if (!body) return;
@@ -80,19 +92,21 @@ export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton
     if (!tucked || !over) return;
     group.add(tucked, over, body);
   }
-  const disposeFit = rebuilt ? undefined : prepareWardrobeLining(group);
+  const disposeFit = rebuilt || authoredLacedBodice ? undefined : prepareWardrobeLining(group);
+  // The authored straps benefit from the same conservative skin coverage as the legacy fit.
+  if (authoredLacedBodice) group.userData.lacedBodiceStraps = true;
   body.removeFromParent();
-  const laced = source.set === "gothic-01";
   let wardrobe = underbust || laced ? undefined : prepareWardrobe(group);
   let disposeTopFit: (() => void) | undefined;
   let disposeSkirtFit: (() => void) | undefined;
   return {
     group,
+    authoredLacedBodice,
     fitTop: underbust ? (tops: readonly MeshBVH[]) => {
       disposeTopFit = fitUnderbustOverTop(group, body.geometry, tops, { preserveNormals: Boolean(rebuilt) });
     } : undefined,
-    fitSkirt: laced ? (skirts: readonly MeshBVH[]) => {
-      disposeSkirtFit = fitLacedBodiceToSkirt(group, body.geometry, skirts);
+    fitSkirt: laced ? (skirts: readonly MeshBVH[], fit?: "village-tucked") => {
+      disposeSkirtFit = fitLacedBodiceToSkirt(group, body.geometry, skirts, fit);
     } : undefined,
     fitTuckedHardware: tuckedHardware.length ? (skirts: readonly MeshBVH[]) => {
       // Imported garments share the actor's bind space. Hide only fasteners

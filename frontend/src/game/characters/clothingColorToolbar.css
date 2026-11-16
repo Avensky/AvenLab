@@ -18,6 +18,11 @@
   width: 34px;
   min-height: 32px;
 }
+.dressing-color-toolbar .menu-control.dressing-color-finish {
+  width: auto;
+  padding-inline: 7px;
+  font-size: 11px;
+}
 .dressing-color-toolbar .menu-control:is([aria-pressed="true"], [aria-expanded="true"]) {
   --menu-panel-edge: var(--app-accent);
 }

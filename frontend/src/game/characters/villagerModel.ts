@@ -8,7 +8,7 @@ import { addVillagerFaceShapes, prepareVillagerFaceColors } from "./villagerFace
 import { prepareVillagerFaceAccessories } from "./villagerFaceAccessories";
 import { cockpitWardrobe } from "./cockpitWardrobe";
 import { clothingColors, clothingPieceFor, type ClothingPiece } from "./clothingPieces";
-import { corsetModelUrl, prepareWardrobe, wardrobeModelUrl } from "./wardrobe";
+import { corsetModelUrl, corsetRenderChoice, prepareWardrobe, wardrobeModelUrl } from "./wardrobe";
 import { prepareWardrobeLining } from "./wardrobeLining";
 import { prepareWardrobeSkirt } from "./wardrobeSkirt";
 import { prepareVillageShoes } from "./wardrobeShoes";
@@ -16,13 +16,14 @@ import { prepareVillageBonnet } from "./villageBonnet";
 import { prepareWardrobeGarments, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
 import { prepareStandaloneCorset, type StandaloneCorsetSource } from "./standaloneCorset";
 import { applyRebuiltUnderbustDye } from "./rebuiltUnderbustDye";
+import { applyLacedBodiceAppearance } from "./lacedBodiceAppearance";
 import { getWardrobeGarment, wardrobeGarmentModelUrl, type WardrobeRemoval } from "./wardrobeGarments";
 
 export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait" = "garage") {
   if (look.character.id === ROOK_ID) return kind === "portrait" ? __ROOK_PORTRAIT_URL__ : __ROOK_MODEL_URL__;
   if (look.character.id !== VILLAGER_ID) return null;
   const skirt = getWardrobeGarment(look.garments?.skirt);
-  const assembled = skirt && wardrobeGarmentModelUrl(skirt, kind) && corsetModelUrl(look.corset, kind);
+  const assembled = skirt && wardrobeGarmentModelUrl(skirt, kind) && corsetModelUrl(corsetRenderChoice(look), kind);
   const wardrobeUrl = assembled ? null : wardrobeModelUrl(look.wardrobe, kind);
   if (wardrobeUrl) return wardrobeUrl;
   return kind === "portrait" ? __VILLAGER_PORTRAIT_URL__ : __VILLAGER_MODEL_URL__;
@@ -98,6 +99,7 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
       const existing = palette.get(material);
       if (existing) return existing;
       const copy = material.clone();
+      if (detachedCorset?.authoredLacedBodice && part === detachedCorset.group) copy.userData.rebuiltLacedBodice = true;
       palette.set(material, copy);
       return copy;
     };
@@ -229,8 +231,9 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
   for (const [piece, palette] of model.pieceMaterials) {
     const colors = clothingColors(look, piece);
     for (const [source, material] of palette) {
-      if (applyRebuiltUnderbustDye(source, material, colors,
-        look.appearance.color === "original" ? undefined : look.fabric, look.appearance.accent)) continue;
+      const outfitColor = look.appearance.color === "original" ? undefined : look.fabric;
+      if (applyLacedBodiceAppearance(source, material, colors, outfitColor, look.appearance.accent)
+        || applyRebuiltUnderbustDye(source, material, colors, outfitColor, look.appearance.accent)) continue;
       const accent = source.userData.color_slot === "accent" || source.userData.color_slot === "hardware" || /Details/.test(source.name);
       const color = accent ? colors?.accent ?? colors?.color : colors?.color;
       if (color) material.color.set(color);

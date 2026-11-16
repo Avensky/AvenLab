@@ -1,13 +1,17 @@
 import { Box3, Mesh, type Object3D } from "three";
 import catalog from "../../../../avenlab-server/src/assets/character-clothing-pieces.json";
 import { characterAppearance, characterLook, type CharacterChoice, type CharacterLook } from "./characterCatalog";
+import type { LacedBodiceFinish } from "./lacedBodiceAppearance";
 import { resolveWardrobe, UNDERBUST_WARDROBE_SET } from "./wardrobe";
 import { getWardrobeGarment, wardrobeGarmentReplacements, wardrobeRemovalPieces, wardrobeReplacedPieces } from "./wardrobeGarments";
 
 export const UNDERWEAR_PIECES = ["bra", "briefs"] as const;
 export type UnderwearPiece = typeof UNDERWEAR_PIECES[number];
 export type ClothingPiece = "corset" | "shirt" | "skirt" | "sleeves" | "underskirt" | "shorts" | "shoes" | "hat" | "bow" | "belt" | "coat" | "pants" | "gloves" | "collar" | "pouches" | "glasses" | "bag" | "dress" | "socks" | "harness" | "armor" | "bracer" | UnderwearPiece;
-export type PieceColors = { color?: string; accent?: string; panel?: string; lining?: string; hardware?: string };
+export type PieceColors = {
+  color?: string; accent?: string; panel?: string; lining?: string; hardware?: string;
+  laces?: string; closure?: string; finish?: LacedBodiceFinish;
+};
 export const CLOTHING_PIECES = catalog as { id: ClothingPiece; label: string; center: number; span: number }[];
 export const clothingPieceLabel = (piece: ClothingPiece) => CLOTHING_PIECES.find(item => item.id === piece)!.label;
 

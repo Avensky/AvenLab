@@ -1,7 +1,7 @@
 import { ShaderChunk, type Material, type MeshStandardMaterial } from "three";
 import type { PieceColors } from "./clothingPieces";
 
-type DyeGroup = keyof PieceColors;
+type DyeGroup = keyof Pick<PieceColors, "color" | "accent" | "panel" | "lining" | "hardware">;
 
 // Reference luminance from the undyed field of each texture, in linear RGB.
 const panels: Record<string, { group: DyeGroup; luminance: number }> = {

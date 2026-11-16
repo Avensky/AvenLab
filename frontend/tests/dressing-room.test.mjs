@@ -6,6 +6,68 @@ import { createServer } from 'vite';
 import { act, createElement as h, useState } from 'react';
 import { Spherical, Vector3 } from 'three';
 
+test('the Laced Bodice palette saves the finish and separate ribbons and fasteners', async () => {
+  const dom = new JSDOM('<div id="root"></div>', { url: 'http://localhost/', pretendToBeVisual: true });
+  const original = new Map();
+  for (const [key, value] of Object.entries({ window: dom.window, document: dom.window.document,
+    navigator: dom.window.navigator, IS_REACT_ACT_ENVIRONMENT: true })) {
+    original.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
+    Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
+  }
+  let vite, root;
+  try {
+    const { createRoot } = await import('react-dom/client');
+    vite = await createServer({ define: {
+      __STANDALONE_CORSET_LODS__: JSON.stringify({ 'gothic-laced-bodice': { garage: true, mobile: true } }),
+    }, server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+    const { ClothingColorToolbar } = await vite.ssrLoadModule('/src/game/characters/ClothingColorToolbar.tsx');
+    const { DEFAULT_CHARACTER } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { readLocalOutfits, writeLocalOutfit } = await vite.ssrLoadModule('/src/game/characters/localOutfits.ts');
+    function Palette({ set, waist }) {
+      const [choice, change] = useState({ ...DEFAULT_CHARACTER, wardrobeTrial: { set, waist, shirt: 'none' } });
+      return h(ClothingColorToolbar, { choice, piece: 'corset', onChange: next => {
+        change(next);
+        writeLocalOutfit('Laced Bodice', next);
+      } });
+    }
+    const pick = async selector => act(async () => {
+      const button = document.querySelector(selector);
+      assert(button, selector);
+      button.click();
+    });
+    root = createRoot(document.querySelector('#root'));
+    await act(async () => root.render(h(Palette, { key: 'over', set: 'gothic-01', waist: 'over' })));
+    await pick('[aria-label="Open clothing colors"]');
+    const finish = () => [...document.querySelectorAll('[aria-label="Fabric finish"] button')];
+    assert.deepEqual(finish().map(button => button.textContent), ['Original', 'Matte', 'Satin', 'Glossy']);
+    await act(async () => finish().at(-1).click());
+    for (const group of ['Fabric', 'Trim', 'Laces', 'Eyelets', 'Zipper']) {
+      await pick(`[aria-label="${group} color: White"]`);
+    }
+    assert.deepEqual(readLocalOutfits()['Laced Bodice'].appearance.item_colors['gothic-01:corset'], {
+      finish: 'glossy', color: '#ffffff', panel: '#ffffff', laces: '#ffffff', hardware: '#ffffff', closure: '#ffffff',
+    });
+    assert.equal(finish().at(-1).getAttribute('aria-pressed'), 'true');
+    await pick('[aria-label="Reset piece appearance"]');
+    assert.equal(finish()[0].getAttribute('aria-pressed'), 'true');
+    assert.equal(readLocalOutfits()['Laced Bodice'].appearance.item_colors, undefined);
+
+    await act(async () => root.render(h(Palette, { key: 'tucked', set: 'gothic-01', waist: 'tucked' })));
+    assert.equal(finish().length, 4);
+    assert(!document.querySelector('[aria-label="Zipper color"]'), 'Tucked hides its covered zipper');
+    await act(async () => root.render(h(Palette, { key: 'other', set: 'gothic-02', waist: 'over' })));
+    assert.equal(finish().length, 0, 'other corsets retain their previous controls');
+  } finally {
+    if (root) await act(async () => root.unmount());
+    await vite?.close();
+    dom.window.close();
+    for (const [key, descriptor] of original) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else delete globalThis[key];
+    }
+  }
+});
+
 test('the fitting camera orbits a close-up without changing its target or crossing the floor', async () => {
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error',
     optimizeDeps: { noDiscovery: true, include: [] } });
