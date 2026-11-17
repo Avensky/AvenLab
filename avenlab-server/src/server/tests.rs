@@ -592,6 +592,8 @@ async fn character_equip_validates_the_choice_and_persists_it_on_the_profile() {
     styled["appearance"] = json!({
         "hair": "cropped", "hair_color": "copper", "skin": "warm",
         "headwear": "hat", "color": "#101015", "accent": "#ff2d95",
+        "item_colors": { "gothic-03:corset": {"panel": "#123456", "laces": "#abcdef"},
+            "gothic-05:corset": {"panel": "#225544", "laces": "#ffeebb", "lining": "#9999aa", "hardware": "#887766"} },
     });
     let mut invalid_style = styled.clone();
     invalid_style["appearance"]["hair"] = json!("missing");
@@ -661,6 +663,8 @@ async fn character_outfits_save_validated_fitting_room_combinations_to_the_ownin
         "removedClothing": ["shoes", "bonnet-bow"],
         "appearance": {"hair": "cropped", "hair_color": "copper", "skin": "warm", "headwear": "hat", "color": "original",
             "item_colors": {"top-02:shirt": {"color": "#123456"}, "gothic-skirt-04:skirt": {"accent": "#abcdef"},
+                "gothic-03:corset": {"panel": "#123456", "laces": "#abcdef"},
+                "gothic-05:corset": {"panel": "#225544", "laces": "#ffeebb", "lining": "#9999aa", "hardware": "#887766"},
                 "underwear:bra": {"color": "#223355"}, "underwear:briefs": {"accent": "#bbccdd"}}},
     });
     let save = |name: &str, character: &Value| json!({
@@ -674,7 +678,17 @@ async fn character_outfits_save_validated_fitting_room_combinations_to_the_ownin
     assert_eq!(saved["character_presets"], json!({}));
     assert_eq!(saved["cosmetics_revision"], 2);
     assert_eq!(s.handle(&player, save("Gothic layers", &outfit)).await.unwrap(), saved);
+    let other_character = json!({"id": "jules-okafor", "outfit": "race-crew"});
+    assert_eq!(s.handle(&player, save("Gothic layers", &other_character)).await.unwrap_err(),
+        "That name belongs to another character's outfit.");
+    assert_eq!(s.handle(&player, save("Gothic layers", &outfit)).await.unwrap(), saved);
     assert!(s.handle(&player, json!({"action": "character_equip", "character": outfit})).await.is_err());
+    for (key, field, value) in [("gothic-03:corset", "hardware", "#123456"), ("gothic-05:corset", "closure", "#123456"),
+        ("gothic-05:skirt", "lining", "#123456"), ("gothic-05:corset", "lining", "invalid")] {
+        let mut invalid = outfit.clone();
+        invalid["appearance"]["item_colors"][key][field] = json!(value);
+        assert!(s.handle(&player, save("Gothic layers", &invalid)).await.is_err());
+    }
     let mut hidden_only = equipped.clone();
     hidden_only["removedClothing"] = json!(["shoes"]);
     assert!(s.handle(&player, json!({"action": "character_equip", "character": hidden_only})).await.is_err());

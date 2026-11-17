@@ -20,12 +20,22 @@ test('corset palettes save independent colors and the Laced Bodice finish', asyn
     vite = await createServer({ define: {
       __STANDALONE_CORSET_LODS__: JSON.stringify({
         'gothic-laced-bodice': { garage: true, mobile: true }, 'gothic-high-collar': { garage: true, mobile: true },
+        'gothic-underbust-vest': { garage: true, mobile: true },
       }),
       __BUNDLED_WARDROBE_LODS__: JSON.stringify({ 'gothic-03': { garage: true, mobile: true } }),
     }, server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
     const { ClothingColorToolbar } = await vite.ssrLoadModule('/src/game/characters/ClothingColorToolbar.tsx');
-    const { DEFAULT_CHARACTER } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { WARDROBE_CORSETS } = await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
+    const { getCorsetDyeProfile, applyCorsetDye } = await vite.ssrLoadModule('/src/game/characters/corsetDye.ts');
     const { readLocalOutfits, writeLocalOutfit } = await vite.ssrLoadModule('/src/game/characters/localOutfits.ts');
+    for (const set of WARDROBE_CORSETS) {
+      const look = characterLook({ ...DEFAULT_CHARACTER, wardrobeTrial: { set: set.id, waist: 'over', shirt: 'none' } });
+      const profile = getCorsetDyeProfile(look);
+      const fields = (profile?.themeGroups ?? []).map(group => group.key).filter(key => key !== 'color' && key !== 'accent');
+      if (profile?.finishes) fields.push('finish');
+      assert.deepEqual(new Set(fields), new Set(set.extraDyeFields), `${set.name} controls match the profile save fields`);
+    }
     function Palette({ set, waist, saved = false, name = 'Laced Bodice' }) {
       const selection = { set, waist, shirt: 'none' };
       const [choice, change] = useState(saved
@@ -62,7 +72,6 @@ test('corset palettes save independent colors and the Laced Bodice finish', asyn
     await pick('[aria-label="Open clothing colors"]');
     assert.equal(finish().length, 4);
     assert(!document.querySelector('[aria-label="Zipper color"]'), 'Tucked hides its covered zipper');
-    const { applyCorsetDye } = await vite.ssrLoadModule('/src/game/characters/corsetDye.ts');
     await act(async () => root.render(h(Palette, { key: 'sweetheart-over', name: 'Sweetheart', set: 'gothic-02', waist: 'over' })));
     await pick('[aria-label="Open clothing colors"]');
     assert.equal(finish().length, 0, 'the Sweetheart has no Laced Bodice finish controls');
@@ -149,6 +158,7 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
   const imports = inventory.filter(item => !item.retired && !item.outfit);
   const missingImport = 'bowtie-13';
   const missingOutfit = 'medieval-08';
+  const installed = inventory.filter(item => item.id !== missingImport && item.id !== missingOutfit);
   const revisedImport = 'gothic-skirt-02';
   const dom = new JSDOM('<div id="root" data-controller-rows></div>', { url: 'http://localhost/', pretendToBeVisual: true });
   const original = new Map();
@@ -162,7 +172,8 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     const { createRoot } = await import('react-dom/client');
     vite = await createServer({ define: {
       __VILLAGER_MODEL_URL__: JSON.stringify("/models/characters/villagers/villager-female/villager-female.garage.glb"),
-      __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(inventory.filter(item => item.id !== missingImport && item.id !== missingOutfit).map(item => item.id)),
+      __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(installed.map(item => item.id)),
+      __DRESSING_ROOM_MOBILE_IDS__: JSON.stringify(installed.filter(item => item.mobileUrl).map(item => item.id)),
       __DRESSING_ROOM_REVISION_IDS__: JSON.stringify([revisedImport]),
       __STANDALONE_CORSET_LODS__: JSON.stringify({ 'gothic-04': { garage: true, mobile: true }, 'gothic-05': { garage: true, mobile: true } }),
       __WARDROBE_SET_IDS__: JSON.stringify(['gothic-01', 'gothic-03', 'gothic-04', 'gothic-05']),

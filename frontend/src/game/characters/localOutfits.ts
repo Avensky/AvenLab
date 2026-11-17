@@ -3,6 +3,7 @@ import { selectEquippedCharacter, useSocialStore } from "../../store/social/soci
 import { CHARACTERS, DEFAULT_CHARACTER, type CharacterChoice } from "./characterCatalog";
 
 export const LOCAL_OUTFITS_KEY = "avenlab-saved-outfits-v1";
+export const OUTFIT_NAME_CONFLICT = "That name belongs to another character's outfit.";
 const LOCAL_CHARACTER_KEY = "avenlab-local-character-v1";
 type Outfits = Record<string, CharacterChoice>;
 const characterListeners = new Set<() => void>();
@@ -41,6 +42,8 @@ export function readLocalOutfits(): Outfits {
 
 export function writeLocalOutfit(name: string, choice?: CharacterChoice): Outfits {
   const outfits = readStoredOutfits();
+  const existing = outfits[name];
+  if (choice && isSavedChoice(existing) && existing.id !== choice.id) throw new Error(OUTFIT_NAME_CONFLICT);
   if (choice) Object.defineProperty(outfits, name, { value: choice, enumerable: true, configurable: true });
   else delete outfits[name];
   window.localStorage.setItem(LOCAL_OUTFITS_KEY, JSON.stringify(outfits));

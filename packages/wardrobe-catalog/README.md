@@ -11,7 +11,7 @@ and profile persistence live in their respective frontend and server paths.
 | [`character-appearance.json`](character-appearance.json) | Appearance option IDs and palettes |
 | [`character-clothing-pieces.json`](character-clothing-pieces.json) | Clothing piece IDs, labels, and camera framing hints |
 | [`character-village-pieces.json`](character-village-pieces.json) | IDs and mesh names for detachable parts of the Village outfit |
-| [`character-wardrobe.json`](character-wardrobe.json) | Gothic set IDs and retirement status |
+| [`character-wardrobe.json`](character-wardrobe.json) | Gothic set IDs, retirement status, and supported corset dye fields |
 | [`character-garments.json`](character-garments.json) | Curated standalone garments with slots and asset paths |
 | [`discovered-wardrobe-garments.json`](discovered-wardrobe-garments.json) | Generated manifest for compatible loose GLBs |
 
@@ -21,6 +21,9 @@ Keep IDs stable across relabeling, refits, and Garage or Mobile revisions.
 Saved looks reference these IDs. Keep retired records where older saves can
 encounter them. Preserve the set and waist when reading older Gothic looks
 that saved a separate shirt. The runtime resolves that legacy shirt to `none`.
+When adding a corset dye control, list its saved field in `extraDyeFields`
+for that set. All pieces already accept `color` and `accent`. Profile saves
+validate the extra fields against this list, including for retired sets.
 
 Edit curated entries in the relevant source JSON. Keep `slot` and `piece`
 aligned with the garment the model replaces. Paths in the garment catalog

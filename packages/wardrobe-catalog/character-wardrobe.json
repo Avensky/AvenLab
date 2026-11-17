@@ -1,7 +1,7 @@
 [
-  { "id": "gothic-01", "name": "Laced bodice" },
-  { "id": "gothic-02", "name": "Sweetheart corset" },
-  { "id": "gothic-03", "name": "Ruffled corset" },
-  { "id": "gothic-04", "name": "Underbust vest", "retired": true },
-  { "id": "gothic-05", "name": "High-collar corset" }
+  { "id": "gothic-01", "name": "Laced bodice", "extraDyeFields": ["panel", "laces", "hardware", "closure", "finish"] },
+  { "id": "gothic-02", "name": "Sweetheart corset", "extraDyeFields": ["laces", "panel", "hardware", "closure"] },
+  { "id": "gothic-03", "name": "Ruffled corset", "extraDyeFields": ["panel", "laces"] },
+  { "id": "gothic-04", "name": "Underbust vest", "retired": true, "extraDyeFields": ["panel", "lining", "hardware"] },
+  { "id": "gothic-05", "name": "High-collar corset", "extraDyeFields": ["panel", "laces", "lining", "hardware"] }
 ]

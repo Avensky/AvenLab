@@ -71,6 +71,8 @@ struct WardrobeSet {
     id: String,
     #[serde(default)]
     retired: bool,
+    #[serde(rename = "extraDyeFields", default)]
+    extra_dye_fields: Vec<String>,
 }
 
 static WARDROBE: LazyLock<Vec<WardrobeSet>> = LazyLock::new(|| {
@@ -272,22 +274,22 @@ impl CharacterChoice {
             if !appearance.item_colors.as_ref().is_none_or(|items| items.len() <= 128 && items.iter().all(|(key, colors)| {
                 let Some((variant, piece)) = key.split_once(':') else { return false; };
                 let known_piece = CLOTHING_PIECES.iter().any(|entry| entry.id == piece);
+                let wardrobe_set = WARDROBE.iter().find(|set| set.id == variant);
                 let known_variant = match piece {
                     "bra" | "briefs" => self.id == "mara-vega" && variant == "underwear",
                     _ => CAST.iter().filter(|entry| entry.id == self.id).any(|entry| entry.outfits.iter().any(|outfit| outfit.id == variant))
-                        || (self.id == "mara-vega" && WARDROBE.iter().any(|set| set.id == variant))
+                        || (self.id == "mara-vega" && wardrobe_set.is_some())
                         || (self.id == "mara-vega" && GARMENTS.iter().any(|garment| garment.id == variant && garment.piece == piece))
                         || (piece == "glasses" && ["round", "aviator"].contains(&variant))
                         || (piece == "bag" && variant == "shop-bag"),
                 };
-                let laced = variant == "gothic-01" && piece == "corset";
-                let sweetheart = variant == "gothic-02" && piece == "corset";
-                let underbust = variant == "gothic-04" && piece == "corset";
+                let supports = |field: &str| piece == "corset"
+                    && wardrobe_set.is_some_and(|set| set.extra_dye_fields.iter().any(|key| key == field));
                 known_piece && known_variant && colors.color.as_deref().is_none_or(hex_color) && colors.accent.as_deref().is_none_or(hex_color)
-                    && [&colors.panel, &colors.hardware].into_iter().all(|group| group.as_deref().is_none_or(|color| (underbust || laced || sweetheart) && hex_color(color)))
-                    && colors.lining.as_deref().is_none_or(|color| underbust && hex_color(color))
-                    && [&colors.laces, &colors.closure].into_iter().all(|group| group.as_deref().is_none_or(|color| (laced || sweetheart) && hex_color(color)))
-                    && (colors.finish.is_none() || laced)
+                    && [("panel", &colors.panel), ("hardware", &colors.hardware), ("lining", &colors.lining),
+                        ("laces", &colors.laces), ("closure", &colors.closure)].into_iter()
+                        .all(|(field, group)| group.as_deref().is_none_or(|color| supports(field) && hex_color(color)))
+                    && (colors.finish.is_none() || supports("finish"))
             })) { return false; }
             if !appearance.accent.as_deref().is_none_or(hex_color) {
                 return false;

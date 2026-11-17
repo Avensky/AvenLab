@@ -9,6 +9,7 @@ function wardrobePreviewServer() {
   return createServer({
     define: {
       __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(["skirt-01", "skirt-02", "skirt-03", "skirt-04", "gothic-skirt-02", "gothic-skirt-03", "gothic-skirt-04", "bowtie-01"]),
+      __DRESSING_ROOM_MOBILE_IDS__: JSON.stringify(["hat-01"]),
       __DRESSING_ROOM_REVISION_IDS__: JSON.stringify(["gothic-skirt-02", "gothic-skirt-03"]),
       __STANDALONE_CORSET_LODS__: JSON.stringify({
         "gothic-05": { garage: true, mobile: false },
@@ -154,6 +155,17 @@ test("the wardrobe resolver requests donors and authored tiers in order", async 
       ...defaultRequest, look: characterLook(DEFAULT_CHARACTER), sources: { village },
     }).preview;
     assert(previous);
+
+    const hat = getWardrobeGarment("hat-01");
+    const hatLook = characterLook({ ...DEFAULT_CHARACTER, garments: { hat: hat.id } });
+    const mobileHat = makeGarmentAvailable(hat.mobileUrl);
+    for (const kind of ["garage", "portrait"]) {
+      const request = { ...defaultRequest, kind, look: hatLook, previous };
+      assert.deepEqual(resolveWardrobePreview({ ...request, sources: { village } }).pendingUrls, [hat.mobileUrl]);
+      const resolved = resolveWardrobePreview({ ...request, sources: { village, [hat.mobileUrl]: mobileHat } });
+      assert.deepEqual(resolved.pendingUrls, []);
+      assert.equal(resolved.preview.garments[0].scene, mobileHat);
+    }
 
     const skirt = getWardrobeGarment("skirt-01");
     const look = characterLook({ ...DEFAULT_CHARACTER, garments: { skirt: skirt.id } });
