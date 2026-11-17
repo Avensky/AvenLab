@@ -106,7 +106,7 @@ function armVertices(body: SkinnedMesh, geometry: BufferGeometry) {
 function fitBodyMask(
   body: SkinnedMesh, original: SkinnedMesh, full: BufferGeometry, top: boolean, skirt: boolean,
   restored: RestoredSkin, clothes: SkinCover[], bra: MeshBVH[], checkTopEdges: boolean, lacedBodice: "tucked" | "over" | undefined,
-  authoredLacedBodice: boolean, cache?: { masks: Map<string, Uint32Array>; key: string },
+  authoredLacedBodice: boolean, ruffledSourceFit: boolean, cache?: { masks: Map<string, Uint32Array>; key: string },
 ) {
   const fittedIndex = body.geometry.getIndex()!;
   const saved = cache?.masks.get(cache.key);
@@ -123,7 +123,7 @@ function fitBodyMask(
   const surfaces = clothes.map(({ surface }) => surface);
   const covered = prepareWardrobeCoverage(surfaces);
   const coveredShoulder = lacedBodice && prepareWardrobeCoverage(surfaces, .001);
-  const coveredLacedOpenings = authoredLacedBodice
+  const coveredWithoutCorset = authoredLacedBodice || ruffledSourceFit
     ? prepareWardrobeCoverage(clothes.filter(({ piece }) => piece !== "corset").map(({ surface }) => surface))
     : undefined;
   const torsoClothes = restored.upper ? clothes.filter(({ piece, baseLayer }) => baseLayer || coversTorso.has(piece)) : clothes;
@@ -161,7 +161,9 @@ function fitBodyMask(
     // The rebuilt vest's narrow edges can expose parts of an otherwise masked
     // triangle as the actor moves. Leave skin under these edges and still mask
     // it against any separately equipped layer.
-    const isCovered = coveredLacedOpenings && isAuthoredLacedBodiceOpening(point) ? coveredLacedOpenings
+    // The strapless rim can reveal the upper torso when Vesper turns or leans.
+    const ruffledRim = ruffledSourceFit && Math.max(a.y, b.y, c.y) >= 1.15;
+    const isCovered = coveredWithoutCorset && (ruffledRim || (authoredLacedBodice && isAuthoredLacedBodiceOpening(point))) ? coveredWithoutCorset
       : coveredOpenings && isUnderbustOpening(point) ? coveredOpenings
       : coveredShoulder && isLacedShoulder(point) ? coveredShoulder : restoredTorso && !restoredArms ? coveredTorso : covered;
     if (!openLacing && replaced && (isCovered(point, a, b, c, restoredSkin || (upperBody && checkTopEdges))
@@ -502,7 +504,8 @@ export function prepareWardrobeGarments(
         const visibleShapes = [...shapes, ...(surfaces ?? [])];
         fitBodyMask(body, original, full, top, skirt, restored, visibleShapes,
           showBra ? braShapes : [], checkTopEdges, corset?.group.userData.lacedBodiceStraps ? corsetWaist : undefined,
-          corset?.authoredLacedBodice ?? false, fittedMasks && { masks: fittedMasks, key: maskKey });
+          corset?.authoredLacedBodice ?? false, ruffledTucked?.userData.ruffledSourceFit === true,
+          fittedMasks && { masks: fittedMasks, key: maskKey });
         maskedWaist = waist;
         maskedBra = showBra;
       }

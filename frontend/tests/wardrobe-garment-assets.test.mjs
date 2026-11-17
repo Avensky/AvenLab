@@ -1510,14 +1510,14 @@ test('the Village skirt and belt cover the back of the tucked Laced Bodice', asy
   } finally { await vite.close(); }
 });
 
-test('Ruffled Corset keeps cup and rear waist clearance within both detail budgets', async t => {
+test('Ruffled Corset keeps the upper torso and rear waist inside both detail budgets', async t => {
   const paths = [
     villagerDir + 'villager-female.garage.glb', villagerDir + 'villager-female.portrait.glb',
-    bundledDir + 'gothic-03.garage.glb', bundledDir + 'gothic-03.mobile.glb',
+    bundledDir + 'gothic-03.garage.glb', bundledDir + 'gothic-03.mobile.glb', bundledDir + 'gothic-02.mobile.glb',
   ];
   const bytes = await Promise.all(paths.map(path => readFile(new URL(path, publicDir))));
   if (bytes.some(isLfsPointer)) return t.skip('Run git lfs pull to materialize the Ruffled Corset and Village outfit.');
-  const [garage, portrait, high, low] = await Promise.all(bytes.map(loadGeometry));
+  const [garage, portrait, high, low, donor] = await Promise.all(bytes.map(loadGeometry));
   const vite = await createServer({ define: { __VILLAGER_MODEL_URL__: JSON.stringify('/' + paths[0]) }, server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
   try {
     const { prepareVillager, applyVillagerLook, villagerModelUrl } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
@@ -1551,12 +1551,37 @@ test('Ruffled Corset keeps cup and rear waist clearance within both detail budge
       }
       return new BufferGeometry().setAttribute('position', points).setIndex(faces);
     };
+    function assertUpperTorso(source, fitted, label) {
+      const original = source.getIndex();
+      const active = fitted.getIndex();
+      const { start, count } = fitted.drawRange;
+      const position = source.getAttribute('position');
+      const key = (index, i) => `${index.getX(i)},${index.getX(i + 1)},${index.getX(i + 2)}`;
+      const shown = new Set();
+      let sampled = 0;
+      for (let i = start; i < Math.min(start + count, active.count); i += 3) shown.add(key(active, i));
+      for (let i = 0; i < original.count; i += 3) {
+        const vertices = [original.getX(i), original.getX(i + 1), original.getX(i + 2)];
+        if (vertices.every(v => position.getY(v) >= 1.15)) {
+          assert(shown.has(key(original, i)), `${label} removed an upper-body triangle`);
+          sampled++;
+        }
+      }
+      assert(sampled > 1000, `${label} checked the complete upper body`);
+    }
     for (const [base, corset, budget] of [[garage, high, 7000], [portrait, low, 3000]]) {
-      const body = new MeshBVH(corset.getObjectByName('BODY_WARDROBE').geometry.clone());
+      const bundledBody = corset.getObjectByName('BODY_WARDROBE');
+      const donorBody = donor.getObjectByName('BODY_WARDROBE');
+      const body = new MeshBVH(bundledBody.geometry.clone());
       const ray = new Ray(new Vector3(), new Vector3(0, 0, -1));
       for (const cut of ['OVER', 'TUCKED']) {
         const garment = corset.getObjectByName(`CLOTH_CORSET_${cut}`);
-        assert(garment.userData.fit_version >= 8, 'the revised cup fit is present');
+        assert(garment.userData.fit_version >= 9, 'the close rear neckline is present');
+        const bundledModel = prepareVillager(corset, { fitted: true });
+        try {
+          applyVillagerLook(bundledModel, characterLook({ ...DEFAULT_CHARACTER, wardrobe: { ...choice, waist: cut.toLowerCase() } }));
+          assertUpperTorso(bundledBody.geometry, bundledModel.root.getObjectByName('BODY_WARDROBE').geometry, `bundled ${budget} ${cut}`);
+        } finally { bundledModel.dispose(); }
         const meshes = garment.children;
         assert.equal(meshes.length, 3, 'shell, ruffles, and both ties use three draw calls');
         assert(meshes.reduce((sum, mesh) => sum + mesh.geometry.index.count / 3, 0) <= budget);
@@ -1571,16 +1596,38 @@ test('Ruffled Corset keeps cup and rear waist clearance within both detail budge
             assert(garmentHit && bodyHit && bodyHit.distance - garmentHit.distance > .0005,
               `${budget} triangle tier ${cut} cup clears the body at ${x.toFixed(3)}, ${y.toFixed(3)}`);
           }
+          ray.direction.set(0, 0, 1);
+          let rearSamples = 0;
+          for (const x of [-.08, -.06, -.04, -.02, 0, .02, .04, .06, .08]) {
+            for (const y of [1.196, 1.208, 1.22, 1.232, 1.244, 1.248]) {
+              ray.origin.set(x, y, -.28);
+              const cloth = shell.raycastFirst(ray, DoubleSide, 0, .265);
+              const skin = body.raycastFirst(ray, DoubleSide, 0, .265);
+              if (!cloth || !skin) continue;
+              const gap = skin.distance - cloth.distance;
+              rearSamples++;
+              assert(gap > .0007 && gap < .0105, `${budget} ${cut} rear fit gap ${gap} m at ${x}, ${y}`);
+            }
+          }
+          assert(rearSamples >= 45, 'sampled both sides and center of the rear panel');
+          ray.direction.set(0, 0, -1);
         } finally { shell.geometry.dispose(); }
       }
       body.geometry.dispose();
       for (const explicit of [false, true]) {
         const skirts = explicit ? [{ item: getWardrobeGarment('village-skirt'), scene: base }] : [];
-        const model = prepareVillager(base, { fitted: true, garments: skirts, garmentBody: low.getObjectByName('BODY_WARDROBE'),
+        const model = prepareVillager(base, { fitted: true, garments: skirts, garmentBody: donorBody,
           corsetSource: { set: 'gothic-03', scene: corset } });
         try {
           applyVillagerLook(model, explicit ? assembled : characterLook({ ...DEFAULT_CHARACTER, wardrobeTrial: choice }));
           const { root } = model;
+          const fittedBody = root.getObjectByName('fitting-room-body');
+          assertUpperTorso(donorBody.geometry, fittedBody.geometry, `standalone ${budget} ${explicit}`);
+          const fit = explicit ? { wardrobe: { ...choice, waist: 'over' }, garments: { skirt: 'village-skirt' } }
+            : { wardrobeTrial: { ...choice, waist: 'over' } };
+          applyVillagerLook(model, characterLook({ ...DEFAULT_CHARACTER, ...fit }));
+          assertUpperTorso(donorBody.geometry, fittedBody.geometry, `standalone over ${budget} ${explicit}`);
+          applyVillagerLook(model, explicit ? assembled : characterLook({ ...DEFAULT_CHARACTER, wardrobeTrial: choice }));
           const fittedCorset = model.detachedCorset.group.getObjectByName('CLOTH_CORSET_TUCKED');
           const skirt = explicit ? root.getObjectByName('wardrobe-village-skirt').children[0] : root.getObjectByName('CLOTH_BOTTOM_SKIRT');
           const belt = root.getObjectByName('ACC_BELT');
