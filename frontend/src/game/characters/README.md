@@ -2,11 +2,13 @@
 
 Heroes and Garage use the portrait at the right of the header to open Character.
 The editor previews changes on the same turntable as the vehicle. New profiles
-confirm a character model before editing. During alpha, Appearance, Identity,
-and Emotes can switch between male and female models. Each model keeps its own
-saved outfit and appearance. Identity saves Male, Female, or Nonbinary
-independently of the equipped model. The server saves edits automatically,
-and the editor keeps pending changes through a reconnect to the same profile.
+confirm a character model before editing. Identity, Appearance, and Emotes share
+the Character header tab list, which opens on Appearance on the first visit.
+Use the shoulder buttons or Q and E to switch tabs. Choose the model in Identity
+to preview its saved outfit and appearance in the other tabs. Identity saves
+Male, Female, or Nonbinary independently of the equipped model. The server saves
+edits automatically, and the editor keeps pending changes through a reconnect to
+the same profile.
 
 Vesper's garage normally uses `villager-female.portrait.glb`, which keeps the
 original geometry and rig with smaller textures. The desktop preview can fall

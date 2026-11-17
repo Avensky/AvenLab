@@ -47,7 +47,6 @@ const NO_VEHICLE_MOD_STAGES:Record<string,number>={};
 type WorkshopFilter=HeroFilter|"concepts";
 type WorkshopPage="heroes"|"garage"|"character";
 const WORKSHOP_TABS=[...heroRoleHeaderTabs(true),HERO_CONCEPT_TAB];
-const CHARACTER_HEADER_TABS=CHARACTER_TABS.filter(tab=>tab.id!=="identity");
 const MARINE_LAMPS = [
  {id:"navigation", label:"Running lights"},
  {id:"searchlights", label:"Searchlights"},
@@ -148,7 +147,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  useLayoutEffect(()=>{onCharacterViewChange?.(characterOpen?characterTab:null);},[characterOpen,characterTab,onCharacterViewChange]);
  useLayoutEffect(()=>()=>onCharacterViewChange?.(null),[onCharacterViewChange]);
  useEffect(()=>{
-  const target=characterOpen?root.current?.querySelector<HTMLElement>(characterReady?'[role=tab][aria-selected="true"], .character-identity-nav [aria-current="page"]':'[data-character-option][aria-pressed="true"]')
+  const target=characterOpen?root.current?.querySelector<HTMLElement>(characterReady?'[role=tab][aria-selected="true"]':'[data-character-option][aria-pressed="true"]')
    : viewingConcepts?root.current?.querySelector<HTMLElement>(".hero-guide-scroll")
    : editing?root.current?.querySelector<HTMLElement>("[role=tab][aria-selected=true]"):root.current;
   target?.focus({preventScroll:true});
@@ -275,12 +274,8 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  </button>;
  const customizationHeader={onOpen:openCharacter,leadingAction:vehicleAction,active:characterOpen};
  return <section ref={root} className={`game-ui menu-surface alpha-selection hero-selection hero-workshop${panelsHidden?" hero-workshop--hidden":""}${viewingConcepts?" hero-ability-guide":""}`} data-character-page={characterOpen||undefined} inert={overlay!==null} tabIndex={-1} aria-label={characterOpen?"Character":"Heroes garage"} data-controller-form data-controller-rows>
-  {characterOpen?characterReady?<SceneTabHeader title="CHARACTER" compact tabs={CHARACTER_HEADER_TABS} activeTab={characterTab}
+  {characterOpen?characterReady?<SceneTabHeader title="CHARACTER" compact tabs={CHARACTER_TABS} activeTab={characterTab}
     character={customizationHeader} backAction={{onClick:back}}
-    titleAction={<div className="character-identity-nav" data-controller-row data-controller-header-action>
-      <button type="button" id="character-editor-tab-identity" className="character-identity-tab" aria-controls="character-editor-panel"
-        aria-current={characterTab==="identity"?"page":undefined} onClick={()=>setCharacterTab("identity")}>Identity</button>
-    </div>}
     onTabChange={id=>setCharacterTab(id as CharacterTab)} idPrefix="character-editor" panelId="character-editor-panel"/>
     :<SelectionHeader title="CHARACTER" compact character={customizationHeader} backAction={{onClick:back}}/>:editing&&definition
     ? <SceneTabHeader

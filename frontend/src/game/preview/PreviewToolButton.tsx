@@ -1,4 +1,5 @@
 import { forwardRef, type ComponentPropsWithoutRef } from "react";
+import "./previewControls.css";
 
 type PreviewToolButtonProps = Omit<ComponentPropsWithoutRef<"button">, "type" | "aria-label" | "title"> & {
   label: string;

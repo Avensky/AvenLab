@@ -6,9 +6,9 @@ import { COCKPIT_TAKES, type CockpitTake } from "../characters/cockpitEmotes";
 import { unlockVehicleAudio } from "../../audio/sharedAudio";
 import { useVehicleStudioStore } from "../heroes/vehicleStudioStore";
 import { PreviewVisibilityToggle } from "./PreviewVisibilityToggle";
-import { PreviewControlDisclosure } from "./PreviewControlDisclosure";
-import { FittingCameraSelect } from "../characters/FittingCameraSelect";
-import { ToolIcon } from "../characters/FittingCameraToolbar";
+import { PreviewCameraAngles, PreviewControlDisclosure } from "./PreviewControlDisclosure";
+import { PreviewCameraSelect } from "./PreviewCameraSelect";
+import { PreviewToolIcon } from "./PreviewToolIcon";
 
 const stageLabel: Record<DriveStage, string> = {
   idle: "", station: "At the controls", opening: "Opening door", entering: "Getting in", closing: "Closing door",
@@ -33,11 +33,11 @@ export function GaragePreviewControls({ vehicle }: { vehicle: VehicleModelId }) 
   return <div className="hero-garage-controls">
     {(error || active) && <span className="garage-drive-status" role="status">{error || stageLabel[stage]}</span>}
     <div className="fitting-camera-toolbar fitting-camera-row" role="group" aria-label="Garage camera and drive preview" data-controller-row>
-      <PreviewControlDisclosure label="Camera angles" icon={<ToolIcon icon="camera" />} panelClass="fitting-camera-panel fitting-camera-angles">
-        <FittingCameraSelect views={cameraViews} view={cameraViews.includes(camera) ? camera : "Showroom"}
+      <PreviewCameraAngles>
+        <PreviewCameraSelect views={cameraViews} view={cameraViews.includes(camera) ? camera : "Showroom"}
           onViewChange={view => useGarageDrive.setState({ camera: view })} />
-      </PreviewControlDisclosure>
-      <PreviewControlDisclosure label="Drive preview controls" icon={<ToolIcon icon="adjustments" />}>
+      </PreviewCameraAngles>
+      <PreviewControlDisclosure label="Drive preview controls" icon={<PreviewToolIcon icon="adjustments" />}>
         <div className="garage-preview-buttons" data-controller-row>
       {active ? <button type="button" className="menu-control" onClick={reset}>Reset</button> : <>
         <button type="button" className="menu-control" disabled={!ready}

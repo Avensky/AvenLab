@@ -490,7 +490,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
 
   return (
     <div ref={page} className={`character-page character-page--editor${tab === "appearance" ? " character-page--dressing" : tab === "emotes" ? " character-page--emotes" : " character-page--identity"}`}
-      role={tab === "identity" ? "region" : "tabpanel"} id="character-editor-panel" aria-labelledby={"character-editor-tab-" + tab}
+      role="tabpanel" id="character-editor-panel" aria-labelledby={"character-editor-tab-" + tab}
       onFocus={revealCharacterControl}>
       <div className="character-stage" data-character-viewport data-character-preview={choice.id} data-outfit-preview={choice.outfit}
         aria-label={`Preview of ${character.name}`} />

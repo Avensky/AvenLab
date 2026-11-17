@@ -27,15 +27,15 @@ export function MenuHeaderBack({onClick,disabled,label='Back'}:BackShortcutActio
 }
 export function MenuFrameHeader({
  title,showProgress=false,titleId,compact=false,eyebrow=compact?'':APP_ALPHA_EYEBROW,
- className='',variant='panel',team,children,titleTeam,titleAction,actions,character,backAction,
+ className='',variant='panel',team,children,titleTeam,actions,character,backAction,
 }:{
  title:string;showProgress?:boolean;titleId?:string;compact?:boolean;eyebrow?:string;
- className?:string;variant?:'panel'|'scene';team?:MatchTeam;children?:ReactNode;titleTeam?:MatchTeam;titleAction?:ReactNode;actions?:ReactNode;
+ className?:string;variant?:'panel'|'scene';team?:MatchTeam;children?:ReactNode;titleTeam?:MatchTeam;actions?:ReactNode;
  character?:CharacterHeaderProfileProps;
  backAction:BackShortcutAction;
 }){
  return <header className={`menu-frame-header alpha-header ${compact?'menu-frame-header--compact':''} ${className}`} data-menu-chrome={variant} data-team-heading={team?true:undefined}>
-  <div className="menu-frame-title" data-title-team={titleTeam}><MenuHeaderBack {...backAction}/>{eyebrow&&<small>{eyebrow}</small>}<h1 id={titleId}>{title}</h1>{titleAction}</div>
+  <div className="menu-frame-title" data-title-team={titleTeam}><MenuHeaderBack {...backAction}/>{eyebrow&&<small>{eyebrow}</small>}<h1 id={titleId}>{title}</h1></div>
   {children}
   {team&&<div className="menu-header-team" data-team={team}><strong>{team.toUpperCase()}</strong><span>TEAM</span></div>}
   <div className="menu-header-actions">

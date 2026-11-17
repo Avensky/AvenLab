@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { PreviewToolButton } from "./PreviewToolButton";
+import { PreviewToolIcon } from "./PreviewToolIcon";
 
 export function PreviewControlDisclosure({ label, icon, children, panelClass = "fitting-camera-panel" }: {
   label: string;
@@ -52,4 +53,9 @@ export function PreviewControlDisclosure({ label, icon, children, panelClass = "
       onClick={event => { focusPanel.current = event.detail === 0; setOpen(previous => !previous); }}>{icon}</PreviewToolButton>
     <div ref={panel} className={panelClass} id={id} hidden={!open}>{children}</div>
   </div>;
+}
+
+export function PreviewCameraAngles({ children }: { children: ReactNode }) {
+  return <PreviewControlDisclosure label="Camera angles" icon={<PreviewToolIcon icon="camera" />}
+    panelClass="fitting-camera-panel fitting-camera-angles">{children}</PreviewControlDisclosure>;
 }

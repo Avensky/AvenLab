@@ -34,7 +34,6 @@ export function SceneTabHeader({
   character,
   busy = false,
   titleTeam,
-  titleAction,
   backAction,
 }: {
   title: string;
@@ -52,7 +51,6 @@ export function SceneTabHeader({
   character?: CharacterHeaderProfileProps;
   busy?: boolean;
   titleTeam?: MatchTeam;
-  titleAction?: ReactNode;
   backAction: BackShortcutAction;
 }) {
   const angled = useAngledMenuHeader();
@@ -93,7 +91,6 @@ export function SceneTabHeader({
         actions={actions}
         character={{ compact: showProgress, ...character, readOnly: busy || character?.readOnly }}
         titleTeam={titleTeam}
-        titleAction={titleAction}
         backAction={backAction}
         variant="scene"
         className={angled ? "angled-tab-header" : undefined}
