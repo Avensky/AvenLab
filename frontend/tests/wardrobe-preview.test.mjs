@@ -10,8 +10,14 @@ function wardrobePreviewServer() {
     define: {
       __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(["skirt-01", "skirt-02", "skirt-03", "skirt-04", "gothic-skirt-02", "gothic-skirt-03", "bowtie-01"]),
       __DRESSING_ROOM_REVISION_IDS__: JSON.stringify(["gothic-skirt-02", "gothic-skirt-03"]),
-      __STANDALONE_CORSET_LODS__: JSON.stringify({ "gothic-05": { garage: true, mobile: false } }),
-      __BUNDLED_WARDROBE_LODS__: JSON.stringify({ "gothic-05": { garage: true, mobile: false } }),
+      __STANDALONE_CORSET_LODS__: JSON.stringify({
+        "gothic-05": { garage: true, mobile: false },
+        "gothic-laced-bodice": { garage: true, mobile: true },
+      }),
+      __BUNDLED_WARDROBE_LODS__: JSON.stringify({
+        "gothic-05": { garage: true, mobile: false },
+        "gothic-01": { garage: true, mobile: true },
+      }),
       __VILLAGER_MODEL_URL__: JSON.stringify("village-full"),
       __VILLAGER_PORTRAIT_URL__: JSON.stringify("village"),
     },
@@ -56,6 +62,17 @@ function wardrobePreviewServer() {
               scene.add(mesh);
             }
             assets.set(url, { scene });
+            return scene;
+          }
+          export function makeAuthoredCorset(url) {
+            const scene = makeAssetAvailable(url, undefined, false);
+            for (const waist of ["over", "tucked"]) {
+              const part = new SkinnedMesh();
+              part.name = "CLOTH_CORSET_" + waist.toUpperCase();
+              part.userData = { authoredFit: true, wardrobeRole: "corset-" + waist };
+              scene.add(part);
+            }
+            return scene;
           }
           export function delayAsset(url) {
             let resolve;
@@ -92,6 +109,72 @@ function wardrobePreviewServer() {
     }],
   });
 }
+
+test("the wardrobe resolver requests donors and authored tiers in order", async () => {
+  const vite = await wardrobePreviewServer();
+  try {
+    const { resolveWardrobePreview } = await vite.ssrLoadModule("/src/game/characters/wardrobePreviewAssets.ts");
+    const { characterLook, DEFAULT_CHARACTER } = await vite.ssrLoadModule("/src/game/characters/characterCatalog.ts");
+    const { getWardrobeGarment } = await vite.ssrLoadModule("/src/game/characters/wardrobeGarments.ts");
+    const { FITTING_BODY_URL } = await vite.ssrLoadModule("/src/game/characters/standaloneCorset.ts");
+    const { makeAssetAvailable, makeAuthoredCorset } = await vite.ssrLoadModule("virtual:wardrobe-preview");
+    const village = makeAssetAvailable("village", undefined, false);
+    const defaultRequest = { preferredUrl: "village", villageKind: "portrait", kind: "garage" };
+    const previous = resolveWardrobePreview({
+      ...defaultRequest, look: characterLook(DEFAULT_CHARACTER), sources: { village },
+    }).preview;
+    assert(previous);
+
+    const skirt = getWardrobeGarment("skirt-01");
+    const look = characterLook({ ...DEFAULT_CHARACTER, garments: { skirt: skirt.id } });
+    const legacyUrl = "/models/characters/wardrobe/gothic-02.mobile.glb";
+    const legacy = makeAssetAvailable(legacyUrl);
+    const skirtSources = { village, [skirt.url]: makeAssetAvailable(skirt.url) };
+    const resolveSkirt = sources => resolveWardrobePreview({ ...defaultRequest, look, sources, previous });
+    assert.deepEqual(resolveSkirt(skirtSources).pendingUrls, [FITTING_BODY_URL]);
+    for (const rejectedDonor of [null, makeAssetAvailable(FITTING_BODY_URL, undefined, false)]) {
+      const sources = { ...skirtSources, [FITTING_BODY_URL]: rejectedDonor };
+      const loading = resolveSkirt(sources);
+      assert.deepEqual(loading.pendingUrls, [legacyUrl]);
+      assert.equal(loading.preview, previous);
+      const resolved = resolveSkirt({ ...sources, [legacyUrl]: legacy });
+      assert.equal(resolved.preview.garmentBody, legacy.getObjectByName("BODY_WARDROBE"));
+      assert.deepEqual(resolved.preview.garments.map(({ item }) => item.id), [skirt.id]);
+      const failed = resolveSkirt({ ...sources, [legacyUrl]: null });
+      assert.deepEqual(failed.pendingUrls, []);
+      assert.equal(failed.unavailable, true);
+      assert.equal(failed.preview, previous);
+      const fresh = resolveWardrobePreview({ ...defaultRequest, look, sources: { ...sources, [legacyUrl]: null } });
+      assert.deepEqual(fresh.preview.garments, [], "missing donors leave the stock clothing on a fresh preview");
+    }
+
+    const trial = characterLook({
+      ...DEFAULT_CHARACTER, wardrobeTrial: { set: "gothic-01", shirt: "none", waist: "tucked" },
+    });
+    const authored = tier => `/models/characters/female/wardrobe/corsets/gothic-laced-bodice.${tier}.glb`;
+    for (const [kind, tier, otherTier] of [["garage", "garage", "mobile"], ["portrait", "mobile", "garage"]]) {
+      const preferred = authored(tier), alternate = authored(otherTier);
+      const bundleUrl = `/models/characters/wardrobe/gothic-01.${tier}.glb`;
+      const request = { ...defaultRequest, kind, look: trial, previous };
+      const resolve = sources => resolveWardrobePreview({ ...request, sources });
+      assert.deepEqual(resolve({ village, [FITTING_BODY_URL]: legacy }).pendingUrls, [preferred]);
+      const sources = { village, [preferred]: makeAssetAvailable(preferred, undefined, false), [FITTING_BODY_URL]: legacy };
+      assert.deepEqual(resolve(sources).pendingUrls, [alternate]);
+      const alternateScene = makeAuthoredCorset(alternate);
+      assert.equal(resolve({ ...sources, [alternate]: alternateScene }).preview.corsetScene, alternateScene);
+      const awaitingBundle = resolve({ village, [preferred]: null, [alternate]: null });
+      assert.deepEqual(awaitingBundle.pendingUrls, [bundleUrl], "a pending bundle can supply the donor");
+      assert.equal(awaitingBundle.preview, previous);
+      const bundle = makeAssetAvailable(bundleUrl);
+      const bundled = resolve({ village, [preferred]: null, [alternate]: null, [bundleUrl]: bundle });
+      assert.equal(bundled.preview.garmentBody, bundle.getObjectByName("BODY_WARDROBE"));
+      assert.equal(bundled.preview.corsetScene, bundle);
+      assert.deepEqual(bundled.pendingUrls, []);
+    }
+  } finally {
+    await vite.close();
+  }
+});
 
 test("the fitting room keeps the last complete outfit until the latest selection is ready", async () => {
   const dom = new JSDOM('<div id="root"></div>', { url: "http://localhost/" });

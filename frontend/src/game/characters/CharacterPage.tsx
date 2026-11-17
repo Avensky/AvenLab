@@ -1,7 +1,7 @@
-import { MIRROR_CHECK_ID, MIRROR_CHECK_NAME } from "./mirrorCheck";
+import { MIRROR_CHECK_ID } from "./mirrorCheck";
 import { useFittingTurnStore } from "./fittingControlsStore";
-import { FitBadge, FitReview } from "./FitReview";
-import { useCallback, useEffect, useId, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type Ref } from "react";
+import { FitReview } from "./FitReview";
+import { useCallback, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type FocusEvent, type Ref } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { readLocalCharacter, writeLocalCharacter } from "./localOutfits";
 import { ControllerAction } from "../../components/controller";
@@ -13,11 +13,10 @@ import { canEditCharacter, useUIStore } from "../../store/menus/uiStore";
 import { CHARACTERS, CHARACTER_APPEARANCE_OPTIONS, CHARACTER_IDENTITIES, DEFAULT_CHARACTER, ROOK_ID, characterAppearance, characterLook, type CharacterChoice } from "./characterCatalog";
 import { CharacterPortrait } from "./CharacterPortrait";
 import { CHARACTER_CAMERAS, CHARACTER_ZOOM_MIN, CHARACTER_ZOOM_MAX, useCharacterPreviewStore } from "./characterPreviewStore";
-import { EMOTE_GROUPS, garagePreviewCollection, emoteCollection, findGaragePreviewEmote, type EmoteGroup } from "./garageEmotes";
-import { COCKPIT_TAKES } from "./cockpitEmotes";
+import { EMOTE_GROUPS } from "./garageEmotes";
+import { CharacterEmoteList, type PreviewEmote, type PreviewEmoteGroup } from "./CharacterEmoteList";
 import { unlockVehicleAudio } from "../../audio/sharedAudio";
 import { GARAGE_STATIONS } from "../preview/garageStations";
-import { GARAGE_LEAN_ID, GARAGE_LEAN_NAME } from "./garageLean";
 import { CHARACTER_PERSONALITIES, type AnimationFit, type CharacterPersonality } from "./characterPersonality";
 import { FittingCameraSelect } from "./FittingCameraSelect";
 import { FittingCameraToolbar } from "./FittingCameraToolbar";
@@ -41,12 +40,16 @@ const IDENTITY_STYLE = [
   ["Skin tone", [["skin", "Skin tone"]]],
 ] as const;
 const EMOTE_PACKS = EMOTE_GROUPS.filter(group => group !== "Garage");
-type PreviewEmoteGroup = EmoteGroup | CharacterPersonality | "Best" | "All" | "Personality";
-type PreviewEmote = { id: string; name: string };
 type IdentityAppearanceField = typeof IDENTITY_STYLE[number][1][number][0];
 
 function revealCharacterControl(event: FocusEvent<HTMLElement>) {
   event.target.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+}
+
+function playEmote(item: PreviewEmote) {
+  if (item.id === "drive-honk") unlockVehicleAudio();
+  if (item.id === MIRROR_CHECK_ID) useFittingTurnStore.setState({ characterYaw: 0 });
+  useCharacterPreviewStore.setState({ emote: { id: item.id }, playbackPaused: false, ...(item.id === MIRROR_CHECK_ID ? { camera: "Whole car" } : {}) });
 }
 
 export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
@@ -309,20 +312,12 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
   const canEnterCar = !reducedMotion;
   const cockpitPending = insideCar && !cockpitAvailable;
   const station = cockpitVehicle ? GARAGE_STATIONS[cockpitVehicle] : null;
-  const road = station?.kind === "wheel";
   const stationName = station?.kind === "bridge" ? "bridge" : station?.kind === "levers" ? "driver station" : "cockpit";
-  const personality = CHARACTER_PERSONALITIES.find(item => item.id === (emoteGroup === "Personality" ? appearance.personality ?? "friendly" : emoteGroup));
-  const pickedEmotes = useMemo<readonly PreviewEmote[]>(() => {
-    if (!insideCar) {
-      if (!emoteBrowserOpen || !emoteGroup) return [];
-      if (personality) return personality.emotes.flatMap(id => findGaragePreviewEmote(id, bag) ?? []);
-      if (emoteGroup === "All") return [...new Map(EMOTE_GROUPS.flatMap(group => emoteCollection(group, bag)).map(item => [item.id, item])).values()];
-      if (emoteGroup === "Best" || EMOTE_GROUPS.includes(emoteGroup as EmoteGroup)) return garagePreviewCollection(emoteGroup as EmoteGroup | "Best", bag);
-      return [];
-    }
-    if (!road) return COCKPIT_TAKES.filter(take => take.id === "086").map(take => ({ ...take, name: "Check surroundings" }));
-    return station.steeringParts ? COCKPIT_TAKES : COCKPIT_TAKES.filter(take => take.id !== "199" && take.id !== "200");
-  }, [insideCar, emoteBrowserOpen, emoteGroup, bag, road, station, personality]);
+  const selectEmote = useCallback((item: PreviewEmote) => {
+    playEmote(item);
+    emoteFocus.current = ".character-emote-back";
+    setEmoteDetail(item);
+  }, []);
   function toggleCockpit() {
     setEmoteDetail(undefined);
     setEmoteSearch("");
@@ -387,18 +382,6 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
     </div>
   </>;
   const resultsOpen = emoteBrowserOpen && (insideCar || !!emoteGroup);
-  const resultLabel = insideCar ? (road ? "Driving emotes" : "Station emotes") : `${personality?.label ?? emoteGroup} emotes`;
-  const emoteQuery = emoteSearch.trim().toLowerCase();
-  const visibleEmotes = [
-    ...(!insideCar && mirrorAvailable && (emoteGroup === "Garage" || emoteGroup === "All") ? [{ id: MIRROR_CHECK_ID, name: MIRROR_CHECK_NAME }] : []),
-    ...(!insideCar && leanAvailable && emoteGroup === "Garage" ? [{ id: GARAGE_LEAN_ID, name: GARAGE_LEAN_NAME }] : []),
-    ...pickedEmotes,
-  ].filter(item => `${item.id} ${item.name}`.toLowerCase().includes(emoteQuery));
-  function playEmote(item: PreviewEmote) {
-    if (item.id === "drive-honk") unlockVehicleAudio();
-    if (item.id === MIRROR_CHECK_ID) useFittingTurnStore.setState({ characterYaw: 0 });
-    useCharacterPreviewStore.setState({ emote: { id: item.id }, playbackPaused: false, ...(item.id === MIRROR_CHECK_ID ? { camera: "Whole car" } : {}) });
-  }
   const emoteResults = resultsOpen && (emoteDetail ? <>
     <div data-controller-row>
       <MenuBackButton className="character-emote-back" label="Back to emotes" onClick={() => {
@@ -411,23 +394,9 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
       onClick={() => playEmote(emoteDetail)}>Replay emote</button>
     <FitReview choice={previewChoice} pose={emoteDetail.id} poseLabel={emoteDetail.name}
       subject={{ id: emoteDetail.id, label: emoteDetail.name, kind: "emote" }} />
-  </> : <>
-    <h2>{resultLabel}</h2>
-    <div className="character-emote-results">
-      <label className="character-emote-search" data-controller-row>Search emotes<input type="search" className="menu-control" value={emoteSearch}
-        placeholder="Name or number…" onChange={event => setEmoteSearch(event.target.value)} /></label>
-      <small>{visibleEmotes.length} emotes</small>
-      <div className="character-emotes" aria-label={resultLabel}>
-        {visibleEmotes.map(item => <button key={item.id} type="button" className="menu-control" data-controller-row data-emote-id={item.id}
-          disabled={reducedMotion || cockpitPending} aria-pressed={emote?.id === item.id} onClick={() => {
-            playEmote(item);
-            emoteFocus.current = ".character-emote-back";
-            setEmoteDetail(item);
-          }}><span className="emote-name">{item.name}</span><FitBadge choice={previewChoice} pose={item.id} /></button>)}
-      </div>
-      {!visibleEmotes.length && <p role="status">No emotes match this filter.</p>}
-    </div>
-  </>);
+  </> : <CharacterEmoteList choice={previewChoice} group={emoteGroup} search={emoteSearch} station={station} insideCar={insideCar}
+    disabled={reducedMotion || cockpitPending} mirrorAvailable={mirrorAvailable} leanAvailable={leanAvailable} selectedId={emote?.id}
+    onSearch={setEmoteSearch} onSelect={selectEmote} />);
   const emoteResultsPanel = <section className={locked ? "character-controls menu-panel-frame character-controls--right" : undefined}
     id={emoteResultsId} aria-label={emoteDetail ? "Emote details" : "Emote results"} hidden={!resultsOpen}>
     {emoteResults}

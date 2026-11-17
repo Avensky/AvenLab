@@ -79,7 +79,8 @@ closed grip and separates from it during Slipped flag. Props load on demand
 in the Character preview. Handheld props are temporarily stowed when a gesture
 requires free hands or the pairing has not been reviewed. Pairing notes and
 future filter guidance are in `docs/EMOTE_PROP_NOTES.md`. These packs play on selection in Character → Emotes and return to the
-breathing idle.
+breathing idle. `CharacterEmoteList` owns filtering and review badges. Keep
+camera and zoom state outside the list so changing framing skips row updates.
 
 Garage puts the recommended standing emotes first. Best collects the strongest
 gestures from across the packs. Enter cockpit uses the selected vehicle, stows
@@ -217,10 +218,11 @@ from the installed Gothic bundles. The extracted files contain the two fits
 and their rig. Corset 04's strap and shell fit is baked into its generated
 tiers. Authored Laced Bodice, High Collar, and Underbust variants have their own
 standalone GLBs. The loader can fall back to a compatible alternate tier,
-legacy standalone file, or installed bundle, depending on the set. It keeps
-the last complete outfit visible while a new selection loads. The preview
-mounts loader components for pending URLs and reuses settled sources during
-dye edits and further try-ons. The fitting room binds each garment to the live
+legacy standalone file, or installed bundle, depending on the set.
+`wardrobePreviewAssets.ts` resolves the fallback order, donor choice, and next
+visible outfit from the current sources. The last complete outfit stays visible
+while a new selection loads. `GarageDriver` mounts loaders for pending URLs and
+passes resolved assets to the renderer. The fitting room binds each garment to the live
 Vesper rig and uses the shared full-skin donor for areas the original outfit
 cuts away. From the repository root, run
 `node frontend/scripts/build-wardrobe-pieces.mjs` to regenerate the extracted

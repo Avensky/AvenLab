@@ -38,7 +38,22 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
   let vite, root;
   try {
     vite = await createServer({ define: { __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(['gothic-skirt-04', 'top-01']) },
-      server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+      server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error',
+      plugins: [{
+        name: 'count-fit-review-keys',
+        enforce: 'pre',
+        transform(source, id) {
+          if (!id.endsWith('/fitReviewStore.ts')) return;
+          return source.replace('export function fitReviewKey(', 'function buildFitReviewKey(') + `
+            export let fitReviewKeyCalls = 0;
+            export function fitReviewKey(...args: Parameters<typeof buildFitReviewKey>) {
+              fitReviewKeyCalls++;
+              return buildFitReviewKey(...args);
+            }
+          `;
+        },
+      }],
+    });
     const load = path => vite.ssrLoadModule(`/src/${path}`);
     const { HeroWorkshop } = await load('game/heroes/HeroWorkshop.tsx');
     const { readLocalCharacter } = await load('game/characters/localOutfits.ts');
@@ -48,6 +63,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     const { useAlphaStore: alpha } = await load('store/alpha/alphaStore.ts');
     const { usePreviewZoom: zoom } = await load('game/preview/previewZoomStore.ts');
     const { useCharacterPreviewStore: preview } = await load('game/characters/characterPreviewStore.ts');
+    const fitKeys = await load('game/characters/fitReviewStore.ts');
     const { routeMenuAction: route } = await load('controls/inputRouting.ts');
     const client = await load('net/socialClient.ts');
     const requests = [];
@@ -256,7 +272,16 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await openEmotes();
     await chooseEmoteGroup('All');
     assert.equal(find('[aria-label="Emote logic review"]'), null, 'fit review opens with the chosen emote');
-    assert(document.querySelectorAll('.character-emotes button').length > 180);
+    const emoteCount = document.querySelectorAll('.character-emotes button').length;
+    assert(emoteCount > 180);
+    const firstEmote = find('.character-emotes button');
+    await act(async () => firstEmote.focus());
+    const fitKeyCalls = fitKeys.fitReviewKeyCalls;
+    assert(fitKeyCalls >= emoteCount, 'the open list computes a fit key for each emote');
+    await act(async () => preview.setState({ camera: 'Face', zoom: 1.1 }));
+    assert.equal(find('input[aria-label="Preview zoom"]').value, '1.1');
+    assert.equal(fitKeys.fitReviewKeyCalls, fitKeyCalls, 'camera and zoom updates leave emote review rows alone');
+    assert.equal(document.activeElement, firstEmote);
     await act(async () => {
       const input = find('[aria-label="Emote results"] input[type="search"]');
       Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(input, 'applause');
@@ -271,6 +296,10 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert(fitReview.querySelector("textarea"));
     await click('[aria-label="Emote logic review"] input[type="checkbox"]');
     assert(fitReview.querySelector('input[type="checkbox"]').checked, 'the selected emote review can be edited beside the results');
+    await click('.character-emote-back');
+    const reviewedEmote = find('.character-emotes button:first-child');
+    assert(reviewedEmote.querySelector('[aria-label="Fit partial"]'), 'the updated review appears in the results');
+    assert.equal(document.activeElement, reviewedEmote, 'back restores focus to the reviewed emote');
     const { useFittingTurnStore: turns } = await vite.ssrLoadModule('/src/game/characters/fittingControlsStore.ts');
     await act(async () => {
       turns.setState({ characterYaw: Math.PI });
