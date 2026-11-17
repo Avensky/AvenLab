@@ -1,4 +1,5 @@
 import { readFileSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
 
 const publicRoot = new URL("../public/", import.meta.url);
 const sourceRoot = new URL("../src/public/", import.meta.url);
@@ -89,4 +90,22 @@ export function findVillagerModel(gender: "female" | "male") {
     };
   }
   return null;
+}
+
+const packedPortraitPath = characterPath + "portraits-generated/";
+export const packedPortraitDirectory = new URL(packedPortraitPath, publicRoot);
+
+// A local artist override follows its own LOD path. Only pack the bundled Vesper portrait.
+export function bundledVesperPortrait(model = findVillagerModel("female")) {
+  const portrait = model?.bundledLod("portrait");
+  if (!portrait) return null;
+  const bytes = readFileSync(new URL(portrait.slice(1), publicRoot));
+  const revision = createHash("sha256").update(bytes).digest("hex").slice(0, 16);
+  const name = `vesper-${revision}.glb`;
+  return { bytes, file: new URL(name, packedPortraitDirectory), name, url: "/" + packedPortraitPath + name };
+}
+
+export function installedPackedVesperPortrait(model = findVillagerModel("female")) {
+  const packed = bundledVesperPortrait(model);
+  return packed && hasCharacterModel(packed.file) ? packed.url : null;
 }

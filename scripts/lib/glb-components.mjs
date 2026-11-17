@@ -15,6 +15,30 @@ export function readChunks(bytes){
  while(offset<bytes.length){if(offset+8>bytes.length)throw Error('Truncated chunk');const length=bytes.readUInt32LE(offset),type=bytes.readUInt32LE(offset+4);if(length%4||offset+8+length>bytes.length)throw Error('Invalid chunk length');chunks.push({type,data:bytes.subarray(offset+8,offset+8+length)});offset+=8+length;}
  if(chunks[0]?.type!==0x4e4f534a)throw Error('Missing JSON chunk');return chunks;
 }
+
+/** Serialize glTF JSON and preserve the type and order of the remaining aligned GLB chunks. */
+export function writeGlb(document, remainingChunks) {
+  const json = Buffer.from(JSON.stringify(document));
+  const jsonLength = Math.ceil(json.length / 4) * 4;
+  const length = remainingChunks.reduce((size, chunk) => size + 8 + chunk.data.length, 20 + jsonLength);
+  const output = Buffer.alloc(length);
+  output.write('glTF');
+  output.writeUInt32LE(2, 4);
+  output.writeUInt32LE(length, 8);
+  output.writeUInt32LE(jsonLength, 12);
+  output.write('JSON', 16);
+  json.copy(output, 20);
+  output.fill(0x20, 20 + json.length, 20 + jsonLength);
+  let offset = 20 + jsonLength;
+  for (const { type, data } of remainingChunks) {
+    output.writeUInt32LE(data.length, offset);
+    output.writeUInt32LE(type, offset + 4);
+    data.copy(output, offset + 8);
+    offset += 8 + data.length;
+  }
+  return output;
+}
+
 export function standardizeGlb(bytes,assetId){
  const chunks=readChunks(bytes),doc=JSON.parse(chunks[0].data.toString());
  if(doc.asset?.extras?.avenlab?.schema===COMPONENT_SCHEMA)return {bytes,report:doc.asset.extras.avenlab};
@@ -39,9 +63,5 @@ export function standardizeGlb(bytes,assetId){
  }
  const report={schema:COMPONENT_SCHEMA,assetId,components,review};
  doc.asset.extras={...doc.asset.extras,avenlab:report};
- const json=Buffer.from(JSON.stringify(doc)),padding=Buffer.alloc((4-json.length%4)%4,32);
- chunks[0]={type:0x4e4f534a,data:Buffer.concat([json,padding])};
- const body=chunks.map(({type,data})=>{const header=Buffer.alloc(8);header.writeUInt32LE(data.length);header.writeUInt32LE(type,4);return Buffer.concat([header,data]);});
- const header=Buffer.alloc(12);header.writeUInt32LE(0x46546c67);header.writeUInt32LE(2,4);header.writeUInt32LE(12+body.reduce((sum,b)=>sum+b.length,0),8);
- return {bytes:Buffer.concat([header,...body]),report};
+ return {bytes:writeGlb(doc,chunks.slice(1)),report};
 }

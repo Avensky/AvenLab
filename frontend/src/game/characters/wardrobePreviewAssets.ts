@@ -31,10 +31,14 @@ export function resolveWardrobePreview({
   sources: WardrobeAssetSources;
   previous?: WardrobePreview;
 }) {
-  const portrait = __VILLAGER_PORTRAIT_URL__;
+  const preferredPortrait = __VILLAGER_PORTRAIT_URL__;
+  const portrait = preferredPortrait && sources[preferredPortrait] === null
+    ? __CHARACTER_MODEL_FALLBACKS__[preferredPortrait] ?? preferredPortrait : preferredPortrait;
   const original = __VILLAGER_MODEL_URL__;
   const originalVillage = kind !== villageKind && portrait && original !== portrait && sources[portrait] === null ? original : null;
-  const url = originalVillage && preferredUrl === portrait ? originalVillage : preferredUrl;
+  // The Village layers live inside the actor. Resolve both roles to the same loaded scene.
+  const villageUrl = (asset: string) => asset === preferredPortrait ? originalVillage ?? portrait ?? asset : asset;
+  const url = villageUrl(preferredUrl);
   const villageAssetKind = originalVillage ? kind : villageKind;
   const scene = sources[url];
   const skeleton = scene ? getWardrobeActorBody(scene)?.skeleton : undefined;
@@ -60,7 +64,7 @@ export function resolveWardrobePreview({
     const loaded = sources[preferred];
     const brokenRevision = preferred === item.revisionUrl && loaded !== undefined
       && (!loaded || !hasWardrobeRevisionMesh(item, loaded) || !garmentFits(item, loaded));
-    const url = (brokenRevision ? wardrobeGarmentModelUrl(item, tier, { useRevision: false }) : undefined) ?? preferred;
+    const url = (brokenRevision ? wardrobeGarmentModelUrl(item, tier, { useRevision: false }) : undefined) ?? villageUrl(preferred);
     const source = sources[url];
     const rejected = url === item.revisionUrl ? brokenRevision : Boolean(source && !garmentFits(item, source));
     return [{ item, url, rejected }];

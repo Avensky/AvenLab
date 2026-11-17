@@ -1,6 +1,6 @@
-import { copyFile, mkdir, rename, stat } from "node:fs/promises";
+import { copyFile, mkdir, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { findVillagerModel } from "./character-model-paths.mts";
+import { bundledVesperPortrait, findVillagerModel, packedPortraitDirectory } from "./character-model-paths.mts";
 
 async function buildCharacterLods(gender) {
   const asset = findVillagerModel(gender);
@@ -59,3 +59,30 @@ if (vesper && !vesper.sourceUrl) {
 }
 await buildCharacterLods("male");
 await buildCharacterLods("female");
+
+const previous = await readdir(packedPortraitDirectory).catch(error => {
+  if (error.code !== "ENOENT") throw error;
+  return [];
+});
+const bundled = bundledVesperPortrait(vesper);
+// Take the snapshot before packing. Another build may publish a newer source while this one runs.
+for (const name of previous) {
+  if (name !== bundled?.name && /^vesper-[0-9a-f]{16}\.glb$/.test(name)) await rm(new URL(name, packedPortraitDirectory), { force: true });
+}
+if (bundled) {
+  const { packPortraitGeometry } = await import("./pack-portrait-geometry.mjs");
+  const packed = await packPortraitGeometry(bundled.bytes);
+  if (packed) {
+    await mkdir(packedPortraitDirectory, { recursive: true });
+    const temporary = fileURLToPath(bundled.file) + `.${process.pid}.tmp`;
+    try {
+      await writeFile(temporary, packed);
+      await rename(temporary, bundled.file);
+    } finally {
+      await rm(temporary, { force: true });
+    }
+    console.log(`Vesper portrait: ${bundled.bytes.length} → ${packed.length} bytes`);
+  } else {
+    await rm(bundled.file, { force: true });
+  }
+}

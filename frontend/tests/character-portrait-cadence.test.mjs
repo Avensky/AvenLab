@@ -11,6 +11,7 @@ const serverOptions = {
   configFile: false,
   define: {
     __VILLAGER_PORTRAIT_URL__: JSON.stringify('/character-portrait-test/vega.glb'),
+    __CHARACTER_MODEL_FALLBACKS__: JSON.stringify({ 'http://localhost/packed.gltf': 'http://localhost/cut-driver.gltf' }),
     __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(['linen-nightgown']),
     __DRESSING_ROOM_MOBILE_IDS__: JSON.stringify(['linen-nightgown']),
     __DRESSING_ROOM_REVISION_IDS__: '[]',
@@ -337,6 +338,18 @@ test('portrait worker isolates GLTF loading and retains its model fallbacks', { 
 
     await handler({ data: { look: vega, modelUrl: 'http://localhost/missing.gltf' } });
     assert.match(response.error, /character model is unavailable/, 'a missing Vega GLTF shows the neutral tile');
+
+    for (const [packedFile, expected] of [
+      [cutBody, ['/packed.gltf']],
+      [undefined, ['/packed.gltf', '/cut-driver.gltf']],
+      ['invalid glTF', ['/packed.gltf', '/cut-driver.gltf']],
+    ]) {
+      files.set('/packed.gltf', packedFile);
+      requests.length = 0;
+      await handler({ data: { look: vega, modelUrl: 'http://localhost/packed.gltf' } });
+      assert.equal(response.image?.type, 'image/webp', response.error);
+      assert.deepEqual(requests, expected);
+    }
 
     const dress = { url: 'http://localhost/dress.gltf', item: getWardrobeGarment('linen-nightgown') };
     for (const { label, actor, primary, fallback, donorRequests, fitted } of [

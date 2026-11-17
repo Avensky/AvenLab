@@ -8,7 +8,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 import { discoveredWardrobeCatalogFile, isWardrobeCatalogInput, wardrobeCatalogFile, wardrobeDirectory } from "./scripts/discover-wardrobe-garments.mts";
-import { findVillagerModel, hasCharacterModel, hasCompatibleWardrobeRevision } from "./scripts/character-model-paths.mts";
+import { findVillagerModel, hasCharacterModel, hasCompatibleWardrobeRevision, installedPackedVesperPortrait } from "./scripts/character-model-paths.mts";
 const heroesPreviewManifest = new URL("./public/models/heroes-generated/previews.json", import.meta.url);
 const heroesVehiclePreviews = existsSync(heroesPreviewManifest)
   ? JSON.parse(readFileSync(heroesPreviewManifest, "utf8")) : {};
@@ -48,6 +48,8 @@ function characterLod(asset: ReturnType<typeof findVillagerModel>, kind: "garage
 const rook = findVillagerModel("male");
 const vesper = findVillagerModel("female");
 const vesperModelUrl = vesper?.sourceUrl ?? (vesper && hasCharacterModel(vesper.output("full")) ? vesper.url("full") : null);
+const authoredPortrait = characterLod(vesper, "portrait") ?? vesperModelUrl;
+const packedPortrait = installedPackedVesperPortrait(vesper);
 
 export default defineConfig({
   define: {
@@ -62,7 +64,8 @@ export default defineConfig({
     )),
     __CHARACTER_BAG_URL__: JSON.stringify(bagModelUrl ?? null),
     __VILLAGER_MODEL_URL__: JSON.stringify(vesperModelUrl),
-    __VILLAGER_PORTRAIT_URL__: JSON.stringify(characterLod(vesper, "portrait") ?? vesperModelUrl),
+    __VILLAGER_PORTRAIT_URL__: JSON.stringify(packedPortrait ?? authoredPortrait),
+    __CHARACTER_MODEL_FALLBACKS__: JSON.stringify(packedPortrait && authoredPortrait ? { [packedPortrait]: authoredPortrait } : {}),
     __ROOK_MODEL_URL__: JSON.stringify(characterLod(rook, "garage") ?? rook?.sourceUrl ?? null),
     __ROOK_PORTRAIT_URL__: JSON.stringify(characterLod(rook, "portrait") ?? rook?.sourceUrl ?? null),
   },

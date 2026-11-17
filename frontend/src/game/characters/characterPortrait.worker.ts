@@ -39,7 +39,15 @@ async function renderPortrait({ look, modelUrl, dress }: CharacterPortraitJob) {
   let model: ReturnType<typeof prepareVillager> | ReturnType<typeof prepareStylizedDriver> | undefined;
   let renderer: WebGLRenderer | undefined;
   try {
-    const loadScene = (url: string) => loader.loadAsync(url).then(asset => asset.scene);
+    const loadScene = async (url: string) => {
+      try {
+        return (await loader.loadAsync(url)).scene;
+      } catch (error) {
+        const original = __CHARACTER_MODEL_FALLBACKS__[url];
+        if (!original) throw error;
+        return (await loader.loadAsync(original)).scene;
+      }
+    };
     const source = modelUrl ? await loadScene(modelUrl).catch(() => undefined) : undefined;
     if (!source && look.character.id === VILLAGER_ID) throw Error("The character model is unavailable.");
 

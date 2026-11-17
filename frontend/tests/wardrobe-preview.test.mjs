@@ -5,7 +5,7 @@ import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { createServer } from "vite";
 
-function wardrobePreviewServer() {
+function wardrobePreviewServer(modelFallbacks = {}) {
   return createServer({
     define: {
       __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(["skirt-01", "skirt-02", "skirt-03", "skirt-04", "gothic-skirt-02", "gothic-skirt-03", "gothic-skirt-04", "bowtie-01"]),
@@ -21,6 +21,7 @@ function wardrobePreviewServer() {
       }),
       __VILLAGER_MODEL_URL__: JSON.stringify("village-full"),
       __VILLAGER_PORTRAIT_URL__: JSON.stringify("village"),
+      __CHARACTER_MODEL_FALLBACKS__: JSON.stringify(modelFallbacks),
     },
     server: { middlewareMode: true, hmr: false, ws: false },
     appType: "custom",
@@ -141,7 +142,7 @@ function wardrobePreviewServer() {
 }
 
 test("the wardrobe resolver requests donors and authored tiers in order", async () => {
-  const vite = await wardrobePreviewServer();
+  const vite = await wardrobePreviewServer({ village: "village-raw" });
   try {
     const { resolveWardrobePreview } = await vite.ssrLoadModule("/src/game/characters/wardrobePreviewAssets.ts");
     const { characterLook, DEFAULT_CHARACTER } = await vite.ssrLoadModule("/src/game/characters/characterCatalog.ts");
@@ -155,6 +156,22 @@ test("the wardrobe resolver requests donors and authored tiers in order", async 
       ...defaultRequest, look: characterLook(DEFAULT_CHARACTER), sources: { village },
     }).preview;
     assert(previous);
+
+    const stockSkirt = characterLook({ ...DEFAULT_CHARACTER, garments: { skirt: "village-skirt" } });
+    const originalPortrait = makeVillageAvailable("village-raw");
+    for (const kind of ["garage", "portrait"]) {
+      const next = sources => resolveWardrobePreview({ ...defaultRequest, kind, look: stockSkirt, sources });
+      assert.deepEqual(next({}).pendingUrls, ["village"]);
+      assert.deepEqual(next({ village: originalPortrait }).pendingUrls, [], "a working packed portrait never requests the original");
+      assert.deepEqual(next({ village: null }).pendingUrls, ["village-raw"]);
+      const loaded = next({ village: null, "village-raw": originalPortrait });
+      assert.deepEqual(loaded.pendingUrls, []);
+      assert.equal(loaded.preview.scene, originalPortrait);
+      assert.equal(loaded.preview.garments[0].scene, originalPortrait, "the actor and stock skirt reuse the original portrait");
+      const exhausted = next({ village: null, "village-raw": null });
+      assert.deepEqual(exhausted.pendingUrls, kind === "garage" ? ["village-full"] : []);
+      if (kind === "portrait") assert.equal(exhausted.unavailable, true);
+    }
 
     const hat = getWardrobeGarment("hat-01");
     const hatLook = characterLook({ ...DEFAULT_CHARACTER, garments: { hat: hat.id } });
