@@ -2,6 +2,7 @@ import { nearestSideMirror, type MirrorCheckFit } from "../characters/mirrorChec
 import { FACTORY_APPEARANCE, useHeroLoadouts } from "../../vehicles/cosmetics/heroLoadouts";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useGLTF } from "@react-three/drei";
+import { disposeVehicleAsset } from "./disposeVehicleAsset";
 import { prepareVehicleVisual } from "../../vehicles/tools/vehicleMaterials";
 import {
   VEHICLE_MODEL_PATHS,
@@ -57,12 +58,12 @@ function setLampEmission(material: MeshStandardMaterial, color: number | Color, 
   material.emissiveIntensity = intensity;
 }
 
-// Selection is always the complete GLB, independent of in-game debug modes.
 // Shared material preparation retains the TSX fixes without runtime network poses.
-export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettled,onDriverFit,motion,
+export function VehiclePreviewModel({platform,model,showroomPath,driver,previewPacks,onSettled,onDriverFit,motion,
   allowDriver = true,garageOpen = false,garageCameraAnchors = garageOpen,summon = false,reducedMotion = false,active = true,diagnostics = garageOpen}:{
   platform: readonly [number, number];
   model: VehicleModelId;
+  showroomPath?: string;
   driver?: CharacterChoice | null;
   previewPacks?: boolean;
   onSettled?: (model: VehicleModelId) => void;
@@ -76,7 +77,6 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
   active?: boolean;
   diagnostics?: boolean;
 }) {
-  const path=VEHICLE_MODEL_PATHS[model];
   const station = GARAGE_STATIONS[model];
   const revealRoot = useRef<Group>(null);
   const revealProgress = useRef(0);
@@ -84,7 +84,12 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
   const revealActive = materializing && !reducedMotion;
   const invalidate = useThree(state => state.invalidate);
   const savedAppearance = useHeroLoadouts(s => s.draft?.vehicle === model ? s.draft.appearance : s.loadouts[model]);
-  const { scene } = useGLTF(path, "/draco/");
+  const { scene } = useGLTF(showroomPath ?? VEHICLE_MODEL_PATHS[model], "/draco/");
+  // Only this stage uses the generated showroom URL. Retain its decoded data
+  // in the loader cache, and release its GPU buffers when the car leaves.
+  useEffect(() => {
+    if (showroomPath) return () => disposeVehicleAsset(scene);
+  }, [scene, showroomPath]);
   const driverReady = usePreviewPaint(Boolean(driver && allowDriver));
   const prepared = useMemo(
     () => {
@@ -117,10 +122,11 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
     else invalidate();
   }, -.8);
   const partRig=useMemo(() => {
+    if (showroomPath) return [];
     const parts = createVehiclePartRig(prepared.root, model);
     if (prepared.gullwing) parts.push(prepared.gullwing.hinge);
     return parts;
-  }, [prepared, model]);
+  }, [prepared, model, showroomPath]);
   const driverDoor = station.kind === "wheel" ? partRig.find(part => part.part === (station.rim[0] < 0 ? "door-right" : "door-left")) : undefined;
   const popup = partRig.find(part => part.part === "headlights");
   const cockpitSetup = useRef<{ source: Object3D; prepare: ReturnType<typeof prepareGarageCockpit> }>(null);
@@ -158,10 +164,10 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
   useEffect(()=>{lastLampStyle.current="";},[lamps]);
   useEffect(()=>{
     useVehicleStudioStore.getState().reset();
-    useVehicleStudioStore.getState().setAvailable(model,[...availableVehicleParts(partRig)]);
+    if (!showroomPath) useVehicleStudioStore.getState().setAvailable(model,[...availableVehicleParts(partRig)]);
     useGarageDrive.setState({ hasDoor: Boolean(driverDoor) });
     return ()=>{if(useVehicleStudioStore.getState().availableVehicle===model)useVehicleStudioStore.getState().setAvailable(null);};
-  },[model,partRig,driverDoor]);
+  },[model,partRig,driverDoor,showroomPath]);
   useEffect(()=>{
     if (!marine) applyWindowTone(prepared.glassMaterials, glassStyle);
   },[prepared,glassStyle,marine]);
@@ -181,7 +187,7 @@ export function VehiclePreviewModel({platform,model,driver,previewPacks,onSettle
     applyShowroomHighlights(prepared.root, .45, appearance.finish, appearance.metallic, model);
   }, [prepared, model, savedAppearance]);
   useFrame((_,delta)=>{
-    if (!active) return;
+    if (!active || showroomPath) return;
     const studio=useVehicleStudioStore.getState();
     const drive = useGarageDrive.getState();
     const stage = drive.stage;
