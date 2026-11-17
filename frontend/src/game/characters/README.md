@@ -349,10 +349,11 @@ Review the finished materials and transitions in the game as well. The Node
 geometry checks use the Three.js loader with textures stripped, and the audit
 decodes texture files independently of browser rendering.
 
-The [Wardrobe audit workflow](../../../../.github/workflows/wardrobe-audit.yml)
-runs fixture checks on relevant pull requests. In GitHub Actions, select
-**Wardrobe audit → Run workflow** to run the real-asset checks with the
-required Git LFS files installed.
+While the game-only server is being split out, pull-request checks are manual.
+In GitHub Actions, select **Wardrobe audit → Run workflow** and choose
+`fixtures` for the quick checks or `full` for fixtures, real Git LFS assets,
+and Rust character-profile tests. **Latency Lab checks** is also available
+from **Run workflow** for frontend and Rust verification.
 
 The bundle-specific commands remain available from `frontend` for imported
 source packages and animation sampling.
