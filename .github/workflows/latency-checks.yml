@@ -1,12 +1,6 @@
 name: Latency Lab checks
 
 on:
-  pull_request:
-    paths:
-      - 'frontend/**'
-      - 'avenlab-server/**'
-      - 'packages/wardrobe-catalog/**'
-      - '.github/workflows/latency-checks.yml'
   workflow_dispatch:
 
 permissions:

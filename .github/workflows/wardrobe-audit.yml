@@ -1,25 +1,23 @@
 name: Wardrobe audit
 
 on:
-  pull_request:
-    paths:
-      - 'packages/wardrobe-catalog/**'
-      - 'avenlab-server/src/alpha/character.rs'
-      - 'frontend/src/game/characters/**'
-      - 'frontend/public/models/characters/**'
-      - 'frontend/scripts/**'
-      - 'frontend/tests/**'
-      - 'frontend/package*.json'
-      - 'frontend/vite.config.ts'
-      - '.github/workflows/wardrobe-audit.yml'
   workflow_dispatch:
+    inputs:
+      scope:
+        description: Audit to run
+        type: choice
+        required: true
+        default: full
+        options:
+          - full
+          - fixtures
 
 permissions:
   contents: read
 
 jobs:
   fixtures:
-    if: github.event_name == 'pull_request'
+    if: inputs.scope == 'fixtures'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -33,7 +31,7 @@ jobs:
       - run: npm --prefix frontend run audit:wardrobe
 
   real-assets:
-    if: github.event_name == 'workflow_dispatch'
+    if: inputs.scope == 'full'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -53,7 +51,7 @@ jobs:
       - run: npm --prefix frontend run audit:wardrobe -- --full
 
   character-profiles:
-    if: github.event_name == 'workflow_dispatch'
+    if: inputs.scope == 'full'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

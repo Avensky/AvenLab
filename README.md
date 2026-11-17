@@ -847,6 +847,11 @@ candump can2
 
 This guide explains how to set up a **self-hosted GitHub Actions runner** for deploying the (<https://github.com/Avensky/AvenLab>) project using CI/CD on a Raspberry Pi or ARM64 device.
 
+During server setup, CI and deployment run manually. Once the server is ready,
+open **Actions → Deploy AvenLab → Run workflow** and select `main` to deploy.
+**Latency Lab checks** and **Wardrobe audit** are available in Actions for
+on-demand checks during development.
+
 ---
 
 ## 🔁 1. Clone the Repository and Prepare the Environment
