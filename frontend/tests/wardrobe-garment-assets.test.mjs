@@ -1280,34 +1280,45 @@ test('the rebuilt Gothic Underbust reuses skin masks for all Over fits on one ac
       return { body: body.index.array.slice(0, body.drawRange.count), parts };
     };
     const original = MeshBVH.prototype.shapecast;
-    let searches = 0;
+    const searched = new Set();
     MeshBVH.prototype.shapecast = function (...args) {
-      searches++;
+      searched.add(this);
       return original.apply(this, args);
     };
     try {
       const liveIndex = model.root.getObjectByName('fitting-room-body').geometry.index;
+      let firstStyleSurfaces;
       const expected = fits.map(({ look, style }) => {
-        searches = 0;
+        searched.clear();
         applyVillagerLook(model, look);
-        assert(searches > 0, 'each new selection traces its mask on demand');
+        if (style === 'classic') {
+          assert(searched.size > 0, 'a new waist fit tests cloth coverage');
+          firstStyleSurfaces = new Set(searched);
+        } else if (style === 'push-up') {
+          assert(searched.size > 0, 'the new bra tests its own cut');
+          assert([...searched].every(surface => !firstStyleSurfaces.has(surface)), 'a bra change reuses outer clothing coverage');
+        } else {
+          assert.equal(searched.size, 0, 'removing the bra needs no new coverage queries');
+        }
         return capture(model.root, style);
       });
-      searches = 0;
+      searched.clear();
       for (const [i, { look, style }] of fits.entries()) {
         applyVillagerLook(model, look);
         assert.deepEqual(capture(model.root, style), expected[i]);
         assert.equal(model.root.getObjectByName('fitting-room-body').geometry.index, liveIndex);
       }
-      assert.equal(searches, 0, 'all nine sampled fits reuse their mask during a full cycle');
+      assert.equal(searched.size, 0, 'all nine sampled fits reuse their mask during a full cycle');
 
-      const peer = prepareVillager(actor, options);
-      try {
-        applyVillagerLook(peer, fits[0].look);
-        assert.deepEqual(capture(peer.root, fits[0].style), expected[0]);
-        const peerIndex = peer.root.getObjectByName('fitting-room-body').geometry.index;
-        assert.notEqual(peerIndex.array.buffer, liveIndex.array.buffer, 'each actor keeps a private skin index array');
-      } finally { peer.dispose(); }
+      for (const [i, { look, style }] of fits.slice(0, 3).entries()) {
+        const peer = prepareVillager(actor, options);
+        try {
+          applyVillagerLook(peer, look);
+          assert.deepEqual(capture(peer.root, style), expected[i], 'changing bras matches equipping that style first');
+          const peerIndex = peer.root.getObjectByName('fitting-room-body').geometry.index;
+          assert.notEqual(peerIndex.array.buffer, liveIndex.array.buffer, 'each actor keeps a private skin index array');
+        } finally { peer.dispose(); }
+      }
     } finally {
       MeshBVH.prototype.shapecast = original;
       model.dispose();

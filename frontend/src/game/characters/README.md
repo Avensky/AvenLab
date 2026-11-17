@@ -279,8 +279,10 @@ body positions unquantized because the face shaders use bind-space positions.
   if they are cut by a single sample. Each preview owns its index buffer. A
   fitted Village actor with fixed source coverage retains a mask for each
   visited waist and bra combination, so switching back reuses the visible
-  triangle list. The shared Laced Bodice cache holds up to eight masks per
-  fitted source combination.
+  triangle list. On an outfit with selectable bras, the first fit records
+  which triangles the other clothes cover at that waist. Changing the bra
+  checks only skin that could be covered by the new style. The shared Laced
+  Bodice cache holds up to eight masks per fitted source combination.
   When an outfit exposes part of the original cut body, the fitter remembers
   which donor triangles match that surface. Other outfits can reuse those
   answers until either surface's positions, indices, or draw range changes.
@@ -369,14 +371,14 @@ node scripts/sample-wardrobe-emotes.mjs /path/to/raw/gothic-01.glb /path/to/pose
 | Garment | Confirmed | Open review |
 | --- | --- | --- |
 | Laced Bodice | The tucked hem had zero measured intersections with the Village skirt and rear belt in 56 sampled states. | The idle and overhead rear views both show a small piece of the shell at the viewer-left belt tip. Both tiers also produced upper-torso skin-mask findings. |
-| Ruffled | The waist and cup clearance checks passed on both tiers. | Inspect the upper back during Overhead heart. On the tucked fit, 4 upper-back rays on each tier found missing skin. Other rays also found gaps outside that region. |
+| Ruffled | The waist and cup clearance checks passed on both tiers. With the Village skirt and belt, both Over and Tucked passed the torso mask probe in all three poses. | Check the upper back and neckline in game during Overhead heart. |
 | Underbust and bras | Both vest fits with Classic and standalone Push-up passed the torso mask probe on both tiers. | The vest with Push-up produced four uncovered rays at Overhead heart on each fit and tier. Standalone Classic also produced findings. |
 | Sweetheart | The authored refit preserves chest and underarm skin. The animated skin mask passed both fits, both tiers, and both skirt routes in three sampled poses. | Review the revised cup and underarm silhouette and the Tucked waistband in motion. The old coverage samples predate the revised opening and authored skirt rim. |
 | High Collar | Both tiers load, bind to Vesper, and switch between Over and Tucked. | The full audit reports uncovered masked skin at rest and during motion with the Village skirt and the matched Gothic outfit. Review the straps, rear collar, and front keyhole on the live model. |
 
 The torso mask probe evaluates 34 outfit and tier combinations in idle,
 Happy applause, and Overhead heart. The full audit currently exits with
-status 1 on mask findings in 20 combinations. Its rays identify candidate
+status 1 on mask findings in 16 combinations. Its rays identify candidate
 gaps for visual review. Use the reported tier, waist, outfit, and pose to
 reproduce each finding.
 
@@ -426,6 +428,8 @@ click gestures. Character drag and pointer cancellation do not trigger an emote.
 
 Inner rotation arrows turn the character; outer arrows turn the vehicle display.
 Dragging directly on the character with a mouse turns the model independently.
+The initial press hit-tests the visible model. Once the drag starts, pointer
+movement turns the character without testing each skinned garment again.
 In the Fitting Room, dragging the scene background orbits the camera around its
 current framing target. Touch supports one-finger orbit. The garage vehicle
 display keeps its turntable drag.
