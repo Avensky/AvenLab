@@ -5,6 +5,7 @@ import { useCallback, useEffect, useId, useImperativeHandle, useLayoutEffect, us
 import { useShallow } from "zustand/react/shallow";
 import { readLocalCharacter, writeLocalCharacter } from "./localOutfits";
 import { ControllerAction } from "../../components/controller";
+import { MenuBackButton } from "../../components/menus/MenuFrame";
 import { requestSocial } from "../../net/socialClient";
 import { selectEquippedCharacter, useSocialStore } from "../../store/social/socialStore";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
@@ -47,10 +48,9 @@ function revealCharacterControl(event: FocusEvent<HTMLElement>) {
   event.target.scrollIntoView?.({ block: "nearest", inline: "nearest" });
 }
 
-export function CharacterPage({ onPreview, onReady, tab, beforeClose, onOpenIdentity }: {
+export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
   onPreview?: (choice: CharacterChoice | null) => void;
   onReady: (ready: boolean) => void;
-  onOpenIdentity?: () => void;
   tab: CharacterTab;
   beforeClose: Ref<() => Promise<boolean>>;
 }) {
@@ -399,10 +399,12 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, onOpenIden
     useCharacterPreviewStore.setState({ emote: { id: item.id }, playbackPaused: false, ...(item.id === MIRROR_CHECK_ID ? { camera: "Whole car" } : {}) });
   }
   const emoteResults = resultsOpen && (emoteDetail ? <>
-    <button type="button" className="menu-control character-emote-back" data-controller-row onClick={() => {
-      emoteFocus.current = `[data-emote-id="${emoteDetail.id}"]`;
-      setEmoteDetail(undefined);
-    }}>Back to emotes</button>
+    <div data-controller-row>
+      <MenuBackButton className="character-emote-back" label="Back to emotes" onClick={() => {
+        emoteFocus.current = `[data-emote-id="${emoteDetail.id}"]`;
+        setEmoteDetail(undefined);
+      }}>Back to emotes</MenuBackButton>
+    </div>
     <h2>{emoteDetail.name}</h2>
     <button type="button" className="menu-control" data-controller-row disabled={reducedMotion || cockpitPending}
       onClick={() => playEmote(emoteDetail)}>Replay emote</button>
@@ -487,20 +489,16 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, onOpenIden
   );
 
   return (
-    <div ref={page} className={`character-page character-page--editor${tab === "appearance" ? " character-page--dressing" : tab === "emotes" ? " character-page--emotes" : " character-page--identity"}${onOpenIdentity ? " character-page--sidebar-identity" : ""}`}
-      role={onOpenIdentity && tab === "identity" ? "region" : "tabpanel"} id="character-editor-panel" aria-labelledby={"character-editor-tab-" + tab}
+    <div ref={page} className={`character-page character-page--editor${tab === "appearance" ? " character-page--dressing" : tab === "emotes" ? " character-page--emotes" : " character-page--identity"}`}
+      role={tab === "identity" ? "region" : "tabpanel"} id="character-editor-panel" aria-labelledby={"character-editor-tab-" + tab}
       onFocus={revealCharacterControl}>
-      {onOpenIdentity && <div className="character-identity-nav" data-controller-row>
-        <button type="button" id="character-editor-tab-identity" className="menu-control" aria-controls="character-editor-panel"
-          aria-current={tab === "identity" ? "page" : undefined} onClick={onOpenIdentity}>Identity</button>
-      </div>}
       <div className="character-stage" data-character-viewport data-character-preview={choice.id} data-outfit-preview={choice.outfit}
         aria-label={`Preview of ${character.name}`} />
       {fitting && <DressingRoom choice={previewChoice} onChange={editPreviewAppearance} onEquip={equipOutfit} onTryOn={tryOn} onLoad={loadOutfit}
         onEndPreview={loadedOutfit ? endOutfitPreview : undefined} cameraTools={cameraTools}
         cameraViews={cameraSelect} onColors={saveClothingColors} />}
       {tab === "identity" && <section className="character-controls menu-panel-frame character-identity-style" aria-label="Identity appearance">
-        <h2>Identity</h2>
+        <h2>Features</h2>
         {IDENTITY_STYLE.map(([section, fields]) => <fieldset key={section}>
           <legend>{section}</legend>
           {fields.map(([field, label]) => field === "hair" && choice.id === ROOK_ID && __ROOK_MODEL_URL__ ? null

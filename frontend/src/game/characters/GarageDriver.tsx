@@ -53,14 +53,20 @@ function MissingVillager({ cockpit }: { cockpit?: GarageCockpit }) {
   return null;
 }
 
-function VillagerDriver({ url, look, compact, fallback, ...playback }: VillagerPlayback & {
-  url: string; look: CharacterLook; compact: boolean; fallback: ReactNode;
+type AssetTier = "portrait" | "garage";
+
+function VillagerDriver({ url: preferredUrl, look, kind, villageKind, fallback, ...playback }: VillagerPlayback & {
+  url: string; look: CharacterLook; kind: AssetTier; villageKind: AssetTier; fallback: ReactNode;
 }) {
   const [active, setActive] = useState<VillagerPreview>();
   const [sources, setSources] = useState<Partial<Record<string, Object3D | null>>>({});
   const onReady = useCallback<WardrobeAssetListener>((asset, loaded) => setSources(current => current[asset] === loaded
     ? current : { ...current, [asset]: loaded }), []);
-  const kind = compact ? "portrait" : "garage";
+  const portrait = __VILLAGER_PORTRAIT_URL__;
+  const original = __VILLAGER_MODEL_URL__;
+  const originalVillage = kind !== villageKind && portrait && original !== portrait && sources[portrait] === null ? original : null;
+  const url = originalVillage && preferredUrl === portrait ? originalVillage : preferredUrl;
+  const villageAssetKind = originalVillage ? kind : villageKind;
   const corset = corsetRenderChoice(look);
   const corsetUrls = corsetModelUrls(corset, kind);
   const corsetUrl = corsetUrls.find(asset => {
@@ -72,14 +78,15 @@ function VillagerDriver({ url, look, compact, fallback, ...playback }: VillagerP
   const requested = useMemo(() => Object.values(look.garments ?? {}).flatMap(id => {
     const item = getWardrobeGarment(id);
     if (!item) return [];
-    const preferred = wardrobeGarmentModelUrl(item, kind);
+    const tier = item.villageNode ? villageAssetKind : kind;
+    const preferred = wardrobeGarmentModelUrl(item, tier);
     if (!preferred) return [];
     const loaded = sources[preferred];
     const brokenRevision = preferred === item.revisionUrl && loaded !== undefined
       && (!loaded || !hasWardrobeRevisionMesh(item, loaded));
-    const url = brokenRevision ? wardrobeGarmentModelUrl(item, kind, { useRevision: false }) : preferred;
+    const url = brokenRevision ? wardrobeGarmentModelUrl(item, tier, { useRevision: false }) : preferred;
     return url ? [{ item, url }] : [];
-  }), [look.garments, kind, sources]);
+  }), [look.garments, kind, villageAssetKind, sources]);
   const scene = sources[url];
   // The Village outfit cuts away skin under its clothes. Use the full skin only
   // for replacements that expose a different part of the body.
@@ -179,11 +186,14 @@ export function GarageDriver({ choice, previewPacks, leanFit, mirrorFit, victory
     ? <Html center><p className="menu-control">Character model unavailable. Install the character assets with Git LFS.</p></Html>
     : <MissingVillager cockpit={cockpit} /> :
     <group name="garage-driver" rotation={upright ? [0, 0, 0] : DRIVER_TILT}><StylizedDriver look={look} bag={bag} previewPacks={previewPacks} mirrorFit={mirrorFit} victory={victory} cockpit={cockpit} paused={paused} /></group>;
-  const url = villagerModelUrl(look, compact && choice.id === VILLAGER_ID ? "portrait" : "garage");
+  const kind = compact ? "portrait" : "garage";
+  // The portrait export has the original mesh and rig with smaller textures.
+  const villageKind = victory ? kind : "portrait";
+  const url = villagerModelUrl(look, choice.id === VILLAGER_ID ? kind : "garage", villageKind);
   return (
     <CharacterTurntable enabled={Boolean(previewPacks)}>
       {url
-        ? <VillagerDriver key={choice.id} url={url} look={look} compact={compact} fallback={fallback} bag={bag}
+        ? <VillagerDriver key={choice.id} url={url} look={look} kind={kind} villageKind={villageKind} fallback={fallback} bag={bag}
             previewPacks={previewPacks} leanFit={coatFitsLean ? leanFit : undefined} mirrorFit={mirrorFit}
             victory={victory} cockpit={cockpit} paused={paused} upright={upright} />
         : fallback}

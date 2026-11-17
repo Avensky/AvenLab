@@ -20,11 +20,23 @@ test('hero guide explains shipped actions and returns without equipping or repla
   const {useHeroLoadouts:loadouts,FACTORY_APPEARANCE:factory}=await load('vehicles/cosmetics/heroLoadouts.ts'),{openHeroGuide:open,closeHeroGuide:close,useHeroGuideStore:state}=await load('store/hud/heroGuideStore.ts');
   const client=await load('net/socialClient.ts'),sent=[];client.setSocialConnection({readyState:WebSocket.OPEN,send:body=>sent.push(JSON.parse(body))});
   const {HeroWorkshop}=await load('game/heroes/HeroWorkshop.tsx'),{HeroAbilities}=await load('game/heroes/HeroAbilities.tsx'),{routeMenuAction:route}=await load('controls/inputRouting.ts');
+  const {vehicleSystems}=await load('vehicles/vehicleSystems.ts');
   function Host(){const screen=ui(s=>s.screen),overlay=ui(s=>s.overlay);return h('div',null,screen==='heroes'&&h(HeroWorkshop),overlay==='hero_abilities'&&h(HeroAbilities));}
   const click=async selector=>{const node=document.querySelector(selector);assert(node,selector);await act(async()=>node.click());};
-  await t.test('every hero has three ability slots; every chassis has a live barrage and a shield',()=>{
+  await t.test('every hero has three ability slots, with live land and planned naval ultimates',()=>{
    const rust=fs.readFileSync('../avenlab-server/src/vehicle_health.rs','utf8'),number=name=>Number(rust.match(new RegExp('pub const '+name+': f32 = ([0-9.]+)'))[1]);
-   for(const hero of HEROES){const data=guide(hero.id);assert.equal(data.abilities.length,3);assert.equal(data.ultimate.state,'live');assert.equal(data.ultimate.name,'BARRAGE');assert(data.abilities.some(a=>a.state==='live'&&['barrier','guard-boost','dive-shield'].includes(a.id)));}
+   for(const hero of HEROES){
+    const data=guide(hero.id);
+    assert.equal(data.abilities.length,3,hero.id);
+    if(vehicleSystems(hero.vehicle)==='marine'){
+     assert.equal(data.ultimate.state,'planned',hero.id);
+     assert.match(data.ultimate.notes,/PLANNED/,hero.id);
+    }else{
+     assert.equal(data.ultimate.state,'live',hero.id);
+     assert.equal(data.ultimate.name,'BARRAGE',hero.id);
+     assert(data.abilities.some(ability=>ability.state==='live'&&['barrier','guard-boost','dive-shield'].includes(ability.id)),hero.id);
+    }
+   }
    const tank=guide('tank');assert.deepEqual(tank.abilities.map(ability=>ability.id),['ram','barrier','scope']);assert.equal(tank.abilities[1].state,'live');assert(tank.abilities[1].stats.some(stat=>stat.value==='500 HP · 10 m wide'));assert.match(tank.abilities[2].notes,/Angle Lock/);assert.equal(tank.weapons.length,3);assert(tank.weapons.every(weapon=>weapon.state==='live'));assert.equal(tank.weapons.find(weapon=>weapon.id==='roof-mg').stats.find(stat=>stat.label==='Range').value,'800 m');assert.equal(tank.weapons.find(weapon=>weapon.id!=='roof-mg'&&weapon.id!=='cannon').stats.find(stat=>stat.label==='Range').value,'200 m');assert.equal(tank.weapons[0].stats.find(s=>s.label==='Direct hit').value,number('CANNON_DAMAGE')+' HP');assert.equal(tank.weapons[1].stats.find(s=>s.label==='Per hit').value,number('COAX_DAMAGE')+' HP');assert(tank.abilities[0].stats.some(s=>s.value===number('RAM_DAMAGE')+' HP + 1 s stun'));
    assert.equal(guide('mini').role,'DPS');assert.equal(guide('mini').weapons.length,1);assert.equal(guide('mechanic').weapons[0].id,'health-pack');assert.equal(guide('mechanic').abilities[0].id,'revive');assert.equal(new Set(HEROES.map(h=>h.vehicle)).size,HEROES.length);assert.equal(guide('cx30').weapons[0].id,'support-spray');assert.equal(guide('cx30').abilities[0].id,'dive-shield');assert.equal(guide('brz').weapons.length,1);assert.equal(guide('brz').abilities[0].id,'guard-boost');assert.equal(guide('brz').abilities[0].state,'live');
   });
@@ -45,18 +57,17 @@ test('hero guide explains shipped actions and returns without equipping or repla
    assert.equal(document.querySelector('.hero-guide-overview h2').textContent,'BRZ');
    assert(document.querySelector('.vehicle-studio--abilities .hero-guide-overview'));
    assert(document.querySelector('.vehicle-studio--abilities .hero-guide-details'));
-   const camera = document.querySelector('button[aria-label^="Switch garage camera"]');
-   assert(camera);
-   await act(async()=>camera.click());
-   assert.match(camera.textContent,/High Angle/);
+   const highAngle = '[aria-label="Garage camera and drive preview"] [data-camera-choice="High Angle"]';
+   await click('button[aria-label="Camera angles"]');
+   await click(highAngle);
+   assert.equal(document.querySelector(highAngle).getAttribute('aria-pressed'),'true');
    assert(document.querySelector('.hero-guide-showcase p').textContent.trim());
    assert(document.querySelector('.hero-guide-portraits [aria-label="Vesper Vega"]'));
    assert.deepEqual([...document.querySelectorAll('.hero-guide-details [aria-expanded]')].map(button=>button.getAttribute('aria-expanded')),['false','false','false','false']);
    assert.equal(ui.getState().overlay,null);
    await act(async()=>route('next_tab'));
    assert(document.querySelector('.vehicle-studio'));
-   assert.equal(document.querySelector('button[aria-label^="Switch garage camera"]'),camera);
-   assert.match(camera.textContent,/High Angle/);
+   assert.equal(document.querySelector(highAngle).getAttribute('aria-pressed'),'true');
    await act(async()=>route('back'));assert.equal(document.querySelector('.vehicle-studio'),null);
    await act(async()=>route('next_tab'));
    assert.equal(document.getElementById('hero-workshop-role-tab-tank').getAttribute('aria-selected'),'true');
@@ -67,7 +78,7 @@ test('hero guide explains shipped actions and returns without equipping or repla
   });
   await t.test('the Abilities tab follows the chosen vehicle and keeps styling and roster navigation separate',async()=>{
    social.setState({view:{profile:{id:'me',name:'Player',progression:{default_hero:'brz',hero_loadouts:{brz:factory},owned:['factory'],tier:'BRONZE',color:'#aabbcc',prestige:0,level:1,xp:0,required_xp:100,credits:0}},alpha:{skins:[]}}});loadouts.getState().adopt('me','brz',{brz:{...factory}});alpha.getState().preview('brz');ui.setState({screen:'heroes',overlay:null,isModeLoading:false});
-   await act(async()=>root.render(h(Host)));
+   await act(async()=>root.render(h(Host,{key:'chosen-vehicle'})));
    const before=JSON.stringify(loadouts.getState().loadouts);
    assert.deepEqual([...document.querySelectorAll('[role=tab]')].map(tab=>tab.textContent),['ALL','TANK','DPS','SUPPORT','SEA','AIR','CONCEPTS']);
    assert.deepEqual([...document.querySelectorAll('[role=tab]:has(.menu-icon)')].map(tab=>tab.textContent),['TANK','DPS','SUPPORT','SEA','AIR','CONCEPTS']);

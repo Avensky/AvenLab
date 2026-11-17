@@ -19,14 +19,14 @@ import { applyRebuiltUnderbustDye } from "./rebuiltUnderbustDye";
 import { applyLacedBodiceAppearance } from "./lacedBodiceAppearance";
 import { getWardrobeGarment, wardrobeGarmentModelUrl, type WardrobeRemoval } from "./wardrobeGarments";
 
-export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait" = "garage") {
+export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait" = "garage", villageKind = kind) {
   if (look.character.id === ROOK_ID) return kind === "portrait" ? __ROOK_PORTRAIT_URL__ : __ROOK_MODEL_URL__;
   if (look.character.id !== VILLAGER_ID) return null;
   const skirt = getWardrobeGarment(look.garments?.skirt);
   const assembled = skirt && wardrobeGarmentModelUrl(skirt, kind) && corsetModelUrl(corsetRenderChoice(look), kind);
   const wardrobeUrl = assembled ? null : wardrobeModelUrl(look.wardrobe, kind);
   if (wardrobeUrl) return wardrobeUrl;
-  return kind === "portrait" ? __VILLAGER_PORTRAIT_URL__ : __VILLAGER_MODEL_URL__;
+  return villageKind === "portrait" ? __VILLAGER_PORTRAIT_URL__ : __VILLAGER_MODEL_URL__;
 }
 
 function prepareScalpCap(root: Object3D) {

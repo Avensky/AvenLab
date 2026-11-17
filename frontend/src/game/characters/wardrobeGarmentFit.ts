@@ -218,6 +218,7 @@ export function prepareWardrobeGarments(
   const shortSkirtSurfaces: MeshBVH[] = [];
   const villageSkirtSurfaces: MeshBVH[] = [];
   const villageSkirtMeshes: SkinnedMesh[] = [];
+  const villageBeltMeshes: SkinnedMesh[] = [];
   const tuckedSkirtSurfaces: MeshBVH[] = [];
   const fittedShapes = new Map<string, SkinCover[]>();
   // Authored bodices on the base Villager use fixed bind-space meshes.
@@ -268,6 +269,7 @@ export function prepareWardrobeGarments(
         return material;
       };
       mesh.material = Array.isArray(part.material) ? part.material.map(cloneMaterial) : cloneMaterial(part.material);
+      if (item.id === "village-belt" && corset?.authoredLacedBodice) villageBeltMeshes.push(mesh);
       garmentMeshes.push(mesh);
       garment.add(mesh);
     });
@@ -353,8 +355,11 @@ export function prepareWardrobeGarments(
     }
     const villageSkirt = villageSkirtSurfaces.length ? villageSkirtSurfaces : stockSurfaces;
     if (villageSkirt.length || cache?.adjustments) {
+      if (!replacements.has("belt")) root.getObjectByName("ACC_BELT")?.traverse(part => {
+        if (part instanceof SkinnedMesh) villageBeltMeshes.push(part);
+      });
       corset.fitSkirt(villageSkirt, "village-tucked", cache);
-      villageTuckedWaist = prepareLacedBodiceVillageWaist(villageSkirtMeshes);
+      villageTuckedWaist = prepareLacedBodiceVillageWaist(villageSkirtMeshes, villageBeltMeshes);
       if (cache) fittedMasks = cache.masks;
     }
     for (const { geometry } of stockSurfaces) geometry.dispose();

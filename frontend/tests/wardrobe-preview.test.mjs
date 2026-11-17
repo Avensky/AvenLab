@@ -12,6 +12,8 @@ function wardrobePreviewServer() {
       __DRESSING_ROOM_REVISION_IDS__: JSON.stringify(["gothic-skirt-02", "gothic-skirt-03"]),
       __STANDALONE_CORSET_LODS__: JSON.stringify({ "gothic-05": { garage: true, mobile: false } }),
       __BUNDLED_WARDROBE_LODS__: JSON.stringify({ "gothic-05": { garage: true, mobile: false } }),
+      __VILLAGER_MODEL_URL__: JSON.stringify("village-full"),
+      __VILLAGER_PORTRAIT_URL__: JSON.stringify("village"),
     },
     server: { middlewareMode: true, hmr: false, ws: false },
     appType: "custom",
@@ -39,7 +41,7 @@ function wardrobePreviewServer() {
           export const CharacterLoadingEffect = () => createElement("span", { "data-victory-loading": true });
           export const PreviewLoadingStatus = ({ label }) => createElement("span", { role: "status" }, label);
           export const StylizedDriver = () => null;
-          export const villagerModelUrl = look => look.wardrobe?.set ?? "village";
+          export const villagerModelUrl = (look, kind, villageKind = kind) => look.wardrobe?.set ?? (villageKind === "portrait" ? "village" : "village-full");
           export const applyVillagerLook = (model, look) => { appliedLooks.push(look); };
 
           export function makeAssetAvailable(url, meshName, fullBody = true) {
@@ -193,23 +195,35 @@ test("the fitting room keeps the last complete outfit until the latest selection
 
     // Fresh mounts use their original context-specific loading and error states.
     await act(async () => renderer.render(null));
-    const victoryBase = delayAsset("village");
+    const victoryBase = delayAsset("village-full");
     await choose(undefined, undefined, { victory: { id: "001", onFinish() {} } });
     assert(document.querySelector("[data-victory-loading]"));
     await act(async () => victoryBase());
-    assert.deepEqual(rendered(), ["village bowtie-01"]);
+    assert.deepEqual(rendered(), ["village-full bowtie-01"]);
     assert.equal(document.querySelector("[data-victory-loading]"), null);
     await act(async () => renderer.render(null));
+    const menuBase = delayAsset("village");
+    await choose(undefined, undefined, { choice: { ...DEFAULT_CHARACTER, garments: { skirt: "village-skirt" } } });
+    assert.equal(status(), "Loading driver");
+    await act(async () => menuBase(true));
+    assert.deepEqual(rendered(), ["village-full village-skirt"]);
+    assert.deepEqual(loadedGarments.at(-1), [["village-full", false]], "the Village piece uses the same fallback model");
+    assert.equal(status(), undefined);
+    await act(async () => renderer.render(null));
     const cockpitBase = delayAsset("village");
+    const cockpitFallback = delayAsset("village-full");
     preview.setState({ insideCar: true });
     await choose(undefined, undefined, { upright: false, cockpit: {} });
     assert.equal(status(), "Loading driver");
     await act(async () => cockpitBase(true));
+    assert.equal(status(), "Loading driver");
+    await act(async () => cockpitFallback(true));
     assert.deepEqual(rendered(), []);
     assert.equal(preview.getState().insideCar, false);
     assert.equal(preview.getState().cockpitError, "The character model is unavailable.");
     assert.deepEqual(caught, ["Unavailable " + url("skirt-04"), "Unavailable gothic-02",
-      "Unavailable " + thirdGothic.revisionUrl, "Unavailable " + standaloneUrl, "Unavailable village"]);
+      "Unavailable " + thirdGothic.revisionUrl, "Unavailable " + standaloneUrl, "Unavailable village",
+      "Unavailable village", "Unavailable village-full"]);
   } finally {
     await act(async () => renderer.unmount());
     await vite?.close();

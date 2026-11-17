@@ -145,6 +145,7 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     assert.equal(find('[data-category=colors]'), null, 'presets live in the color toolbar');
     assert.deepEqual([...find('.dressing-room-title').children].map(label => label.textContent), ['Fitting room', 'Vesper Vega']);
     assert.equal(find('.dressing-catalog').hidden, true);
+    assert.equal(find('.dressing-catalog [data-wardrobe-item]'), null, 'entering the fitting room mounts only visible wardrobe controls');
     assert.equal(find('.dressing-details').hidden, true);
     assert.equal(find('.dressing-catalog').parentElement, find('.dressing-categories').parentElement, 'catalog shares the left wardrobe rail');
     assert.equal(preview.getState().camera, 'Full body');
@@ -175,6 +176,7 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     assert.match(find('[aria-label="Ticket draft"]').value, /gothic-02[\s\S]+Verify strap in idle/);
     assert.equal(changes.length, 0, 'inspecting a missing pack never equips it');
     await click('[data-wardrobe-back]');
+    assert.equal(find('.dressing-catalog [data-wardrobe-item]'), null, 'returning to categories releases the previous item list');
     assert.equal(find('.dressing-details').hidden, true);
     assert.equal(document.activeElement.dataset.category, 'outfits');
     const revision = preview.getState().focusRevision;

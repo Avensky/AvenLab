@@ -1314,11 +1314,14 @@ test('rebuilt Laced Bodice keeps its authored mesh and dyes five groups independ
   } finally { await vite.close(); }
 });
 
-test('the Village skirt covers both rear hips of the tucked Laced Bodice', async t => {
+test('the Village skirt and belt cover the back of the tucked Laced Bodice', async t => {
   const set = 'gothic-01';
-  const tiers = [['garage', 'garage'], ['mobile', 'portrait']];
+  const tiers = [
+    ['garage', 'villager-female.glb'], ['garage', 'villager-female.garage.glb'],
+    ['garage', 'villager-female.portrait.glb'], ['mobile', 'villager-female.portrait.glb'],
+  ];
   const paths = [bundledDir + 'gothic-02.mobile.glb', ...tiers.flatMap(([tier, base]) => [
-    villagerDir + `villager-female.${base}.glb`,
+    villagerDir + base,
     garmentDir + `corsets/gothic-laced-bodice.${tier}.glb`,
   ])];
   const bytes = await Promise.all(paths.map(path => readFile(new URL(path, publicDir)).catch(error => {
@@ -1334,7 +1337,12 @@ test('the Village skirt covers both rear hips of the tucked Laced Bodice', async
     const { getWardrobeGarment } = await vite.ssrLoadModule('/src/game/characters/wardrobeGarments.ts');
     const { buildEmoteClips, findGaragePreviewEmote } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
     const item = getWardrobeGarment('village-skirt');
-    const surfaces = part => {
+    const belt = getWardrobeGarment('village-belt');
+    const identity = new Matrix4();
+    const intersection = { intersectsTriangles: (first, second) => first.intersectsTriangle(second) };
+    const overlaps = (clothes, bodice) => clothes.some(surface =>
+      bodice.some(layer => surface.bvhcast(layer, identity, intersection)));
+    const surfaces = (part, rearOnly = false) => {
       const result = [];
       const point = new Vector3();
       part.traverseVisible(mesh => {
@@ -1344,17 +1352,24 @@ test('the Village skirt covers both rear hips of the tucked Laced Bodice', async
           mesh.getVertexPosition(i, point).applyMatrix4(mesh.matrixWorld);
           position.setXYZ(i, point.x, point.y, point.z);
         }
-        result.push(new MeshBVH(new BufferGeometry().setAttribute('position', position).setIndex(mesh.geometry.index.clone())));
+        const { index, attributes, drawRange } = mesh.geometry;
+        const indices = Array.from(index.array.subarray(drawRange.start, drawRange.start + drawRange.count));
+        const faces = rearOnly ? [] : indices;
+        if (rearOnly) for (let i = 0; i < indices.length; i += 3) {
+          const triangle = indices.slice(i, i + 3);
+          if (triangle.every(vertex => attributes.position.getZ(vertex) <= 0)) faces.push(...triangle);
+        }
+        if (faces.length) result.push(new MeshBVH(new BufferGeometry().setAttribute('position', position).setIndex(faces)));
       });
       return result;
     };
-    for (const [index, [tier]] of tiers.entries()) {
+    for (const [index, [tier, baseFile]] of tiers.entries()) {
       const [base, scene] = models.slice(index * 2, index * 2 + 2);
       const sourceOver = scene.getObjectByName('CLOTH_CORSET_OVER');
       for (const explicit of [false, true]) {
-        const label = `${tier} ${explicit ? 're-equipped' : 'stock'} Village skirt`;
-        const garments = explicit ? [{ item, scene: base }] : [];
-        const choice = { ...DEFAULT_CHARACTER, garments: explicit ? { skirt: item.id } : undefined };
+        const label = `${tier} ${baseFile} with the ${explicit ? 're-equipped' : 'stock'} Village outfit`;
+        const garments = explicit ? [{ item, scene: base }, { item: belt, scene: base }] : [];
+        const choice = { ...DEFAULT_CHARACTER, garments: explicit ? { skirt: item.id, belt: belt.id } : undefined };
         const model = prepareVillager(base, { fitted: true, garmentBody, corsetSource: { set, scene }, garments });
         try {
           applyVillagerLook(model, characterLook({ ...choice, wardrobeTrial: { set, waist: 'tucked', shirt: 'none' } }));
@@ -1363,7 +1378,21 @@ test('the Village skirt covers both rear hips of the tucked Laced Bodice', async
           const stock = root.getObjectByName(item.villageNode);
           assert.equal(stock.visible, !explicit, label);
           const activeSkirt = explicit ? root.getObjectByName(`wardrobe-${item.id}`) : stock;
+          const stockBelt = root.getObjectByName(belt.villageNode);
+          assert.equal(stockBelt.visible, !explicit, label);
+          const activeBelt = explicit ? root.getObjectByName(`wardrobe-${belt.id}`) : stockBelt;
           const activeBodice = model.detachedCorset.group.getObjectByName('CLOTH_CORSET_TUCKED');
+          const sourceBelt = base.getObjectByName(belt.villageNode).geometry;
+          const originalPositions = sourceBelt.attributes.position;
+          activeBelt.traverseVisible(mesh => {
+            if (!mesh.isSkinnedMesh) return;
+            const positions = mesh.geometry.attributes.position;
+            for (let i = 0; i < positions.count; i++) {
+              if (originalPositions.getZ(i) < .025) continue;
+              assert.deepEqual([positions.getX(i), positions.getY(i), positions.getZ(i)],
+                [originalPositions.getX(i), originalPositions.getY(i), originalPositions.getZ(i)], 'front belt stays unchanged');
+            }
+          });
           const skirt = surfaces(activeSkirt);
           const tucked = surfaces(activeBodice);
           try {
@@ -1390,18 +1419,20 @@ test('the Village skirt covers both rear hips of the tucked Laced Bodice', async
           // The automatic weight shift lets the bodice catch on the side rim between rest poses.
           const [clip] = buildEmoteClips(root, [findGaragePreviewEmote('002', false)]);
           const mixer = new AnimationMixer(root);
-          const identity = new Matrix4();
           mixer.clipAction(clip).play();
           try {
-            for (const phase of [.25, .38, .5, .62]) {
+            for (const phase of [0, .25, .38, .5, .62]) {
               mixer.setTime(clip.duration * phase);
               root.updateMatrixWorld(true);
-              const waistband = surfaces(activeSkirt), bodice = surfaces(activeBodice);
+              const waistband = surfaces(activeSkirt), beltBack = surfaces(activeBelt, true), bodice = surfaces(activeBodice);
               try {
-                assert(!waistband.some(surface => bodice.some(layer => surface.intersectsGeometry(layer.geometry, identity))),
+                assert(!overlaps(waistband, bodice),
                   `${label} clears the tucked bodice at weight-shift phase ${phase}`);
+                assert(beltBack.length, `${label} has a rendered rear belt`);
+                assert(!overlaps(beltBack, bodice),
+                  `${label} rear belt covers the tucked bodice at weight-shift phase ${phase}`);
               } finally {
-                for (const { geometry } of [...waistband, ...bodice]) geometry.dispose();
+                for (const { geometry } of [...waistband, ...beltBack, ...bodice]) geometry.dispose();
               }
             }
           } finally { mixer.stopAllAction(); }
@@ -1411,6 +1442,9 @@ test('the Village skirt covers both rear hips of the tucked Laced Bodice', async
           const sourceSkirt = base.getObjectByName(item.villageNode);
           activeSkirt.traverseVisible(mesh => {
             if (mesh.isSkinnedMesh) assert.equal(mesh.geometry, sourceSkirt.geometry, label);
+          });
+          activeBelt.traverseVisible(mesh => {
+            if (mesh.isSkinnedMesh) assert.equal(mesh.geometry, sourceBelt, label);
           });
           over.traverseVisible(mesh => {
             if (mesh.isSkinnedMesh) assert.equal(mesh.geometry, sourceOver.getObjectByName(mesh.name).geometry, label);

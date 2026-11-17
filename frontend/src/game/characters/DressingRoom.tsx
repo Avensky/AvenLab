@@ -1,4 +1,5 @@
 import { FitBadge, FitReview } from "./FitReview";
+import { MenuBackButton } from "../../components/menus/MenuFrame";
 import { useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { CHARACTER_APPEARANCE_OPTIONS, ROOK_ID, VILLAGER_ID, characterLook, type CharacterChoice, type CharacterStyleField } from "./characterCatalog";
 import { focusClothingPiece, useCharacterPreviewStore } from "./characterPreviewStore";
@@ -370,7 +371,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
     });
   }
   allItems.layers = Object.values(allItems).flat().filter(item => item.layer);
-  const categoryItems = allItems[category].filter(item => category !== "layers" || item.layer === layer);
+  const categoryItems = catalogOpen ? allItems[category].filter(item => category !== "layers" || item.layer === layer) : [];
   const query = search.trim().toLocaleLowerCase();
   const items = categoryItems.filter(item => (!readyOnly || (!item.unavailable && !item.trial) || item.selected)
     && (!query || `${item.label} ${item.section}`.toLocaleLowerCase().includes(query)));
@@ -443,12 +444,10 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
       </nav>
       <section ref={catalogRef} className="dressing-catalog" id={catalogId} aria-label={currentCategory.label} hidden={!catalogOpen}>
         <header className="dressing-catalog-heading" data-controller-row>
-          <button type="button" className="menu-control" data-wardrobe-back aria-label="Back to wardrobe categories" title="Back to wardrobe categories" onClick={closeCatalog}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m0 0 6-6m-6 6 6 6" /></svg>
-          </button>
+          <MenuBackButton data-wardrobe-back label="Back to wardrobe categories" onClick={closeCatalog} />
           <h3>{currentCategory.label}</h3>
         </header>
-        {category === "saved" ? <SavedOutfits choice={choice} onTryOn={onLoad} onEndPreview={onEndPreview} clearPreview /> : <>
+        {category === "saved" ? <SavedOutfits choice={choice} onTryOn={onLoad} onEndPreview={onEndPreview} clearPreview /> : catalogOpen && <>
         {category === "outfits" && female && <div className="dressing-layer-options" data-controller-row>
           <button type="button" className="menu-control" data-remove-outfit disabled={outfitRemoved} onClick={removeOutfit}>Remove outfit</button>
         </div>}

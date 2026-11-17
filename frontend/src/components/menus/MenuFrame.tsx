@@ -14,24 +14,28 @@ import './sceneTabHeader.css';
 export const MenuFrame=forwardRef<HTMLElement,ComponentPropsWithoutRef<'section'>>(function MenuFrame({className='',children,...props},ref){
  return <section {...props} ref={ref} className={`menu-frame ${className}`}>{children}</section>;
 });
-export function MenuHeaderBack({onClick,disabled,label='Back'}:BackShortcutAction){
- return <button type="button" className="menu-header-back" data-header-back
-  onClick={onClick} disabled={disabled} aria-label={label} title={label}
-  onKeyDown={event=>{if(event.key==='Enter'||event.key===' ')event.stopPropagation();}}>
+export function MenuBackButton({label,children,className='',...props}:ComponentPropsWithoutRef<'button'>&{label:string}){
+ return <button type="button" className={`menu-back-button ${className}`} aria-label={label} title={label} {...props}>
   <MenuIcon name="back"/>
+  {children&&<span>{children}</span>}
  </button>;
+}
+export function MenuHeaderBack({onClick,disabled,label='Back'}:BackShortcutAction){
+ return <MenuBackButton className="menu-header-back" data-header-back label={label}
+  onClick={onClick} disabled={disabled}
+  onKeyDown={event=>{if(event.key==='Enter'||event.key===' ')event.stopPropagation();}}/>;
 }
 export function MenuFrameHeader({
  title,showProgress=false,titleId,compact=false,eyebrow=compact?'':APP_ALPHA_EYEBROW,
- className='',variant='panel',team,children,titleTeam,actions,character,backAction,
+ className='',variant='panel',team,children,titleTeam,titleAction,actions,character,backAction,
 }:{
  title:string;showProgress?:boolean;titleId?:string;compact?:boolean;eyebrow?:string;
- className?:string;variant?:'panel'|'scene';team?:MatchTeam;children?:ReactNode;titleTeam?:MatchTeam;actions?:ReactNode;
+ className?:string;variant?:'panel'|'scene';team?:MatchTeam;children?:ReactNode;titleTeam?:MatchTeam;titleAction?:ReactNode;actions?:ReactNode;
  character?:CharacterHeaderProfileProps;
  backAction:BackShortcutAction;
 }){
  return <header className={`menu-frame-header alpha-header ${compact?'menu-frame-header--compact':''} ${className}`} data-menu-chrome={variant} data-team-heading={team?true:undefined}>
-  <div className="menu-frame-title" data-title-team={titleTeam}><MenuHeaderBack {...backAction}/>{eyebrow&&<small>{eyebrow}</small>}<h1 id={titleId}>{title}</h1></div>
+  <div className="menu-frame-title" data-title-team={titleTeam}><MenuHeaderBack {...backAction}/>{eyebrow&&<small>{eyebrow}</small>}<h1 id={titleId}>{title}</h1>{titleAction}</div>
   {children}
   {team&&<div className="menu-header-team" data-team={team}><strong>{team.toUpperCase()}</strong><span>TEAM</span></div>}
   <div className="menu-header-actions">

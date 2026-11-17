@@ -47,8 +47,8 @@ async function buildCharacterLods(gender) {
   }
 }
 
-// Keep the full original available for the desktop garage. Compact previews
-// share the portrait's reduced textures and retain the original geometry.
+// The full original is a fallback. Garage and portrait previews share the
+// reduced textures while retaining the original female geometry and rig.
 const vesper = findVillagerModel("female");
 if (vesper && !vesper.sourceUrl) {
   const output = vesper.output("full");

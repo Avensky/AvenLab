@@ -14,9 +14,10 @@ test('preview raycasts skip hidden skin and fit branches while preserving the ac
     const { skipHiddenCharacterRaycasts } = await vite.ssrLoadModule('/src/game/characters/characterPreviewRaycast.ts');
     const stage = new Group(), actor = new Group(), tucked = new Group(), over = new Group();
     const geometry = new BufferGeometry();
-    geometry.setAttribute('position', new Float32BufferAttribute([-1, -1, 0, 1, -1, 0, 0, 1, 0], 3));
-    geometry.setAttribute('skinIndex', new Uint16BufferAttribute(12, 4));
-    geometry.setAttribute('skinWeight', new Float32BufferAttribute([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], 4));
+    geometry.setAttribute('position', new Float32BufferAttribute([-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0], 3));
+    geometry.setAttribute('skinIndex', new Uint16BufferAttribute(16, 4));
+    geometry.setAttribute('skinWeight', new Float32BufferAttribute([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], 4));
+    geometry.setIndex([0, 1, 2, 0, 2, 3]);
     const material = new MeshStandardMaterial(), bone = new Bone(), skeleton = new Skeleton([bone]);
     const active = new SkinnedMesh(geometry, material), inactive = new SkinnedMesh(geometry, material);
     const maskedBody = new SkinnedMesh(geometry, material), meshes = [active, inactive, maskedBody];
@@ -28,10 +29,21 @@ test('preview raycasts skip hidden skin and fit branches while preserving the ac
     const getHits = () => ray.intersectObject(actor, true);
     const original = getHits();
     assert.deepEqual(new Set(original.map(hit => hit.object)), new Set(meshes));
+    let sampled = 0;
+    const skinVertex = active.getVertexPosition;
+    active.getVertexPosition = function (index, target) { sampled++; return skinVertex.call(this, index, target); };
     const functions = meshes.map(mesh => mesh.raycast);
     const restore = skipHiddenCharacterRaycasts(actor);
     try {
       assert.deepEqual(getHits(), original.filter(hit => hit.object === active));
+      assert.equal(sampled, 4, 'shared triangle vertices are skinned once');
+      assert.notEqual(active.getVertexPosition, skinVertex);
+      bone.position.z = .2;
+      stage.updateMatrixWorld(true);
+      assert(Math.abs(getHits()[0].point.z - .2) < 1e-6, 'the next ray sees the new bone pose');
+      assert.equal(sampled, 8);
+      bone.position.z = 0;
+      stage.updateMatrixWorld(true);
       tucked.visible = false; over.visible = true;
       assert.deepEqual(getHits(), original.filter(hit => hit.object === inactive));
       stage.visible = false;

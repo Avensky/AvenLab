@@ -218,7 +218,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     };
     await acknowledge(requests[0], choice);
     assert.deepEqual([...document.querySelectorAll('[role=tab]')].map(node => node.textContent), ['Appearance', 'Emotes']);
-    const identityControl = find('.character-identity-nav #character-editor-tab-identity');
+    const identityControl = find('header .menu-frame-title #character-editor-tab-identity');
     assert.equal(identityControl.textContent, 'Identity');
     await move('previous_tab');
     assert.equal(characterViews.at(-1), 'identity');

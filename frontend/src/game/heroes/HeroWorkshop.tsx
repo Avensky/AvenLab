@@ -215,7 +215,10 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
   if(active instanceof HTMLSelectElement&&(action==="left"||action==="right")){
    active.selectedIndex=(active.selectedIndex+(action==="left"?-1:1)+active.options.length)%active.options.length;
    active.dispatchEvent(new Event("change",{bubbles:true}));
-  }else if(root.current)navigateFormRows(root.current,active as HTMLElement,action,remembered.current);
+  }else if(root.current){
+   const enterBody=action==="down"&&active?.closest("[data-controller-header-action]");
+   navigateFormRows(root.current,enterBody?null:active as HTMLElement,action,remembered.current);
+  }
  },tab:direction=>{
   if(useGarageDrive.getState().panelsHidden)return;
   if(characterOpen){
@@ -273,6 +276,10 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  return <section ref={root} className={`game-ui menu-surface alpha-selection hero-selection hero-workshop${panelsHidden?" hero-workshop--hidden":""}${viewingConcepts?" hero-ability-guide":""}`} data-character-page={characterOpen||undefined} inert={overlay!==null} tabIndex={-1} aria-label={characterOpen?"Character":"Heroes garage"} data-controller-form data-controller-rows>
   {characterOpen?characterReady?<SceneTabHeader title="CHARACTER" compact tabs={CHARACTER_HEADER_TABS} activeTab={characterTab}
     character={customizationHeader} backAction={{onClick:back}}
+    titleAction={<div className="character-identity-nav" data-controller-row data-controller-header-action>
+      <button type="button" id="character-editor-tab-identity" className="character-identity-tab" aria-controls="character-editor-panel"
+        aria-current={characterTab==="identity"?"page":undefined} onClick={()=>setCharacterTab("identity")}>Identity</button>
+    </div>}
     onTabChange={id=>setCharacterTab(id as CharacterTab)} idPrefix="character-editor" panelId="character-editor-panel"/>
     :<SelectionHeader title="CHARACTER" compact character={customizationHeader} backAction={{onClick:back}}/>:editing&&definition
     ? <SceneTabHeader
@@ -298,7 +305,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
         idPrefix="hero-workshop-role" panelId="hero-workshop-role-panel"/>}
   <div className="hero-selection-stage hero-workshop-body">
    {characterOpen&&<CharacterPage onPreview={onCharacterPreviewChange} onReady={setCharacterReady} tab={characterTab}
-    beforeClose={beforeCharacterClose} onOpenIdentity={()=>setCharacterTab("identity")}/>}
+    beforeClose={beforeCharacterClose}/>}
    {viewingConcepts&&<div className="hero-guide-scroll" id="hero-workshop-role-panel" role="tabpanel" aria-labelledby="hero-workshop-role-tab-concepts" tabIndex={0}><HeroConceptGallery/></div>}
    {page==="heroes"&&role!=="concepts"&&<div className="hero-picker-stage hero-workshop-picker" data-hero-filter={role} id="hero-workshop-role-panel" role="tabpanel" aria-labelledby={"hero-workshop-role-tab-"+role}>
     <div className="hero-picker-scene hero-picker-preview">
