@@ -284,6 +284,10 @@ body positions unquantized because the face shaders use bind-space positions.
   Authored Laced Bodice and Sweetheart reuse Village waistband samples for the
   same corset, body donor, and skirt surface. Belt selections can reuse those
   samples, while skin-mask reuse follows the visible layers.
+- **Reuse underwear cuts from the same donor.** Classic, Push-up, and briefs
+  each trace fabric and bindings from the intact body. Cache the CPU geometry
+  per donor and style and rebuild it when a contributing attribute or index
+  changes. Each actor owns its render geometry and dye materials.
 - **Fit front and rear straps through motion.** Start the front straps close
   to the chest and seat the rear straps near the shoulders. Favor torso and
   shoulder influence at the roots and reduce upper-arm and twist influence

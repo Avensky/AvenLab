@@ -1237,6 +1237,102 @@ test('the rebuilt Gothic Underbust and standalone bras use the push-up cut on bo
   }
 });
 
+test('wardrobe underwear reuses donor cuts and isolates actor geometry and dyes', async t => {
+  const bytes = await readFile(new URL(bundledDir + 'gothic-02.mobile.glb', publicDir));
+  if (isLfsPointer(bytes)) return skipMissingAsset(t, 'Run git lfs pull to materialize the fitting-room body donor.');
+  const [source, independent] = (await Promise.all([loadGeometry(bytes), loadGeometry(bytes)]))
+    .map(scene => scene.getObjectByName('BODY_WARDROBE'));
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  const actors = [];
+  try {
+    const { prepareWardrobeUnderwear } = await vite.ssrLoadModule('/src/game/characters/wardrobeUnderwear.ts');
+    function prepare(donor, briefs = 'standalone') {
+      const body = donor.clone(false);
+      body.bind(donor.skeleton.clone(), donor.bindMatrix);
+      const position = donor.geometry.getAttribute('position');
+      const getX = position.getX;
+      const ownGetX = Object.getOwnPropertyDescriptor(position, 'getX');
+      let reads = 0;
+      position.getX = function (i) {
+        reads++;
+        return getX.call(this, i);
+      };
+      try {
+        const underwear = prepareWardrobeUnderwear(body, { bra: true, briefs });
+        actors.push({ body, underwear });
+        const pushUp = underwear.setBraStyle('push-up');
+        assert.equal(pushUp?.name, 'wardrobe-underwear-bra-push-up');
+        const pieces = [underwear.bra, pushUp, underwear.briefs];
+        const meshes = pieces.flatMap(piece => {
+          assert.equal(piece?.children.length, 3, 'each cut has fabric and both bindings');
+          return piece.children;
+        });
+        assert(meshes.every(mesh => mesh.skeleton === body.skeleton));
+        return { underwear, meshes, reads };
+      } finally {
+        if (ownGetX) Object.defineProperty(position, 'getX', ownGetX);
+        else delete position.getX;
+      }
+    }
+    function equalCuts(actual, expected) {
+      for (const [i, mesh] of actual.meshes.entries()) {
+        const { geometry } = mesh;
+        const match = expected.meshes[i];
+        assert.equal(mesh.name, match.name);
+        assert.notEqual(geometry, match.geometry);
+        assert.notEqual(geometry.index.array, match.geometry.index.array);
+        assert.deepEqual(geometry.index.array, match.geometry.index.array);
+        assert.deepEqual(Object.keys(geometry.attributes), Object.keys(match.geometry.attributes));
+        for (const [name, attribute] of Object.entries(geometry.attributes)) {
+          const other = match.geometry.getAttribute(name);
+          assert.notEqual(attribute.array, other.array);
+          assert.equal(attribute.itemSize, other.itemSize);
+          assert.equal(attribute.normalized, other.normalized);
+          assert.deepEqual(attribute.array, other.array, `${mesh.name} ${name}`);
+        }
+        assert.notEqual(mesh.material, match.material);
+        assert(mesh.material.color.equals(match.material.color));
+      }
+    }
+    const first = prepare(source);
+    const warm = prepare(source, 'under-skirt');
+    const cold = prepare(independent);
+    assert(first.reads > 1000 && cold.reads > 1000, 'distinct donor geometries require cutting');
+    assert.equal(warm.reads, 0, 'repeated cuts skip reading donor vertices');
+    equalCuts(warm, cold);
+    equalCuts(warm, first);
+
+    const pushUpFabric = warm.meshes.find(mesh => mesh.name === 'wardrobe-underwear-bra-push-up-fabric');
+    const briefsFabric = warm.meshes.find(mesh => mesh.name === 'wardrobe-underwear-briefs-fabric');
+    warm.underwear.applyColors(piece => ({ color: piece === 'bra' ? '#112233' : '#445566', accent: '#778899' }));
+    assert.equal(pushUpFabric.material.color.getHexString(), '112233');
+    assert.equal(briefsFabric.material.color.getHexString(), '445566');
+    equalCuts(first, cold);
+    pushUpFabric.geometry.getAttribute('position').array[0] += 1;
+    pushUpFabric.geometry.index.array[0]++;
+    equalCuts(prepare(source), cold);
+
+    for (const donor of [source, independent]) {
+      const position = donor.geometry.getAttribute('position');
+      for (let i = 0; i < position.count; i++) position.setX(i, position.getX(i) + .02);
+      position.needsUpdate = true;
+    }
+    const updated = prepare(source);
+    assert(updated.reads > 1000, 'changing tracked donor positions requires cutting again');
+    assert.notDeepEqual(updated.meshes[0].geometry.getAttribute('position').array, cold.meshes[0].geometry.getAttribute('position').array);
+    equalCuts(updated, prepare(independent));
+    const reused = prepare(source);
+    assert.equal(reused.reads, 0);
+    equalCuts(reused, updated);
+  } finally {
+    for (const { body, underwear } of actors) {
+      underwear.dispose();
+      body.skeleton.dispose();
+    }
+    await vite.close();
+  }
+});
+
 test('rebuilt Tucked hardware clears the fitted skirt waist', async t => {
   const rebuilt = `${garmentDir}corsets/gothic-underbust-vest-tucked.garage.glb`;
   const read = path => readFile(new URL(path, publicDir));

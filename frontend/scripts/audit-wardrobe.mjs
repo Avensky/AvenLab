@@ -33,7 +33,7 @@ const fastSuites = [
 ];
 const realAssetTests = [
   'the authored Sweetheart', 'standalone wardrobe exports', 'standalone corsets and a selected skirt',
-  'the rebuilt Gothic Underbust', 'rebuilt Tucked hardware', 'rebuilt Laced Bodice',
+  'the rebuilt Gothic Underbust', 'wardrobe underwear reuses donor cuts', 'rebuilt Tucked hardware', 'rebuilt Laced Bodice',
   'the Village skirt and belt cover', 'Ruffled Corset', 'Laced Bodice straps',
 ];
 
