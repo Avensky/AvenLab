@@ -138,7 +138,7 @@ test("the wardrobe resolver requests donors and authored tiers in order", async 
     const { resolveWardrobePreview } = await vite.ssrLoadModule("/src/game/characters/wardrobePreviewAssets.ts");
     const { characterLook, DEFAULT_CHARACTER } = await vite.ssrLoadModule("/src/game/characters/characterCatalog.ts");
     const { getWardrobeGarment } = await vite.ssrLoadModule("/src/game/characters/wardrobeGarments.ts");
-    const { FITTING_BODY_URL } = await vite.ssrLoadModule("/src/game/characters/standaloneCorset.ts");
+    const { WARDROBE_BODY_DONOR_URLS: [FITTING_BODY_URL] } = await vite.ssrLoadModule("/src/game/characters/wardrobeBody.ts");
     const { makeAssetAvailable, makeAuthoredCorset } = await vite.ssrLoadModule("virtual:wardrobe-preview");
     const village = makeAssetAvailable("village", undefined, "cut");
     const defaultRequest = { preferredUrl: "village", villageKind: "portrait", kind: "garage" };

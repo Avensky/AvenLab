@@ -1,5 +1,10 @@
 import { SkinnedMesh, type Object3D, type Skeleton } from "three";
 
+export const WARDROBE_BODY_DONOR_URLS = [
+  "/models/characters/female/wardrobe/vesper-body.glb",
+  "/models/characters/wardrobe/gothic-02.mobile.glb",
+] as const;
+
 function isBoundSkin(body: Object3D | undefined): body is SkinnedMesh {
   return body instanceof SkinnedMesh && Boolean(body.skeleton?.bones.length);
 }

@@ -1,17 +1,34 @@
 import {
   ACESFilmicToneMapping, Box3, DirectionalLight, HemisphereLight, LoadingManager, OrthographicCamera,
-  Scene, Vector3, WebGLRenderer,
+  Scene, Vector3, WebGLRenderer, type Object3D,
 } from "three";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { VILLAGER_ID } from "./characterCatalog";
 import type { CharacterPortraitJob, CharacterPortraitResult } from "./characterPortraitJob";
-import { FITTING_BODY_URL } from "./standaloneCorset";
 import { prepareStylizedDriver } from "./stylizedDriverModel";
 import { applyVillagerLook, prepareVillager } from "./villagerModel";
+import { getWardrobeActorBody, getWardrobeBodyDonor, WARDROBE_BODY_DONOR_URLS } from "./wardrobeBody";
 
 const PORTRAIT_SIZE = 192;
+
+async function loadPortraitOutfit(
+  source: Object3D, dress: NonNullable<CharacterPortraitJob["dress"]>, loadScene: (url: string) => Promise<Object3D>,
+) {
+  const skeleton = getWardrobeActorBody(source)?.skeleton;
+  if (!skeleton) return;
+  const [fittingBodyUrl, legacyBodyUrl] = WARDROBE_BODY_DONOR_URLS;
+  const loadDonor = (url: string) => loadScene(url).then(scene => getWardrobeBodyDonor(scene, skeleton), () => undefined);
+  const loaded = await Promise.all([
+    loadScene(dress.url),
+    getWardrobeBodyDonor(source, skeleton) ?? loadDonor(fittingBodyUrl),
+  ]).catch(() => undefined);
+  if (!loaded) return;
+  const [garment, primaryDonor] = loaded;
+  const body = primaryDonor ?? await loadDonor(legacyBodyUrl);
+  if (body) return { garment: { item: dress.item, scene: garment }, body };
+}
 
 async function renderPortrait({ look, modelUrl, dress }: CharacterPortraitJob) {
   if (typeof OffscreenCanvas === "undefined") throw Error("Offscreen character portraits are unavailable.");
@@ -26,10 +43,7 @@ async function renderPortrait({ look, modelUrl, dress }: CharacterPortraitJob) {
     const source = modelUrl ? await loadScene(modelUrl).catch(() => undefined) : undefined;
     if (!source && look.character.id === VILLAGER_ID) throw Error("The character model is unavailable.");
 
-    const outfit = source && dress ? await Promise.all([loadScene(dress.url), loadScene(FITTING_BODY_URL)]).then(
-      ([garment, body]) => ({ garment: { item: dress.item, scene: garment }, body: body.getObjectByName("BODY_WARDROBE") }),
-      () => undefined,
-    ) : undefined;
+    const outfit = source && dress ? await loadPortraitOutfit(source, dress, loadScene) : undefined;
     const villager = source && prepareVillager(source, {
       female: look.female,
       garments: outfit && [outfit.garment],

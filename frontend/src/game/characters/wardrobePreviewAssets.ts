@@ -1,12 +1,12 @@
 import type { Object3D } from "three";
 import type { CharacterLook } from "./characterCatalog";
-import { getWardrobeActorBody, getWardrobeBodyDonor } from "./wardrobeBody";
-import { FITTING_BODY_URL, hasAuthoredLacedBodiceFit, rebuiltUnderbustPart } from "./standaloneCorset";
+import { getWardrobeActorBody, getWardrobeBodyDonor, WARDROBE_BODY_DONOR_URLS } from "./wardrobeBody";
+import { hasAuthoredLacedBodiceFit, rebuiltUnderbustPart } from "./standaloneCorset";
 import { corsetModelUrls, corsetRenderChoice, isRebuiltHighCollarUrl, isRebuiltLacedBodiceUrl, isRebuiltUnderbustUrl } from "./wardrobe";
 import { removalNeedsVillagerBody, replacesVillagerBody, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
 import { getWardrobeGarment, hasWardrobeRevisionMesh, wardrobeGarmentModelUrl } from "./wardrobeGarments";
 
-const LEGACY_FITTING_BODY_URL = "/models/characters/wardrobe/gothic-02.mobile.glb";
+const [fittingBodyUrl, legacyBodyUrl] = WARDROBE_BODY_DONOR_URLS;
 
 export type WardrobeAssetTier = "portrait" | "garage";
 /** A missing entry is pending. A null entry is a settled failure. */
@@ -68,17 +68,17 @@ export function resolveWardrobePreview({
   const bundledBody = needsBody && bundledCorset ? compatibleBody(loadedCorset) : undefined;
   // Wait for a pending bundle that might supply its own donor.
   const needsSeparateBody = needsBody && Boolean(skeleton) && !bundledBody && !(bundledCorset && loadedCorset === undefined);
-  const fittingBodySource = sources[FITTING_BODY_URL];
+  const fittingBodySource = sources[fittingBodyUrl];
   const fittingBody = needsSeparateBody ? compatibleBody(fittingBodySource) : undefined;
   const bodyUrl = fittingBodySource !== undefined && !fittingBody
-    ? LEGACY_FITTING_BODY_URL : FITTING_BODY_URL;
+    ? legacyBodyUrl : fittingBodyUrl;
   const urls = new Set([url, ...requested.map(item => item.url)]);
   if (needsSeparateBody) urls.add(bodyUrl);
   if (corsetUrl) urls.add(corsetUrl);
   const assetUrls = [...urls];
   const pendingUrls = assetUrls.filter(asset => sources[asset] === undefined);
   const garmentBody = bundledBody ?? (needsSeparateBody
-    ? (bodyUrl === FITTING_BODY_URL ? fittingBody : compatibleBody(sources[bodyUrl])) : undefined);
+    ? (bodyUrl === fittingBodyUrl ? fittingBody : compatibleBody(sources[bodyUrl])) : undefined);
   const unavailable = (corsetUrls.length > 0 && !corsetUrl) || assetUrls.some(asset => sources[asset] === null)
     || (needsBody && !garmentBody && (!skeleton || (needsSeparateBody && sources[bodyUrl] !== undefined)));
 

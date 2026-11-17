@@ -227,7 +227,10 @@ checks in `wardrobeBody.ts`. A full-skin donor needs indexed geometry, skin
 attributes, and the same ordered joints as the live character. A compatible
 bundle can supply the donor. Otherwise the resolver tries the dedicated donor
 and then the legacy Sweetheart bundle to restore the skin the stock outfit
-cuts away. From the repository root, run
+cuts away. Dress portraits use the same donor order and rig checks. The
+portrait worker uses a compatible full body already present on the actor,
+and renders the stock outfit if the dress or a compatible body is unavailable.
+From the repository root, run
 `node frontend/scripts/build-wardrobe-pieces.mjs` to regenerate the extracted
 pieces and donor.
 

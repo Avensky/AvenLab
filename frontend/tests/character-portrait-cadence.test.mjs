@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { createServer } from 'vite';
 import { act, createElement as h } from 'react';
@@ -213,10 +214,48 @@ test('portraits create one background job for each quiet, visible main-menu requ
 test('portrait worker isolates GLTF loading and retains its model fallbacks', { timeout: 20000 }, async () => {
   const dom = new JSDOM();
   const NativeRequest = globalThis.Request;
-  const syntheticModel = JSON.stringify({
-    asset: { version: '2.0' }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ name: 'head' }],
+  const nativeFetch = globalThis.fetch;
+  const rig = JSON.parse(await readFile(new URL('./fixtures/villager-female-rig.json', import.meta.url), 'utf8'));
+  function skinnedModel(name) {
+    const attributes = [
+      { data: new Float32Array([-.2, 1, 0, .2, 1, 0, 0, 1.4, 0]), componentType: 5126, type: 'VEC3',
+        min: [-.2, 1, 0], max: [.2, 1.4, 0] },
+      { data: new Uint8Array(12), componentType: 5121, type: 'VEC4' },
+      { data: new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]), componentType: 5126, type: 'VEC4' },
+      { data: new Uint16Array([0, 1, 2]), componentType: 5123, type: 'SCALAR' },
+    ];
+    const bytes = Buffer.concat(attributes.map(({ data }) => Buffer.from(data.buffer)));
+    let byteOffset = 0;
+    const bufferViews = attributes.map(({ data }) => {
+      const view = { buffer: 0, byteOffset, byteLength: data.byteLength };
+      byteOffset += data.byteLength;
+      return view;
+    });
+    return JSON.stringify({
+      ...rig,
+      scenes: [{ nodes: [...rig.scenes[0].nodes, rig.nodes.length] }],
+      nodes: [...rig.nodes, { name, mesh: 0, skin: 0 }],
+      meshes: [{ primitives: [{ attributes: { POSITION: 0, JOINTS_0: 1, WEIGHTS_0: 2 }, indices: 3 }] }],
+      buffers: [{ uri: 'data:application/octet-stream;base64,' + bytes.toString('base64'), byteLength: bytes.length }],
+      bufferViews,
+      accessors: attributes.map(({ data, ...accessor }, bufferView) => ({ ...accessor, bufferView, count: 3 })),
+    });
+  }
+  const fullBody = skinnedModel('BODY_WARDROBE');
+  const cutBody = skinnedModel('BODY_OUTFIT_CUT');
+  const dressModel = skinnedModel('CLOTH_DRESS');
+  const invalidBody = JSON.stringify({
+    asset: { version: '2.0' }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ name: 'BODY_WARDROBE' }],
   });
-  let handler, response, modeLoadStarts = 0;
+  const dedicated = '/models/characters/female/wardrobe/vesper-body.glb';
+  const legacy = '/models/characters/wardrobe/gothic-02.mobile.glb';
+  const files = new Map([
+    ['/full-driver.gltf', fullBody],
+    ['/cut-driver.gltf', cutBody],
+    ['/dress.gltf', dressModel],
+  ]);
+  const requests = [];
+  let handler, response, deferredDonor, modeLoadStarts = 0;
   const restore = installGlobals({
     ProgressEvent: dom.window.ProgressEvent,
     Request: class extends NativeRequest {
@@ -224,8 +263,14 @@ test('portrait worker isolates GLTF loading and retains its model fallbacks', { 
         super(typeof url === 'string' && url.startsWith('/') ? 'http://localhost' + url : url, options);
       }
     },
-    fetch: async request => request.url.endsWith('/driver.gltf')
-      ? new Response(syntheticModel) : new Response(null, { status: 404 }),
+    fetch: async request => {
+      if (request.url.startsWith('data:')) return nativeFetch(request);
+      const { pathname } = new URL(request.url);
+      requests.push(pathname);
+      if (pathname === dedicated && deferredDonor) return deferredDonor.promise;
+      const file = files.get(pathname);
+      return file ? new Response(file) : new Response(null, { status: 404 });
+    },
     self: {
       addEventListener(type, callback, options) {
         assert.equal(type, 'message');
@@ -259,12 +304,16 @@ test('portrait worker isolates GLTF loading and retains its model fallbacks', { 
         load(id) {
           if (id === '\0' + rendererMock) return `
             export * from 'three';
-            export const renderedModels = [];
+            export const renderedModels = [], renderedDresses = [];
             export class WebGLRenderer {
               constructor({ canvas }) { if (!(canvas instanceof OffscreenCanvas)) throw Error('Missing offscreen canvas'); }
               setSize(width, height, updateStyle) { if (updateStyle) throw Error('An offscreen canvas has no style'); }
               setClearColor() {}
-              render(scene) { renderedModels.push(scene.children[0].name); }
+              render(scene) {
+                const model = scene.children[0];
+                renderedModels.push(model.name);
+                renderedDresses.push(model.getObjectByName('wardrobe-linen-nightgown')?.visible === true);
+              }
               dispose() {}
               forceContextLoss() {}
             }
@@ -273,8 +322,9 @@ test('portrait worker isolates GLTF loading and retains its model fallbacks', { 
       }],
     });
     const { characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { getWardrobeGarment } = await vite.ssrLoadModule('/src/game/characters/wardrobeGarments.ts');
     await vite.ssrLoadModule('/src/game/characters/characterPortrait.worker.ts');
-    const { renderedModels } = await vite.ssrLoadModule(rendererMock);
+    const { renderedModels, renderedDresses } = await vite.ssrLoadModule(rendererMock);
     const rook = characterLook({ id: 'jules-okafor', outfit: 'night-run' });
     const vega = characterLook({ id: 'mara-vega', outfit: 'linen-nightgown' });
 
@@ -285,12 +335,46 @@ test('portrait worker isolates GLTF loading and retains its model fallbacks', { 
     await handler({ data: { look: vega, modelUrl: 'http://localhost/missing.gltf' } });
     assert.match(response.error, /character model is unavailable/, 'a missing Vega GLTF shows the neutral tile');
 
-    await handler({ data: {
-      look: vega, modelUrl: 'http://localhost/driver.gltf',
-      dress: { url: 'http://localhost/missing-dress.gltf', item: { id: 'linen-nightgown' } },
-    } });
-    assert.equal(response.image?.type, 'image/webp', response.error);
-    assert.equal(renderedModels.at(-1), 'garage-villager-female', 'a missing dress uses the stock character');
+    const dress = { url: 'http://localhost/dress.gltf', item: getWardrobeGarment('linen-nightgown') };
+    for (const { label, actor, primary, fallback, donorRequests, fitted } of [
+      { label: 'full actor uses its own skin', actor: 'full-driver.gltf', donorRequests: [], fitted: true },
+      { label: 'dedicated donor is usable', primary: fullBody, fallback: fullBody, donorRequests: [dedicated], fitted: true },
+      { label: 'missing dedicated donor falls back', fallback: fullBody, donorRequests: [dedicated, legacy], fitted: true },
+      { label: 'malformed dedicated donor falls back', primary: invalidBody, fallback: fullBody,
+        donorRequests: [dedicated, legacy], fitted: true },
+      { label: 'exhausted donors retain the stock look', primary: invalidBody, donorRequests: [dedicated, legacy], fitted: false },
+    ]) {
+      requests.length = 0;
+      files.set(dedicated, primary);
+      files.set(legacy, fallback);
+      await handler({ data: { look: vega, modelUrl: 'http://localhost/' + (actor ?? 'cut-driver.gltf'), dress } });
+      assert.equal(response.image?.type, 'image/webp', response.error ?? label);
+      assert.deepEqual(requests.filter(url => url === dedicated || url === legacy), donorRequests, label);
+      assert.equal(renderedDresses.at(-1), fitted, label);
+    }
+
+    requests.length = 0;
+    deferredDonor = Promise.withResolvers();
+    let deadline;
+    try {
+      await Promise.race([
+        handler({ data: {
+          look: vega, modelUrl: 'http://localhost/cut-driver.gltf',
+          dress: { ...dress, url: 'http://localhost/missing-dress.gltf' },
+        } }),
+        new Promise((_, reject) => {
+          deadline = setTimeout(() => reject(Error('A missing dress waited for a pending donor')), 2000);
+        }),
+      ]);
+      assert.equal(response.image?.type, 'image/webp', response.error);
+      assert.equal(renderedModels.at(-1), 'garage-villager-female', 'a missing dress uses the stock character');
+      assert.equal(renderedDresses.at(-1), false);
+      assert.deepEqual(requests.filter(url => url === dedicated || url === legacy), [dedicated],
+        'a missing dress does not request the legacy donor');
+    } finally {
+      clearTimeout(deadline);
+      deferredDonor.resolve(new Response(null, { status: 404 }));
+    }
     assert.equal(modeLoadStarts, 0, 'portrait assets never set the shared mode loading state');
   } finally {
     await vite?.close();

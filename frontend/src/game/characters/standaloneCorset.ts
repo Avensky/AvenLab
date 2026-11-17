@@ -9,8 +9,6 @@ import { hasAuthoredSweetheartFit } from "./sweetheartCorset";
 import type { OverSkirtEase } from "./overSkirtEase";
 import type { MeshBVH } from "three-mesh-bvh";
 
-export const FITTING_BODY_URL = "/models/characters/female/wardrobe/vesper-body.glb";
-
 function bindCorsetPart(part: Object3D, skeleton: Skeleton): Object3D | undefined {
   if (part instanceof SkinnedMesh) return bindWardrobeGarmentMesh(part, skeleton);
   if (part instanceof Mesh) return;
