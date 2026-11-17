@@ -51,8 +51,11 @@ export function prepareWardrobeLining(root: Object3D) {
       disposeFit = bodice?.disposeShell;
       break;
     }
-    case "02":
-      return rebuildSweetheartCorset(root, body.geometry);
+    case "02": {
+      const baked = [corset, root.getObjectByName("CLOTH_CORSET_OVER")].every(part =>
+        part?.userData.authoredSweetheartVersion === 1);
+      return baked ? undefined : rebuildSweetheartCorset(root, body.geometry);
+    }
     case "04": {
       const baked = [corset, root.getObjectByName("CLOTH_CORSET_OVER")].every(part =>
         part?.userData.underbustFitVersion === UNDERBUST_FIT_VERSION);
