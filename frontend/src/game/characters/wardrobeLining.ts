@@ -1,7 +1,7 @@
 import { DoubleSide, MathUtils, Mesh, MeshStandardMaterial, SkinnedMesh, type BufferGeometry, type Object3D } from "three";
 import { fitHighCollarShoulders, fitHighCollarSurface } from "./highCollarFit";
 import { fitLacedBodice } from "./lacedStrapFit";
-import { rebuildSweetheartCorset } from "./sweetheartCorset";
+import { hasAuthoredSweetheartFit, rebuildSweetheartCorset } from "./sweetheartCorset";
 import { prepareUnderbustColors } from "./underbustColors";
 import { fitUnderbustVest, UNDERBUST_FIT_VERSION } from "./underbustFit";
 import { fitWardrobeSurface } from "./wardrobeSurface";
@@ -32,6 +32,8 @@ export function prepareWardrobeLining(root: Object3D) {
     if (typeof role === "string" && role.startsWith("shirt-")) retiredShirts.push(part);
   });
   for (const shirt of retiredShirts) shirt.removeFromParent();
+  // The source-fit ruffled corset already has its own skinned lining.
+  if (corset.userData.ruffledSourceFit === true) return;
   let fabric: MeshStandardMaterial | undefined;
   corset.traverse(part => {
     if (fabric || !(part instanceof Mesh)) return;
@@ -52,7 +54,7 @@ export function prepareWardrobeLining(root: Object3D) {
       break;
     }
     case "02":
-      return rebuildSweetheartCorset(root, body.geometry);
+      return hasAuthoredSweetheartFit(root) ? undefined : rebuildSweetheartCorset(root, body.geometry);
     case "04": {
       const baked = [corset, root.getObjectByName("CLOTH_CORSET_OVER")].every(part =>
         part?.userData.underbustFitVersion === UNDERBUST_FIT_VERSION);

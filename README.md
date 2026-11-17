@@ -2,6 +2,8 @@
 
 Start with [Project guide](docs/PROJECT_GUIDE.md), [repo audit](docs/REPO_AUDIT.md), and the README in the feature you want to change. State owners and public index.ts entry points are documented under [frontend/src/store](frontend/src/store/README.md).
 
+For character assets, start with the [wardrobe authoring and validation guide](frontend/src/game/characters/README.md#garment-authoring-and-validation) and the [shared wardrobe catalog](packages/wardrobe-catalog/README.md). Run `npm --prefix frontend run audit:wardrobe` for the fast checks or add `-- --full` to test installed GLBs and animated fit.
+
 # AvensLab
 
 ```t

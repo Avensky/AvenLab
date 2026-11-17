@@ -16,7 +16,7 @@ mod support_spray;
 mod support;
 // Outer tick owner: input -> physics substeps -> one completed network frame.
 // Do not apply forces, smooth steering or clear debug data again in this file.
-mod aven_tire;
+use avenlab_physics::tire as aven_tire;
 mod cockpit;
 mod net;
 mod outbox;
@@ -28,10 +28,10 @@ mod physics;
 mod powertrain;
 mod spawn;
 mod state;
-mod suspension_contact;
+use avenlab_physics::suspension as suspension_contact;
 mod vehicle_debug;
 mod vehicle_forces;
-mod tracked_drive;
+use avenlab_physics::tracked_drive;
 mod vehicle_setup;
 mod vehicle_state;
 mod vehicle_tuning;

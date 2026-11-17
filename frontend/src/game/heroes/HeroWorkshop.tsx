@@ -1,5 +1,6 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState,type CSSProperties,type ReactNode} from "react";
 import {VehicleMods} from "./VehicleMods";
+import {ColorSwatchButton} from "../../components/menus/ColorSwatch";
 import {MenuIcon} from "../../components/menus/MenuIcon";
 import {SceneTabHeader} from "../../components/menus/SceneTabHeader";
 import {HEROES,useAlphaStore,type HeroFilter} from "../../store/alpha/alphaStore";
@@ -46,7 +47,6 @@ const NO_VEHICLE_MOD_STAGES:Record<string,number>={};
 type WorkshopFilter=HeroFilter|"concepts";
 type WorkshopPage="heroes"|"garage"|"character";
 const WORKSHOP_TABS=[...heroRoleHeaderTabs(true),HERO_CONCEPT_TAB];
-const CHARACTER_HEADER_TABS=CHARACTER_TABS.filter(tab=>tab.id!=="identity");
 const MARINE_LAMPS = [
  {id:"navigation", label:"Running lights"},
  {id:"searchlights", label:"Searchlights"},
@@ -147,7 +147,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  useLayoutEffect(()=>{onCharacterViewChange?.(characterOpen?characterTab:null);},[characterOpen,characterTab,onCharacterViewChange]);
  useLayoutEffect(()=>()=>onCharacterViewChange?.(null),[onCharacterViewChange]);
  useEffect(()=>{
-  const target=characterOpen?root.current?.querySelector<HTMLElement>(characterReady?'[role=tab][aria-selected="true"], .character-identity-nav [aria-current="page"]':'[data-character-option][aria-pressed="true"]')
+  const target=characterOpen?root.current?.querySelector<HTMLElement>(characterReady?'[role=tab][aria-selected="true"]':'[data-character-option][aria-pressed="true"]')
    : viewingConcepts?root.current?.querySelector<HTMLElement>(".hero-guide-scroll")
    : editing?root.current?.querySelector<HTMLElement>("[role=tab][aria-selected=true]"):root.current;
   target?.focus({preventScroll:true});
@@ -215,7 +215,10 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
   if(active instanceof HTMLSelectElement&&(action==="left"||action==="right")){
    active.selectedIndex=(active.selectedIndex+(action==="left"?-1:1)+active.options.length)%active.options.length;
    active.dispatchEvent(new Event("change",{bubbles:true}));
-  }else if(root.current)navigateFormRows(root.current,active as HTMLElement,action,remembered.current);
+  }else if(root.current){
+   const enterBody=action==="down"&&active?.closest("[data-controller-header-action]");
+   navigateFormRows(root.current,enterBody?null:active as HTMLElement,action,remembered.current);
+  }
  },tab:direction=>{
   if(useGarageDrive.getState().panelsHidden)return;
   if(characterOpen){
@@ -271,7 +274,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  </button>;
  const customizationHeader={onOpen:openCharacter,leadingAction:vehicleAction,active:characterOpen};
  return <section ref={root} className={`game-ui menu-surface alpha-selection hero-selection hero-workshop${panelsHidden?" hero-workshop--hidden":""}${viewingConcepts?" hero-ability-guide":""}`} data-character-page={characterOpen||undefined} inert={overlay!==null} tabIndex={-1} aria-label={characterOpen?"Character":"Heroes garage"} data-controller-form data-controller-rows>
-  {characterOpen?characterReady?<SceneTabHeader title="CHARACTER" compact tabs={CHARACTER_HEADER_TABS} activeTab={characterTab}
+  {characterOpen?characterReady?<SceneTabHeader title="CHARACTER" compact tabs={CHARACTER_TABS} activeTab={characterTab}
     character={customizationHeader} backAction={{onClick:back}}
     onTabChange={id=>setCharacterTab(id as CharacterTab)} idPrefix="character-editor" panelId="character-editor-panel"/>
     :<SelectionHeader title="CHARACTER" compact character={customizationHeader} backAction={{onClick:back}}/>:editing&&definition
@@ -298,7 +301,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
         idPrefix="hero-workshop-role" panelId="hero-workshop-role-panel"/>}
   <div className="hero-selection-stage hero-workshop-body">
    {characterOpen&&<CharacterPage onPreview={onCharacterPreviewChange} onReady={setCharacterReady} tab={characterTab}
-    beforeClose={beforeCharacterClose} onOpenIdentity={()=>setCharacterTab("identity")}/>}
+    beforeClose={beforeCharacterClose}/>}
    {viewingConcepts&&<div className="hero-guide-scroll" id="hero-workshop-role-panel" role="tabpanel" aria-labelledby="hero-workshop-role-tab-concepts" tabIndex={0}><HeroConceptGallery/></div>}
    {page==="heroes"&&role!=="concepts"&&<div className="hero-picker-stage hero-workshop-picker" data-hero-filter={role} id="hero-workshop-role-panel" role="tabpanel" aria-labelledby={"hero-workshop-role-tab-"+role}>
     <div className="hero-picker-scene hero-picker-preview">
@@ -321,9 +324,9 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
      <section className="vehicle-studio-card">
       <header><small>EXTERIOR COLOR</small><h3>{marine?"Hull paint":"Body paint"}</h3></header>
       <div className="vehicle-studio-swatches" aria-label="Paint presets">
-       {paintPresets.map(preset=><button key={preset.label} type="button" className="vehicle-studio-swatch"
-        style={{"--paint-swatch":preset.color==="factory"?"#aeb7c0":preset.color} as CSSProperties}
-        aria-label={`Paint: ${preset.label}`} title={preset.label} aria-pressed={appearance.body===preset.color}
+       {paintPresets.map(preset=><ColorSwatchButton key={preset.label} className="vehicle-studio-swatch"
+        color={preset.color==="factory"?"#aeb7c0":preset.color}
+        label={`Paint: ${preset.label}`} title={preset.label} pressed={appearance.body===preset.color}
         disabled={!owner} onClick={()=>edit({body:preset.color})}/>)}
       </div>
       <label>Custom paint<input type="color" aria-label="Custom hero body color" disabled={!owner}

@@ -1,4 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { PreviewToolButton } from "./PreviewToolButton";
+import { PreviewToolIcon } from "./PreviewToolIcon";
 
 export function PreviewControlDisclosure({ label, icon, children, panelClass = "fitting-camera-panel" }: {
   label: string;
@@ -46,9 +48,14 @@ export function PreviewControlDisclosure({ label, icon, children, panelClass = "
   }, [open]);
 
   return <div ref={container} className="preview-control-disclosure" data-controller-row>
-    <button ref={toggle} type="button" className="menu-control fitting-tool-icon" aria-label={label} title={label}
+    <PreviewToolButton ref={toggle} label={label}
       aria-controls={id} aria-expanded={open}
-      onClick={event => { focusPanel.current = event.detail === 0; setOpen(previous => !previous); }}>{icon}</button>
+      onClick={event => { focusPanel.current = event.detail === 0; setOpen(previous => !previous); }}>{icon}</PreviewToolButton>
     <div ref={panel} className={panelClass} id={id} hidden={!open}>{children}</div>
   </div>;
+}
+
+export function PreviewCameraAngles({ children }: { children: ReactNode }) {
+  return <PreviewControlDisclosure label="Camera angles" icon={<PreviewToolIcon icon="camera" />}
+    panelClass="fitting-camera-panel fitting-camera-angles">{children}</PreviewControlDisclosure>;
 }

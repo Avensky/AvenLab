@@ -592,6 +592,8 @@ async fn character_equip_validates_the_choice_and_persists_it_on_the_profile() {
     styled["appearance"] = json!({
         "hair": "cropped", "hair_color": "copper", "skin": "warm",
         "headwear": "hat", "color": "#101015", "accent": "#ff2d95",
+        "item_colors": { "gothic-03:corset": {"panel": "#123456", "laces": "#abcdef"},
+            "gothic-05:corset": {"panel": "#225544", "laces": "#ffeebb", "lining": "#9999aa", "hardware": "#887766"} },
     });
     let mut invalid_style = styled.clone();
     invalid_style["appearance"]["hair"] = json!("missing");
@@ -661,6 +663,8 @@ async fn character_outfits_save_validated_fitting_room_combinations_to_the_ownin
         "removedClothing": ["shoes", "bonnet-bow"],
         "appearance": {"hair": "cropped", "hair_color": "copper", "skin": "warm", "headwear": "hat", "color": "original",
             "item_colors": {"top-02:shirt": {"color": "#123456"}, "gothic-skirt-04:skirt": {"accent": "#abcdef"},
+                "gothic-03:corset": {"panel": "#123456", "laces": "#abcdef"},
+                "gothic-05:corset": {"panel": "#225544", "laces": "#ffeebb", "lining": "#9999aa", "hardware": "#887766"},
                 "underwear:bra": {"color": "#223355"}, "underwear:briefs": {"accent": "#bbccdd"}}},
     });
     let save = |name: &str, character: &Value| json!({
@@ -674,7 +678,17 @@ async fn character_outfits_save_validated_fitting_room_combinations_to_the_ownin
     assert_eq!(saved["character_presets"], json!({}));
     assert_eq!(saved["cosmetics_revision"], 2);
     assert_eq!(s.handle(&player, save("Gothic layers", &outfit)).await.unwrap(), saved);
+    let other_character = json!({"id": "jules-okafor", "outfit": "race-crew"});
+    assert_eq!(s.handle(&player, save("Gothic layers", &other_character)).await.unwrap_err(),
+        "That name belongs to another character's outfit.");
+    assert_eq!(s.handle(&player, save("Gothic layers", &outfit)).await.unwrap(), saved);
     assert!(s.handle(&player, json!({"action": "character_equip", "character": outfit})).await.is_err());
+    for (key, field, value) in [("gothic-03:corset", "hardware", "#123456"), ("gothic-05:corset", "closure", "#123456"),
+        ("gothic-05:skirt", "lining", "#123456"), ("gothic-05:corset", "lining", "invalid")] {
+        let mut invalid = outfit.clone();
+        invalid["appearance"]["item_colors"][key][field] = json!(value);
+        assert!(s.handle(&player, save("Gothic layers", &invalid)).await.is_err());
+    }
     let mut hidden_only = equipped.clone();
     hidden_only["removedClothing"] = json!(["shoes"]);
     assert!(s.handle(&player, json!({"action": "character_equip", "character": hidden_only})).await.is_err());
@@ -709,15 +723,28 @@ async fn character_outfits_save_validated_fitting_room_combinations_to_the_ownin
     let sleeveless = json!({"id": "mara-vega", "outfit": "shop-crew", "garments": {"dress": "medieval-kaftan-01"}, "removedClothing": ["sleeves"]});
     let extra = s.handle(&player, save("Sleeveless kaftan", &sleeveless)).await.unwrap();
     assert_eq!(extra["character_outfits"]["Sleeveless kaftan"], sleeveless);
+    let push_up = json!({
+        "id": "mara-vega", "outfit": "shop-crew", "removedClothing": ["top", "corset"], "bra": true,
+        "appearance": {
+            "hair": "natural", "hair_color": "original", "skin": "original",
+            "headwear": "hat", "color": "original", "bra_style": "push-up",
+            "item_colors": {"underwear:bra": {"color": "#224488"}},
+        },
+    });
+    let mut invalid_style = push_up.clone();
+    invalid_style["appearance"]["bra_style"] = json!("unknown");
+    assert!(s.handle(&player, save("Push-up", &invalid_style)).await.is_err());
+    let with_bra = s.handle(&player, save("Push-up", &push_up)).await.unwrap();
+    assert_eq!(with_bra["character_outfits"]["Push-up"], push_up);
     let remove = json!({"action": "character_outfit_delete", "name": "Gothic layers"});
     assert_eq!(s.handle(&peer, remove.clone()).await.unwrap()["character_outfits"], json!({}));
 
     let reloaded: SocialData = serde_json::from_slice(&tokio::fs::read(&s.path).await.unwrap()).unwrap();
     let progression = reloaded.profiles[profile].progression.view();
-    assert_eq!(progression["character_outfits"], extra["character_outfits"]);
+    assert_eq!(progression["character_outfits"], with_bra["character_outfits"]);
     assert_eq!(progression["character"], equipped);
     let deleted = s.handle(&player, remove).await.unwrap();
-    assert_eq!(deleted["character_outfits"], json!({"Sleeveless kaftan": sleeveless}));
+    assert_eq!(deleted["character_outfits"], json!({"Sleeveless kaftan": sleeveless, "Push-up": push_up}));
     let reloaded: SocialData = serde_json::from_slice(&tokio::fs::read(&s.path).await.unwrap()).unwrap();
     assert_eq!(reloaded.profiles[profile].progression.view()["character_outfits"], deleted["character_outfits"]);
     cleanup(s).await;

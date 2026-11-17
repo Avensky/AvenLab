@@ -30,6 +30,7 @@ test('portraits stay available outside Heroes without character editing controls
     const { EditorDriveBar } = await load('worldBuilder/vehicleEditor/EditorDriveBar.tsx');
     const { CharacterHeaderProfile } = await load('game/characters/CharacterHeaderProfile.tsx');
     const { DEFAULT_CHARACTER } = await load('game/characters/characterCatalog.ts');
+    const { writeLocalCharacter } = await load('game/characters/localOutfits.ts');
     const { useUIStore: ui } = await load('store/menus/uiStore.ts');
     const { useSocialStore: social } = await load('store/social/socialStore.ts');
     const { useNetworkStore } = await load('store/session/networkStore.ts');
@@ -72,12 +73,16 @@ test('portraits stay available outside Heroes without character editing controls
     const onOpen = () => assert.fail('an outside header must never open the character editor');
     await show('mode_select', h(CharacterHeaderProfile, { onOpen }));
     assertReadOnlyPortrait();
-    assert.match(find('.character-header-info').textContent, /Vesper Vega/);
-    await act(async () => social.getState().receive({
-      ...view, profile: { ...view.profile, progression: {
-        ...view.profile.progression, character: { id: 'jules-okafor', outfit: 'night-run' }, cosmetics_revision: 2,
-      } },
+    await act(async () => writeLocalCharacter({ id: 'jules-okafor', outfit: 'race-crew' }));
+    assert.match(find('.character-header-info').textContent, /Vesper Vega/, 'the profile character takes priority over a device save');
+    const receiveCharacter = (character, cosmetics_revision) => act(async () => social.getState().receive({
+      ...view, profile: { ...view.profile, progression: { ...view.profile.progression, character, cosmetics_revision } },
     }));
+    await receiveCharacter(null, 2);
+    assert.match(find('.character-header-info').textContent, /Rook Okafor/, 'a device save appears without a profile character');
+    await act(async () => writeLocalCharacter(DEFAULT_CHARACTER));
+    assert.match(find('.character-header-info').textContent, /Vesper Vega/);
+    await receiveCharacter({ id: 'jules-okafor', outfit: 'night-run' }, 3);
     assert.match(find('.character-header-info').textContent, /Rook Okafor/, 'saved profile hydration still updates the read-only display');
     assertReadOnlyPortrait();
 

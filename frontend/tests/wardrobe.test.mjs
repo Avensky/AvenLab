@@ -1,7 +1,61 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'vite';
-import { BufferGeometry, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial } from 'three';
+import { BufferGeometry, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, Vector3 } from 'three';
+
+test('skin coverage accepts a double-sided hit inside the sample range and checks triangle corners', async () => {
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  try {
+    const { prepareWardrobeCoverage, wardrobeCoverageSurface } = await vite.ssrLoadModule('/src/game/characters/wardrobeCoverage.ts');
+    const a = new Vector3(-1, -1, 0), b = new Vector3(1, -1, 0), c = new Vector3(0, 2, 0);
+    const center = new Vector3();
+    for (const [depth, covered] of [[-.02, false], [0, false], [.011, true], [.041, false]]) {
+      const geometry = new BufferGeometry();
+      geometry.setAttribute('position', new Float32BufferAttribute([-.2, -.2, depth, .2, -.2, depth, 0, .2, depth], 3));
+      geometry.setIndex([0, 2, 1]);
+      const surface = wardrobeCoverageSurface(geometry);
+      try {
+        const covers = prepareWardrobeCoverage([surface], .001);
+        assert.equal(covers(center, a, b, c, false), covered, `coverage at depth ${depth}`);
+        assert.equal(covers(center, a, b, c, true), false, 'the small patch does not cover the corners');
+      } finally {
+        surface.geometry.dispose();
+        geometry.dispose();
+      }
+    }
+  } finally {
+    await vite.close();
+  }
+});
+
+test('the Laced Bodice tries its other authored tier before legacy models', async () => {
+  const both = { garage: true, mobile: true };
+  const standaloneRoot = '/models/characters/female/wardrobe/corsets';
+  const bundledRoot = '/models/characters/wardrobe';
+  const choice = { set: 'gothic-01', shirt: 'none', waist: 'tucked' };
+  for (const available of [both, { garage: true, mobile: false }, { garage: false, mobile: true }]) {
+    const vite = await createServer({
+      define: {
+        __STANDALONE_CORSET_LODS__: JSON.stringify({ 'gothic-laced-bodice': available, 'gothic-01': both }),
+        __BUNDLED_WARDROBE_LODS__: JSON.stringify({ 'gothic-01': both }),
+      },
+      server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error',
+    });
+    try {
+      const { corsetModelUrl, corsetModelUrls } = await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
+      for (const [view, preferred, alternative] of [['garage', 'garage', 'mobile'], ['portrait', 'mobile', 'garage']]) {
+        const authored = [preferred, alternative].filter(tier => available[tier])
+          .map(tier => `${standaloneRoot}/gothic-laced-bodice.${tier}.glb`);
+        const bundled = `${bundledRoot}/gothic-01.${preferred}.glb`;
+        assert.deepEqual(corsetModelUrls(choice, view), [...authored, `${standaloneRoot}/gothic-01.${preferred}.glb`, bundled]);
+        assert.equal(corsetModelUrl(choice, view), authored[0]);
+        assert.deepEqual(corsetModelUrls(choice, view, { useStandalone: false }), [bundled]);
+      }
+    } finally {
+      await vite.close();
+    }
+  }
+});
 
 test('saved Underbust presets fall back and standalone corsets select an available model tier', async () => {
  const vite=await createServer({define:{__WARDROBE_SET_IDS__:JSON.stringify(['gothic-04','gothic-05']),
@@ -9,7 +63,7 @@ test('saved Underbust presets fall back and standalone corsets select an availab
   __BUNDLED_WARDROBE_LODS__:JSON.stringify({'gothic-01':{garage:true,mobile:false},'gothic-05':{garage:true,mobile:true}})},
   server:{middlewareMode:true,hmr:false,ws:false},appType:'custom',logLevel:'error'});
  try {
-  const {corsetModelUrl,hasTuckedUnderbust,hasUnderbustCut,resolveWardrobe,wardrobeModelUrl}=await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
+  const {corsetModelUrl,hasTuckedUnderbust,hasUnderbustCut,resolveWardrobe,wardrobeModelUrl,resolveCharacterWardrobe,withWardrobeWaist}=await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
   const {DEFAULT_CHARACTER,characterLook}=await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
   const {villagerModelUrl}=await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
   const {wornClothing}=await vite.ssrLoadModule('/src/game/characters/clothingPieces.ts');
@@ -31,8 +85,13 @@ test('saved Underbust presets fall back and standalone corsets select an availab
     'missing rebuilt Tucked loads the original standalone model');
   }
   assert(!wornClothing(trial).includes('shirt'));
-  const layered = wornClothing({ ...trial, garments: { top: 'top-02' } });
-  assert(layered.includes('corset') && layered.includes('shirt'));
+  const legacyLayered = { ...trial, garments: { top: 'top-02', skirt: 'gothic-skirt-04' } };
+  assert(wornClothing(legacyLayered).includes('shirt'));
+  assert(!wornClothing(legacyLayered).includes('corset'));
+  assert.equal(characterLook(legacyLayered).garments.skirt,'gothic-skirt-04');
+  assert.equal(characterLook(legacyLayered).corset,undefined);
+  assert.equal(resolveCharacterWardrobe(legacyLayered),undefined);
+  assert.equal(withWardrobeWaist(legacyLayered,'tucked'),legacyLayered);
   assert(!wornClothing(saved).includes('shirt'));
   assert.match(corsetModelUrl({...archived,set:'gothic-02'},'portrait'),/gothic-02\.garage\.glb$/);
   assert.equal(corsetModelUrl({...archived,set:'gothic-05'},'garage'),'/models/characters/female/wardrobe/corsets/gothic-05.mobile.glb');
@@ -98,7 +157,7 @@ test('wardrobe coverage stays on, mask buffers are isolated, and layer changes r
  }finally{await vite.close();}
 });
 
-test('Dressing room previews the layered vest and saves approved corset waist fits', async () => {
+test('Dressing room swaps tops and corsets and saves approved waist fits', async t => {
  const {JSDOM}=await import('jsdom');const {act,createElement:h}=await import('react');const {createRoot}=await import('react-dom/client');
  const dom=new JSDOM('<div id="root"></div>',{url:'http://localhost/',pretendToBeVisual:true}),original=new Map();let root,vite;
  const globals={window:dom.window,document:dom.window.document,navigator:dom.window.navigator,HTMLElement:dom.window.HTMLElement,Event:dom.window.Event,localStorage:dom.window.localStorage,IS_REACT_ACT_ENVIRONMENT:true};
@@ -154,6 +213,13 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
   const originalCut=characterLook(previews.at(-1)).corset;
   assert.deepEqual(originalCut,{set:'gothic-04',shirt:'none',waist:'over',cut:'original'});
   assert.equal(document.querySelector(braToggle).textContent.trim(),'Remove bra');
+  const braStyles='[aria-label="Bra style"] button';
+  await click(`${braStyles}:last-child`);
+  assert.equal(previews.at(-1).appearance.bra_style,'push-up');
+  assert.equal(previews.at(-1).bra,true);
+  assert.equal(document.querySelector(`${braStyles}:last-child`).getAttribute('aria-pressed'),'true');
+  await click(`${braStyles}:first-child`);
+  assert.equal(previews.at(-1).appearance.bra_style,undefined);
   await click(braToggle);
   assert.equal(previews.at(-1).bra,false);
   assert.equal(detailsDyeNote(),true);
@@ -183,6 +249,7 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
   assert.equal(previews.at(-1).bra,true,'the rebuilt Tucked fit accepts the optional bra');
   await click(braToggle);
   assert.equal(previews.at(-1).bra,false);
+  await click('.dressing-color-toolbar [aria-label="Open clothing colors"]');
   for (const slot of ['Main','Binding','Front panel','Lining','Hardware']) {
     assert(document.querySelector(`.dressing-color-toolbar [aria-label="${slot} color"]`), `Tucked exposes the ${slot} dye group`);
   }
@@ -190,20 +257,24 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
   await click('[data-category=tops]');
   await click('[data-wardrobe-item="top-02"]');
   assert.equal(previews.at(-1).garments.top,'top-02');
-  assert.equal(previews.at(-1).wardrobeTrial.set,'gothic-04','adding a top keeps the vest');
+  assert.equal(previews.at(-1).wardrobeTrial,undefined,'a top replaces the vest');
+  assert.equal(characterLook(previews.at(-1)).corset,undefined);
+  assert.equal(document.querySelector('[aria-label="Item details"] dd:last-child').textContent,'Middle');
   await click('[data-wardrobe-item="remove-top"]');
   assert.equal(previews.at(-1).garments.top,'top-02','turning off a layer keeps its selection for restore');
   assert.equal(characterLook(previews.at(-1)).garments?.top,undefined);
-  assert.equal(characterLook(previews.at(-1)).corset.set,'gothic-04');
+  assert.equal(characterLook(previews.at(-1)).corset,undefined);
   await click('[data-wardrobe-item="remove-top"]');
   assert.equal(characterLook(previews.at(-1)).garments.top,'top-02');
   await click('[data-wardrobe-back]');
   await click('[data-category=corsets]');
   await click('[data-wardrobe-item="gothic-02"]');
-  assert.equal(characterLook(previews.at(-1)).garments.top,'top-02','other corsets keep a separately selected top too');
+  assert.equal(characterLook(previews.at(-1)).garments?.top,undefined,'a corset replaces the shirt');
+  assert.equal(characterLook(previews.at(-1)).corset.set,'gothic-02');
+  assert.equal(document.querySelector('[aria-label="Item details"] dd:last-child').textContent,'Middle');
   await click('[data-wardrobe-item="remove-corset"]');
   assert.equal(characterLook(previews.at(-1)).corset,undefined);
-  assert.equal(characterLook(previews.at(-1)).garments.top,'top-02');
+  assert.equal(characterLook(previews.at(-1)).garments?.top,undefined);
   assert.equal(camera.getState().selectedPiece,'corset','the close-up stays at the corset area even when the corset is off');
   await click('[data-wardrobe-back]');
   await click('[data-category=footwear]');
@@ -213,13 +284,13 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
   assert.equal(camera.getState().selectedPiece,'corset','opening Corsets replaces the previous shoe camera');
   await click('[data-wardrobe-item="gothic-04"]');
   assert.equal(previews.at(-1).removedClothing,undefined,'selecting a corset restores that layer');
-  assert.equal(previews.at(-1).garments.top,'top-02','reselecting the vest keeps the top');
-  assert(document.querySelector('[data-dressing-piece="shirt"]'));
+  assert.equal(previews.at(-1).garments?.top,undefined);
+  assert.equal(document.querySelector('[data-dressing-piece="shirt"]'),null);
   await click('[aria-label="Clear Gothic corsets"]');
   assert.equal(previews.at(-1).wardrobeTrial,undefined);
-  assert.equal(previews.at(-1).garments.top,'top-02','removing the vest keeps the top');
+  assert.equal(previews.at(-1).garments?.top,undefined);
   await click('[data-wardrobe-item="gothic-04"]');
-  assert.equal(previews.at(-1).garments.top,'top-02','adding the vest over a top keeps the top');
+  assert.equal(previews.at(-1).garments?.top,undefined);
   await click('[data-wardrobe-back]');
   await click('[data-category=bottoms]');
   await click('[data-wardrobe-item="gothic-skirt-04"]');
@@ -238,16 +309,18 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
   await showTab('emotes');
   assert.equal(previews.at(-1).wardrobeTrial.set,'gothic-04','the try-on carries into Emotes');
   assert(await beforeClose.current());
-  assert.equal(requests.length,0,'trying the layered vest does not send a profile save');
+  assert.equal(requests.length,0,'trying the vest does not send a profile save');
   await showTab('appearance');
   await click('[data-category=corsets]');
   await click('[data-wardrobe-item="gothic-04"]');
   await click('[aria-label="Clear Gothic corsets"]');
   assert.equal(previews.at(-1).wardrobeTrial,undefined);
   assert.equal(previews.at(-1).garments.skirt,'gothic-skirt-04','removing the corset keeps the separate skirt');
-  assert.equal(previews.at(-1).garments.top,'top-02');
+  assert.equal(previews.at(-1).garments.top,undefined);
   await click('[data-wardrobe-back]');
   await click('[data-category=outfits]');
+  // Keep the debounce pending until the close handler flushes the latest selection.
+  t.mock.timers.enable({apis:['setTimeout']});
   await click('[data-wardrobe-item=gothic-03]');
   assert.deepEqual(previews.at(-1).wardrobe,{set:'gothic-03',shirt:'none',waist:'over'},'Ruffled equips the reviewed over-skirt fit by default');
   await layer('Wide over skirt');
@@ -270,6 +343,7 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
   assert.equal(requests[0].character.wardrobeEase,undefined);
   assert.equal(requests[0].character.removedClothing,undefined);
   await act(async()=>{client.receiveSocialResult({request_id:requests[0].request_id,ok:true,data:{character:requests[0].character}});await pending;});
+  t.mock.timers.reset();
   assert.deepEqual(social.getState().view.profile.progression.character.wardrobe,{set:'gothic-05',shirt:'none',waist:'tucked'});
   await act(async()=>{
     const {view}=social.getState();

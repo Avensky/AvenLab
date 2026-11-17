@@ -71,10 +71,12 @@ struct WardrobeSet {
     id: String,
     #[serde(default)]
     retired: bool,
+    #[serde(rename = "extraDyeFields", default)]
+    extra_dye_fields: Vec<String>,
 }
 
 static WARDROBE: LazyLock<Vec<WardrobeSet>> = LazyLock::new(|| {
-    serde_json::from_str(include_str!("../assets/character-wardrobe.json"))
+    serde_json::from_str(include_str!("../../../packages/wardrobe-catalog/character-wardrobe.json"))
         .expect("the built-in wardrobe catalog is valid")
 });
 
@@ -88,12 +90,12 @@ struct Garment {
 }
 
 static GARMENTS: LazyLock<Vec<Garment>> = LazyLock::new(|| {
-    let mut garments: Vec<Garment> = serde_json::from_str(include_str!("../assets/character-garments.json"))
+    let mut garments: Vec<Garment> = serde_json::from_str(include_str!("../../../packages/wardrobe-catalog/character-garments.json"))
         .expect("the built-in garment catalog is valid");
-    let village: Vec<Garment> = serde_json::from_str(include_str!("../assets/character-village-pieces.json"))
+    let village: Vec<Garment> = serde_json::from_str(include_str!("../../../packages/wardrobe-catalog/character-village-pieces.json"))
         .expect("the Village garment catalog is valid");
     garments.extend(village);
-    let discovered: Vec<Garment> = serde_json::from_str(include_str!(concat!(env!("OUT_DIR"), "/discovered-wardrobe-garments.json")))
+    let discovered: Vec<Garment> = serde_json::from_str(include_str!("../../../packages/wardrobe-catalog/discovered-wardrobe-garments.json"))
         .expect("the generated garment catalog is valid");
     garments.extend(discovered);
     garments
@@ -111,6 +113,12 @@ pub enum CharacterIdentity {
 #[serde(rename_all = "kebab-case")]
 pub enum CharacterProp { ShopBag }
 
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum BraStyle {
+    PushUp,
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CharacterAppearance {
@@ -120,6 +128,8 @@ pub struct CharacterAppearance {
     personality: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     animation_fit: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    bra_style: Option<BraStyle>,
     hair: String,
     hair_color: String,
     skin: String,
@@ -168,7 +178,7 @@ enum FabricFinish {
 #[derive(Deserialize)]
 struct ClothingPiece { id: String }
 static CLOTHING_PIECES: LazyLock<Vec<ClothingPiece>> = LazyLock::new(|| {
-    serde_json::from_str(include_str!("../assets/character-clothing-pieces.json")).expect("valid clothing pieces")
+    serde_json::from_str(include_str!("../../../packages/wardrobe-catalog/character-clothing-pieces.json")).expect("valid clothing pieces")
 });
 
 #[derive(Deserialize)]
@@ -184,12 +194,12 @@ struct Outfit {
 
 static APPEARANCES: LazyLock<std::collections::HashMap<String, Vec<Outfit>>> =
     LazyLock::new(|| {
-        serde_json::from_str(include_str!("../assets/character-appearance.json"))
+        serde_json::from_str(include_str!("../../../packages/wardrobe-catalog/character-appearance.json"))
             .expect("the built-in character appearance catalog is valid")
     });
 
 static CAST: LazyLock<Vec<Character>> = LazyLock::new(|| {
-    serde_json::from_str(include_str!("../assets/characters.json"))
+    serde_json::from_str(include_str!("../../../packages/wardrobe-catalog/characters.json"))
         .expect("the built-in character catalog is valid")
 });
 
@@ -254,6 +264,9 @@ impl CharacterChoice {
         }) && self.wardrobe.as_ref().is_none_or(|wardrobe| {
             self.id == "mara-vega" && wardrobe.has_valid_cut() && WARDROBE.iter().any(|set| set.id == wardrobe.set)
         }) && (self.bra.is_none() || self.id == "mara-vega") && self.has_valid_garments() && self.appearance.as_ref().is_none_or(|appearance| {
+            if appearance.bra_style.is_some() && self.id != "mara-vega" {
+                return false;
+            }
             if !appearance.personality.as_deref().is_none_or(|value| ["friendly", "playful", "shy", "tsundere", "stoic", "elegant", "racer", "scientist"].contains(&value))
                 || !appearance.animation_fit.as_deref().is_none_or(|value| ["auto", "full", "fitted"].contains(&value)) {
                 return false;
@@ -261,21 +274,22 @@ impl CharacterChoice {
             if !appearance.item_colors.as_ref().is_none_or(|items| items.len() <= 128 && items.iter().all(|(key, colors)| {
                 let Some((variant, piece)) = key.split_once(':') else { return false; };
                 let known_piece = CLOTHING_PIECES.iter().any(|entry| entry.id == piece);
+                let wardrobe_set = WARDROBE.iter().find(|set| set.id == variant);
                 let known_variant = match piece {
                     "bra" | "briefs" => self.id == "mara-vega" && variant == "underwear",
                     _ => CAST.iter().filter(|entry| entry.id == self.id).any(|entry| entry.outfits.iter().any(|outfit| outfit.id == variant))
-                        || (self.id == "mara-vega" && WARDROBE.iter().any(|set| set.id == variant))
+                        || (self.id == "mara-vega" && wardrobe_set.is_some())
                         || (self.id == "mara-vega" && GARMENTS.iter().any(|garment| garment.id == variant && garment.piece == piece))
                         || (piece == "glasses" && ["round", "aviator"].contains(&variant))
                         || (piece == "bag" && variant == "shop-bag"),
                 };
-                let laced = variant == "gothic-01" && piece == "corset";
-                let underbust = variant == "gothic-04" && piece == "corset";
+                let supports = |field: &str| piece == "corset"
+                    && wardrobe_set.is_some_and(|set| set.extra_dye_fields.iter().any(|key| key == field));
                 known_piece && known_variant && colors.color.as_deref().is_none_or(hex_color) && colors.accent.as_deref().is_none_or(hex_color)
-                    && [&colors.panel, &colors.hardware].into_iter().all(|group| group.as_deref().is_none_or(|color| (underbust || laced) && hex_color(color)))
-                    && colors.lining.as_deref().is_none_or(|color| underbust && hex_color(color))
-                    && [&colors.laces, &colors.closure].into_iter().all(|group| group.as_deref().is_none_or(|color| laced && hex_color(color)))
-                    && (colors.finish.is_none() || laced)
+                    && [("panel", &colors.panel), ("hardware", &colors.hardware), ("lining", &colors.lining),
+                        ("laces", &colors.laces), ("closure", &colors.closure)].into_iter()
+                        .all(|(field, group)| group.as_deref().is_none_or(|color| supports(field) && hex_color(color)))
+                    && (colors.finish.is_none() || supports("finish"))
             })) { return false; }
             if !appearance.accent.as_deref().is_none_or(hex_color) {
                 return false;
@@ -375,6 +389,7 @@ mod wardrobe_tests {
             "item_colors": {"gothic-01:skirt":{"color":"#123aBC","accent":"#abcdef"}, "aviator:glasses":{"color":"#112233"},
                 "underwear:bra":{"color":"#445566"}, "underwear:briefs":{"accent":"#778899"},
                 "gothic-01:corset":{"color":"#112233","panel":"#443322","laces":"#f1e2d3","hardware":"#ccbbaa","closure":"#998877","finish":"satin"},
+                "gothic-02:corset":{"color":"#ad444d","panel":"#4b79a4","laces":"#5f8962","hardware":"#262630","closure":"#ffffff"},
                 "gothic-04:corset":{"color":"#ffffff","accent":"#223344","panel":"#005588","lining":"#445533","hardware":"#886644"}} });
         let good: CharacterChoice = serde_json::from_value(value.clone()).unwrap();
         assert!(good.is_available());
@@ -387,7 +402,8 @@ mod wardrobe_tests {
             ("item_colors", json!({"gothic-04:corset":{"panel":"transparent"}})),
             ("item_colors", json!({"gothic-01:corset":{"laces":"transparent"}})),
             ("item_colors", json!({"gothic-01:corset":{"lining":"#112233"}})),
-            ("item_colors", json!({"gothic-02:corset":{"closure":"#998877"}})),
+            ("item_colors", json!({"gothic-02:corset":{"closure":"transparent"}})),
+            ("item_colors", json!({"gothic-02:skirt":{"closure":"#998877"}})),
             ("item_colors", json!({"gothic-04:corset":{"finish":"glossy"}})),
             ("item_colors", json!({"gothic-01:skirt":{"panel":"#112233"}}))] {
             let mut invalid = value.clone(); invalid["appearance"][field] = bad;

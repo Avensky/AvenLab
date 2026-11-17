@@ -307,3 +307,74 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
     if (clip) mixer.uncacheClip(clip);
   }
 }
+
+// A neckline or keyhole can expose skin intentionally. Look for actual mask
+// holes instead: skin removed by the live outfit, visible on the complete body
+// from an external view, with neither cloth nor retained skin replacing it.
+export function auditCorsetSkinMask(root, skin, bindBody, visibleCloth, buildEmoteClips, findGaragePreviewEmote) {
+  const vertices = bindBody.getAttribute('position').array;
+  const original = bindBody.index.array;
+  const retained = visibleIndices(skin);
+  assert.equal(skin.geometry.getAttribute('position').array.length, vertices.length, 'mask uses its original skin topology');
+  const key = (indices, offset) => `${indices[offset]},${indices[offset + 1]},${indices[offset + 2]}`;
+  const keep = new Set();
+  for (let i = 0; i < retained.length; i += 3) keep.add(key(retained, i));
+  const a = new Vector3(), b = new Vector3(), c = new Vector3(), center = new Vector3(), normal = new Vector3();
+  function triangle(points, [i, j, k]) {
+    a.fromArray(points, i * 3);
+    b.fromArray(points, j * 3);
+    c.fromArray(points, k * 3);
+    center.copy(a).add(b).add(c).multiplyScalar(1 / 3);
+    normal.copy(b).sub(a).cross(c.sub(a)).normalize();
+  }
+  const masked = [];
+  for (let i = 0; i < original.length; i += 3) {
+    if (keep.has(key(original, i))) continue;
+    const indices = original.subarray(i, i + 3);
+    triangle(vertices, indices);
+    if (center.y >= 1.20 && center.y <= 1.43 && Math.abs(center.x) <= .168) {
+      // Classify in bind space so the same upper-back faces keep their label in motion.
+      const upperBack = center.y > 1.24 && center.z < -.020 && normal.z < -.25;
+      masked.push({ indices, upperBack });
+    }
+  }
+
+  assert(visibleCloth.length, 'mask audit needs visible opaque clothing');
+  const poses = [['idle', 0], ['013', .45], ['heart-overhead', .50]];
+  const views = [[0, 0, 1], [0, 0, -1], [.65, .2, -.73], [-.65, .2, -.73]].map(view => new Vector3(...view).normalize());
+  const mixer = new AnimationMixer(root);
+  const ray = new Ray();
+  return poses.map(([pose, phase]) => {
+    const emote = pose === 'idle' ? undefined : findGaragePreviewEmote(pose, false);
+    const clip = emote && buildEmoteClips(root, [emote])[0];
+    if (pose !== 'idle') assert(clip, `mask audit can pose ${pose}`);
+    const action = clip && mixer.clipAction(clip).play();
+    if (clip) mixer.setTime(clip.duration * phase);
+    root.updateMatrixWorld(true);
+    const points = posedVertices(skin);
+    const allSkin = surfaceFromVertices(points, original);
+    const covered = [surfaceFromVertices(points, retained), ...visibleCloth.map(posedSurface)];
+    const result = { pose, phase, sampled: 0, uncovered: 0, upperBackSampled: 0, upperBackUncovered: 0 };
+    try {
+      for (const { indices, upperBack } of masked) {
+        triangle(points, indices);
+        for (const direction of views) {
+          if (normal.dot(direction) < .10) continue;
+          ray.origin.copy(center).addScaledVector(direction, .30);
+          ray.direction.copy(direction).negate();
+          if (Math.abs(firstHit(ray, [allSkin]) - .30) > .0002) continue;
+          result.sampled++;
+          if (upperBack) result.upperBackSampled++;
+          if (firstHit(ray, covered) <= .301) continue;
+          result.uncovered++;
+          if (upperBack) result.upperBackUncovered++;
+        }
+      }
+      return result;
+    } finally {
+      for (const surface of [allSkin, ...covered]) surface.geometry.dispose();
+      action?.stop();
+      if (clip) mixer.uncacheClip(clip);
+    }
+  });
+}

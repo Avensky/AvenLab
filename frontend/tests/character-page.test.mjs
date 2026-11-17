@@ -5,10 +5,9 @@ import { createServer } from 'vite';
 import { act, createElement as h } from 'react';
 import { AnimationMixer, LoopOnce, Object3D, Vector3 } from 'three';
 
-test('Heroes opens the character picker, saves one profile choice, and opens Garage from a vehicle', async t => {
+function characterTestDom() {
   const dom = new JSDOM('<div id="root"></div>', { url: 'http://localhost/', pretendToBeVisual: true });
   const original = new Map();
-  let vite, root;
   const globals = {
     window: dom.window, document: dom.window.document, navigator: dom.window.navigator,
     HTMLElement: dom.window.HTMLElement, HTMLSelectElement: dom.window.HTMLSelectElement,
@@ -22,17 +21,49 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
   }
   document.hasFocus = () => true;
   HTMLElement.prototype.scrollIntoView = () => {};
+  return {
+    dom,
+    close() {
+      dom.window.close();
+      for (const [key, descriptor] of original) {
+        if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+        else delete globalThis[key];
+      }
+    },
+  };
+}
+
+test('Heroes opens the character picker, saves one profile choice, and opens Garage from a vehicle', async t => {
+  const { close } = characterTestDom();
+  let vite, root;
   try {
     vite = await createServer({ define: { __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(['gothic-skirt-04', 'top-01']) },
-      server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+      server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error',
+      plugins: [{
+        name: 'count-fit-review-keys',
+        enforce: 'pre',
+        transform(source, id) {
+          if (!id.endsWith('/fitReviewStore.ts')) return;
+          return source.replace('export function fitReviewKey(', 'function buildFitReviewKey(') + `
+            export let fitReviewKeyCalls = 0;
+            export function fitReviewKey(...args: Parameters<typeof buildFitReviewKey>) {
+              fitReviewKeyCalls++;
+              return buildFitReviewKey(...args);
+            }
+          `;
+        },
+      }],
+    });
     const load = path => vite.ssrLoadModule(`/src/${path}`);
     const { HeroWorkshop } = await load('game/heroes/HeroWorkshop.tsx');
+    const { readLocalCharacter } = await load('game/characters/localOutfits.ts');
     const { useUIStore: ui } = await load('store/menus/uiStore.ts');
     const { useSocialStore: social } = await load('store/social/socialStore.ts');
     const { useHeroLoadouts: loadouts } = await load('vehicles/cosmetics/heroLoadouts.ts');
     const { useAlphaStore: alpha } = await load('store/alpha/alphaStore.ts');
     const { usePreviewZoom: zoom } = await load('game/preview/previewZoomStore.ts');
     const { useCharacterPreviewStore: preview } = await load('game/characters/characterPreviewStore.ts');
+    const fitKeys = await load('game/characters/fitReviewStore.ts');
     const { routeMenuAction: route } = await load('controls/inputRouting.ts');
     const client = await load('net/socialClient.ts');
     const requests = [];
@@ -202,24 +233,36 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
       });
     };
     await acknowledge(requests[0], choice);
-    assert.deepEqual([...document.querySelectorAll('[role=tab]')].map(node => node.textContent), ['Appearance', 'Emotes']);
-    const identityControl = find('.character-identity-nav #character-editor-tab-identity');
-    assert.equal(identityControl.textContent, 'Identity');
+    const characterTabs = '[role=tablist][aria-label="CHARACTER sections"]';
+    const identityTab = `${characterTabs} #character-editor-tab-identity`;
+    const identityControl = find(identityTab);
+    assert.deepEqual([...document.querySelectorAll(`${characterTabs} [role=tab]`)].map(node => node.textContent),
+      ['Identity', 'Appearance', 'Emotes']);
+    assert.equal(find(`${characterTabs} [aria-selected="true"]`).id, 'character-editor-tab-appearance');
     await move('previous_tab');
     assert.equal(characterViews.at(-1), 'identity');
     assert.equal(document.activeElement, identityControl);
-    assert.equal(identityControl.getAttribute('aria-current'), 'page');
+    assert.equal(identityControl.getAttribute('aria-selected'), 'true');
+    assert.equal(identityControl.tabIndex, 0);
+    const panel = document.getElementById(identityControl.getAttribute('aria-controls'));
+    assert.equal(panel.getAttribute('role'), 'tabpanel');
+    assert.equal(panel.getAttribute('aria-labelledby'), identityControl.id);
     await move('down');
     assert(document.activeElement.closest('[aria-label="Identity appearance"]'));
     await move('next_tab');
     assert.equal(characterViews.at(-1), 'appearance');
-    assert.equal(identityControl.getAttribute('aria-current'), null);
-    await click('.character-identity-nav button');
+    assert.equal(identityControl.getAttribute('aria-selected'), 'false');
+    assert.equal(identityControl.tabIndex, -1);
+    await act(async () => document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown', { code: 'KeyQ', bubbles: true, cancelable: true })));
+    assert.equal(document.activeElement, identityControl);
+    await act(async () => document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown', { code: 'KeyE', bubbles: true, cancelable: true })));
+    assert.equal(document.activeElement, find('#character-editor-tab-appearance'));
+    await click(identityTab);
     assert.equal(find('[aria-label="Character model"] [data-character-option="jules-okafor"]').getAttribute('aria-pressed'), 'true');
     assert.deepEqual([...document.querySelectorAll('[aria-label="Character model"] button')].map(node => node.textContent),
       ['Vesper Vega', 'Rook Okafor']);
     await click('#character-editor-tab-emotes');
-    assert.equal(find('.character-identity-nav button'), identityControl);
+    assert.equal(find(identityTab), identityControl);
     assert(find('[aria-label="Emote results"]').classList.contains('character-controls--right'));
     assert(find('[aria-label="Emote collection"]').closest('.character-controls--left'));
     assert.equal(find('[data-character-option]'), null, 'Emotes uses the model chosen in Identity');
@@ -229,10 +272,19 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await openEmotes();
     await chooseEmoteGroup('All');
     assert.equal(find('[aria-label="Emote logic review"]'), null, 'fit review opens with the chosen emote');
-    assert(document.querySelectorAll('.character-emotes button').length > 180);
+    const emoteCount = document.querySelectorAll('.character-emotes button').length;
+    assert(emoteCount > 180);
+    const firstEmote = find('.character-emotes button');
+    await act(async () => firstEmote.focus());
+    const fitKeyCalls = fitKeys.fitReviewKeyCalls;
+    assert(fitKeyCalls >= emoteCount, 'the open list computes a fit key for each emote');
+    await act(async () => preview.setState({ camera: 'Face', zoom: 1.1 }));
+    assert.equal(find('input[aria-label="Preview zoom"]').value, '1.1');
+    assert.equal(fitKeys.fitReviewKeyCalls, fitKeyCalls, 'camera and zoom updates leave emote review rows alone');
+    assert.equal(document.activeElement, firstEmote);
     await act(async () => {
       const input = find('[aria-label="Emote results"] input[type="search"]');
-      Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set.call(input, 'applause');
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(input, 'applause');
       input.dispatchEvent(new Event('input', { bubbles: true }));
     });
     assert(document.querySelectorAll('.character-emotes button').length > 0);
@@ -244,6 +296,10 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert(fitReview.querySelector("textarea"));
     await click('[aria-label="Emote logic review"] input[type="checkbox"]');
     assert(fitReview.querySelector('input[type="checkbox"]').checked, 'the selected emote review can be edited beside the results');
+    await click('.character-emote-back');
+    const reviewedEmote = find('.character-emotes button:first-child');
+    assert(reviewedEmote.querySelector('[aria-label="Fit partial"]'), 'the updated review appears in the results');
+    assert.equal(document.activeElement, reviewedEmote, 'back restores focus to the reviewed emote');
     const { useFittingTurnStore: turns } = await vite.ssrLoadModule('/src/game/characters/fittingControlsStore.ts');
     await act(async () => {
       turns.setState({ characterYaw: Math.PI });
@@ -334,7 +390,10 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(preview.getState().selectedPiece, 'glasses');
     assert.equal(preview.getState().camera, 'Selected item');
     assert.equal(find('.dressing-color-panel').hidden, true);
-    assert.equal(find('[aria-label="Open clothing colors"]').textContent, '', 'the toolbar uses a swatch icon');
+    const paletteToggle = find('[aria-label="Open clothing colors"]');
+    const palette = document.getElementById(paletteToggle.getAttribute('aria-controls'));
+    assert.equal(palette.childElementCount, 0, 'the closed palette keeps its panel ID without mounting swatches');
+    assert.equal(paletteToggle.textContent, '', 'the toolbar uses a swatch icon');
     await click(cameraTools);
     await click('[aria-label="Open clothing colors"]');
     assert.equal(find('.dressing-color-panel').hidden, false);
@@ -372,13 +431,17 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(find('input[aria-label="Custom accent color"]').value, '#ff2d95');
     await click('[aria-label="Close clothing colors"]');
     assert.equal(find('.dressing-color-panel').hidden, true);
+    assert.equal(find('.dressing-color-panel').childElementCount, 0);
     await click('[aria-label="Open clothing colors"]');
+    assert.deepEqual([mainColor(), accentColor()], ['#101015', '#ff2d95']);
+    assert.equal(document.activeElement, find('.dressing-color-preset'), 'keyboard activation focuses the first swatch');
     await act(async () => {
       const preset = find('.dressing-color-preset');
       preset.focus();
       preset.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }));
     });
     assert.equal(find('.dressing-color-panel').hidden, true, 'Escape closes the palette before it can leave the fitting room');
+    assert.equal(find('.dressing-color-panel').childElementCount, 0);
     assert.equal(document.activeElement, find('[aria-label="Open clothing colors"]'));
     await click('#character-editor-tab-identity');
     assert(find('select[aria-label="Eye color"]'));
@@ -555,8 +618,10 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(drafts.at(-1).outfit, 'race-crew');
     assert.equal(drafts.at(-1).appearance.eye_color, 'obsidian');
     await act(async () => social.getState().reset());
+    await select('Hair color', 'copper');
     await act(async () => t.mock.timers.tick(350));
     assert.equal(requests.length, 4);
+    assert.equal(readLocalCharacter(), undefined, 'a known profile continues queuing edits while disconnected');
     assert.equal(drafts.at(-1).id, 'jules-okafor', 'a disconnect keeps the latest draft');
     await act(async () => social.getState().receive({ ...view, profile: { ...view.profile, progression: serverProgression } }));
     assert.equal(requests[4].character.outfit, 'shop-crew', 'pending female edits resume on reconnect');
@@ -565,6 +630,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await acknowledge(requests[4], requests[4].character);
     assert.equal(drafts.at(-1).id, 'jules-okafor', 'an acknowledgement for another model does not change the preview');
     assert.equal(requests[5].character.outfit, 'race-crew');
+    assert.equal(requests[5].character.appearance.hair_color, 'copper');
     await acknowledge(requests[5], requests[5].character);
     assert.equal(social.getState().view.profile.progression.character_presets['mara-vega'].outfit, 'shop-crew');
 
@@ -621,11 +687,76 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     t.mock.timers.reset();
     if (root) await act(async () => root.unmount());
     await vite?.close();
-    dom.window.close();
-    for (const [key, descriptor] of original) {
-      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
-      else delete globalThis[key];
-    }
+    close();
+  }
+});
+
+test('device character edits stay local when the connected profile has no character support', async t => {
+  const { dom, close } = characterTestDom();
+  let vite, root, client;
+  try {
+    vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+    const load = path => vite.ssrLoadModule(`/src/${path}`);
+    const { CharacterPage } = await load('game/characters/CharacterPage.tsx');
+    const { readLocalCharacter, writeLocalOutfit } = await load('game/characters/localOutfits.ts');
+    const { useSocialStore } = await load('store/social/socialStore.ts');
+    const { useUIStore } = await load('store/menus/uiStore.ts');
+    client = await load('net/socialClient.ts');
+    const requests = [];
+    client.setSocialConnection({ readyState: WebSocket.OPEN, send: value => requests.push(JSON.parse(value)) });
+    useSocialStore.getState().receive({
+      profile: { id: 'legacy', name: 'Driver', progression: {} },
+      players: [], teammates: [], requests: [], groups: [], worlds: [], world_invites: [], maps: [],
+      current_world_id: null, limits: { max_active_worlds: 3 },
+    });
+    useUIStore.getState().setScreen('heroes');
+    const { createRoot } = await import('react-dom/client');
+    root = createRoot(document.getElementById('root'));
+    const props = { onReady: () => {}, beforeClose: { current: null } };
+    const show = tab => act(async () => root.render(h(CharacterPage, { ...props, tab })));
+    const click = selector => act(async () => document.querySelector(selector).click());
+    const button = label => [...document.querySelectorAll('button')].find(node => node.textContent === label);
+
+    await show('identity');
+    await click('[data-character-option="jules-okafor"]');
+    await act(async () => button('Use locally').click());
+    assert.equal(readLocalCharacter().id, 'jules-okafor');
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    await act(async () => button('Nonbinary').click());
+    await act(async () => t.mock.timers.tick(350));
+    assert.equal(requests.length, 0);
+    assert.equal(readLocalCharacter().identity, 'nonbinary');
+
+    const failedWrite = t.mock.method(dom.window.Storage.prototype, 'setItem', () => { throw new Error('Storage unavailable'); });
+    await act(async () => button('Female').click());
+    assert.equal(readLocalCharacter().identity, 'nonbinary');
+    assert(button('Retry'));
+    failedWrite.mock.restore();
+    await act(async () => button('Retry').click());
+    assert.equal(readLocalCharacter().identity, 'female');
+
+    writeLocalOutfit('Race fit', { ...readLocalCharacter(), outfit: 'race-crew' });
+    await show('appearance');
+    await click('[data-category=saved]');
+    await click('[aria-label="Try on Race fit"]');
+    assert(!document.querySelector('[aria-label="Clear saved outfit preview"]').disabled);
+    await show('identity');
+    t.mock.method(dom.window.Storage.prototype, 'setItem', () => { throw new Error('Storage unavailable'); });
+    const eyeColor = document.querySelector('select[aria-label="Eye color"]');
+    await act(async () => {
+      eyeColor.value = 'obsidian';
+      eyeColor.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await act(async () => button('Revert unsaved').click());
+    await show('appearance');
+    await click('[data-category=saved]');
+    assert(document.querySelector('[aria-label="Clear saved outfit preview"]').disabled);
+  } finally {
+    t.mock.timers.reset();
+    if (root) await act(async () => root.unmount());
+    client?.setSocialConnection(null);
+    await vite?.close();
+    close();
   }
 });
 

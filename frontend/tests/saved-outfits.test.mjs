@@ -32,7 +32,7 @@ test('saved outfits preserve a tuned look through a confirmed save, reconnect, a
       ...equipped,
       wardrobeTrial: { set: 'gothic-04', waist: 'over', shirt: 'none' },
       wardrobeEase: 2,
-      garments: { top: 'top-01', skirt: 'gothic-skirt-04', bow: 'bowtie-01', socks: 'socks-01' },
+      garments: { skirt: 'gothic-skirt-04', bow: 'bowtie-01', socks: 'socks-01' },
       removedClothing: ['bow'],
       appearance: {
         hair: 'cropped', hair_color: 'original', skin: 'original', headwear: 'hat', color: 'original',
@@ -43,7 +43,7 @@ test('saved outfits preserve a tuned look through a confirmed save, reconnect, a
       character: equipped, character_presets: {},
       character_outfits: {
         Night: { id: 'jules-okafor', outfit: 'night-run' },
-        'Layer check': { ...tuned, removedClothing: ['corset', 'skirt', 'bow'] },
+        'Layer check': { ...tuned, garments: { ...tuned.garments, top: 'top-01' }, removedClothing: ['skirt', 'bow'] },
       },
       cosmetics_revision: 2,
     };
@@ -66,7 +66,8 @@ test('saved outfits preserve a tuned look through a confirmed save, reconnect, a
     assert(button('Save outfit').disabled);
     assert.equal(document.querySelector('[aria-label="Try on Night"]'), null);
     const layerCheck = document.querySelector('[aria-label="Try on Layer check"]').textContent;
-    assert.match(layerCheck, /Top 01.*Socks 01/);
+    assert.match(layerCheck, /Top 01/);
+    assert.match(layerCheck, /Socks 01/);
     assert.doesNotMatch(layerCheck, /Underbust|Gothic Skirt|Bow tie|Wide over/);
     const input = document.querySelector('input');
     const { set } = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value');
@@ -92,7 +93,7 @@ test('saved outfits preserve a tuned look through a confirmed save, reconnect, a
     await act(async () => client.receiveSocialResult({ request_id: sent[0].request_id, ok: true, data: confirmed }));
     await act(async () => receive(oldProgression));
     const harborPractice = document.querySelector('[aria-label="Try on Harbor practice"]').textContent;
-    assert.match(harborPractice, /Gothic Skirt 04.*Wide over/);
+    assert.match(harborPractice, /Underbust.*Gothic Skirt 04.*Wide over/);
     assert.doesNotMatch(harborPractice, /Bow tie/);
     assert.deepEqual(useSocialStore.getState().view.profile.progression.character, equipped);
 
@@ -142,6 +143,7 @@ test('saved outfits preserve a tuned look through a confirmed save, reconnect, a
     });
     assert.equal(window.localStorage.getItem(LOCAL_OUTFITS_KEY), null, 'a stale form cannot save a device outfit while loading');
     await act(async () => ui.setState({ isModeLoading: false }));
+    window.localStorage.setItem(LOCAL_OUTFITS_KEY, '{broken');
     await act(async () => button('Save outfit').click());
     assert.match(document.body.textContent, /Saved Offline fit on this device/);
     assert.equal(sent.length, 2, 'local saves send no network request');
@@ -151,6 +153,20 @@ test('saved outfits preserve a tuned look through a confirmed save, reconnect, a
     await act(async () => button('This device').click());
     await act(async () => document.querySelector('[aria-label="Try on Offline fit"]').click());
     assert.deepEqual(previews.at(-1), tuned);
+    const newName = document.querySelector('input');
+    await act(async () => {
+      set.call(newName, 'Race night');
+      newName.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    });
+    assert(!button('Save outfit').disabled);
+    // Another tab saved this name before its storage event reached the form.
+    const otherCharacter = { id: 'jules-okafor', outfit: 'race-crew' };
+    const stored = { 'Offline fit': tuned, 'Race night': otherCharacter };
+    window.localStorage.setItem(LOCAL_OUTFITS_KEY, JSON.stringify(stored));
+    await act(async () => button('Save outfit').click());
+    assert.match(document.querySelector('[role=status]').textContent, /another character's outfit/);
+    assert(button('Save outfit').disabled);
+    assert.deepEqual(JSON.parse(window.localStorage.getItem(LOCAL_OUTFITS_KEY)), stored);
   } finally {
     if (root) await act(async () => root.unmount());
     client?.setSocialConnection(null);

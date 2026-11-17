@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { createServer } from 'vite';
 import { act, createElement as h } from 'react';
+import { AnimationMixer } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 test('character clicks play varied personality clips, resume held poses, and ignore dragging and reduced motion', async t => {
@@ -17,9 +18,14 @@ test('character clicks play varied personality clips, resume held poses, and ign
     const { createRoot } = await import('react-dom/client');
     const moduleId = '\0fitting-test-fiber';
     vite = await createServer({ plugins: [{ name: 'frame-test', enforce: 'pre',
-      transform(code, id) { if (id.endsWith('/GarageEmotePlayer.tsx')) return code.replaceAll('from "@react-three/fiber"', 'from "virtual:fitting-fiber"'); },
+      transform(code, id) {
+        if (id.endsWith('/GarageEmotePlayer.tsx')) return code
+          .replaceAll('from "@react-three/fiber"', 'from "virtual:fitting-fiber"')
+          .replace('from "./DriverBag"', 'from "virtual:fitting-fiber"');
+      },
       resolveId(source, importer) { if (source === 'virtual:fitting-fiber' || (source === '@react-three/fiber' && importer?.endsWith('/GarageEmotePlayer.tsx'))) return moduleId; },
       load(id) { if (id === moduleId) return `import { useLayoutEffect } from 'react'; export const frames = new Set(); export let invalidations = 0;
+        export const DriverBag = () => null;
         export function useThree(select) { return select({ invalidate: () => invalidations++ }); }
         export function useFrame(callback) { useLayoutEffect(() => { frames.add(callback); return () => frames.delete(callback); }, [callback]); }`; }
     }], server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
@@ -28,14 +34,24 @@ test('character clicks play varied personality clips, resume held poses, and ign
     const { useCharacterPreviewStore: preview } = await vite.ssrLoadModule('/src/game/characters/characterPreviewStore.ts');
     const { useFittingTurnStore: turns } = await vite.ssrLoadModule('/src/game/characters/fittingControlsStore.ts');
     const { usePreferencesStore: preferences } = await vite.ssrLoadModule('/src/store/preferences/preferencesStore.ts');
-    const { scene } = await new GLTFLoader().parseAsync(await readFile('tests/fixtures/villager-female-rig.json', 'utf8'), '');
+    const rig = await readFile('tests/fixtures/villager-female-rig.json', 'utf8');
+    const { scene } = await new GLTFLoader().parseAsync(rig, '');
     scene.name = 'garage-villager-female';
     preferences.setState({ reducedMotion: false }); preview.setState({ playbackPaused: true, automaticEmotes: false, emote: null, insideCar: false });
     turns.setState({ suppressClickUntil: 0 });
     // The DOM only hosts React hooks; the real skeleton, clip compiler and mixer are exercised below.
     const error = console.error; t.mock.method(console, 'error', (...args) => { if (/unrecognized|non-boolean attribute/.test(String(args[0]))) return; error(...args); });
+    const baseClips = [];
+    const clipAction = AnimationMixer.prototype.clipAction;
+    t.mock.method(AnimationMixer.prototype, 'clipAction', function (clip, ...args) {
+      if (clip.name.startsWith('002 ')) baseClips.push(clip);
+      return clipAction.call(this, clip, ...args);
+    });
     renderer = createRoot(document.getElementById('root'));
-    await act(async () => renderer.render(h(GarageEmotePlayer, { root: scene, previewPacks: true, personality: 'tsundere' })));
+    const render = props => act(async () => renderer.render(h(GarageEmotePlayer, {
+      root: scene, previewPacks: true, personality: 'tsundere', ...props,
+    })));
+    await render();
     const primitive = document.querySelector('primitive');
     const click = delta => {
       const random = Math.random; Math.random = () => 0;
@@ -55,6 +71,23 @@ test('character clicks play varied personality clips, resume held poses, and ign
     turns.setState({ suppressClickUntil: 0 });
     await act(async () => preferences.setState({ reducedMotion: true }));
     await act(async () => click(0)); assert.equal(preview.getState().emote, second);
+
+    await act(async () => preferences.setState({ reducedMotion: false }));
+    await act(async () => tick(.5));
+    await render({ previewPacks: false });
+    assert(rest.angleTo(shoulder.quaternion) < .001, 'leaving wardrobe restores the prepared rig pose');
+    await render();
+    assert.equal(baseClips.length, 4, 'each playback reset binds the base tracks');
+    assert(baseClips.every(clip => clip === baseClips[0]), 'the same rig reuses its compiled tracks across modes');
+    assert.equal(frames.size, 1, 'switching modes retains a single frame callback');
+
+    const { scene: replacement } = await new GLTFLoader().parseAsync(rig, '');
+    await render({ root: replacement });
+    assert.notEqual(baseClips.at(-1), baseClips[0], 'a new rig compiles tracks for its own joints');
+    const replacementClip = baseClips.at(-1);
+    assert(replacementClip.tracks.some(track => track.name === replacement.uuid + '.position'));
+    await render({ root: replacement, bag: true });
+    assert.notEqual(baseClips.at(-1), replacementClip, 'the held bag changes the base clip set');
   } finally {
     if (renderer) await act(async () => renderer.unmount()); await vite?.close(); dom.window.close();
     for (const [key, descriptor] of original) { if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key]; }

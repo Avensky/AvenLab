@@ -16,6 +16,13 @@ const overHem = [
   [0, .950], [24, .953], [55, .966], [90, .995], [115, .991], [180, .976],
 ] as const;
 
+export function hasAuthoredSweetheartFit(root: Object3D, minimumVersion = 1) {
+  return ["TUCKED", "OVER"].every(waist => {
+    const version = root.getObjectByName(`CLOTH_CORSET_${waist}`)?.userData.authoredSweetheartVersion;
+    return typeof version === "number" && version >= minimumVersion;
+  });
+}
+
 function patternHeight(angle: number, pattern: readonly (readonly [number, number])[]) {
   const degrees = Math.abs(angle) * MathUtils.RAD2DEG;
   for (let i = 1; i < pattern.length; i++) {

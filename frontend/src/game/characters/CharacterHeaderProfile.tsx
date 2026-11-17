@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { ProgressBadge } from "../alpha/ProgressBadge";
-import { selectEquippedCharacter, useSocialStore } from "../../store/social/socialStore";
 import { canEditCharacter, useUIStore } from "../../store/menus/uiStore";
-import { characterLook, DEFAULT_CHARACTER } from "./characterCatalog";
+import { characterLook } from "./characterCatalog";
 import { CharacterPortrait } from "./CharacterPortrait";
+import { usePlayerCharacter } from "./localOutfits";
 
 export type CharacterHeaderProfileProps = {
   onOpen?: () => void;
@@ -15,7 +15,7 @@ export type CharacterHeaderProfileProps = {
 };
 
 export function CharacterHeaderProfile({ onOpen, leadingAction, active, showProgress = false, readOnly = false, compact = false }: CharacterHeaderProfileProps) {
-  const choice = useSocialStore(selectEquippedCharacter) ?? DEFAULT_CHARACTER;
+  const choice = usePlayerCharacter();
   const editingAllowed = useUIStore(canEditCharacter);
   const name = characterLook(choice)?.character.name ?? "Choose character";
   const content = <>

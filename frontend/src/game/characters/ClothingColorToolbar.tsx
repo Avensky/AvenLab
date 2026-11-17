@@ -1,14 +1,30 @@
-import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { ColorSwatch, ColorSwatchButton } from "../../components/menus/ColorSwatch";
 import { CHARACTER_APPEARANCE_OPTIONS, OUTFIT_THEMES, characterLook, type CharacterChoice } from "./characterCatalog";
 import { clothingColors, clothingPieceLabel, isUnderwearPiece, underwearColors, withClothingColors, type ClothingPiece, type PieceColors } from "./clothingPieces";
-import { LACED_BODICE_FINISHES } from "./lacedBodiceAppearance";
-import { corsetModelUrl, corsetRenderChoice, isRebuiltLacedBodiceUrl, isRebuiltUnderbustUrl } from "./wardrobe";
+import { getCorsetDyeProfile, resolveCorsetDye, type CorsetDyeGroup } from "./corsetDye";
 import "./clothingColorToolbar.css";
 
 const colorPresets = CHARACTER_APPEARANCE_OPTIONS.color.map(({ id, label, color }) => ({ label: id === "original" ? "White" : label, color }));
+const presetClass = "menu-control menu-panel-frame dressing-color-preset";
+type DyeRow = Pick<CorsetDyeGroup, "key" | "label" | "theme"> & { value: string };
 
-function swatch(color: string, accent = color) {
-  return { "--swatch-color": color, "--swatch-accent": accent } as CSSProperties;
+function PaletteRow({ label, group, children }: { label: string; group: string; children: ReactNode }) {
+  return <div className="dressing-color-bar" role="group" aria-label={group} data-controller-row>
+    <span aria-hidden="true">{label}</span>
+    <div className="dressing-color-chips">{children}</div>
+  </div>;
+}
+
+function ColorRow({ label, value, onChange }: { label: string; value: string; onChange: (color: string) => void }) {
+  const customLabel = `Custom ${label.toLowerCase()} color`;
+  return <PaletteRow label={label} group={`${label} color`}>
+    {colorPresets.map(preset => <ColorSwatchButton key={preset.color} color={preset.color} className={presetClass}
+      label={`${label} color: ${preset.label}`} title={preset.label} pressed={value === preset.color}
+      onClick={() => onChange(preset.color)} />)}
+    <input type="color" aria-label={customLabel} title={customLabel} value={value}
+      onChange={event => onChange(event.currentTarget.value)} />
+  </PaletteRow>;
 }
 
 export function ClothingColorToolbar({ choice, piece, onChange }: {
@@ -24,33 +40,27 @@ export function ClothingColorToolbar({ choice, piece, onChange }: {
   const look = characterLook(choice)!;
   const colors = clothingColors(look, piece);
   const underwear = isUnderwearPiece(piece) ? underwearColors(look, piece) : undefined;
-  const corsetFit = piece === "corset" ? corsetRenderChoice(look) : undefined;
-  const corset = corsetModelUrl(corsetFit, "garage");
-  const rebuilt = Boolean(corset && isRebuiltUnderbustUrl(corset));
-  const laced = Boolean(corset && isRebuiltLacedBodiceUrl(corset));
+  const profile = piece === "corset" ? getCorsetDyeProfile(look) : undefined;
   const outfitFabric = look.appearance.color === "original" ? undefined : look.fabric;
-  const fabric = underwear?.color ?? colors?.color ?? (laced ? outfitFabric ?? "#6e6660" : rebuilt ? outfitFabric ?? "#30282a" : look.fabric);
-  const trim = underwear?.accent ?? (laced ? colors?.laces ?? colors?.accent ?? look.appearance.accent ?? "#cdb693"
-    : colors?.accent ?? (rebuilt ? look.appearance.accent ?? "#362d2c" : colors?.color ?? look.trim));
-  const pieceName = clothingPieceLabel(piece);
-  const dye = (value?: PieceColors) => onChange(withClothingColors(choice, piece, value));
-  const bars = laced ? [
-    { label: "Fabric", value: fabric, apply: (color: string) => dye({ color }) },
-    { label: "Trim", value: colors?.panel ?? outfitFabric ?? "#635a54", apply: (panel: string) => dye({ panel }) },
-    { label: "Laces", value: trim, apply: (laces: string) => dye({ laces }) },
-    { label: "Eyelets", value: colors?.hardware ?? "#b18e61", apply: (hardware: string) => dye({ hardware }) },
-    ...(corsetFit?.waist === "over" ? [
-      { label: "Zipper", value: colors?.closure ?? "#a6906f", apply: (closure: string) => dye({ closure }) },
-    ] : []),
-  ] : [
-    { label: "Main", value: fabric, apply: (color: string) => dye(rebuilt || underwear ? { color } : { color, accent: trim }) },
-    { label: rebuilt ? "Binding" : "Accent", value: trim, apply: (accent: string) => dye({ accent }) },
-    ...(rebuilt ? [
-      { label: "Front panel", value: colors?.panel ?? outfitFabric ?? "#40302c", apply: (panel: string) => dye({ panel }) },
-      { label: "Lining", value: colors?.lining ?? outfitFabric ?? "#2a262b", apply: (lining: string) => dye({ lining }) },
-      { label: "Hardware", value: colors?.hardware ?? "#ad8451", apply: (hardware: string) => dye({ hardware }) },
-    ] : []),
+  const rows: DyeRow[] = profile?.groups.map(group => ({
+    ...group, value: resolveCorsetDye(group, colors, outfitFabric, look.appearance.accent) ?? group.original,
+  })) ?? [
+    { key: "color", label: "Main", value: underwear?.color ?? colors?.color ?? look.fabric, theme: "color" },
+    { key: "accent", label: "Accent", value: underwear?.accent ?? colors?.accent ?? colors?.color ?? look.trim, theme: "accent" },
   ];
+  const fabric = rows[0].value;
+  const trim = rows.find(row => row.theme === "accent")?.value ?? fabric;
+  const resetLabel = profile?.finishes ? "Reset piece appearance" : "Reset piece colors";
+  const dye = (value?: PieceColors) => onChange(withClothingColors(choice, piece, value));
+  const pieceName = clothingPieceLabel(piece);
+
+  function applyTheme(theme: typeof OUTFIT_THEMES[number]) {
+    const next: PieceColors = {};
+    for (const group of profile?.themeGroups ?? rows) {
+      if (group.theme) next[group.key] = theme[group.theme];
+    }
+    dye(next);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -70,46 +80,27 @@ export function ClothingColorToolbar({ choice, piece, onChange }: {
     toggle.current?.focus();
   }}>
     <div id={panelId} className="dressing-color-panel menu-panel-frame" hidden={!open}>
-      <div className="dressing-color-bar" role="group" aria-label="Color combinations" data-controller-row>
-        <span aria-hidden="true">Themes</span>
-        <div className="dressing-color-chips">
-          {OUTFIT_THEMES.map(theme => <button key={theme.name} type="button" className="menu-control menu-panel-frame dressing-color-preset"
-            aria-label={theme.name} title={theme.name} aria-pressed={fabric === theme.color && trim === theme.accent}
-            onClick={() => dye(laced ? { color: theme.color, panel: theme.color, laces: theme.accent }
-              : rebuilt ? { color: theme.color, accent: theme.accent, panel: theme.color, lining: theme.color, hardware: theme.accent }
-              : { color: theme.color, accent: theme.accent })}>
-            <i className="dressing-color-swatch" style={swatch(theme.color, theme.accent)} aria-hidden="true" />
-          </button>)}
+      {open && <>
+        <PaletteRow label="Themes" group="Color combinations">
+          {OUTFIT_THEMES.map(theme => <ColorSwatchButton key={theme.name} className={presetClass} color={theme.color} accent={theme.accent}
+            label={theme.name} pressed={rows.every(row => !row.theme || row.value === theme[row.theme])}
+            onClick={() => applyTheme(theme)} />)}
           <button type="button" className="menu-control menu-panel-frame dressing-color-reset" disabled={!colors}
-            aria-label={laced ? "Reset piece appearance" : "Reset piece colors"}
-            title={laced ? "Reset piece appearance" : "Reset piece colors"} onClick={() => dye()}>
+            aria-label={resetLabel} title={resetLabel} onClick={() => dye()}>
             <svg className="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
               <path d="M4 6v5h5M4.4 10a8 8 0 1 1 1.2 7" />
             </svg>
           </button>
-        </div>
-      </div>
-      {laced && <div className="dressing-color-bar" role="group" aria-label="Fabric finish" data-controller-row>
-        <span aria-hidden="true">Finish</span>
-        <div className="dressing-color-chips">
-          {LACED_BODICE_FINISHES.map(({ id, label }) => <button key={id} type="button"
+        </PaletteRow>
+        {profile?.finishes && <PaletteRow label="Finish" group="Fabric finish">
+          {profile.finishes.map(({ id, label }) => <button key={id} type="button"
             className="menu-control menu-panel-frame dressing-color-finish"
             aria-pressed={(colors?.finish ?? "original") === id}
             onClick={() => dye({ finish: id })}>{label}</button>)}
-        </div>
-      </div>}
-      {bars.map(({ label, value, apply }) => <div key={label} className="dressing-color-bar" role="group" aria-label={`${label} color`} data-controller-row>
-        <span aria-hidden="true">{label}</span>
-        <div className="dressing-color-chips">
-          {colorPresets.map(preset => <button key={preset.color} type="button" className="menu-control menu-panel-frame dressing-color-preset"
-            aria-label={`${label} color: ${preset.label}`} title={preset.label} aria-pressed={value === preset.color}
-            onClick={() => apply(preset.color)}>
-            <i className="dressing-color-swatch" style={swatch(preset.color)} aria-hidden="true" />
-          </button>)}
-          <input type="color" aria-label={`Custom ${label.toLowerCase()} color`} title={`Custom ${label.toLowerCase()} color`} value={value}
-            onChange={event => apply(event.currentTarget.value)} />
-        </div>
-      </div>)}
+        </PaletteRow>}
+        {rows.map(({ key, label, value }) => <ColorRow key={key} label={label} value={value}
+          onChange={color => dye(key === "color" && !profile && !underwear ? { color, accent: trim } : { [key]: color })} />)}
+      </>}
     </div>
     <div data-controller-row>
       <button ref={toggle} type="button" className="menu-control menu-panel-frame dressing-color-toggle" aria-expanded={open} aria-controls={panelId}
@@ -117,7 +108,7 @@ export function ClothingColorToolbar({ choice, piece, onChange }: {
           focusPalette.current = event.detail === 0;
           setOpen(value => !value);
         }}>
-        <i className="dressing-color-swatch" style={swatch(fabric, trim)} aria-hidden="true" />
+        <ColorSwatch color={fabric} accent={trim} />
       </button>
     </div>
   </section>;

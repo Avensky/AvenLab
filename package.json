@@ -7,6 +7,8 @@
     "check:cargo": "cargo --version && rustc --version",
     "check:data": "node scripts/check-data.mjs",
     "check:rust": "cd avenlab-server && cargo check",
+    "wardrobe:catalog": "node frontend/scripts/discover-wardrobe-garments.mts --write",
+    "wardrobe:catalog:check": "node frontend/scripts/discover-wardrobe-garments.mts --check",
     
     "dev": "concurrently -n frontend,data,rust \"npm:dev:frontend\" \"npm:dev:uvicorn\" \"npm:dev:rust\"",
     "dev:frontend": "npm --prefix frontend run dev",

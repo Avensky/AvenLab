@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { MenuAction } from "../../controls/inputRouting";
 import { createGuestProfile, signInDeviceProfile } from "../../net/socialClient";
-import { selectEquippedCharacter, useSocialStore } from "../../store/social/socialStore";
+import { useSocialStore } from "../../store/social/socialStore";
 import { CharacterPortrait } from "../characters/CharacterPortrait";
-import { DEFAULT_CHARACTER } from "../characters/characterCatalog";
+import { usePlayerCharacter } from "../characters/localOutfits";
 import "./mainMenuProfile.css";
 
 export function MainMenuProfile({ focusMenu }: { focusMenu: () => void }) {
-  const choice = useSocialStore(selectEquippedCharacter) ?? DEFAULT_CHARACTER;
+  const choice = usePlayerCharacter();
   const name = useSocialStore(state => state.view?.profile.name);
   const scope = useSocialStore(state => state.profileScope);
   const available = useSocialStore(state => state.available);

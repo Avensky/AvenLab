@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "test:performance": "node --test tests/*.test.mjs",
+    "audit:wardrobe": "node scripts/audit-wardrobe.mjs",
     "build:roads": "node ../scripts/build-road-colliders.mjs && node ../scripts/build-road-test-map.mjs",
     "build:prefabs": "node ../scripts/build-placement-colliders.mjs && node ../scripts/build-workshop-yard.mjs"
   },

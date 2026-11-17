@@ -26,14 +26,12 @@
 .dressing-color-toolbar .menu-control:is([aria-pressed="true"], [aria-expanded="true"]) {
   --menu-panel-edge: var(--app-accent);
 }
-.dressing-color-swatch {
-  display: block;
+.dressing-color-toolbar .color-swatch {
   width: 15px;
   height: 15px;
-  background: linear-gradient(135deg, var(--swatch-color) 62%, var(--swatch-accent) 62%);
   clip-path: var(--color-swatch-shape);
 }
-.dressing-color-toggle .dressing-color-swatch { width: 18px; height: 18px; }
+.dressing-color-toolbar .dressing-color-toggle .color-swatch { width: 18px; height: 18px; }
 .dressing-color-panel.menu-panel-frame {
   position: absolute;
   bottom: calc(100% + 6px);

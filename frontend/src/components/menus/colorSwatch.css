@@ -1,0 +1,4 @@
+.color-swatch {
+  display: block;
+  background: linear-gradient(135deg, var(--swatch-color) 62%, var(--swatch-accent) 62%);
+}

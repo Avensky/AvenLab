@@ -20,7 +20,9 @@ export function fitReviewKey(owner: string | undefined, choice: CharacterChoice,
  return JSON.stringify([revision, owner ?? "local", choice.id, w?.set ?? choice.outfit, w?.shirt ?? "original", w?.waist ?? "original",
   choice.appearance?.animation_fit ?? "auto", choice.appearance?.glasses ?? "none", choice.prop ?? "none", piece, pose, ...base,
   ...(garments.length ? [garments] : []), ...(ease ? [ease] : []), ...(removed.length ? [{ removed }] : []),
-  ...(w?.cut ? [{ cut: w.cut }] : []), ...(choice.bra !== undefined ? [{ bra: choice.bra }] : [])]);
+  ...(w?.cut ? [{ cut: w.cut }] : []), ...(choice.bra !== undefined ? [{ bra: choice.bra }] : []),
+  ...(choice.appearance?.bra_style === "push-up" && (choice.bra ?? removed.some(slot => slot === "top" || slot === "corset"))
+    ? [{ braStyle: "push-up" }] : [])]);
 }
 export function fitReviewStatus(review?: Review) { return review?.issue.trim() ? "issue" : FIT_CHECKS.every(check => review?.checks[check]) ? "passed" : FIT_CHECKS.some(check => review?.checks[check]) ? "partial" : "untested"; }
 export const useFitReviewStore = create(persist<{

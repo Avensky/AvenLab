@@ -1,18 +1,25 @@
 import { Mesh, type BufferGeometry, type Object3D } from "three";
-import catalog from "../../../../avenlab-server/src/assets/character-wardrobe.json";
+import catalog from "../../../../packages/wardrobe-catalog/character-wardrobe.json";
 import { prepareLacedBodyMask } from "./lacedStrapFit";
 import { prepareOverSkirtEase, type OverSkirtEase } from "./overSkirtEase";
+import { hasAuthoredSweetheartFit } from "./sweetheartCorset";
 
 export const WARDROBE_SETS = catalog.filter(set => !set.retired);
 export const WARDROBE_CORSETS = catalog;
 export const LACED_BODICE_WARDROBE_SET = "gothic-01";
+const RUFFLED_WARDROBE_SET = "gothic-03";
 export const REBUILT_LACED_BODICE_ASSET = "gothic-laced-bodice";
+const HIGH_COLLAR_WARDROBE_SET = "gothic-05";
+const REBUILT_HIGH_COLLAR_ASSET = "gothic-high-collar";
 export const UNDERBUST_WARDROBE_SET = "gothic-04";
 export const REBUILT_UNDERBUST_ASSET = "gothic-underbust-vest";
 export const ORIGINAL_CUT_UNDERBUST_ASSET = "gothic-underbust-vest-original-cut";
 export const TUCKED_UNDERBUST_ASSET = "gothic-underbust-vest-tucked";
 export type WardrobeChoice = { set: string; shirt: "none" | "under" | "over"; waist: "tucked" | "over"; cut?: "original" };
-type WardrobeSelection = { wardrobe?: WardrobeChoice; wardrobeTrial?: WardrobeChoice; wardrobeEase?: Exclude<OverSkirtEase, 0> };
+type WardrobeSelection = {
+  wardrobe?: WardrobeChoice; wardrobeTrial?: WardrobeChoice; wardrobeEase?: Exclude<OverSkirtEase, 0>;
+  garments?: { top?: string; dress?: string };
+};
 export const WARDROBE_WAIST_OPTIONS = [
   { waist: "tucked", ease: 0, label: "Tucked into skirt" },
   { waist: "over", ease: 0, label: "Over skirt" },
@@ -30,7 +37,12 @@ export function resolveWardrobe(choice?: WardrobeChoice, { includeRetired = fals
   return { set: set.id, shirt: "none", waist, ...cut };
 }
 
+export function hasSeparateWardrobeTop(choice?: Pick<WardrobeSelection, "garments"> | null) {
+  return Boolean(choice?.garments?.top || choice?.garments?.dress);
+}
+
 export function resolveCharacterWardrobe(choice: WardrobeSelection | null | undefined) {
+  if (hasSeparateWardrobeTop(choice)) return;
   return resolveWardrobe(choice?.wardrobeTrial, { includeRetired: true }) ?? resolveWardrobe(choice?.wardrobe);
 }
 
@@ -63,6 +75,10 @@ export function isRebuiltLacedBodiceUrl(url: string) {
   return url.includes(`/${REBUILT_LACED_BODICE_ASSET}.`);
 }
 
+export function isRebuiltHighCollarUrl(url: string) {
+  return url.includes(`/${REBUILT_HIGH_COLLAR_ASSET}.`);
+}
+
 export function hasRebuiltLacedBodice() {
   const lods = __STANDALONE_CORSET_LODS__[REBUILT_LACED_BODICE_ASSET];
   return Boolean(lods?.garage || lods?.mobile);
@@ -72,12 +88,19 @@ export function hasRebuiltLacedBodice() {
 export function corsetRenderChoice(look: {
   corset?: WardrobeChoice;
   wardrobe?: WardrobeChoice;
-  garments?: { top?: string; dress?: string };
+  garments?: { top?: string; dress?: string; skirt?: string };
   removedClothing: readonly string[];
 }) {
   if (look.corset) return look.corset;
+  if (look.wardrobe?.set === RUFFLED_WARDROBE_SET && look.garments?.skirt === "village-skirt"
+    && !look.garments.top && !look.garments.dress && !look.removedClothing.includes("corset")) return look.wardrobe;
   if (look.wardrobe?.set === LACED_BODICE_WARDROBE_SET && !look.garments?.top && !look.garments?.dress
     && !look.removedClothing.includes("corset") && hasRebuiltLacedBodice()) return look.wardrobe;
+  if (look.wardrobe?.set === HIGH_COLLAR_WARDROBE_SET && !look.garments?.top && !look.garments?.dress
+    && !look.removedClothing.includes("corset")) {
+    const lods = __STANDALONE_CORSET_LODS__[REBUILT_HIGH_COLLAR_ASSET];
+    if (lods?.garage || lods?.mobile) return look.wardrobe;
+  }
 }
 
 export function wardrobeOverEase(choice?: WardrobeSelection | null): OverSkirtEase {
@@ -95,15 +118,20 @@ export function corsetModelUrls(choice: WardrobeChoice | undefined, kind: "garag
   const resolved = resolveWardrobe(choice, { includeRetired: true });
   if (!resolved) return [];
   const urls: string[] = [];
-  const add = (id: string, directory: string, available: { garage: boolean; mobile: boolean } | undefined) => {
-    if (!available?.garage && !available?.mobile) return;
-    const tier = available.mobile && (kind === "portrait" || !available.garage) ? "mobile" : "garage";
-    urls.push(`/models/characters/${directory}/${id}.${tier}.glb`);
+  const preferred = kind === "portrait" ? "mobile" : "garage";
+  const alternate = preferred === "mobile" ? "garage" : "mobile";
+  const add = (id: string, directory: string, available: { garage: boolean; mobile: boolean } | undefined, includeAlternate = false) => {
+    const path = `/models/characters/${directory}/${id}`;
+    if (available?.[preferred]) urls.push(`${path}.${preferred}.glb`);
+    if (available?.[alternate] && (includeAlternate || !available[preferred])) urls.push(`${path}.${alternate}.glb`);
   };
   if (useStandalone) {
     const directory = "female/wardrobe/corsets";
+    if (resolved.set === HIGH_COLLAR_WARDROBE_SET) {
+      add(REBUILT_HIGH_COLLAR_ASSET, directory, __STANDALONE_CORSET_LODS__[REBUILT_HIGH_COLLAR_ASSET], true);
+    }
     if (resolved.set === LACED_BODICE_WARDROBE_SET) {
-      add(REBUILT_LACED_BODICE_ASSET, directory, __STANDALONE_CORSET_LODS__[REBUILT_LACED_BODICE_ASSET]);
+      add(REBUILT_LACED_BODICE_ASSET, directory, __STANDALONE_CORSET_LODS__[REBUILT_LACED_BODICE_ASSET], true);
     }
     if (resolved.set === UNDERBUST_WARDROBE_SET && resolved.waist === "over") {
       if (resolved.cut === "original") {
@@ -129,6 +157,7 @@ export function prepareWardrobe(root: Object3D) {
   const parts: Object3D[] = [];
   const masked: { mesh: Mesh; source: BufferGeometry; geometry: BufferGeometry; indices: Uint32Array[] }[] = [];
   const skirtCoversHips = Boolean(root.getObjectByName("CLOTH_BOTTOM_SKIRT"));
+  const sweetheartSkin = hasAuthoredSweetheartFit(root, 2);
   root.traverse(part => {
     if (typeof part.userData.wardrobeRole === "string") {
       parts.push(part);
@@ -149,12 +178,16 @@ export function prepareWardrobe(root: Object3D) {
       const lacedMask = body && prepareLacedBodyMask(root, mode === 1 ? "over" : "tucked");
       for (let i = 0; i < index.count; i += 3) {
         const a = index.getX(i), b = index.getX(i + 1), c = index.getX(i + 2);
-        if (body && skirtCoversHips && Math.max(Math.abs(body.getX(a)), Math.abs(body.getX(b)), Math.abs(body.getX(c))) < .203) {
-          const bottom = Math.min(body.getY(a), body.getY(b), body.getY(c));
+        if (body) {
           const top = Math.max(body.getY(a), body.getY(b), body.getY(c));
-          // Restore complete lower legs. Hide the surface inside the skirt at the hips.
-          if (bottom < .736 && top < .758) { visible.push(a, b, c); continue; }
-          if (bottom < 1.02 && top > .736) continue;
+          if (skirtCoversHips && Math.max(Math.abs(body.getX(a)), Math.abs(body.getX(b)), Math.abs(body.getX(c))) < .203) {
+            const bottom = Math.min(body.getY(a), body.getY(b), body.getY(c));
+            // Restore complete lower legs. Hide the surface inside the skirt at the hips.
+            if (bottom < .736 && top < .758) { visible.push(a, b, c); continue; }
+            if (bottom < 1.02 && top > .736) continue;
+          }
+          // The Sweetheart neckline and armholes need the full skinned torso.
+          if (sweetheartSkin && top > 1.10) { visible.push(a, b, c); continue; }
         }
         if ((coverage.getX(a) & coverage.getX(b) & coverage.getX(c) & bit) === 0
           || (body && lacedMask?.retainsFace(body, a, b, c))) visible.push(a, b, c);

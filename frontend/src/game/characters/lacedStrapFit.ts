@@ -209,13 +209,16 @@ export function fitLacedBodice(root: Object3D, body: BufferGeometry) {
 }
 
 /** Keep a skirt's waistband on its side of the bodice hem. */
-export function fitLacedBodiceToSkirt(root: Object3D, body: BufferGeometry, skirt: readonly MeshBVH[], fit?: "village-tucked") {
+export function fitLacedBodiceToSkirt(root: Object3D, body: BufferGeometry, skirt: readonly MeshBVH[],
+  fit?: "village-tucked", reuse?: { adjustments?: Float32Array },
+) {
   const villageTuck = fit === "village-tucked";
+  const saved = villageTuck ? reuse?.adjustments : undefined;
   const sections = 72, rows = villageTuck ? 53 : 27, base = villageTuck ? 1.080 : 1.032, step = villageTuck ? .001 : .0055;
   // Every waistband ray holds its height, so triangles outside this band cannot contribute.
   const height = [base, base + (rows - 1) * step] as const;
-  const torso = wardrobeCoverageSurface(body, height);
-  if (!torso) return;
+  const torso = saved ? undefined : wardrobeCoverageSurface(body, height);
+  if (!saved && !torso) return;
   const altered: { mesh: SkinnedMesh; source: BufferGeometry; fitted: BufferGeometry }[] = [];
   const ray = new Ray();
   const outerRadius = (surfaces: readonly MeshBVH[]) => {
@@ -231,52 +234,55 @@ export function fitLacedBodiceToSkirt(root: Object3D, body: BufferGeometry, skir
       root.getObjectByName(name)?.traverse(part => {
         if (!(part instanceof SkinnedMesh) || Array.isArray(part.material)) return;
         meshes.push(part);
-        if (part.material.userData.color_slot !== "fabric" && !villageTuck) return;
+        if (saved || (part.material.userData.color_slot !== "fabric" && !villageTuck)) return;
         const surface = wardrobeCoverageSurface(part.geometry, height);
         if (surface) cloth.push(surface);
       });
     }
     const over = mode === "OVER";
-    const adjustments = new Float32Array(sections * rows);
-    const rimFeatherRows = 12;
-    const lastBeltRow = new Int16Array(sections).fill(-rimFeatherRows);
-    const lastBelt = new Float32Array(sections);
-    for (let row = 0; row < rows; row++) {
-      const y = base + row * step;
-      for (let section = 0; section < sections; section++) {
-        const angle = section * 2 * Math.PI / sections;
-        const x = Math.sin(angle), z = Math.cos(angle);
-        ray.origin.set(.24 * x, y, waistCenter + .24 * z);
-        ray.direction.set(-x, 0, -z);
-        let belt = outerRadius(skirt);
-        let skirtFalloff = 1;
-        if (villageTuck && belt !== undefined) {
-          lastBelt[section] = belt;
-          lastBeltRow[section] = row;
-        } else if (villageTuck && row - lastBeltRow[section] < rimFeatherRows) {
-          // Feather the inset above the narrow waistband so the last row
-          // beneath the rim stays tucked when the garment moves.
-          belt = lastBelt[section];
-          skirtFalloff = 1 - MathUtils.smoothstep(row - lastBeltRow[section], 1, rimFeatherRows);
+    const adjustments = saved ?? new Float32Array(sections * rows);
+    if (torso) {
+      const rimFeatherRows = 12;
+      const lastBeltRow = new Int16Array(sections).fill(-rimFeatherRows);
+      const lastBelt = new Float32Array(sections);
+      for (let row = 0; row < rows; row++) {
+        const y = base + row * step;
+        for (let section = 0; section < sections; section++) {
+          const angle = section * 2 * Math.PI / sections;
+          const x = Math.sin(angle), z = Math.cos(angle);
+          ray.origin.set(.24 * x, y, waistCenter + .24 * z);
+          ray.direction.set(-x, 0, -z);
+          let belt = outerRadius(skirt);
+          let skirtFalloff = 1;
+          if (villageTuck && belt !== undefined) {
+            lastBelt[section] = belt;
+            lastBeltRow[section] = row;
+          } else if (villageTuck && row - lastBeltRow[section] < rimFeatherRows) {
+            // Feather the inset above the narrow waistband so the last row
+            // beneath the rim stays tucked when the garment moves.
+            belt = lastBelt[section];
+            skirtFalloff = 1 - MathUtils.smoothstep(row - lastBeltRow[section], 1, rimFeatherRows);
+          }
+          if (belt === undefined) continue;
+          const bodice = outerRadius(cloth);
+          if (bodice === undefined) continue;
+          const blend = villageTuck ? skirtFalloff
+            : MathUtils.smoothstep(y, base, 1.057) * (1 - MathUtils.smoothstep(y, 1.155, 1.175));
+          let move: number;
+          if (over) {
+            move = MathUtils.clamp(belt + .010 - bodice, 0, .024);
+          } else {
+            ray.origin.set(0, y, waistCenter);
+            ray.direction.negate();
+            const skin = torso.raycastFirst(ray, DoubleSide, 0, .22)?.distance;
+            if (skin === undefined) continue;
+            const target = villageTuck ? Math.max(skin + .0018, belt - .009) : Math.max(skin + .0045, belt - .006);
+            move = MathUtils.clamp(target - bodice, -.016, 0);
+          }
+          adjustments[row * sections + section] = move * blend;
         }
-        if (belt === undefined) continue;
-        const bodice = outerRadius(cloth);
-        if (bodice === undefined) continue;
-        const blend = villageTuck ? skirtFalloff
-          : MathUtils.smoothstep(y, base, 1.057) * (1 - MathUtils.smoothstep(y, 1.155, 1.175));
-        let move: number;
-        if (over) {
-          move = MathUtils.clamp(belt + .010 - bodice, 0, .024);
-        } else {
-          ray.origin.set(0, y, waistCenter);
-          ray.direction.negate();
-          const skin = torso.raycastFirst(ray, DoubleSide, 0, .22)?.distance;
-          if (skin === undefined) continue;
-          const target = villageTuck ? Math.max(skin + .0018, belt - .009) : Math.max(skin + .0045, belt - .006);
-          move = MathUtils.clamp(target - bodice, -.016, 0);
-        }
-        adjustments[row * sections + section] = move * blend;
       }
+      if (villageTuck && reuse) reuse.adjustments = adjustments;
     }
     for (const mesh of meshes) {
       const source = mesh.geometry, position = source.getAttribute("position");
@@ -307,7 +313,7 @@ export function fitLacedBodiceToSkirt(root: Object3D, body: BufferGeometry, skir
     }
     for (const surface of cloth) surface.geometry.dispose();
   }
-  torso.geometry.dispose();
+  torso?.geometry.dispose();
   return () => {
     for (const { mesh, source, fitted } of altered) {
       mesh.geometry = source;
@@ -316,20 +322,24 @@ export function fitLacedBodiceToSkirt(root: Object3D, body: BufferGeometry, skir
   };
 }
 
-/** Give the tucked hem room inside the Village waistband at the rear hips. */
-export function prepareLacedBodiceVillageWaist(skirts: readonly SkinnedMesh[]) {
-  const fittedSkirts = skirts.map(mesh => {
+/** Give the tucked hem room behind the Village skirt and its separate belt. */
+export function prepareLacedBodiceVillageWaist(skirts: readonly SkinnedMesh[], belts: readonly SkinnedMesh[],
+  beltSideRoom = 0) {
+  const fit = (mesh: SkinnedMesh, belt: boolean) => {
     const source = mesh.geometry, fitted = source.clone(), position = fitted.getAttribute("position");
     for (let i = 0; i < position.count; i++) {
       const x = position.getX(i), y = position.getY(i), z = position.getZ(i) - waistCenter;
       if (y <= 1.052) continue;
       const radius = Math.hypot(x, z);
       if (!radius) continue;
-      // The waist turns toward the front of the hip during a weight shift.
-      const sideAndRear = MathUtils.smoothstep(-z / radius, -.42, .25);
+      const rear = -z / radius;
       const side = MathUtils.smoothstep(Math.abs(x) / radius, .27, .65);
-      // Fade into the folds below the waistband while keeping the center back seam aligned.
-      const room = .0055 * sideAndRear * side * MathUtils.smoothstep(y, 1.052, 1.102);
+      // Open the belt across the rear only. Keep its lower edge close to the skirt.
+      const room = belt
+        ? MathUtils.smoothstep(rear, .05, .52) * MathUtils.lerp(.0055, .012, MathUtils.smoothstep(y, 1.092, 1.117))
+          + beltSideRoom * side * MathUtils.smoothstep(y, 1.091, 1.121)
+        : .0055 * MathUtils.smoothstep(rear, -.42, .25) * side * MathUtils.smoothstep(y, 1.052, 1.102);
+      if (!room) continue;
       const scale = 1 + room / radius;
       position.setX(i, x * scale);
       position.setZ(i, waistCenter + z * scale);
@@ -337,13 +347,15 @@ export function prepareLacedBodiceVillageWaist(skirts: readonly SkinnedMesh[]) {
     fitted.computeBoundingBox();
     fitted.computeBoundingSphere();
     return { mesh, source, fitted };
-  });
+  };
+  let fittedWaist: ReturnType<typeof fit>[] | undefined;
   return {
     apply(tucked: boolean) {
-      for (const { mesh, source, fitted } of fittedSkirts) mesh.geometry = tucked ? fitted : source;
+      if (tucked) fittedWaist ??= [...skirts.map(mesh => fit(mesh, false)), ...belts.map(mesh => fit(mesh, true))];
+      for (const { mesh, source, fitted } of fittedWaist ?? []) mesh.geometry = tucked ? fitted : source;
     },
     dispose() {
-      for (const { mesh, source, fitted } of fittedSkirts) {
+      for (const { mesh, source, fitted } of fittedWaist ?? []) {
         mesh.geometry = source;
         fitted.dispose();
       }

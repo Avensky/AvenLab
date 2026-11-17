@@ -412,6 +412,9 @@ impl Server {
                 if existing == choice.as_ref() {
                     return Ok(progression.cosmetics_view());
                 }
+                if existing.zip(choice.as_ref()).is_some_and(|(saved, next)| saved.id != next.id) {
+                    return Err("That name belongs to another character's outfit.".into());
+                }
                 if choice.is_some() && existing.is_none() && progression.character_outfits.len() >= 24 {
                     return Err("Remove a saved outfit before adding another. The limit is 24.".into());
                 }

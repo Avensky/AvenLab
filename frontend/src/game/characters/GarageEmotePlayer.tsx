@@ -6,6 +6,7 @@ import { AnimationMixer, LoopOnce, MathUtils, type AnimationAction, type Group, 
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 import { AUTOMATIC_GARAGE_EMOTE_IDS, buildEmoteClips, buildGarageEmotes, findGaragePreviewEmote, garageBreathing } from "./garageEmotes";
 import { driverFaceTargets } from "./villagerFace";
+import { skipHiddenCharacterRaycasts } from "./characterPreviewRaycast";
 import { failCockpitPreview, useCharacterPreviewStore } from "./characterPreviewStore";
 import { DriverBag } from "./DriverBag";
 import { availableVictoryEmotes, type VictoryEmoteId } from "./victoryEmotes";
@@ -56,6 +57,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
   const contextFit = useRef("");
   const lastInteraction = useRef<string | undefined>(undefined);
   const heldProp = useRef<Group>(null);
+  const baseClips = useRef<{ root: Object3D; bag: boolean; clips: ReturnType<typeof buildGarageEmotes> }>(null);
   const reducedMotion = usePreferencesStore(state => state.reducedMotion);
   const restSeconds = previewPacks ? 4.5 : 2.35;
   const player = useRef<CabinState & {
@@ -71,6 +73,10 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
     blink: ReturnType<typeof driverFaceTargets>;
     elapsed: number;
   }>(null);
+
+  useLayoutEffect(() => {
+    if (previewPacks) return skipHiddenCharacterRaycasts(root);
+  }, [root, previewPacks]);
 
   useLayoutEffect(() => {
     if (!cockpit || reducedMotion) return;
@@ -101,12 +107,20 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
   }, [previewPacks, mirrorFit, reducedMotion]);
 
   useEffect(() => {
+    if (baseClips.current?.root !== root || baseClips.current.bag !== bag) baseClips.current = null;
     if (reducedMotion) return;
     const mixer = new AnimationMixer(root);
     const celebration = victory && availableVictoryEmotes(bag).find(emote => emote.id === victory.id);
-    const [breathing, ...clips] = victory
-      ? buildEmoteClips(root, celebration ? [garageBreathing(bag), celebration] : [garageBreathing(bag)])
-      : buildGarageEmotes(root, bag);
+    // These tracks bind to the prepared rig's UUIDs. A preview-mode change
+    // resets playback and disposes temporary props, but can reuse the base tracks.
+    let startupClips = baseClips.current?.clips;
+    if (victory) {
+      startupClips = buildEmoteClips(root, celebration ? [garageBreathing(bag), celebration] : [garageBreathing(bag)]);
+    } else if (!startupClips) {
+      startupClips = buildGarageEmotes(root, bag);
+      baseClips.current = { root, bag, clips: startupClips };
+    }
+    const [breathing, ...clips] = startupClips;
     const idle = mixer.clipAction(breathing).play();
     if (previewPacks && useCharacterPreviewStore.getState().playbackPaused) mixer.update(0);
     const actions = new Map(clips.map(clip => [clip.name.split(" ")[0], mixer.clipAction(clip).setLoop(LoopOnce, 1)]));
@@ -126,7 +140,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
       props.forEach(prop => prop.dispose());
       setBlinkWeight(blink, 0);
     };
-  }, [reducedMotion, root, bag, victory, restSeconds]);
+  }, [reducedMotion, root, bag, victory, previewPacks, restSeconds]);
 
   useFrame((_, delta) => {
     const current = player.current;

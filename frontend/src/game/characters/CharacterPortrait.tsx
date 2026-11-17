@@ -1,10 +1,6 @@
-import { Suspense, useEffect, useEffectEvent, useMemo, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
-import { useGLTF } from "@react-three/drei";
-import type { Object3D } from "three";
-import { AssetBoundary } from "../../components/debugger/AssetBoundary";
+import { useEffect, useEffectEvent, useMemo, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { useUIStore } from "../../store/menus/uiStore";
-import { bakeCharacterPortrait, peekCharacterPortrait, subscribeCharacterPortrait, type PortraitOutfit } from "./bakeCharacterPortrait";
-import { FITTING_BODY_URL } from "./standaloneCorset";
+import { bakeCharacterPortrait, peekCharacterPortrait, subscribeCharacterPortrait } from "./bakeCharacterPortrait";
 import { getWardrobeGarment, wardrobeGarmentModelUrl } from "./wardrobeGarments";
 import { villagerModelUrl } from "./villagerModel";
 import { VILLAGER_ID, characterLook, type CharacterChoice, type CharacterLook } from "./characterCatalog";
@@ -44,7 +40,6 @@ const faces: Record<string, { neck: string; shadow: string; art: ReactNode }> = 
   },
 };
 
-type PortraitProps = { look: CharacterLook; cacheKey: string; fallback: ReactNode; pending?: ReactNode; label?: string };
 const PORTRAIT_QUIET_MS = 900;
 const portraitActivity = ["pointerdown", "pointerup", "pointermove", "click", "wheel", "keydown", "avenlab:main-menu-action"] as const;
 
@@ -54,8 +49,9 @@ function portraitMenuAllowsWork({ screen, overlay, isModeLoading }: ReturnType<t
   return screen === "main" && overlay === null && !isModeLoading;
 }
 
-function schedulePortraitWork(work: () => void) {
+function schedulePortraitWork(work: () => () => void) {
   let timer: number | undefined, idle: number | undefined;
+  let cancelWork: (() => void) | undefined;
   let quietUntil = performance.now() + PORTRAIT_QUIET_MS;
   const canRun = () => document.visibilityState !== "hidden" && portraitMenuAllowsWork(useUIStore.getState());
   const cancel = () => {
@@ -65,6 +61,7 @@ function schedulePortraitWork(work: () => void) {
   };
   const stop = () => {
     cancel();
+    cancelWork?.();
     for (const event of portraitActivity) window.removeEventListener(event, activity, true);
     document.removeEventListener("visibilitychange", visibility);
   };
@@ -72,8 +69,7 @@ function schedulePortraitWork(work: () => void) {
     idle = undefined;
     if (!canRun()) return;
     if (performance.now() < quietUntil) { schedule(); return; }
-    stop();
-    work();
+    cancelWork = work();
   };
   const schedule = () => {
     if (!canRun()) return;
@@ -92,6 +88,8 @@ function schedulePortraitWork(work: () => void) {
   }
   function visibility() {
     cancel();
+    cancelWork?.();
+    cancelWork = undefined;
     quietUntil = performance.now() + PORTRAIT_QUIET_MS;
     schedule();
   }
@@ -101,50 +99,17 @@ function schedulePortraitWork(work: () => void) {
   return stop;
 }
 
-function portraitKey(look: CharacterLook, url: string | null, outfitUrl?: string | false) {
+function portraitKey(look: CharacterLook, url: string | null, outfitUrl?: string) {
   const { hair, hair_color, skin, headwear, color, eye_color, brow_color, glasses, accent, item_colors } = look.appearance;
   const colors = Object.entries(item_colors ?? {}).sort(([a], [b]) => a.localeCompare(b))
     .map(([key, values]) => [key, Object.entries(values).sort(([a], [b]) => a.localeCompare(b))]);
   const { wardrobe } = look;
-  return JSON.stringify([look.character.id, look.outfit.id, url, outfitUrl || null, hair, hair_color, skin, headwear,
+  return JSON.stringify([look.character.id, look.outfit.id, url, outfitUrl ?? null, hair, hair_color, skin, headwear,
     color, eye_color, brow_color, glasses, accent, colors, wardrobe && [wardrobe.set, wardrobe.shirt, wardrobe.waist]]);
 }
 
 function PortraitImage({ src, label }: { src: string; label?: string }) {
   return <img className="character-portrait character-portrait--model" src={src} alt={label ?? ""} decoding="async" />;
-}
-
-function ModelPortrait({ source, outfit, look, cacheKey, fallback, pending = fallback, label }: PortraitProps & { source?: Object3D; outfit?: PortraitOutfit }) {
-  const cached = useSyncExternalStore(subscribeCharacterPortrait, () => peekCharacterPortrait(cacheKey), () => null);
-  const [failedKey, setFailedKey] = useState<string>();
-  const bake = useEffectEvent(() => bakeCharacterPortrait(look, cacheKey, source, outfit));
-  useEffect(() => {
-    if (cached) return;
-    let active = true;
-    const cancel = schedulePortraitWork(() => {
-      void bake().catch(() => { if (active) setFailedKey(cacheKey); });
-    });
-    return () => { active = false; cancel(); };
-  }, [cacheKey, cached, source, outfit]);
-  return cached ? <PortraitImage src={cached} label={label} /> : failedKey === cacheKey ? fallback : pending;
-}
-
-function OutfitPortrait({ source, url, item, ...props }: PortraitProps & {
-  source: Object3D; url: string; item: NonNullable<ReturnType<typeof getWardrobeGarment>>;
-}) {
-  const [{ scene: garment }, { scene: body }] = useGLTF([url, FITTING_BODY_URL]);
-  const outfit = useMemo(() => ({ garment: { item, scene: garment }, body: body.getObjectByName("BODY_WARDROBE") }), [item, garment, body]);
-  return <ModelPortrait {...props} source={source} outfit={outfit} />;
-}
-
-function VillagerPortrait({ url, ...props }: PortraitProps & { url: string }) {
-  const { scene } = useGLTF(url);
-  const item = getWardrobeGarment(props.look.garments?.dress);
-  const outfitUrl = item?.outfit && wardrobeGarmentModelUrl(item, "portrait");
-  const stock = <ModelPortrait {...props} cacheKey={portraitKey(props.look, url)} source={scene} />;
-  return item && outfitUrl ? <AssetBoundary key={outfitUrl} fallback={stock}>
-    <OutfitPortrait {...props} source={scene} item={item} url={outfitUrl} />
-  </AssetBoundary> : stock;
 }
 
 /** Garage portraits use the selected GLB appearance, with art for unavailable models. */
@@ -155,18 +120,28 @@ export function CharacterPortrait({ choice, compact = false, label }: {
 }) {
   const { id, outfit, appearance, wardrobe } = choice ?? {};
   const look = useMemo(() => characterLook(id && outfit ? { id, outfit, appearance, wardrobe } : null), [id, outfit, appearance, wardrobe]);
-  const canBake = typeof WebGL2RenderingContext !== "undefined";
+  const canBake = typeof Worker !== "undefined" && typeof OffscreenCanvas !== "undefined";
   const url = canBake && look ? villagerModelUrl(look, "portrait") : null;
   const canRefresh = useUIStore(portraitMenuAllowsWork);
-  const garment = getWardrobeGarment(look?.garments?.dress);
-  const outfitUrl = garment?.outfit && wardrobeGarmentModelUrl(garment, "portrait");
-  const key = look ? portraitKey(look, url, outfitUrl) : "";
+  const dressId = look?.garments?.dress;
+  const dress = url && dressId ? getWardrobeGarment(dressId) : undefined;
+  const dressUrl = dress?.outfit ? wardrobeGarmentModelUrl(dress, "portrait") : undefined;
+  const key = look ? portraitKey(look, url, dressUrl) : "";
   const cached = useSyncExternalStore(subscribeCharacterPortrait, () => key ? peekCharacterPortrait(key) : null, () => null);
-  const [requestedUrl, setRequestedUrl] = useState<string | null>(null);
+  const [failedKey, setFailedKey] = useState<string>();
+  const needsBake = canBake && canRefresh && !!look && !cached && failedKey !== key && (url !== null || id !== VILLAGER_ID);
+  const startBake = useEffectEvent(() => {
+    const job = new AbortController();
+    if (look) void bakeCharacterPortrait(key, {
+      look, modelUrl: url, dress: dress && dressUrl ? { item: dress, url: dressUrl } : undefined,
+    }, job.signal).catch(() => { if (!job.signal.aborted) setFailedKey(key); });
+    return () => job.abort();
+  });
   useEffect(() => {
-    if (!canRefresh || !url || cached || requestedUrl === url) return;
-    return schedulePortraitWork(() => setRequestedUrl(url));
-  }, [canRefresh, url, cached, requestedUrl]);
+    if (needsBake) return schedulePortraitWork(() => startBake());
+  }, [needsBake, key]);
+  if (cached) return <PortraitImage src={cached} label={label} />;
+
   const originalOnly = id === VILLAGER_ID;
   const face = look && faces[look.character.id];
   const alternate = look?.outfit.id === look?.character.outfits[1]?.id;
@@ -201,13 +176,7 @@ export function CharacterPortrait({ choice, compact = false, label }: {
         </g>}
       </> : <path fill="var(--app-muted, #889aa9)" opacity=".64" d="M120 42a28 28 0 1 0 0 56 28 28 0 0 0 0-56Zm-54 83c10-16 32-22 54-22s44 6 54 22l14 57H52Z" />}
     </svg>;
-  if (cached) return <PortraitImage src={cached} label={label} />;
-  if (!look || !canBake || !canRefresh) return fallback;
-  const unavailable = originalOnly ? fallback : <ModelPortrait look={look} cacheKey={portraitKey(look, null)} fallback={fallback} label={label} />;
-  const loading = <span className="character-portrait character-portrait--loading" role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true} />;
-  return url && requestedUrl !== url ? loading : url ? (
-    <AssetBoundary key={url} fallback={unavailable}>
-      <Suspense fallback={loading}><VillagerPortrait url={url} look={look} cacheKey={key} fallback={fallback} pending={loading} label={label} /></Suspense>
-    </AssetBoundary>
-  ) : unavailable;
+  return needsBake && url
+    ? <span className="character-portrait character-portrait--loading" role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true} />
+    : fallback;
 }

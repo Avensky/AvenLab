@@ -1,6 +1,6 @@
 import { Box3, Mesh, type Object3D } from "three";
-import catalog from "../../../../avenlab-server/src/assets/character-clothing-pieces.json";
-import { characterAppearance, characterLook, type CharacterChoice, type CharacterLook } from "./characterCatalog";
+import catalog from "../../../../packages/wardrobe-catalog/character-clothing-pieces.json";
+import { characterAppearance, characterLook, VILLAGER_ID, type CharacterChoice, type CharacterLook } from "./characterCatalog";
 import type { LacedBodiceFinish } from "./lacedBodiceAppearance";
 import { resolveWardrobe, UNDERBUST_WARDROBE_SET } from "./wardrobe";
 import { getWardrobeGarment, wardrobeGarmentReplacements, wardrobeRemovalPieces, wardrobeReplacedPieces } from "./wardrobeGarments";
@@ -59,7 +59,7 @@ export function braFitsWith(pieces: readonly ClothingPiece[], corsetSet?: string
 }
 
 export function wornClothing(choice: CharacterChoice): ClothingPiece[] {
-  const female = choice.id === "mara-vega";
+  const female = choice.id === VILLAGER_ID;
   const look = characterLook(choice);
   const wardrobe = look?.wardrobe;
   const removed = look?.removedClothing ?? [];
@@ -72,11 +72,9 @@ export function wornClothing(choice: CharacterChoice): ClothingPiece[] {
     pieces = pieces.filter(piece => !wardrobeGarmentReplacements.top.some(replaced => replaced === piece));
     pieces.unshift("corset");
   }
-  const visible = look?.garments;
-  if (visible) {
-    const garments = Object.values(visible).map(getWardrobeGarment).filter(item => item !== undefined);
+  const garments = Object.values(look?.garments ?? {}).map(getWardrobeGarment).filter(item => item !== undefined);
+  if (garments.length) {
     const replaced = new Set<ClothingPiece>(garments.flatMap(wardrobeReplacedPieces));
-    if (corset) replaced.delete("corset");
     pieces = [...new Set([...pieces.filter(piece => !replaced.has(piece)), ...garments.map(item => item.piece)])];
   }
   if (!female && choice.appearance?.headwear === "hat") pieces.push("hat");
@@ -84,9 +82,8 @@ export function wornClothing(choice: CharacterChoice): ClothingPiece[] {
   if (choice.prop === "shop-bag") pieces.push("bag");
   const hidden = new Set<ClothingPiece>(removed.flatMap(slot => wardrobeRemovalPieces[slot]));
   const shown = pieces.filter(piece => !hidden.has(piece));
-  for (const id of Object.values(visible ?? {})) {
-    const item = getWardrobeGarment(id);
-    if (item?.villageNode && !shown.includes(item.piece)) shown.push(item.piece);
+  for (const item of garments) {
+    if (item.villageNode && !shown.includes(item.piece)) shown.push(item.piece);
   }
   if (female) {
     const coveredBottom = shown.some(piece => piece === "skirt" || piece === "dress" || piece === "shorts");

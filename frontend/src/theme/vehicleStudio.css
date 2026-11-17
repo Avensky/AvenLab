@@ -202,10 +202,11 @@
   height: 27px;
   min-height: 27px!important;
   padding: 0!important;
+  overflow: hidden;
   border-radius: 50%!important;
-  background: var(--paint-swatch)!important;
   border: 2px solid color-mix(in srgb, var(--vehicle-studio-ink) 40%, transparent)!important;
 }
+.vehicle-studio-swatch .color-swatch { width: 100%; height: 100%; }
 .vehicle-studio-swatch[aria-pressed="true"] {
   outline: 2px solid var(--vehicle-studio-accent);
   outline-offset: 2px;

@@ -6,7 +6,7 @@ import { characterLook, type CharacterChoice } from "./characterCatalog";
 import { clothingPieceLabel, wornClothing } from "./clothingPieces";
 import { resolveCharacterWardrobe, wardrobeOverEase, WARDROBE_CORSETS, WARDROBE_WAIST_OPTIONS } from "./wardrobe";
 import { getWardrobeGarment, visibleWardrobeGarments } from "./wardrobeGarments";
-import { LOCAL_OUTFITS_KEY, readLocalOutfits, writeLocalOutfit } from "./localOutfits";
+import { LOCAL_OUTFITS_KEY, OUTFIT_NAME_CONFLICT, readLocalOutfits, writeLocalOutfit } from "./localOutfits";
 import "./savedOutfits.css";
 
 const MAX_OUTFITS = 24;
@@ -65,10 +65,15 @@ export function SavedOutfits({ choice, onTryOn, onEndPreview, clearPreview }: Sa
   const saveProblem = Array.from(trimmedName).length > MAX_NAME_LENGTH || /\p{Cc}/u.test(trimmedName)
     ? "Use up to 48 characters and leave out line breaks."
     : existing && existing.id !== choice.id
-      ? "That name belongs to another character's outfit."
+      ? OUTFIT_NAME_CONFLICT
       : !existing && entries.length >= MAX_OUTFITS
         ? "Delete a saved outfit to make room for another."
         : "";
+
+  function deviceWriteFailed(error: unknown, fallback: string) {
+    setLocalOutfits(readLocalOutfits());
+    setMessage(error instanceof Error && error.message === OUTFIT_NAME_CONFLICT ? OUTFIT_NAME_CONFLICT : fallback);
+  }
 
   function saveDeviceCopy(name: string, outfit: CharacterChoice) {
     if (!canEditCharacter()) return;
@@ -83,8 +88,8 @@ export function SavedOutfits({ choice, onTryOn, onEndPreview, clearPreview }: Sa
     try {
       setLocalOutfits(writeLocalOutfit(name, outfit));
       setMessage(`Copied ${name} to this device.`);
-    } catch {
-      setMessage("Browser storage could not save the copy.");
+    } catch (error) {
+      deviceWriteFailed(error, "Browser storage could not save the copy.");
     }
   }
 
@@ -95,8 +100,8 @@ export function SavedOutfits({ choice, onTryOn, onEndPreview, clearPreview }: Sa
         setLocalOutfits(writeLocalOutfit(name, character));
         if (!character) setName(current => current.trim() === name ? "" : current);
         setMessage(character ? `Saved ${name} on this device.` : `Deleted ${name} from this device.`);
-      } catch {
-        setMessage("Browser storage could not update your outfits.");
+      } catch (error) {
+        deviceWriteFailed(error, "Browser storage could not update your outfits.");
       }
       return;
     }

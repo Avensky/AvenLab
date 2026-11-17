@@ -14,12 +14,16 @@ import './sceneTabHeader.css';
 export const MenuFrame=forwardRef<HTMLElement,ComponentPropsWithoutRef<'section'>>(function MenuFrame({className='',children,...props},ref){
  return <section {...props} ref={ref} className={`menu-frame ${className}`}>{children}</section>;
 });
-export function MenuHeaderBack({onClick,disabled,label='Back'}:BackShortcutAction){
- return <button type="button" className="menu-header-back" data-header-back
-  onClick={onClick} disabled={disabled} aria-label={label} title={label}
-  onKeyDown={event=>{if(event.key==='Enter'||event.key===' ')event.stopPropagation();}}>
+export function MenuBackButton({label,children,className='',...props}:ComponentPropsWithoutRef<'button'>&{label:string}){
+ return <button type="button" className={`menu-back-button ${className}`} aria-label={label} title={label} {...props}>
   <MenuIcon name="back"/>
+  {children&&<span>{children}</span>}
  </button>;
+}
+export function MenuHeaderBack({onClick,disabled,label='Back'}:BackShortcutAction){
+ return <MenuBackButton className="menu-header-back" data-header-back label={label}
+  onClick={onClick} disabled={disabled}
+  onKeyDown={event=>{if(event.key==='Enter'||event.key===' ')event.stopPropagation();}}/>;
 }
 export function MenuFrameHeader({
  title,showProgress=false,titleId,compact=false,eyebrow=compact?'':APP_ALPHA_EYEBROW,

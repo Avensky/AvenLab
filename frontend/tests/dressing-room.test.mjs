@@ -4,9 +4,9 @@ import { readFile } from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { createServer } from 'vite';
 import { act, createElement as h, useState } from 'react';
-import { Spherical, Vector3 } from 'three';
+import { MeshStandardMaterial, Spherical, Vector3 } from 'three';
 
-test('the Laced Bodice palette saves the finish and separate ribbons and fasteners', async () => {
+test('corset palettes save independent colors and the Laced Bodice finish', async () => {
   const dom = new JSDOM('<div id="root"></div>', { url: 'http://localhost/', pretendToBeVisual: true });
   const original = new Map();
   for (const [key, value] of Object.entries({ window: dom.window, document: dom.window.document,
@@ -18,16 +18,32 @@ test('the Laced Bodice palette saves the finish and separate ribbons and fastene
   try {
     const { createRoot } = await import('react-dom/client');
     vite = await createServer({ define: {
-      __STANDALONE_CORSET_LODS__: JSON.stringify({ 'gothic-laced-bodice': { garage: true, mobile: true } }),
+      __STANDALONE_CORSET_LODS__: JSON.stringify({
+        'gothic-laced-bodice': { garage: true, mobile: true }, 'gothic-high-collar': { garage: true, mobile: true },
+        'gothic-underbust-vest': { garage: true, mobile: true },
+      }),
+      __BUNDLED_WARDROBE_LODS__: JSON.stringify({ 'gothic-03': { garage: true, mobile: true } }),
     }, server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
     const { ClothingColorToolbar } = await vite.ssrLoadModule('/src/game/characters/ClothingColorToolbar.tsx');
-    const { DEFAULT_CHARACTER } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { WARDROBE_CORSETS } = await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
+    const { getCorsetDyeProfile, applyCorsetDye } = await vite.ssrLoadModule('/src/game/characters/corsetDye.ts');
     const { readLocalOutfits, writeLocalOutfit } = await vite.ssrLoadModule('/src/game/characters/localOutfits.ts');
-    function Palette({ set, waist }) {
-      const [choice, change] = useState({ ...DEFAULT_CHARACTER, wardrobeTrial: { set, waist, shirt: 'none' } });
+    for (const set of WARDROBE_CORSETS) {
+      const look = characterLook({ ...DEFAULT_CHARACTER, wardrobeTrial: { set: set.id, waist: 'over', shirt: 'none' } });
+      const profile = getCorsetDyeProfile(look);
+      const fields = (profile?.themeGroups ?? []).map(group => group.key).filter(key => key !== 'color' && key !== 'accent');
+      if (profile?.finishes) fields.push('finish');
+      assert.deepEqual(new Set(fields), new Set(set.extraDyeFields), `${set.name} controls match the profile save fields`);
+    }
+    function Palette({ set, waist, saved = false, name = 'Laced Bodice' }) {
+      const selection = { set, waist, shirt: 'none' };
+      const [choice, change] = useState(saved
+        ? { ...DEFAULT_CHARACTER, wardrobe: selection }
+        : { ...DEFAULT_CHARACTER, wardrobeTrial: selection });
       return h(ClothingColorToolbar, { choice, piece: 'corset', onChange: next => {
         change(next);
-        writeLocalOutfit('Laced Bodice', next);
+        writeLocalOutfit(name, next);
       } });
     }
     const pick = async selector => act(async () => {
@@ -53,10 +69,57 @@ test('the Laced Bodice palette saves the finish and separate ribbons and fastene
     assert.equal(readLocalOutfits()['Laced Bodice'].appearance.item_colors, undefined);
 
     await act(async () => root.render(h(Palette, { key: 'tucked', set: 'gothic-01', waist: 'tucked' })));
+    await pick('[aria-label="Open clothing colors"]');
     assert.equal(finish().length, 4);
     assert(!document.querySelector('[aria-label="Zipper color"]'), 'Tucked hides its covered zipper');
-    await act(async () => root.render(h(Palette, { key: 'other', set: 'gothic-02', waist: 'over' })));
-    assert.equal(finish().length, 0, 'other corsets retain their previous controls');
+    await act(async () => root.render(h(Palette, { key: 'sweetheart-over', name: 'Sweetheart', set: 'gothic-02', waist: 'over' })));
+    await pick('[aria-label="Open clothing colors"]');
+    assert.equal(finish().length, 0, 'the Sweetheart has no Laced Bodice finish controls');
+    const swatches = [
+      ['Fabric', 'Crimson', 'fabric', '#ad444d'], ['Front laces', 'Forest', 'laces', '#5f8962'],
+      ['Hip laces', 'Navy', 'accent', '#4b79a4'], ['Eyelets', 'Ink', 'hardware', '#262630'],
+      ['Front fasteners', 'White', 'closure', '#ffffff'],
+    ];
+    for (const [group, color] of swatches) await pick(`[aria-label="${group} color: ${color}"]`);
+    const dye = readLocalOutfits().Sweetheart.appearance.item_colors['gothic-02:corset'];
+    assert.deepEqual(dye, { color: '#ad444d', laces: '#5f8962', panel: '#4b79a4', hardware: '#262630', closure: '#ffffff' });
+    for (const [, , slot, hex] of swatches) {
+      const source = new MeshStandardMaterial({ color: '#706c73' });
+      source.userData = { authoredSweetheartDye: true, color_slot: slot };
+      const material = source.clone();
+      assert.equal(applyCorsetDye(source, material, { ...dye, accent: '#ccbbaa' }, undefined, undefined), true);
+      assert.equal(material.color.getHexString(), hex.slice(1));
+      if (slot !== 'fabric') {
+        applyCorsetDye(source, material, { accent: '#ccbbaa' }, undefined, undefined);
+        assert.equal(material.color.getHexString(), 'ccbbaa', 'saved accents retain their previous tint');
+      }
+      source.dispose();
+      material.dispose();
+    }
+    await act(async () => root.render(h(Palette, { key: 'sweetheart-tucked', name: 'Sweetheart', set: 'gothic-02', waist: 'tucked', saved: true })));
+    await pick('[aria-label="Open clothing colors"]');
+    assert(!document.querySelector('[aria-label="Hip laces color"]'), 'the tucked fit hides the hip laces');
+    await pick('[aria-label="Front fasteners color: Forest"]');
+    assert.deepEqual(readLocalOutfits().Sweetheart.appearance.item_colors['gothic-02:corset'], { closure: '#5f8962' });
+
+    for (const { name, set, waist, groups, values } of [
+      { name: 'Ruffled', set: 'gothic-03', waist: 'over',
+        groups: [['Fabric', 'Crimson'], ['Ruffles', 'Forest'], ['Ribbon', 'Navy']],
+        values: { color: '#ad444d', panel: '#5f8962', laces: '#4b79a4' } },
+      { name: 'High Collar', set: 'gothic-05', waist: 'tucked',
+        groups: [['Main', 'Crimson'], ['Inset', 'Forest'], ['Laces', 'Navy'], ['Trim', 'Ink'], ['Metal', 'White']],
+        values: { color: '#ad444d', panel: '#5f8962', laces: '#4b79a4', lining: '#262630', hardware: '#ffffff' } },
+    ]) {
+      await act(async () => root.render(h(Palette, { key: set, name, set, waist, saved: true })));
+      await pick('[aria-label="Open clothing colors"]');
+      for (const [group, color] of groups) await pick(`[aria-label="${group} color: ${color}"]`);
+      assert.deepEqual(readLocalOutfits()[name].appearance.item_colors[`${set}:corset`], values);
+      for (const [group, color] of groups) {
+        assert.equal(document.querySelector(`[aria-label="${group} color: ${color}"]`).getAttribute('aria-pressed'), 'true');
+      }
+      await pick('[aria-label="Reset piece colors"]');
+      assert.equal(readLocalOutfits()[name].appearance.item_colors, undefined);
+    }
   } finally {
     if (root) await act(async () => root.unmount());
     await vite?.close();
@@ -91,10 +154,11 @@ test('the fitting camera orbits a close-up without changing its target or crossi
 });
 
 test('dressing room keeps fitted presets and lets imported garments be tried on independently', async () => {
-  const inventory = JSON.parse(await readFile(new URL('../../avenlab-server/src/assets/character-garments.json', import.meta.url), 'utf8'));
+  const inventory = JSON.parse(await readFile(new URL('../../packages/wardrobe-catalog/character-garments.json', import.meta.url), 'utf8'));
   const imports = inventory.filter(item => !item.retired && !item.outfit);
   const missingImport = 'bowtie-13';
   const missingOutfit = 'medieval-08';
+  const installed = inventory.filter(item => item.id !== missingImport && item.id !== missingOutfit);
   const revisedImport = 'gothic-skirt-02';
   const dom = new JSDOM('<div id="root" data-controller-rows></div>', { url: 'http://localhost/', pretendToBeVisual: true });
   const original = new Map();
@@ -108,7 +172,8 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     const { createRoot } = await import('react-dom/client');
     vite = await createServer({ define: {
       __VILLAGER_MODEL_URL__: JSON.stringify("/models/characters/villagers/villager-female/villager-female.garage.glb"),
-      __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(inventory.filter(item => item.id !== missingImport && item.id !== missingOutfit).map(item => item.id)),
+      __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(installed.map(item => item.id)),
+      __DRESSING_ROOM_MOBILE_IDS__: JSON.stringify(installed.filter(item => item.mobileUrl).map(item => item.id)),
       __DRESSING_ROOM_REVISION_IDS__: JSON.stringify([revisedImport]),
       __STANDALONE_CORSET_LODS__: JSON.stringify({ 'gothic-04': { garage: true, mobile: true }, 'gothic-05': { garage: true, mobile: true } }),
       __WARDROBE_SET_IDS__: JSON.stringify(['gothic-01', 'gothic-03', 'gothic-04', 'gothic-05']),
@@ -145,6 +210,7 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     assert.equal(find('[data-category=colors]'), null, 'presets live in the color toolbar');
     assert.deepEqual([...find('.dressing-room-title').children].map(label => label.textContent), ['Fitting room', 'Vesper Vega']);
     assert.equal(find('.dressing-catalog').hidden, true);
+    assert.equal(find('.dressing-catalog [data-wardrobe-item]'), null, 'entering the fitting room mounts only visible wardrobe controls');
     assert.equal(find('.dressing-details').hidden, true);
     assert.equal(find('.dressing-catalog').parentElement, find('.dressing-categories').parentElement, 'catalog shares the left wardrobe rail');
     assert.equal(preview.getState().camera, 'Full body');
@@ -175,6 +241,7 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     assert.match(find('[aria-label="Ticket draft"]').value, /gothic-02[\s\S]+Verify strap in idle/);
     assert.equal(changes.length, 0, 'inspecting a missing pack never equips it');
     await click('[data-wardrobe-back]');
+    assert.equal(find('.dressing-catalog [data-wardrobe-item]'), null, 'returning to categories releases the previous item list');
     assert.equal(find('.dressing-details').hidden, true);
     assert.equal(document.activeElement.dataset.category, 'outfits');
     const revision = preview.getState().focusRevision;
@@ -341,6 +408,10 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     assert.deepEqual(trials.at(-1).removedClothing, ['dress', 'top', 'corset']);
     assert.equal(characterLook(trials.at(-1)).garments, undefined);
     assert.deepEqual(characterLook(trials.at(-1)).outfitRemovals, ['hat', 'shoes'], 'previewing the bra retains the barefoot outfit settings');
+    await click('[aria-label="Bra style"] button:last-child');
+    assert.equal(trials.at(-1).appearance.bra_style, 'push-up');
+    assert.equal(trials.at(-1).bra, true);
+    assert.equal(find('[aria-label="Bra style"] button:last-child').getAttribute('aria-pressed'), 'true');
     await click('[aria-label="Clear Underwear"]');
     assert.equal(trials.at(-1).outfit, sleepwear.outfit);
     assert.equal(trials.at(-1).removedClothing, undefined);

@@ -1,6 +1,7 @@
 use rapier3d::prelude::*;
 
-use crate::aven_tire::state::TireState;
+use crate::aven_tire::WheelId;
+use avenlab_physics::suspension::{WheelConfig, suspension_from_sag};
 use crate::physics::PhysicsWorld;
 use crate::vehicle_state::{VehicleConfig, Wheel};
 use crate::powertrain::{ROAD_RESOURCES, MUSCLE_RESOURCES, SUPRA_RESOURCES, TANK_RESOURCES};
@@ -91,26 +92,6 @@ pub fn config_for_vehicle(vehicle_id: &str) -> Option<VehicleConfig> {
 // =============================================================================
 
 impl PhysicsWorld {
-    pub(crate) fn suspension_from_sag(
-        &self,
-        vehicle_mass: f32,
-        wheel_count: usize,
-        sag_m: f32,
-        damping_ratio: f32,
-    ) -> (f32, f32) {
-        // Static quarter-car approximation, evaluated once at registration.
-        // Sag is in METERS, not a 0..1 compression ratio. k = static load / sag;
-        // c = 2*zeta*sqrt(k*m) is N*s/m. Damper forces are evaluated per substep.
-        let sprung_mass_per_wheel = vehicle_mass / wheel_count as f32;
-        let gravity = 9.81_f32;
-        let static_load = sprung_mass_per_wheel * gravity;
-        let stiffness = static_load / sag_m.max(1.0e-3);
-        let damping =
-            2.0 * damping_ratio * (stiffness * sprung_mass_per_wheel).sqrt();
-
-        (stiffness, damping)
-    }
-
     pub fn register_vehicle(
         &mut self,
         body: RigidBodyHandle,
@@ -120,7 +101,7 @@ impl PhysicsWorld {
             self.wheels.insert(body, Vec::new());
             return;
         }
-        let (stiffness, damping) = self.suspension_from_sag(
+        let (stiffness, damping) = suspension_from_sag(
             config.mass,
             config.wheels,
             config.suspension_sag,
@@ -132,46 +113,18 @@ impl PhysicsWorld {
         let front_z = config.front_axle_z;
         let rear_z = config.rear_axle_z;
 
-        let make_wheel = |
-            x: Real,
-            z: Real,
-            drive: bool,
-            steer: bool,
-            debug_id: &str
-        | -> Wheel {
-            Wheel {
-                // Dynamic suspension state
-                compression: 0.0,
-                compression_ratio: 0.0,
-                grounded: false,
-                normal_force: 0.0,
-
-                // The mount is below the body origin; suspension length extends
-                // downward from here. It is not an additional mesh wheel offset.
-                // Final wheel centers/rotations are sampled after physics integrates.
-                // Local and world transforms
+        let make_wheel = |x, z, drive, steer, id| {
+            Wheel::new(WheelConfig {
+                id,
                 offset: point![x, config.wheel_y, z],
-                world_center: [0.0, 0.0, 0.0],
-                world_rotation: [0.0, 0.0, 0.0, 1.0],
-
-                // Visual/runtime wheel state
-                wheel_speed: 0.0,
-                steer_angle: 0.0,
-
-                // Suspension geometry and forces
                 rest_length: config.suspension_rest_length,
                 max_length: config.suspension_max_length,
                 radius: config.wheel_radius,
                 stiffness,
                 damping,
-
-                // Wheel role
                 drive,
                 steer,
-                debug_id: debug_id.to_string(),
-                skid_intensity: 0.0, tire_contact: None, tire_state: TireState::Grip,
-            thermal: Default::default(),
-            }
+            })
         };
 
         // Physics coordinates: +Z forward, +X side; these internal IDs are used
@@ -181,10 +134,10 @@ impl PhysicsWorld {
         let drive_front = config.tracked || config.front_wheel_drive;
         let drive_rear = config.tracked || !config.front_wheel_drive;
         let wheels = vec![
-            make_wheel(-half_front_track, front_z, drive_front, !config.tracked, "FL"),
-            make_wheel(half_front_track, front_z, drive_front, !config.tracked, "FR"),
-            make_wheel(-half_rear_track, rear_z, drive_rear, false, "RL"),
-            make_wheel(half_rear_track, rear_z, drive_rear, false, "RR"),
+            make_wheel(-half_front_track, front_z, drive_front, !config.tracked, WheelId::FL),
+            make_wheel(half_front_track, front_z, drive_front, !config.tracked, WheelId::FR),
+            make_wheel(-half_rear_track, rear_z, drive_rear, false, WheelId::RL),
+            make_wheel(half_rear_track, rear_z, drive_rear, false, WheelId::RR),
         ];
 
         self.wheels.insert(body, wheels);

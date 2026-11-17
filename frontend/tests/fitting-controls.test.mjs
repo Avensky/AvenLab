@@ -2,10 +2,59 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
-import { Group, Mesh, MeshStandardMaterial, BoxGeometry, Vector3, Quaternion, AnimationMixer } from 'three';
+import { AnimationMixer, Bone, BoxGeometry, BufferGeometry, Float32BufferAttribute, Group, Mesh,
+  MeshStandardMaterial, Quaternion, Raycaster, Skeleton, SkinnedMesh, Uint16BufferAttribute, Vector3 } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const server = () => createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+
+test('preview raycasts skip hidden skin and fit branches while preserving the active mesh hits', async () => {
+  const vite = await server();
+  try {
+    const { skipHiddenCharacterRaycasts } = await vite.ssrLoadModule('/src/game/characters/characterPreviewRaycast.ts');
+    const stage = new Group(), actor = new Group(), tucked = new Group(), over = new Group();
+    const geometry = new BufferGeometry();
+    geometry.setAttribute('position', new Float32BufferAttribute([-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0], 3));
+    geometry.setAttribute('skinIndex', new Uint16BufferAttribute(16, 4));
+    geometry.setAttribute('skinWeight', new Float32BufferAttribute([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], 4));
+    geometry.setIndex([0, 1, 2, 0, 2, 3]);
+    const material = new MeshStandardMaterial(), bone = new Bone(), skeleton = new Skeleton([bone]);
+    const active = new SkinnedMesh(geometry, material), inactive = new SkinnedMesh(geometry, material);
+    const maskedBody = new SkinnedMesh(geometry, material), meshes = [active, inactive, maskedBody];
+    stage.add(actor); actor.add(tucked, over, maskedBody, bone); tucked.add(active); over.add(inactive);
+    for (const mesh of meshes) mesh.bind(skeleton);
+    stage.updateMatrixWorld(true);
+    over.visible = false; maskedBody.visible = false;
+    const ray = new Raycaster(new Vector3(0, 0, 2), new Vector3(0, 0, -1));
+    const getHits = () => ray.intersectObject(actor, true);
+    const original = getHits();
+    assert.deepEqual(new Set(original.map(hit => hit.object)), new Set(meshes));
+    let sampled = 0;
+    const skinVertex = active.getVertexPosition;
+    active.getVertexPosition = function (index, target) { sampled++; return skinVertex.call(this, index, target); };
+    const functions = meshes.map(mesh => mesh.raycast);
+    const restore = skipHiddenCharacterRaycasts(actor);
+    try {
+      assert.deepEqual(getHits(), original.filter(hit => hit.object === active));
+      assert.equal(sampled, 4, 'shared triangle vertices are skinned once');
+      assert.notEqual(active.getVertexPosition, skinVertex);
+      bone.position.z = .2;
+      stage.updateMatrixWorld(true);
+      assert(Math.abs(getHits()[0].point.z - .2) < 1e-6, 'the next ray sees the new bone pose');
+      assert.equal(sampled, 8);
+      bone.position.z = 0;
+      stage.updateMatrixWorld(true);
+      tucked.visible = false; over.visible = true;
+      assert.deepEqual(getHits(), original.filter(hit => hit.object === inactive));
+      stage.visible = false;
+      assert.deepEqual(getHits(), []);
+    } finally {
+      restore();
+      geometry.dispose(); material.dispose(); skeleton.dispose();
+    }
+    assert.deepEqual(meshes.map(mesh => mesh.raycast), functions);
+  } finally { await vite.close(); }
+});
 
 test('piece colors persist independently across garments, outfits, and actor instances', async () => {
   const vite = await server();

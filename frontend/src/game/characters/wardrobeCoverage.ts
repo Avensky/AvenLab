@@ -1,4 +1,4 @@
-import { Box3, BufferAttribute, BufferGeometry, DoubleSide, Ray, Vector3 } from "three";
+import { Box3, BufferAttribute, BufferGeometry, Ray, Vector3, type Triangle } from "three";
 import { MeshBVH } from "three-mesh-bvh";
 
 export function wardrobeCoverageSurface(geometry: BufferGeometry, height?: readonly [number, number]) {
@@ -26,20 +26,35 @@ export function wardrobeCoverageSurface(geometry: BufferGeometry, height?: reado
 }
 
 export function prepareWardrobeCoverage(surfaces: readonly MeshBVH[], minimumClearance = -.012, cornerSample = .8) {
+  if (!surfaces.length) return () => false;
   const ray = new Ray();
   const normal = new Vector3(), edge = new Vector3();
   const near = .012 + minimumClearance;
+  const far = .052;
   const search = new Box3(), end = new Vector3();
   const bounded = surfaces.map(surface => ({ surface, bounds: surface.getBoundingBox(new Box3()).expandByScalar(1e-6) }));
+  const hit = new Vector3();
+  // Coverage needs one double-sided hit within the sample distance.
+  const intersects = {
+    intersectsBounds: (bounds: Box3) => search.intersectsBox(bounds) && ray.intersectsBox(bounds),
+    intersectsTriangle({ a, b, c }: Triangle) {
+      if (!ray.intersectTriangle(a, b, c, false, hit)) return false;
+      const distance = ray.origin.distanceTo(hit);
+      return distance >= near && distance <= far;
+    },
+  };
 
   function covered(center: Vector3, corner?: Vector3) {
     ray.origin.copy(center);
     if (corner) ray.origin.lerp(corner, cornerSample);
     ray.origin.addScaledVector(normal, -.012);
-    ray.at(.052, end);
+    ray.at(far, end);
     search.min.copy(ray.origin).min(end);
     search.max.copy(ray.origin).max(end);
-    return bounded.some(({ surface, bounds }) => search.intersectsBox(bounds) && surface.raycastFirst(ray, DoubleSide, near, .052));
+    for (const { surface, bounds } of bounded) {
+      if (search.intersectsBox(bounds) && surface.shapecast(intersects)) return true;
+    }
+    return false;
   }
 
   return (center: Vector3, a: Vector3, b: Vector3, c: Vector3, checkEdges: boolean) => {

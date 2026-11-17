@@ -4,7 +4,7 @@ import { hasCharacterModel } from './character-model-paths.mts';
 
 const wardrobeRoot = new URL('../public/models/characters/wardrobe/', import.meta.url);
 const pieceRoot = new URL('../public/models/characters/female/wardrobe/', import.meta.url);
-const catalog = JSON.parse(await readFile(new URL('../../avenlab-server/src/assets/character-wardrobe.json', import.meta.url), 'utf8'));
+const catalog = JSON.parse(await readFile(new URL('../../packages/wardrobe-catalog/character-wardrobe.json', import.meta.url), 'utf8'));
 const corsetRoles = ['corset-tucked', 'corset-over'];
 const script = await stat(new URL(import.meta.url));
 const underbustFitModule = new URL('../src/game/characters/underbustFit.ts', import.meta.url);
