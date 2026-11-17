@@ -195,9 +195,10 @@ layering controls for the selected Gothic set.
 
 Corsets includes all five Gothic designs as individual try-ons. Choose any
 skirt independently and use the corset's waist controls to compare fits.
-Underbust Vest starts in Over skirt and can be worn on its own or over a
-separately chosen top. The vest and top take separate colors. Try-ons carry
-into Emotes for the session.
+Underbust Vest starts in Over skirt. Shirts and corsets share one top slot.
+Selecting either replaces the other and keeps the skirt. Older saved looks
+with both pieces show the selected shirt. Try-ons carry into Emotes for the
+session.
 
 Ruffled has independent fabric, ruffles, and ribbon dyes. The authored High
 Collar has main fabric, inset, laces, trim, and metal dyes. Define corset
@@ -351,7 +352,7 @@ node scripts/sample-wardrobe-emotes.mjs /path/to/raw/gothic-01.glb /path/to/pose
 
 | Garment | Confirmed | Open review |
 | --- | --- | --- |
-| Laced Bodice, Ruffled, Underbust | The targeted waist, shoulder, or hardware checks passed for the configurations exercised by each garment's test. | Check new skirt and top combinations as they are authored. |
+| Laced Bodice, Ruffled, Underbust | The targeted waist, shoulder, or hardware checks passed for the configurations exercised by each garment's test. | Check new skirt combinations as they are authored. |
 | Sweetheart | The authored refit preserves chest and underarm skin. The animated skin mask passed both fits, both tiers, and both skirt routes in three sampled poses. | Review the revised cup and underarm silhouette and the Tucked waistband in motion. The old coverage samples predate the revised opening and authored skirt rim. |
 | High Collar | Both tiers load, bind to Vesper, and switch between Over and Tucked. | The full audit reports uncovered masked skin at rest and during motion with the Village skirt and the matched Gothic outfit. Review the straps, rear collar, and front keyhole on the live model. |
 
@@ -505,8 +506,9 @@ each tier. Both waist fits can fall back to their legacy geometry when the
 rebuilt file is missing or fails to load.
 
 Over skirt also exposes **Vest cut → Original Cut** when the lower-opening
-assets are installed. The cut, optional bra and individual dyes are saved in
-named outfits. In **Underwear → Bra**, use **Put on bra** or **Remove bra**.
-The bra can layer under the Gothic Underbust Vest. Choosing another top or
-corset clears the bra selection. The rebuilt vest has independent Main,
-Binding, Front panel, Lining and Hardware colors.
+assets are installed. Named outfits store the cut, bra style, and individual
+dyes. In **Underwear → Bra**, choose Classic or Push-up. The Push-up style has
+a lower neckline and smaller cups. Both styles can be worn on their own or
+with the Gothic Underbust Vest. Choosing another top or corset clears the bra
+selection. The rebuilt vest has independent Main, Binding, Front panel, Lining
+and Hardware colors.

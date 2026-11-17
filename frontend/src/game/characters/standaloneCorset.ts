@@ -3,7 +3,6 @@ import { fitLacedBodiceToSkirt } from "./lacedStrapFit";
 import { prepareWardrobeLining } from "./wardrobeLining";
 import { bindWardrobeGarmentMesh } from "./wardrobeGarmentFit";
 import { LACED_BODICE_WARDROBE_SET, prepareWardrobe, UNDERBUST_WARDROBE_SET, type WardrobeChoice } from "./wardrobe";
-import { fitUnderbustOverTop } from "./underbustFit";
 import { tagRebuiltUnderbustMaterial } from "./rebuiltUnderbustDye";
 import { hasAuthoredSweetheartFit } from "./sweetheartCorset";
 import type { OverSkirtEase } from "./overSkirtEase";
@@ -114,16 +113,13 @@ export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton
   if (authoredLacedBodice) group.userData.lacedBodiceStraps = true;
   body.removeFromParent();
   let wardrobe = underbust || laced ? undefined : prepareWardrobe(group);
-  let disposeTopFit: (() => void) | undefined;
   let disposeSkirtFit: (() => void) | undefined;
   return {
     group,
+    underbust,
     authoredLacedBodice,
     sweetheartSkin,
     authoredLacedSource: authoredLacedBodice ? source.scene : undefined,
-    fitTop: underbust ? (tops: readonly MeshBVH[]) => {
-      disposeTopFit = fitUnderbustOverTop(group, body.geometry, tops, { preserveNormals: Boolean(rebuilt) });
-    } : undefined,
     fitSkirt: laced || sweetheartSkin ? (skirts: readonly MeshBVH[], fit?: "village-tucked", reuse?: { adjustments?: Float32Array }) => {
       disposeSkirtFit = fitLacedBodiceToSkirt(group, body.geometry, skirts, fit, reuse);
     } : undefined,
@@ -142,7 +138,6 @@ export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton
     dispose() {
       group.removeFromParent();
       wardrobe?.dispose();
-      disposeTopFit?.();
       disposeSkirtFit?.();
       disposeFit?.();
       materials.forEach(material => material.dispose());

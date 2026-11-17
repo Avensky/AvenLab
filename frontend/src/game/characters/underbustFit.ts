@@ -1,4 +1,4 @@
-import { BufferAttribute, DoubleSide, MathUtils, Ray, SkinnedMesh, Triangle, Vector3, type BufferGeometry, type Object3D } from "three";
+import { BufferAttribute, MathUtils, SkinnedMesh, Triangle, Vector3, type BufferGeometry, type Object3D } from "three";
 import { MeshBVH, type HitPointInfo } from "three-mesh-bvh";
 
 import { fitWardrobeSurface } from "./wardrobeSurface.ts";
@@ -174,58 +174,6 @@ export function fitUnderbustVest(root: Object3D, body: BufferGeometry) {
   }
   return () => {
     for (const { mesh, source, fitted } of adjusted) {
-      mesh.geometry = source;
-      fitted.dispose();
-    }
-  };
-}
-
-/** Add only the room needed by the separately selected top at each point. */
-export function fitUnderbustOverTop(root: Object3D, body: BufferGeometry, tops: readonly MeshBVH[], { preserveNormals = false } = {}) {
-  const bvhOptions = { indirect: true, setBoundingBox: false };
-  const surface = new MeshBVH(body, bvhOptions);
-  const skin = body.getAttribute("position"), index = body.getIndex()!;
-  const point = new Vector3(), normal = new Vector3(), tangent = new Vector3(), across = new Vector3();
-  const vertical = new Vector3(0, 1, 0), forward = new Vector3(0, 0, 1);
-  const hit: HitPointInfo = { point: new Vector3(), distance: 0, faceIndex: 0 };
-  const ray = new Ray(), triangle = new Triangle();
-  const probe = .045;
-  const moved: { mesh: SkinnedMesh; source: BufferGeometry; fitted: BufferGeometry }[] = [];
-  function clearance(axis: Vector3, offset: number) {
-    ray.origin.copy(point).addScaledVector(normal, probe).addScaledVector(axis, offset);
-    let distance = probe + .0025;
-    for (const top of tops) distance = top.raycastFirst(ray, DoubleSide, 0, distance)?.distance ?? distance;
-    return probe - distance + .0025;
-  }
-  for (const waist of ["TUCKED", "OVER"]) root.getObjectByName(`CLOTH_CORSET_${waist}`)?.traverse(mesh => {
-    if (!(mesh instanceof SkinnedMesh)) return;
-    const source: BufferGeometry = mesh.geometry;
-    const positions = source.getAttribute("position");
-    let fitted: BufferGeometry | undefined;
-    for (let vertex = 0; vertex < positions.count; vertex++) {
-      point.fromBufferAttribute(positions, vertex);
-      if (!surface.closestPointToPoint(point, hit, 0, .045)) continue;
-      const face = hit.faceIndex * 3;
-      triangle.setFromAttributeAndIndices(skin, index.getX(face), index.getX(face + 1), index.getX(face + 2)).getNormal(normal);
-      ray.direction.copy(normal).negate();
-      tangent.crossVectors(normal, Math.abs(normal.y) > .8 ? forward : vertical).normalize();
-      across.crossVectors(normal, tangent);
-      const delta = Math.max(clearance(tangent, 0), clearance(tangent, .004) - .003, clearance(tangent, -.004) - .003,
-        clearance(across, .004) - .003, clearance(across, -.004) - .003);
-      if (delta <= 0) continue;
-      fitted ??= source.clone();
-      point.addScaledVector(normal, delta);
-      fitted.getAttribute("position").setXYZ(vertex, point.x, point.y, point.z);
-    }
-    if (!fitted) return;
-    if (!preserveNormals) fitted.computeVertexNormals();
-    fitted.computeBoundingBox();
-    fitted.computeBoundingSphere();
-    mesh.geometry = fitted;
-    moved.push({ mesh, source, fitted });
-  });
-  return () => {
-    for (const { mesh, source, fitted } of moved) {
       mesh.geometry = source;
       fitted.dispose();
     }

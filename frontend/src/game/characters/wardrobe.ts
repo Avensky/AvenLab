@@ -16,7 +16,10 @@ export const REBUILT_UNDERBUST_ASSET = "gothic-underbust-vest";
 export const ORIGINAL_CUT_UNDERBUST_ASSET = "gothic-underbust-vest-original-cut";
 export const TUCKED_UNDERBUST_ASSET = "gothic-underbust-vest-tucked";
 export type WardrobeChoice = { set: string; shirt: "none" | "under" | "over"; waist: "tucked" | "over"; cut?: "original" };
-type WardrobeSelection = { wardrobe?: WardrobeChoice; wardrobeTrial?: WardrobeChoice; wardrobeEase?: Exclude<OverSkirtEase, 0> };
+type WardrobeSelection = {
+  wardrobe?: WardrobeChoice; wardrobeTrial?: WardrobeChoice; wardrobeEase?: Exclude<OverSkirtEase, 0>;
+  garments?: { top?: string; dress?: string };
+};
 export const WARDROBE_WAIST_OPTIONS = [
   { waist: "tucked", ease: 0, label: "Tucked into skirt" },
   { waist: "over", ease: 0, label: "Over skirt" },
@@ -34,7 +37,12 @@ export function resolveWardrobe(choice?: WardrobeChoice, { includeRetired = fals
   return { set: set.id, shirt: "none", waist, ...cut };
 }
 
+export function hasSeparateWardrobeTop(choice?: Pick<WardrobeSelection, "garments"> | null) {
+  return Boolean(choice?.garments?.top || choice?.garments?.dress);
+}
+
 export function resolveCharacterWardrobe(choice: WardrobeSelection | null | undefined) {
+  if (hasSeparateWardrobeTop(choice)) return;
   return resolveWardrobe(choice?.wardrobeTrial, { includeRetired: true }) ?? resolveWardrobe(choice?.wardrobe);
 }
 

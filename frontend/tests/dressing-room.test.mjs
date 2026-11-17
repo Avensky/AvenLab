@@ -397,6 +397,10 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     assert.deepEqual(trials.at(-1).removedClothing, ['dress', 'top', 'corset']);
     assert.equal(characterLook(trials.at(-1)).garments, undefined);
     assert.deepEqual(characterLook(trials.at(-1)).outfitRemovals, ['hat', 'shoes'], 'previewing the bra retains the barefoot outfit settings');
+    await click('[aria-label="Bra style"] button:last-child');
+    assert.equal(trials.at(-1).appearance.bra_style, 'push-up');
+    assert.equal(trials.at(-1).bra, true);
+    assert.equal(find('[aria-label="Bra style"] button:last-child').getAttribute('aria-pressed'), 'true');
     await click('[aria-label="Clear Underwear"]');
     assert.equal(trials.at(-1).outfit, sleepwear.outfit);
     assert.equal(trials.at(-1).removedClothing, undefined);

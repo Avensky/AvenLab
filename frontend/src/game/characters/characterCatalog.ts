@@ -2,7 +2,7 @@ import type { PieceColors } from "./clothingPieces";
 import type { AnimationFit, CharacterPersonality } from "./characterPersonality";
 import catalog from "../../../../packages/wardrobe-catalog/characters.json";
 import appearanceOptions from "../../../../packages/wardrobe-catalog/character-appearance.json";
-import { resolveWardrobe, wardrobeOverEase, type WardrobeChoice } from "./wardrobe";
+import { hasSeparateWardrobeTop, resolveWardrobe, wardrobeOverEase, type WardrobeChoice } from "./wardrobe";
 import type { OverSkirtEase } from "./overSkirtEase";
 import { getWardrobeGarment, removedWardrobeLayers, visibleWardrobeGarments, wardrobeGarmentModelUrl, type WardrobeGarmentChoice, type WardrobeRemoval } from "./wardrobeGarments";
 
@@ -11,7 +11,10 @@ export const CHARACTER_APPEARANCE_OPTIONS = appearanceOptions;
 export type CharacterStyleField = keyof typeof appearanceOptions;
 type FaceField = "eye_color" | "brow_color" | "glasses";
 export type CharacterAppearance = Record<Exclude<CharacterStyleField, FaceField>, string>
-  & Partial<Record<FaceField, string>> & { accent?: string; item_colors?: Record<string, PieceColors>; personality?: CharacterPersonality; animation_fit?: AnimationFit };
+  & Partial<Record<FaceField, string>> & {
+    accent?: string; item_colors?: Record<string, PieceColors>; personality?: CharacterPersonality; animation_fit?: AnimationFit;
+    bra_style?: "push-up";
+  };
 
 export const OUTFIT_THEMES = [
   { name: "Gothic Pink", color: "#101015", accent: "#ff2d95" },
@@ -84,7 +87,9 @@ export function characterLook(choice: CharacterChoice | null | undefined) {
     : outfitGarment.outfit?.barefoot ? SLEEPWEAR_REMOVALS : OUTFIT_REMOVALS;
   const removedClothing = !outfitRemovals.length ? removed : !removed.length ? outfitRemovals
     : [...new Set([...removed, ...outfitRemovals])];
-  const showCorset = character.id === VILLAGER_ID && !removedClothing.includes("corset");
+  // Older saved try-ons could combine a detached corset with an explicit top.
+  // The explicit selection takes that slot, while the bundled skirt stays in use.
+  const showCorset = character.id === VILLAGER_ID && !hasSeparateWardrobeTop(choice) && !removedClothing.includes("corset");
   return {
     character, outfit, appearance, female, removedClothing,
     bra: character.id === VILLAGER_ID ? choice?.bra : undefined,

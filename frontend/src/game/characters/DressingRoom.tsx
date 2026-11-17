@@ -3,7 +3,7 @@ import { MenuBackButton } from "../../components/menus/MenuFrame";
 import { useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { CHARACTER_APPEARANCE_OPTIONS, ROOK_ID, VILLAGER_ID, characterLook, type CharacterChoice, type CharacterStyleField } from "./characterCatalog";
 import { focusClothingPiece, useCharacterPreviewStore } from "./characterPreviewStore";
-import { UNDERBUST_WARDROBE_SET, WARDROBE_CORSETS, WARDROBE_SETS, WARDROBE_WAIST_OPTIONS, corsetModelUrl, hasTuckedUnderbust, hasUnderbustCut, resolveWardrobe, withWardrobeWaist, type WardrobeChoice } from "./wardrobe";
+import { UNDERBUST_WARDROBE_SET, WARDROBE_CORSETS, WARDROBE_SETS, WARDROBE_WAIST_OPTIONS, corsetModelUrl, hasSeparateWardrobeTop, hasTuckedUnderbust, hasUnderbustCut, resolveWardrobe, withWardrobeWaist, type WardrobeChoice } from "./wardrobe";
 import { ClothingColorToolbar } from "./ClothingColorToolbar";
 import { braFitsWith, CLOTHING_PIECES, clothingPieceLabel, UNDERWEAR_PIECES, underwearColors, wornClothing, type ClothingPiece, type UnderwearPiece } from "./clothingPieces";
 import { FittingWearableShortcuts } from "./FittingCameraSelect";
@@ -57,7 +57,7 @@ const GARMENT_LAYERS: Record<WardrobeGarmentSlot, ClothingLayer> = {
 
 type WardrobeFocus = ClothingPiece | "Face" | "Hands" | "Full body";
 const REMOVAL_CARDS: { category: Category; slot: WardrobeRemoval; label: string; section: string; focus: WardrobeFocus; layer: ClothingLayer }[] = [
-  { category: "corsets", slot: "corset", label: "corset", section: "Gothic corsets", focus: "corset", layer: "Outer" },
+  { category: "corsets", slot: "corset", label: "corset", section: "Gothic corsets", focus: "corset", layer: GARMENT_LAYERS.top },
   { category: "tops", slot: "top", label: "top", section: "Tops", focus: "shirt", layer: "Middle" },
   { category: "bottoms", slot: "skirt", label: "skirt", section: "Skirts", focus: "skirt", layer: "Outer" },
   { category: "footwear", slot: "socks", label: "socks", section: "Socks", focus: "socks", layer: "Inner" },
@@ -131,7 +131,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
   const focusLayer = useRef(false);
   const look = characterLook(choice)!;
   const { character, outfit, appearance, wardrobe, corset, garments, overEase, outfitRemovals, removedClothing } = look;
-  const waistSelection = removedClothing.includes("corset") ? undefined : corset ?? wardrobe;
+  const waistSelection = removedClothing.includes("corset") || hasSeparateWardrobeTop(choice) ? undefined : corset ?? wardrobe;
   const selectedPiece = useCharacterPreviewStore(s => s.selectedPiece);
   const camera = useCharacterPreviewStore(s => s.camera);
   const pieces = wornClothing(choice);
@@ -186,8 +186,8 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
   function tryCorset(set: string) {
     const compatible = { ...choice.garments };
     delete compatible.dress;
-    if (getWardrobeGarment(compatible.top)?.piece === "armor") delete compatible.top;
-    const current = choice.wardrobeTrial;
+    delete compatible.top;
+    const current = hasSeparateWardrobeTop(choice) ? undefined : choice.wardrobeTrial;
     const waist = current?.set === set ? current.waist : FITTED_PRESETS[set]?.waist ?? "over";
     const cut = current?.set === set ? current.cut : undefined;
     onTryOn({ ...setWardrobeRemoval(choice, "corset", false), wardrobeTrial: resolveWardrobe({ set, shirt: "none", waist, cut }, { includeRetired: true }),
@@ -269,7 +269,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
       const revealed = pieces.includes(item);
       return {
         id: `underwear-${item}`, label: clothingPieceLabel(item), section: "Underwear", icon: "layers",
-        description: item === "bra" ? "A close-fitting strapless layer you can wear on its own or under the Gothic Underbust Vest." : "Full-coverage base layer with a bound waist and leg openings.",
+        description: item === "bra" ? "Choose Classic or a low-cut Push-up fit. Wear it on its own or under the Gothic Underbust Vest." : "Full-coverage base layer with a bound waist and leg openings.",
         focus: item, layer: "Underwear", underwear: item, pieces: [item], included: true,
         selected: revealed, detail: "Base layer", ...underwearColors(look, item),
         clear: revealed || (item === "bra" && choice.bra !== undefined) ? next => {
@@ -286,12 +286,12 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
       const underbust = set.id === UNDERBUST_WARDROBE_SET;
       return {
         id: set.id, set: set.id, label: underbust ? "Gothic Underbust Vest" : set.name, section: "Gothic corsets", icon: "corsets",
-        trial: true, selected, detail: "Try-on", focus: "corset", pieces: selected && garments?.top ? ["corset", "shirt"] : ["corset"], layer: "Outer",
+        trial: true, selected, detail: "Try-on", focus: "corset", pieces: ["corset"], layer: GARMENT_LAYERS.top,
         unavailable: installed ? undefined : "Pack not installed",
         description: underbust
           ? (hasTuckedUnderbust()
-            ? "Choose Tucked into skirt or Over skirt. Wear the vest alone or layer it over a fitted piece from Tops."
-            : "The rebuilt vest appears in Over skirt. Tucked into skirt uses the original fit. Wear it alone or layer it over a fitted piece from Tops.")
+            ? "Choose Tucked into skirt or Over skirt. The vest replaces the current top and can be worn with a bra."
+            : "The rebuilt vest appears in Over skirt. Tucked into skirt uses the original fit. The vest replaces the current top and can be worn with a bra.")
           : "Try this corset with your current skirt or choose another skirt from the wardrobe.",
         choose: installed ? () => tryCorset(set.id) : undefined,
         clear: choice.wardrobeTrial?.set === set.id
@@ -543,6 +543,11 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
             {pieces.includes("bra") ? "Remove bra" : "Put on bra"}
           </button>
         </div>}
+        {(underwearColor === "bra" || underbust) && controls("Bra style", ([undefined, "push-up"] as const).map(style =>
+          <button key={style ?? "classic"} type="button" className="menu-control" disabled={!canWearBra}
+            aria-pressed={pieces.includes("bra") && appearance.bra_style === style} onClick={() => {
+              onTryOn({ ...choice, bra: true, appearance: { ...appearance, bra_style: style } });
+            }}>{style === "push-up" ? "Push-up" : "Classic"}</button>), 2)}
         {inspected.id === sleeveSource && <div data-controller-row>{sleeveToggle}</div>}
         {underwearColor && <ClothingColorToolbar choice={choice} piece={underwearColor} onChange={onColors} />}
         {itemPieces.length > 0 && controls(itemPieces.length > 1 ? "Outfit pieces" : "Piece", itemPieces.map(item => <button key={item} type="button" className="menu-control"

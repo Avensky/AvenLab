@@ -111,12 +111,12 @@ export function setWardrobeGarment(choice: CharacterChoice, slot: WardrobeGarmen
       delete garments.skirt;
     } else if (slot === "top" || slot === "skirt") delete garments.dress;
   } else delete garments[slot];
-  const replacesBodice = id && (slot === "dress" || item?.piece === "armor" || item?.piece === "corset");
+  const replacesBodice = (id || choice.garments?.[slot]) && (slot === "top" || slot === "dress");
   const removed = choice.removedClothing?.filter(layer => !id || (layer !== slot
     && (slot !== "dress" || (layer !== "top" && layer !== "corset" && layer !== "skirt"))
     && !(id === "village-bodice" && layer === "corset") && !(id === "village-skirt" && layer === "village-skirt")));
   return { ...choice, garments: Object.keys(garments).length ? garments : undefined,
     removedClothing: removed?.length ? removed : undefined, wardrobeTrial: replacesBodice ? undefined : choice.wardrobeTrial,
     ...(id && (slot === "top" || slot === "dress") && { bra: undefined }),
-    wardrobeEase: replacesBodice || (id && slot === "top" && !choice.wardrobeTrial) ? undefined : choice.wardrobeEase };
+    wardrobeEase: replacesBodice ? undefined : choice.wardrobeEase };
 }

@@ -709,15 +709,28 @@ async fn character_outfits_save_validated_fitting_room_combinations_to_the_ownin
     let sleeveless = json!({"id": "mara-vega", "outfit": "shop-crew", "garments": {"dress": "medieval-kaftan-01"}, "removedClothing": ["sleeves"]});
     let extra = s.handle(&player, save("Sleeveless kaftan", &sleeveless)).await.unwrap();
     assert_eq!(extra["character_outfits"]["Sleeveless kaftan"], sleeveless);
+    let push_up = json!({
+        "id": "mara-vega", "outfit": "shop-crew", "removedClothing": ["top", "corset"], "bra": true,
+        "appearance": {
+            "hair": "natural", "hair_color": "original", "skin": "original",
+            "headwear": "hat", "color": "original", "bra_style": "push-up",
+            "item_colors": {"underwear:bra": {"color": "#224488"}},
+        },
+    });
+    let mut invalid_style = push_up.clone();
+    invalid_style["appearance"]["bra_style"] = json!("unknown");
+    assert!(s.handle(&player, save("Push-up", &invalid_style)).await.is_err());
+    let with_bra = s.handle(&player, save("Push-up", &push_up)).await.unwrap();
+    assert_eq!(with_bra["character_outfits"]["Push-up"], push_up);
     let remove = json!({"action": "character_outfit_delete", "name": "Gothic layers"});
     assert_eq!(s.handle(&peer, remove.clone()).await.unwrap()["character_outfits"], json!({}));
 
     let reloaded: SocialData = serde_json::from_slice(&tokio::fs::read(&s.path).await.unwrap()).unwrap();
     let progression = reloaded.profiles[profile].progression.view();
-    assert_eq!(progression["character_outfits"], extra["character_outfits"]);
+    assert_eq!(progression["character_outfits"], with_bra["character_outfits"]);
     assert_eq!(progression["character"], equipped);
     let deleted = s.handle(&player, remove).await.unwrap();
-    assert_eq!(deleted["character_outfits"], json!({"Sleeveless kaftan": sleeveless}));
+    assert_eq!(deleted["character_outfits"], json!({"Sleeveless kaftan": sleeveless, "Push-up": push_up}));
     let reloaded: SocialData = serde_json::from_slice(&tokio::fs::read(&s.path).await.unwrap()).unwrap();
     assert_eq!(reloaded.profiles[profile].progression.view()["character_outfits"], deleted["character_outfits"]);
     cleanup(s).await;

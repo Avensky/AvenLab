@@ -13,7 +13,7 @@ import { prepareWardrobeTopFit } from "./wardrobeTopFit";
 import { prepareVillageBonnet } from "./villageBonnet";
 import { prepareVillageShoes } from "./wardrobeShoes";
 import { prepareWardrobeCoverage, wardrobeCoverageSurface as bodySurface } from "./wardrobeCoverage";
-import { prepareWardrobeUnderwear } from "./wardrobeUnderwear";
+import { prepareWardrobeUnderwear, type BraStyle } from "./wardrobeUnderwear";
 import { getWardrobeActorBody, isWardrobeBodyDonor, sharesWardrobeRig } from "./wardrobeBody";
 
 export type WardrobeGarmentSource = { item: NonNullable<ReturnType<typeof getWardrobeGarment>>; scene: Object3D; authoredFit?: boolean };
@@ -243,7 +243,6 @@ export function prepareWardrobeGarments(
   let checkTopEdges = Boolean(corset);
   const fitVillageWaist = Boolean(corset?.authoredLacedBodice || corset?.sweetheartSkin);
   const shapes: SkinCover[] = [];
-  const topSurfaces: MeshBVH[] = [];
   const shortSkirtSurfaces: MeshBVH[] = [];
   const villageSkirtSurfaces: MeshBVH[] = [];
   const villageSkirtMeshes: SkinnedMesh[] = [];
@@ -326,7 +325,6 @@ export function prepareWardrobeGarments(
         const surface = bodySurface(mesh.geometry);
         if (surface) {
           shapes.push({ surface, piece: item.piece });
-          if (item.slot === "top" && corset?.fitTop) topSurfaces.push(surface);
           if (fitShortSkirt && !lining && corset?.fitSkirt && !corset.sweetheartSkin) shortSkirtSurfaces.push(surface);
           if (item.id === "village-skirt" && fitVillageWaist) {
             villageSkirtSurfaces.push(surface);
@@ -354,7 +352,6 @@ export function prepareWardrobeGarments(
     skirtNeedsBriefs ||= skirtUsesUnderwear(item.id);
   }
   let villageTuckedWaist: ReturnType<typeof prepareLacedBodiceVillageWaist> | undefined;
-  if (topSurfaces.length) corset?.fitTop?.(topSurfaces);
   if (shortSkirtSurfaces.length) corset?.fitSkirt?.(shortSkirtSurfaces);
   else if (fitVillageWaist && corset?.fitSkirt) {
     const stockSkirt = !replacements.has("skirt")
@@ -440,21 +437,28 @@ export function prepareWardrobeGarments(
   const top = Boolean(corset) || upperGarment;
   const body = (top || skirt || restoresBody) && full && fullBody instanceof SkinnedMesh ? bindWardrobeGarmentMesh(fullBody, original.skeleton) : undefined;
   const stockBodice = stock.some(({ piece }) => (piece === "corset" || piece === "shirt") && !replacements.has(piece));
-  const bra = (exposesTop || Boolean(corset)) && !upperGarment && !stockBodice && (!corset || Boolean(corset.fitTop));
+  const bra = (exposesTop || Boolean(corset)) && !upperGarment && !stockBodice && (!corset || corset.underbust);
   const briefs = skirtNeedsBriefs ? "under-skirt" : exposesBottom && !skirt && "standalone";
   const underwear = body && (bra || briefs) ? prepareWardrobeUnderwear(body, { bra, briefs }) : undefined;
-  const braShapes: MeshBVH[] = [];
+  const braShapes = new Map<Group, MeshBVH[]>();
+  function underwearSurfaces(piece?: Group) {
+    const surfaces: MeshBVH[] = [];
+    piece?.traverse(mesh => {
+      if (!(mesh instanceof SkinnedMesh) || Array.isArray(mesh.material) || mesh.material.userData.color_slot !== "fabric") return;
+      const surface = bodySurface(mesh.geometry);
+      if (surface) surfaces.push(surface);
+    });
+    return surfaces;
+  }
+  function activeBraSurfaces(bra?: Group) {
+    if (!bra) return [];
+    let surfaces = braShapes.get(bra);
+    if (!surfaces) braShapes.set(bra, surfaces = underwearSurfaces(bra));
+    return surfaces;
+  }
   if (underwear) {
     group.add(underwear.group);
-    for (const [part, piece] of [[underwear.bra, "bra"], [underwear.briefs, "briefs"]] as const) {
-      part?.traverse(mesh => {
-        if (!(mesh instanceof SkinnedMesh) || Array.isArray(mesh.material) || mesh.material.userData.color_slot !== "fabric") return;
-        const surface = bodySurface(mesh.geometry);
-        if (!surface) return;
-        if (piece === "bra") braShapes.push(surface);
-        else shapes.push({ surface, piece, baseLayer: true });
-      });
-    }
+    for (const surface of underwearSurfaces(underwear.briefs)) shapes.push({ surface, piece: "briefs", baseLayer: true });
   }
   if (body && full) {
     body.name = "fitting-room-body";
@@ -466,7 +470,7 @@ export function prepareWardrobeGarments(
   if (skirt) root.userData.skirtHandRoom = MathUtils.clamp((skirtRadius ?? .23) - .23, 0, .12);
   root.add(group);
   let maskedWaist: string | undefined;
-  let maskedBra: boolean | undefined;
+  let maskedBra: BraStyle | undefined;
   let socksFitted = false;
   return {
     tucksHair,
@@ -475,7 +479,8 @@ export function prepareWardrobeGarments(
       const corsetWaist = look.corset?.waist ?? look.wardrobe?.waist ?? "tucked";
       const waist = `${corset ? corsetWaist : look.wardrobe?.waist ?? "original"}:${look.overEase}`;
       const showBra = Boolean(underwear?.bra) && (look.bra ?? (restored.upper && !corset));
-      if (underwear?.bra) underwear.bra.visible = showBra;
+      const braStyle = showBra ? look.appearance.bra_style ?? "classic" : undefined;
+      const activeBra = underwear?.setBraStyle(braStyle);
       corset?.apply(corsetWaist, look.overEase);
       villageTuckedWaist?.apply(corsetWaist === "tucked");
       if (villageBelt) villageBelt.mesh.geometry = corsetWaist === "tucked" ? villageBelt.tucked : villageBelt.original;
@@ -499,8 +504,8 @@ export function prepareWardrobeGarments(
         for (const { geometry } of skirt) geometry.dispose();
         socksFitted = true;
       }
-      if (body && full && (maskedWaist !== waist || maskedBra !== showBra)) {
-        const maskKey = `${waist}:${showBra}`;
+      if (body && full && (maskedWaist !== waist || maskedBra !== braStyle)) {
+        const maskKey = `${waist}:${braStyle ?? "off"}`;
         let surfaces = fittedShapes.get(waist);
         if ((corset || restoresBody || villageBodySwap) && !surfaces && !fittedMasks?.has(maskKey)) {
           const fittedSurfaces: SkinCover[] = [];
@@ -524,10 +529,10 @@ export function prepareWardrobeGarments(
         }
         const visibleShapes = [...shapes, ...(surfaces ?? [])];
         fitBodyMask(body, original, full, top, skirt, restored, visibleShapes,
-          showBra ? braShapes : [], checkTopEdges, corset?.group.userData.lacedBodiceStraps ? corsetWaist : undefined,
+          activeBraSurfaces(activeBra), checkTopEdges, corset?.group.userData.lacedBodiceStraps ? corsetWaist : undefined,
           corset?.authoredLacedBodice ?? false, fittedMasks && { masks: fittedMasks, key: maskKey });
         maskedWaist = waist;
-        maskedBra = showBra;
+        maskedBra = braStyle;
       }
       if (body) original.visible = false;
       underwear?.applyColors(piece => underwearColors(look, piece));
@@ -553,7 +558,7 @@ export function prepareWardrobeGarments(
       if (villageBelt) villageBelt.mesh.geometry = villageBelt.original;
       for (const geometry of fittedGarments) geometry.dispose();
       for (const { surface } of shapes) surface.geometry.dispose();
-      for (const { geometry } of braShapes) geometry.dispose();
+      for (const surfaces of braShapes.values()) for (const { geometry } of surfaces) geometry.dispose();
       for (const surfaces of fittedShapes.values()) for (const { surface } of surfaces) surface.geometry.dispose();
       for (const material of ownedMaterials) material.dispose();
     },

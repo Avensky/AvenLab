@@ -111,6 +111,12 @@ pub enum CharacterIdentity {
 #[serde(rename_all = "kebab-case")]
 pub enum CharacterProp { ShopBag }
 
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum BraStyle {
+    PushUp,
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CharacterAppearance {
@@ -120,6 +126,8 @@ pub struct CharacterAppearance {
     personality: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     animation_fit: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    bra_style: Option<BraStyle>,
     hair: String,
     hair_color: String,
     skin: String,
@@ -254,6 +262,9 @@ impl CharacterChoice {
         }) && self.wardrobe.as_ref().is_none_or(|wardrobe| {
             self.id == "mara-vega" && wardrobe.has_valid_cut() && WARDROBE.iter().any(|set| set.id == wardrobe.set)
         }) && (self.bra.is_none() || self.id == "mara-vega") && self.has_valid_garments() && self.appearance.as_ref().is_none_or(|appearance| {
+            if appearance.bra_style.is_some() && self.id != "mara-vega" {
+                return false;
+            }
             if !appearance.personality.as_deref().is_none_or(|value| ["friendly", "playful", "shy", "tsundere", "stoic", "elegant", "racer", "scientist"].contains(&value))
                 || !appearance.animation_fit.as_deref().is_none_or(|value| ["auto", "full", "fitted"].contains(&value)) {
                 return false;

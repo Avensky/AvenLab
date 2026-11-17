@@ -75,7 +75,6 @@ export function wornClothing(choice: CharacterChoice): ClothingPiece[] {
   const garments = Object.values(look?.garments ?? {}).map(getWardrobeGarment).filter(item => item !== undefined);
   if (garments.length) {
     const replaced = new Set<ClothingPiece>(garments.flatMap(wardrobeReplacedPieces));
-    if (corset) replaced.delete("corset");
     pieces = [...new Set([...pieces.filter(piece => !replaced.has(piece)), ...garments.map(item => item.piece)])];
   }
   if (!female && choice.appearance?.headwear === "hat") pieces.push("hat");
