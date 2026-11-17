@@ -361,7 +361,10 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(preview.getState().selectedPiece, 'glasses');
     assert.equal(preview.getState().camera, 'Selected item');
     assert.equal(find('.dressing-color-panel').hidden, true);
-    assert.equal(find('[aria-label="Open clothing colors"]').textContent, '', 'the toolbar uses a swatch icon');
+    const paletteToggle = find('[aria-label="Open clothing colors"]');
+    const palette = document.getElementById(paletteToggle.getAttribute('aria-controls'));
+    assert.equal(palette.childElementCount, 0, 'the closed palette keeps its panel ID without mounting swatches');
+    assert.equal(paletteToggle.textContent, '', 'the toolbar uses a swatch icon');
     await click(cameraTools);
     await click('[aria-label="Open clothing colors"]');
     assert.equal(find('.dressing-color-panel').hidden, false);
@@ -399,13 +402,17 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(find('input[aria-label="Custom accent color"]').value, '#ff2d95');
     await click('[aria-label="Close clothing colors"]');
     assert.equal(find('.dressing-color-panel').hidden, true);
+    assert.equal(find('.dressing-color-panel').childElementCount, 0);
     await click('[aria-label="Open clothing colors"]');
+    assert.deepEqual([mainColor(), accentColor()], ['#101015', '#ff2d95']);
+    assert.equal(document.activeElement, find('.dressing-color-preset'), 'keyboard activation focuses the first swatch');
     await act(async () => {
       const preset = find('.dressing-color-preset');
       preset.focus();
       preset.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }));
     });
     assert.equal(find('.dressing-color-panel').hidden, true, 'Escape closes the palette before it can leave the fitting room');
+    assert.equal(find('.dressing-color-panel').childElementCount, 0);
     assert.equal(document.activeElement, find('[aria-label="Open clothing colors"]'));
     await click('#character-editor-tab-identity');
     assert(find('select[aria-label="Eye color"]'));

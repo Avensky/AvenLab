@@ -122,7 +122,10 @@ Both villagers use these settings in the live model and their rendered portrait.
 
 Rook's coat outfits can preview Folded arms by the door under Garage emotes.
 The pose requires a fitted road-car side panel, closed doors, and empty hands.
-Heroes cycles shorter gestures with a breathing idle between them.
+Heroes cycles shorter gestures with a breathing idle between them. The preview
+reuses compiled idle and gesture tracks when switching between Heroes and
+Character on the same rig with the same bag setting. Each mode still resets
+its playback state and releases temporary props on exit.
 
 ## Planned vehicle interactions
 
@@ -180,8 +183,9 @@ Character tabs are Identity, Appearance, and Emotes. Appearance keeps the live
 character in the center, with a scrollable left wardrobe rail and one item per
 catalog row. It reuses the existing scene and draws cards with lightweight SVG
 illustrations. Headwear focuses the face camera, and leaving restores the
-earlier camera. Colors contains preset dyes,
-paired palettes, and custom fabric/accent pickers.
+earlier camera. Opening the color swatch mounts the preset dyes, paired
+palettes, and custom color pickers. The closed picker keeps its panel ID for
+`aria-controls` and shows the selected piece's current colors.
 
 Outfits contains the complete village looks and three fitted Gothic sets.
 Sweetheart and High Collar equip in Tucked, and Ruffled equips in Over skirt.
@@ -214,9 +218,11 @@ and their rig. Corset 04's strap and shell fit is baked into its generated
 tiers. Authored Laced Bodice, High Collar, and Underbust variants have their own
 standalone GLBs. The loader can fall back to a compatible alternate tier,
 legacy standalone file, or installed bundle, depending on the set. It keeps
-the last complete outfit visible while a new selection loads. The fitting
-room binds each garment to the live Vesper rig and uses the shared full-skin
-donor for areas the original outfit cuts away. From the repository root, run
+the last complete outfit visible while a new selection loads. The preview
+mounts loader components for pending URLs and reuses settled sources during
+dye edits and further try-ons. The fitting room binds each garment to the live
+Vesper rig and uses the shared full-skin donor for areas the original outfit
+cuts away. From the repository root, run
 `node frontend/scripts/build-wardrobe-pieces.mjs` to regenerate the extracted
 pieces and donor.
 

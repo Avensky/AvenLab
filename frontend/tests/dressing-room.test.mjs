@@ -59,12 +59,13 @@ test('corset palettes save independent colors and the Laced Bodice finish', asyn
     assert.equal(readLocalOutfits()['Laced Bodice'].appearance.item_colors, undefined);
 
     await act(async () => root.render(h(Palette, { key: 'tucked', set: 'gothic-01', waist: 'tucked' })));
+    await pick('[aria-label="Open clothing colors"]');
     assert.equal(finish().length, 4);
     assert(!document.querySelector('[aria-label="Zipper color"]'), 'Tucked hides its covered zipper');
     const { applyCorsetDye } = await vite.ssrLoadModule('/src/game/characters/corsetDye.ts');
     await act(async () => root.render(h(Palette, { key: 'sweetheart-over', name: 'Sweetheart', set: 'gothic-02', waist: 'over' })));
-    assert.equal(finish().length, 0, 'the Sweetheart has no Laced Bodice finish controls');
     await pick('[aria-label="Open clothing colors"]');
+    assert.equal(finish().length, 0, 'the Sweetheart has no Laced Bodice finish controls');
     const swatches = [
       ['Fabric', 'Crimson', 'fabric', '#ad444d'], ['Front laces', 'Forest', 'laces', '#5f8962'],
       ['Hip laces', 'Navy', 'accent', '#4b79a4'], ['Eyelets', 'Ink', 'hardware', '#262630'],

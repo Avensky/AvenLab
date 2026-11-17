@@ -212,6 +212,7 @@ test('Dressing room previews the layered vest and saves approved corset waist fi
   assert.equal(previews.at(-1).bra,true,'the rebuilt Tucked fit accepts the optional bra');
   await click(braToggle);
   assert.equal(previews.at(-1).bra,false);
+  await click('.dressing-color-toolbar [aria-label="Open clothing colors"]');
   for (const slot of ['Main','Binding','Front panel','Lining','Hardware']) {
     assert(document.querySelector(`.dressing-color-toolbar [aria-label="${slot} color"]`), `Tucked exposes the ${slot} dye group`);
   }

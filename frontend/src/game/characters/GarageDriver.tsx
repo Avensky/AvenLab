@@ -104,8 +104,9 @@ function VillagerDriver({ url: preferredUrl, look, kind, villageKind, fallback, 
   if (needsSeparateBody) urls.add(bodyUrl);
   if (corsetUrl) urls.add(corsetUrl);
   const assetUrls = [...urls];
+  const pendingUrls = assetUrls.filter(asset => sources[asset] === undefined);
   const garmentBody = needsBody ? bundledBody ?? sources[bodyUrl]?.getObjectByName("BODY_WARDROBE") : undefined;
-  const loading = assetUrls.some(asset => sources[asset] === undefined);
+  const loading = pendingUrls.length > 0;
   const unavailable = (corsetUrls.length > 0 && !corsetUrl) || assetUrls.some(asset => sources[asset] === null)
     || (needsSeparateBody && sources[bodyUrl] !== undefined && !garmentBody);
 
@@ -132,7 +133,7 @@ function VillagerDriver({ url: preferredUrl, look, kind, villageKind, fallback, 
   const status = scene === null ? "Character model unavailable"
     : loading ? "Loading garments" : unavailable ? "Garment unavailable" : undefined;
   return <>
-    {assetUrls.map(asset => <AssetBoundary key={asset} fallback={<MissingWardrobeAsset url={asset} onReady={onReady} />}>
+    {pendingUrls.map(asset => <AssetBoundary key={asset} fallback={<MissingWardrobeAsset url={asset} onReady={onReady} />}>
       <Suspense fallback={null}><WardrobeAsset url={asset} onReady={onReady} /></Suspense>
     </AssetBoundary>)}
     {active ? <>

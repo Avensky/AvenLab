@@ -80,25 +80,27 @@ export function ClothingColorToolbar({ choice, piece, onChange }: {
     toggle.current?.focus();
   }}>
     <div id={panelId} className="dressing-color-panel menu-panel-frame" hidden={!open}>
-      <PaletteRow label="Themes" group="Color combinations">
-        {OUTFIT_THEMES.map(theme => <ColorSwatchButton key={theme.name} className={presetClass} color={theme.color} accent={theme.accent}
-          label={theme.name} pressed={rows.every(row => !row.theme || row.value === theme[row.theme])}
-          onClick={() => applyTheme(theme)} />)}
-        <button type="button" className="menu-control menu-panel-frame dressing-color-reset" disabled={!colors}
-          aria-label={resetLabel} title={resetLabel} onClick={() => dye()}>
-          <svg className="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-            <path d="M4 6v5h5M4.4 10a8 8 0 1 1 1.2 7" />
-          </svg>
-        </button>
-      </PaletteRow>
-      {profile?.finishes && <PaletteRow label="Finish" group="Fabric finish">
-        {profile.finishes.map(({ id, label }) => <button key={id} type="button"
-          className="menu-control menu-panel-frame dressing-color-finish"
-          aria-pressed={(colors?.finish ?? "original") === id}
-          onClick={() => dye({ finish: id })}>{label}</button>)}
-      </PaletteRow>}
-      {rows.map(({ key, label, value }) => <ColorRow key={key} label={label} value={value}
-        onChange={color => dye(key === "color" && !profile && !underwear ? { color, accent: trim } : { [key]: color })} />)}
+      {open && <>
+        <PaletteRow label="Themes" group="Color combinations">
+          {OUTFIT_THEMES.map(theme => <ColorSwatchButton key={theme.name} className={presetClass} color={theme.color} accent={theme.accent}
+            label={theme.name} pressed={rows.every(row => !row.theme || row.value === theme[row.theme])}
+            onClick={() => applyTheme(theme)} />)}
+          <button type="button" className="menu-control menu-panel-frame dressing-color-reset" disabled={!colors}
+            aria-label={resetLabel} title={resetLabel} onClick={() => dye()}>
+            <svg className="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+              <path d="M4 6v5h5M4.4 10a8 8 0 1 1 1.2 7" />
+            </svg>
+          </button>
+        </PaletteRow>
+        {profile?.finishes && <PaletteRow label="Finish" group="Fabric finish">
+          {profile.finishes.map(({ id, label }) => <button key={id} type="button"
+            className="menu-control menu-panel-frame dressing-color-finish"
+            aria-pressed={(colors?.finish ?? "original") === id}
+            onClick={() => dye({ finish: id })}>{label}</button>)}
+        </PaletteRow>}
+        {rows.map(({ key, label, value }) => <ColorRow key={key} label={label} value={value}
+          onChange={color => dye(key === "color" && !profile && !underwear ? { color, accent: trim } : { [key]: color })} />)}
+      </>}
     </div>
     <div data-controller-row>
       <button ref={toggle} type="button" className="menu-control menu-panel-frame dressing-color-toggle" aria-expanded={open} aria-controls={panelId}

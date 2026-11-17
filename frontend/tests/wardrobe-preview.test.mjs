@@ -35,6 +35,7 @@ function wardrobePreviewServer() {
 
           const assets = new Map(), invalidate = () => {};
           export const prepared = [], committed = [], appliedLooks = [], loadedGarments = [], loadedBodies = [];
+          export const assetReads = [];
           export const useThree = selector => selector({ size: { width: 1200 }, invalidate });
           export const Html = ({ children }) => children;
           export const CharacterTurntable = ({ children }) => children;
@@ -67,6 +68,7 @@ function wardrobePreviewServer() {
             };
           }
           export function useGLTF(url) {
+            assetReads.push(url);
             const asset = assets.get(url);
             if (!asset) throw new Error("Unexpected " + url);
             if (asset.error) throw asset.error;
@@ -105,7 +107,7 @@ test("the fitting room keeps the last complete outfit until the latest selection
     const { DEFAULT_CHARACTER } = await vite.ssrLoadModule("/src/game/characters/characterCatalog.ts");
     const { getWardrobeGarment } = await vite.ssrLoadModule("/src/game/characters/wardrobeGarments.ts");
     const { useCharacterPreviewStore: preview } = await vite.ssrLoadModule("/src/game/characters/characterPreviewStore.ts");
-    const { committed, prepared, appliedLooks, loadedGarments, loadedBodies, makeAssetAvailable, delayAsset } =
+    const { committed, prepared, appliedLooks, loadedGarments, loadedBodies, assetReads, makeAssetAvailable, delayAsset } =
       await vite.ssrLoadModule("virtual:wardrobe-preview");
     const url = id => getWardrobeGarment(id).url;
     makeAssetAvailable("village");
@@ -127,10 +129,13 @@ test("the fitting room keeps the last complete outfit until the latest selection
     await choose("skirt-01");
     assert.deepEqual(rendered(), ["village skirt-01 bowtie-01"]);
     const firstModel = model();
+    assetReads.length = 0;
     await choose("skirt-02");
     await choose("skirt-03");
     assert.equal(model(), firstModel);
     assert.equal(status(), "Loading garments");
+    assert.deepEqual(new Set(assetReads), new Set([url("skirt-02"), url("skirt-03")]),
+      "choosing another skirt reads the pending assets and reuses the base and bow sources");
     await act(async () => third());
     assert.deepEqual(rendered(), ["village skirt-03 bowtie-01"]);
     const thirdModel = model();
@@ -153,11 +158,13 @@ test("the fitting room keeps the last complete outfit until the latest selection
     await choose("skirt-03", undefined, { choice: removedHat });
     const withoutHat = model();
     assert.notEqual(withoutHat, thirdModel, "changing a removal prepares the revised outfit");
+    assetReads.length = 0;
     await choose("skirt-03", undefined, { choice: {
       ...removedHat, removedClothing: ["hat"], appearance: { ...DEFAULT_CHARACTER.appearance, color: "#826911" },
     } });
     assert.equal(model(), withoutHat, "redyeing an equivalent fit keeps the same skinned character");
     assert.equal(appliedLooks.at(-1).appearance.color, "#826911", "the new dye still reaches the mounted rig");
+    assert.deepEqual(assetReads, [], "redyeing leaves the completed asset loaders unmounted");
 
     const secondGothic = getWardrobeGarment("gothic-skirt-02");
     const thirdGothic = getWardrobeGarment("gothic-skirt-03");
