@@ -310,7 +310,12 @@ body positions unquantized because the face shaders use bind-space positions.
 - **Preserve details through re-export.** Keep authored UVs, base texture
   detail, normal maps, and material slots for fabric, trim, laces, eyelets, and fasteners.
   Sweetheart has independent front and hip laces. Laced Bodice has a separate
-  finish control. Check a light and a dark dye, metal highlights, and close-up
+  finish control. Its original Thin Weld normal supplies the fold and weave
+  detail on UV0. The fitted shell uses UV1 for the seam decal. Keep those
+  channels separate when changing the fabric. The source material gives the
+  undyed shell and eyelet panels their neutral tint and subdued sheen. Apply
+  the tint only to undyed cloth so saved colors still match their swatches.
+  Check a light and a dark dye, metal highlights, and close-up
   seam quality. Roughness and metalness affect how two materials with the same
   dye read under garage lighting. Decimation belongs on broad fabric regions
   where it preserves the fit boundary. Batch meshes with matching materials and skin behavior to
@@ -370,17 +375,20 @@ node scripts/sample-wardrobe-emotes.mjs /path/to/raw/gothic-01.glb /path/to/pose
 
 | Garment | Confirmed | Open review |
 | --- | --- | --- |
-| Laced Bodice | The tucked hem had zero measured intersections with the Village skirt and rear belt in 56 sampled states. | The idle and overhead rear views both show a small piece of the shell at the viewer-left belt tip. Both tiers also produced upper-torso skin-mask findings. |
+| Laced Bodice | The tucked fit draws the hem inside the side turns of the Village belt. The skin mask retains the body behind the rear lacing and moving neckline. | Review the rear belt tip at an oblique angle and compare the cloth folds in a light and a dark dye. |
 | Ruffled | The waist and cup clearance checks passed on both tiers. With the Village skirt and belt, both Over and Tucked passed the torso mask probe in all three poses. | Check the upper back and neckline in game during Overhead heart. |
-| Underbust and bras | Both vest fits with Classic and standalone Push-up passed the torso mask probe on both tiers. | The vest with Push-up produced four uncovered rays at Overhead heart on each fit and tier. Standalone Classic also produced findings. |
+| Underbust and bras | Both vest fits preserve skin at the outer cup as the arms rise. Each bra mask retains the skin under its moving neckline binding. | Review the vest with the bra removed and the Classic neckline during Overhead heart. |
 | Sweetheart | The authored refit preserves chest and underarm skin. The animated skin mask passed both fits, both tiers, and both skirt routes in three sampled poses. | Review the revised cup and underarm silhouette and the Tucked waistband in motion. The old coverage samples predate the revised opening and authored skirt rim. |
-| High Collar | Both tiers load, bind to Vesper, and switch between Over and Tucked. | The full audit reports uncovered masked skin at rest and during motion with the Village skirt and the matched Gothic outfit. Review the straps, rear collar, and front keyhole on the live model. |
+| High Collar | Both tiers passed the torso mask probe with the Village skirt and the matched Gothic outfit after the Corset 05 update. | Review the raised-arm straps, armholes, and keyhole on the live model. |
 
-The torso mask probe evaluates 34 outfit and tier combinations in idle,
-Happy applause, and Overhead heart. The full audit currently exits with
-status 1 on mask findings in 16 combinations. Its rays identify candidate
-gaps for visual review. Use the reported tier, waist, outfit, and pose to
-reproduce each finding.
+The torso mask probe covers 44 outfit and tier combinations and 148 pose
+samples. It checks idle, Happy applause, and Overhead heart on both tiers.
+For Laced Bodice it also checks Comfortable weight shift and Shoulder stretch,
+following the opening below the rear eyelets down to the waist.
+Each finding includes the tier, waist, outfit, and
+pose so it can be reproduced in the fitting room. Inspect the cloth against
+the skirt and the separate belt as well. A torso mask can pass while a hem
+still shows through the waistband.
 
 ## Garage presentation fixes
 

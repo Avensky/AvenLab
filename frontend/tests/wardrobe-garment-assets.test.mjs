@@ -9,11 +9,12 @@ import { promisify } from 'node:util';
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
-import { AnimationMixer, Box3, BufferGeometry, DoubleSide, Float32BufferAttribute, Matrix4, Ray, Texture, Vector3 } from 'three';
+import { AnimationMixer, Box3, BufferGeometry, DoubleSide, Float32BufferAttribute, Matrix4, MeshPhysicalMaterial, Ray, Texture, Vector3 } from 'three';
 import { MeshBVH } from 'three-mesh-bvh';
 import { createServer } from 'vite';
 import { hasCompatibleWardrobeRevision } from '../scripts/character-model-paths.mts';
 import { loadWardrobeGeometry as loadGeometry } from '../scripts/load-wardrobe-geometry.mjs';
+import { applyLacedBodiceFinish } from '../src/game/characters/lacedBodiceAppearance.ts';
 
 const publicDir = new URL('../public/', import.meta.url);
 const villagerDir = 'models/characters/villagers/villager-female/';
@@ -1531,6 +1532,11 @@ test('the rebuilt Gothic Underbust and bra keep skin around the armholes and bin
                 const origin = direction.clone().multiplyScalar(-.40).addScaledVector(sideways, (braOnly ? .107 : -.114) * side);
                 origin.y = braOnly ? 1.248 : 1.255;
                 assertSkin(new Ray(origin, direction), true);
+                // Heart Overhead exposes these front-facing skin triangles
+                // at the classic neckline and just above the vest's outer rim.
+                const x = braOnly ? .0991 : .0909;
+                const y = braOnly ? 1.272 : 1.2571;
+                assertSkin(new Ray(new Vector3(side * x, y, .40), new Vector3(0, 0, -1)), true);
               }
             } finally {
               skin.geometry.dispose();
@@ -1546,6 +1552,17 @@ test('the rebuilt Gothic Underbust and bra keep skin around the armholes and bin
   } finally {
     await vite.close();
   }
+});
+
+test('rebuilt Laced Bodice limits the exported white sheen on cloth at every finish', () => {
+  const source = new MeshPhysicalMaterial({ sheen: 1, sheenColor: 0xffffff, roughness: .66 });
+  const cloth = source.clone();
+  for (const [finish, coat] of [['satin', .06], ['glossy', .18], ['matte', 0], ['original', 0]]) {
+    applyLacedBodiceFinish(source, cloth, finish, true);
+    assert.equal(cloth.sheen, .12);
+    assert.equal(cloth.clearcoat, coat);
+  }
+  assert.equal(source.sheen, 1);
 });
 
 test('rebuilt Laced Bodice keeps its authored mesh and dyes five groups independently', async t => {
@@ -1637,7 +1654,8 @@ test('rebuilt Laced Bodice keeps its authored mesh and dyes five groups independ
             assert.equal(fabric.geometry.getAttribute('skinWeight'), weights);
           }
           applyVillagerLook(model, characterLook(withClothingColors(styled, 'corset')));
-          assert(fabric.material.color.equals(source.get(fabric.name).material.color));
+          assert.equal(fabric.material.color.getHexString(), '797471', 'reset restores the original cloth swatch');
+          assert.equal(source.get(fabric.name).material.color.getHexString(), '6e6660', 'loaded asset stays pristine');
         }
       } finally { model.dispose(); }
     }
@@ -1674,7 +1692,7 @@ test('the Village skirt and belt cover the back of the tucked Laced Bodice', asy
     const intersection = { intersectsTriangles: (first, second) => first.intersectsTriangle(second) };
     const overlaps = (clothes, bodice) => clothes.some(surface =>
       bodice.some(layer => surface.bvhcast(layer, identity, intersection)));
-    const surfaces = (part, rearOnly = false) => {
+    const surfaces = part => {
       const result = [];
       const point = new Vector3();
       part.traverseVisible(mesh => {
@@ -1684,14 +1702,9 @@ test('the Village skirt and belt cover the back of the tucked Laced Bodice', asy
           mesh.getVertexPosition(i, point).applyMatrix4(mesh.matrixWorld);
           position.setXYZ(i, point.x, point.y, point.z);
         }
-        const { index, attributes, drawRange } = mesh.geometry;
+        const { index, drawRange } = mesh.geometry;
         const indices = Array.from(index.array.subarray(drawRange.start, drawRange.start + drawRange.count));
-        const faces = rearOnly ? [] : indices;
-        if (rearOnly) for (let i = 0; i < indices.length; i += 3) {
-          const triangle = indices.slice(i, i + 3);
-          if (triangle.every(vertex => attributes.position.getZ(vertex) <= 0)) faces.push(...triangle);
-        }
-        if (faces.length) result.push(new MeshBVH(new BufferGeometry().setAttribute('position', position).setIndex(faces)));
+        if (indices.length) result.push(new MeshBVH(new BufferGeometry().setAttribute('position', position).setIndex(indices)));
       });
       return result;
     };
@@ -1757,13 +1770,14 @@ test('the Village skirt and belt cover the back of the tucked Laced Bodice', asy
               for (const phase of phases) {
                 mixer.setTime(clip.duration * phase);
                 root.updateMatrixWorld(true);
-                const waistband = surfaces(activeSkirt), beltBack = surfaces(activeBelt, true), bodice = surfaces(activeBodice);
+                // The belt turns around the hip. Faces crossing the side seam are still visible from behind.
+                const waistband = surfaces(activeSkirt), belt = surfaces(activeBelt), bodice = surfaces(activeBodice);
                 try {
                   assert(!overlaps(waistband, bodice), `${label} waistband intersects the bodice at ${emote}@${phase}`);
-                  assert(beltBack.length, `${label} has a rendered rear belt`);
-                  assert(!overlaps(beltBack, bodice), `${label} rear belt intersects the bodice at ${emote}@${phase}`);
+                  assert(belt.length, `${label} has a rendered rear belt`);
+                  assert(!overlaps(belt, bodice), `${label} belt intersects the bodice at ${emote}@${phase}`);
                 } finally {
-                  for (const { geometry } of [...waistband, ...beltBack, ...bodice]) geometry.dispose();
+                  for (const { geometry } of [...waistband, ...belt, ...bodice]) geometry.dispose();
                 }
               }
             } finally {

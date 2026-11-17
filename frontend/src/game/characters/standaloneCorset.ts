@@ -125,8 +125,8 @@ export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton
     sweetheartSkin,
     updateShoulders,
     villageWaistSource: authoredLacedBodice || sweetheartSkin ? source.scene : undefined,
-    fitSkirt: laced || sweetheartSkin ? (skirts: readonly MeshBVH[], fit?: "village-tucked", reuse?: { adjustments?: Float32Array }) => {
-      disposeSkirtFit = fitLacedBodiceToSkirt(group, body.geometry, skirts, fit, reuse);
+    fitSkirt: laced || sweetheartSkin ? (skirts: readonly MeshBVH[], village?: { hasBelt: boolean }, reuse?: { adjustments?: Float32Array }) => {
+      disposeSkirtFit = fitLacedBodiceToSkirt(group, body.geometry, skirts, village, reuse);
     } : undefined,
     fitTuckedHardware: tuckedHardware.length ? (skirts: readonly MeshBVH[]) => {
       // Imported garments share the actor's bind space. Hide only fasteners

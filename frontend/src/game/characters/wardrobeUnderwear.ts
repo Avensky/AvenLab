@@ -58,6 +58,11 @@ const patterns = {
   briefs: { upper: briefsWaist, lower: briefsLeg, halfWidth: .185, clearance: .0008, topWidth: .010, hemWidth: .006 },
 };
 
+export function insideBraNeckline(style: BraStyle, point: Vector3) {
+  const { upper, topWidth } = patterns[style];
+  return point.y < upper(point) - topWidth;
+}
+
 function traceUnderwear(source: BufferGeometry, style: UnderwearStyle): UnderwearCut | undefined {
   const { upper, lower, halfWidth, clearance, topWidth, hemWidth } = patterns[style];
   const aboveHem = (point: Vector3) => point.y - lower(point);
