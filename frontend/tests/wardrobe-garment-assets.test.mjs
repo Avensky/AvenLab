@@ -1455,6 +1455,108 @@ test('the Village skirt and belt cover the back of the tucked Laced Bodice', asy
   } finally { await vite.close(); }
 });
 
+test('Ruffled Corset keeps cup and rear waist clearance within both detail budgets', async t => {
+  const paths = [
+    villagerDir + 'villager-female.garage.glb', villagerDir + 'villager-female.portrait.glb',
+    bundledDir + 'gothic-03.garage.glb', bundledDir + 'gothic-03.mobile.glb',
+  ];
+  const bytes = await Promise.all(paths.map(path => readFile(new URL(path, publicDir))));
+  if (bytes.some(isLfsPointer)) return t.skip('Run git lfs pull to materialize the Ruffled Corset and Village outfit.');
+  const [garage, portrait, high, low] = await Promise.all(bytes.map(loadGeometry));
+  const vite = await createServer({ define: { __VILLAGER_MODEL_URL__: JSON.stringify('/' + paths[0]) }, server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  try {
+    const { prepareVillager, applyVillagerLook, villagerModelUrl } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
+    const { characterLook, DEFAULT_CHARACTER } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { getWardrobeGarment } = await vite.ssrLoadModule('/src/game/characters/wardrobeGarments.ts');
+    const { corsetModelUrl, corsetRenderChoice, wardrobeModelUrl } = await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
+    const { buildEmoteClips, findGaragePreviewEmote } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
+    const choice = { set: 'gothic-03', shirt: 'none', waist: 'tucked' };
+    for (const [kind, suffix] of [['garage', 'garage'], ['portrait', 'mobile']]) {
+      const model = `/gothic-03.${suffix}.glb`;
+      assert(wardrobeModelUrl(choice, kind)?.endsWith(model), `${kind} uses its bundled LOD`);
+      assert(corsetModelUrl(choice, kind)?.endsWith(model), `${kind} uses its standalone LOD`);
+    }
+    const assembled = characterLook({ ...DEFAULT_CHARACTER, wardrobe: choice, garments: { skirt: 'village-skirt' } });
+    assert.deepEqual(corsetRenderChoice(assembled), choice);
+    assert(villagerModelUrl(assembled, 'garage')?.endsWith('/villager-female.garage.glb'));
+    const waistSurface = mesh => {
+      const { index, drawRange, attributes: { position } } = mesh.geometry;
+      const points = new Float32BufferAttribute(new Float32Array(position.count * 3), 3);
+      const point = new Vector3();
+      for (let v = 0; v < position.count; v++) {
+        mesh.getVertexPosition(v, point).applyMatrix4(mesh.matrixWorld);
+        points.setXYZ(v, point.x, point.y, point.z);
+      }
+      const faces = [];
+      for (let i = drawRange.start; i < Math.min(index.count, drawRange.start + drawRange.count); i += 3) {
+        const vertices = [index.getX(i), index.getX(i + 1), index.getX(i + 2)];
+        const y = vertices.reduce((sum, v) => sum + position.getY(v), 0) / 3;
+        const z = vertices.reduce((sum, v) => sum + position.getZ(v), 0) / 3;
+        if (y > 1.016 && y < 1.16 && z < .038) faces.push(...vertices);
+      }
+      return new BufferGeometry().setAttribute('position', points).setIndex(faces);
+    };
+    for (const [base, corset, budget] of [[garage, high, 7000], [portrait, low, 3000]]) {
+      const body = new MeshBVH(corset.getObjectByName('BODY_WARDROBE').geometry.clone());
+      const ray = new Ray(new Vector3(), new Vector3(0, 0, -1));
+      for (const cut of ['OVER', 'TUCKED']) {
+        const garment = corset.getObjectByName(`CLOTH_CORSET_${cut}`);
+        assert(garment.userData.fit_version >= 8, 'the revised cup fit is present');
+        const meshes = garment.children;
+        assert.equal(meshes.length, 3, 'shell, ruffles, and both ties use three draw calls');
+        assert(meshes.reduce((sum, mesh) => sum + mesh.geometry.index.count / 3, 0) <= budget);
+        const shell = new MeshBVH(meshes.find(mesh => mesh.material.name === 'MAT_CORSET_03_Brocade').geometry.clone());
+        try {
+          for (const side of [-1, 1]) for (let ix = 0; ix <= 15; ix++) for (let iy = 0; iy <= 16; iy++) {
+            const x = side * (.034 + ix * .004);
+            const y = 1.195 + iy * .0045;
+            ray.origin.set(x, y, .31);
+            const garmentHit = shell.raycastFirst(ray, DoubleSide);
+            const bodyHit = body.raycastFirst(ray, DoubleSide);
+            assert(garmentHit && bodyHit && bodyHit.distance - garmentHit.distance > .0005,
+              `${budget} triangle tier ${cut} cup clears the body at ${x.toFixed(3)}, ${y.toFixed(3)}`);
+          }
+        } finally { shell.geometry.dispose(); }
+      }
+      body.geometry.dispose();
+      for (const explicit of [false, true]) {
+        const skirts = explicit ? [{ item: getWardrobeGarment('village-skirt'), scene: base }] : [];
+        const model = prepareVillager(base, { fitted: true, garments: skirts, garmentBody: low.getObjectByName('BODY_WARDROBE'),
+          corsetSource: { set: 'gothic-03', scene: corset } });
+        try {
+          applyVillagerLook(model, explicit ? assembled : characterLook({ ...DEFAULT_CHARACTER, wardrobeTrial: choice }));
+          const { root } = model;
+          const fittedCorset = model.detachedCorset.group.getObjectByName('CLOTH_CORSET_TUCKED');
+          const skirt = explicit ? root.getObjectByName('wardrobe-village-skirt').children[0] : root.getObjectByName('CLOTH_BOTTOM_SKIRT');
+          const belt = root.getObjectByName('ACC_BELT');
+          const mixer = new AnimationMixer(root);
+          for (const [emote, progress] of [[undefined, 0], ['002', .39], ['008', .46], ['006', .47]]) {
+            mixer.stopAllAction();
+            if (emote) {
+              const [clip] = buildEmoteClips(root, [findGaragePreviewEmote(emote, false)]);
+              mixer.clipAction(clip).play();
+              mixer.setTime(clip.duration * progress);
+            }
+            root.updateMatrixWorld(true);
+            belt.skeleton.update();
+            const outer = [skirt, belt].map(mesh => new MeshBVH(waistSurface(mesh)));
+            try {
+              for (const mesh of fittedCorset.children) {
+                const inner = waistSurface(mesh);
+                try {
+                  if (inner.index.count) for (const covering of outer) {
+                    assert(!covering.intersectsGeometry(inner, new Matrix4()), `rear waist intersects in ${emote ?? 'idle'}`);
+                  }
+                } finally { inner.dispose(); }
+              }
+            } finally { for (const { geometry } of outer) geometry.dispose(); }
+          }
+        } finally { model.dispose(); }
+      }
+    }
+  } finally { await vite.close(); }
+});
+
 test('Laced Bodice straps clear the rear shoulders and Tucked lacing shows skin', async t => {
   const set = 'gothic-01';
   const item = catalog.find(garment => garment.id === 'skirt-02');

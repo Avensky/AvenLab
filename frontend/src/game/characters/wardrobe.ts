@@ -6,6 +6,7 @@ import { prepareOverSkirtEase, type OverSkirtEase } from "./overSkirtEase";
 export const WARDROBE_SETS = catalog.filter(set => !set.retired);
 export const WARDROBE_CORSETS = catalog;
 export const LACED_BODICE_WARDROBE_SET = "gothic-01";
+const RUFFLED_WARDROBE_SET = "gothic-03";
 export const REBUILT_LACED_BODICE_ASSET = "gothic-laced-bodice";
 export const UNDERBUST_WARDROBE_SET = "gothic-04";
 export const REBUILT_UNDERBUST_ASSET = "gothic-underbust-vest";
@@ -72,10 +73,12 @@ export function hasRebuiltLacedBodice() {
 export function corsetRenderChoice(look: {
   corset?: WardrobeChoice;
   wardrobe?: WardrobeChoice;
-  garments?: { top?: string; dress?: string };
+  garments?: { top?: string; dress?: string; skirt?: string };
   removedClothing: readonly string[];
 }) {
   if (look.corset) return look.corset;
+  if (look.wardrobe?.set === RUFFLED_WARDROBE_SET && look.garments?.skirt === "village-skirt"
+    && !look.garments.top && !look.garments.dress && !look.removedClothing.includes("corset")) return look.wardrobe;
   if (look.wardrobe?.set === LACED_BODICE_WARDROBE_SET && !look.garments?.top && !look.garments?.dress
     && !look.removedClothing.includes("corset") && hasRebuiltLacedBodice()) return look.wardrobe;
 }

@@ -365,6 +365,53 @@ export function prepareWardrobeGarments(
     for (const { geometry } of stockSurfaces) geometry.dispose();
   }
   if (tuckedSkirtSurfaces.length) corset?.fitTuckedHardware?.(tuckedSkirtSurfaces);
+  const ruffledTucked = corset?.group.getObjectByName("CLOTH_CORSET_TUCKED");
+  let villageBelt: { mesh: SkinnedMesh; original: BufferGeometry; tucked: BufferGeometry } | undefined;
+  if (ruffledTucked?.userData.ruffledSourceFit === true && (
+    group.getObjectByName("wardrobe-village-skirt")
+    || (original.name === "BODY_OUTFIT_CUT" && !replacements.has("skirt") && root.getObjectByName("CLOTH_BOTTOM_SKIRT"))
+  )) {
+    const belt = !replacements.has("belt") && root.getObjectByName("ACC_BELT");
+    if (belt instanceof SkinnedMesh) {
+      const original = belt.geometry;
+      const tucked: BufferGeometry = original.clone();
+      const position = tucked.getAttribute("position");
+      for (let i = 0; i < position.count; i++) {
+        const x = position.getX(i), y = position.getY(i), depth = position.getZ(i) - .025;
+        const radius = Math.hypot(x, depth);
+        if (!radius) continue;
+        const rear = MathUtils.smoothstep(-depth / radius, -.50, .36);
+        const room = rear * MathUtils.lerp(.003, .016, MathUtils.smoothstep(y, 1.099, 1.131));
+        position.setXYZ(i, x * (1 + room / radius), y, .025 + depth * (1 + room / radius));
+      }
+      tucked.computeBoundingBox();
+      tucked.computeBoundingSphere();
+      villageBelt = { mesh: belt, original, tucked };
+      fittedGarments.push(tucked);
+    }
+    const waistband = belt ? 1.113 : 1.096;
+    const waistFade = belt ? 1.139 : 1.119;
+    // Roll the lower side and rear panels under the Village waistband.
+    ruffledTucked.traverse(mesh => {
+      if (!(mesh instanceof SkinnedMesh)) return;
+      const fitted = mesh.geometry.clone();
+      const position = fitted.getAttribute("position");
+      for (let i = 0; i < position.count; i++) {
+        const x = position.getX(i), y = position.getY(i), depth = position.getZ(i) - .025;
+        const radius = Math.hypot(x, depth);
+        if (!radius || y >= waistFade) continue;
+        const rear = MathUtils.smoothstep(-depth / radius, -.49, .36);
+        const inset = .027 * rear * (1 - MathUtils.smoothstep(y, waistband, waistFade));
+        const scale = 1 - inset / radius;
+        position.setX(i, x * scale);
+        position.setZ(i, .025 + depth * scale);
+      }
+      fitted.computeBoundingBox();
+      fitted.computeBoundingSphere();
+      mesh.geometry = fitted;
+      fittedGarments.push(fitted);
+    });
+  }
   if (!group.children.length && !replacements.size) return;
   const top = Boolean(corset) || upperGarment;
   const body = (top || skirt || restoresBody) && full && fullBody instanceof SkinnedMesh ? bindWardrobeGarmentMesh(fullBody, original.skeleton) : undefined;
@@ -406,6 +453,7 @@ export function prepareWardrobeGarments(
       if (underwear?.bra) underwear.bra.visible = showBra;
       corset?.apply(corsetWaist, look.overEase);
       villageTuckedWaist?.apply(corsetWaist === "tucked");
+      if (villageBelt) villageBelt.mesh.geometry = corsetWaist === "tucked" ? villageBelt.tucked : villageBelt.original;
       villageBonnet?.setBowVisible(!removedClothing.includes("bonnet-bow"));
       for (const { part, piece } of stock) if (replacements.has(piece)) part.visible = false;
       if (tallSocks.length && !socksFitted) {
@@ -471,6 +519,7 @@ export function prepareWardrobeGarments(
       villageBonnet?.dispose();
       disposeVillageShoes?.();
       villageTuckedWaist?.dispose();
+      if (villageBelt) villageBelt.mesh.geometry = villageBelt.original;
       for (const geometry of fittedGarments) geometry.dispose();
       for (const { surface } of shapes) surface.geometry.dispose();
       for (const { geometry } of braShapes) geometry.dispose();

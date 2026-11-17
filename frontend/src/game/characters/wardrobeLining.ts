@@ -32,6 +32,8 @@ export function prepareWardrobeLining(root: Object3D) {
     if (typeof role === "string" && role.startsWith("shirt-")) retiredShirts.push(part);
   });
   for (const shirt of retiredShirts) shirt.removeFromParent();
+  // The source-fit ruffled corset already has its own skinned lining.
+  if (corset.userData.ruffledSourceFit === true) return;
   let fabric: MeshStandardMaterial | undefined;
   corset.traverse(part => {
     if (fabric || !(part instanceof Mesh)) return;

@@ -70,7 +70,7 @@ function finishRuffledTrim(skirt: Object3D, trim: SkinnedMesh) {
 function fitRuffledWaist(root: Object3D, skirt: Object3D, fabric: MeshStandardMaterial) {
   const body = root.getObjectByName("BODY_WARDROBE");
   const corset = root.getObjectByName("CLOTH_CORSET_TUCKED");
-  if (!(body instanceof SkinnedMesh) || !corset) return;
+  if (!(body instanceof SkinnedMesh) || !corset || corset.userData.ruffledSourceFit === true) return;
   const geometry = fitWardrobeSurface(body.geometry, [
     point => point.y - 1.052,
     point => 1.112 - point.y,
