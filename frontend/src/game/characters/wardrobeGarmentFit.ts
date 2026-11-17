@@ -10,6 +10,7 @@ import { prepareShoelessSockFit } from "./wardrobeSocksFit";
 import type { StandaloneCorset } from "./standaloneCorset";
 import { wardrobeGarmentReplacements, wardrobeRemovalPieces, wardrobeReplacedPieces, type getWardrobeGarment, type WardrobeGarmentSlot, type WardrobeRemoval } from "./wardrobeGarments";
 import { prepareWardrobeTopFit } from "./wardrobeTopFit";
+import { WARDROBE_WAIST_OPTIONS } from "./wardrobe";
 import { prepareVillageBonnet } from "./villageBonnet";
 import { prepareVillageShoes } from "./wardrobeShoes";
 import { prepareWardrobeCoverage, wardrobeCoverageSurface as bodySurface } from "./wardrobeCoverage";
@@ -68,7 +69,7 @@ function isFabric(mesh: SkinnedMesh) {
 
 const coversSkin = new Set<ClothingPiece>(["corset", "shirt", "sleeves", "skirt", "underskirt", "shorts", "shoes", "socks", "dress"]);
 const coversTorso = new Set<ClothingPiece>(["corset", "shirt", "sleeves", "dress", "armor"]);
-const MAX_FITTED_MASKS = 8;
+const MAX_SHARED_FITTED_MASKS = 8;
 
 type RestoredSkin = { upper: boolean; arms: boolean; skirt: boolean; feet: boolean };
 type SkinCover = { surface: MeshBVH; piece: ClothingPiece; baseLayer?: true; rebuiltUnderbust?: boolean };
@@ -153,7 +154,7 @@ function armVertices(body: SkinnedMesh, geometry: BufferGeometry) {
 function fitBodyMask(
   body: SkinnedMesh, original: SkinnedMesh, full: BufferGeometry, top: boolean, skirt: boolean,
   restored: RestoredSkin, clothes: SkinCover[], bra: MeshBVH[], checkTopEdges: boolean, lacedBodice: "tucked" | "over" | undefined,
-  authoredLacedBodice: boolean, cache?: { masks: Map<string, Uint32Array>; key: string },
+  authoredLacedBodice: boolean, cache?: { masks: Map<string, Uint32Array>; key: string; limit: number },
 ) {
   const fittedIndex = body.geometry.getIndex()!;
   const saved = cache?.masks.get(cache.key);
@@ -232,8 +233,8 @@ function fitBodyMask(
   fittedIndex.needsUpdate = true;
   body.geometry.setDrawRange(0, visible);
   if (cache) {
-    const { masks, key } = cache;
-    if (masks.size >= MAX_FITTED_MASKS) {
+    const { masks, key, limit } = cache;
+    if (masks.size >= limit) {
       const oldest = masks.keys().next().value;
       if (oldest !== undefined) masks.delete(oldest);
     }
@@ -512,6 +513,10 @@ export function prepareWardrobeGarments(
     body.geometry = full.clone().setIndex(new BufferAttribute(new Uint32Array(full.getIndex()!.count), 1));
     group.add(body);
   }
+  // Actor-local masks fit all selectable waist and bra combinations. Shared
+  // Laced masks keep their separate bound across actors.
+  const maskLimit = fittedMasks ? MAX_SHARED_FITTED_MASKS
+    : WARDROBE_WAIST_OPTIONS.length * (underwear?.bra ? 3 : 1);
   if (fixedBody && body && (corset || underwear?.bra)) fittedMasks ??= new Map();
   if (skirt) root.userData.skirtHandRoom = MathUtils.clamp((skirtRadius ?? .23) - .23, 0, .12);
   root.add(group);
@@ -576,7 +581,7 @@ export function prepareWardrobeGarments(
         const visibleShapes = [...shapes, ...(surfaces ?? [])];
         fitBodyMask(body, original, full, top, skirt, restored, visibleShapes,
           activeBraSurfaces(activeBra), checkTopEdges, corset?.group.userData.lacedBodiceStraps ? corsetWaist : undefined,
-          corset?.authoredLacedBodice ?? false, fittedMasks && { masks: fittedMasks, key: maskKey });
+          corset?.authoredLacedBodice ?? false, fittedMasks && { masks: fittedMasks, key: maskKey, limit: maskLimit });
         maskedWaist = waist;
         maskedBra = braStyle;
       }

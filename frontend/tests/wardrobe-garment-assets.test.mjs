@@ -1237,6 +1237,79 @@ test('the rebuilt Gothic Underbust and standalone bras use the push-up cut on bo
   }
 });
 
+test('the rebuilt Gothic Underbust reuses skin masks for all Over fits on one actor', async t => {
+  const files = await Promise.all([
+    bundledDir + 'gothic-02.mobile.glb',
+    villagerDir + 'villager-female.portrait.glb',
+    garmentDir + 'corsets/gothic-underbust-vest.garage.glb',
+  ].map(path => readFile(new URL(path, publicDir))));
+  if (files.some(isLfsPointer)) return skipMissingAsset(t, 'Run git lfs pull to materialize the fitting-room models.');
+  const [donor, actor, vest] = await Promise.all(files.map(loadGeometry));
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  try {
+    const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
+    const { DEFAULT_CHARACTER, characterAppearance, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { WARDROBE_WAIST_OPTIONS } = await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
+    const set = 'gothic-04';
+    const options = { fitted: true, garmentBody: donor.getObjectByName('BODY_WARDROBE'), corsetSource: { set, scene: vest } };
+    const over = WARDROBE_WAIST_OPTIONS.filter(({ waist }) => waist === 'over');
+    const fits = over.flatMap(({ ease, waist }) => ['classic', 'push-up', 'off'].map(style => ({
+      style,
+      look: characterLook({ ...DEFAULT_CHARACTER, wardrobeTrial: { set, waist, shirt: 'none' }, wardrobeEase: ease,
+        bra: style !== 'off', appearance: { ...characterAppearance(DEFAULT_CHARACTER), bra_style: style === 'push-up' ? style : 'classic' } }),
+    })));
+    const model = prepareVillager(actor, options);
+    const capture = (root, style) => {
+      const body = root.getObjectByName('fitting-room-body').geometry;
+      const fabric = root.getObjectByName('CLOTH_CORSET_OVER');
+      assert(fabric.visible);
+      assert.equal(Boolean(root.getObjectByName('wardrobe-underwear-bra')?.visible), style === 'classic');
+      assert.equal(Boolean(root.getObjectByName('wardrobe-underwear-bra-push-up')?.visible), style === 'push-up');
+      const parts = [];
+      fabric.traverseVisible(part => {
+        if (!part.isSkinnedMesh) return;
+        const geometry = part.geometry;
+        parts.push({ name: part.name, indices: geometry.index?.array.slice(), draw: { ...geometry.drawRange },
+          positions: geometry.getAttribute('position').array.slice(), normals: geometry.getAttribute('normal')?.array.slice() });
+      });
+      return { body: body.index.array.slice(0, body.drawRange.count), parts };
+    };
+    const original = MeshBVH.prototype.shapecast;
+    let searches = 0;
+    MeshBVH.prototype.shapecast = function (...args) {
+      searches++;
+      return original.apply(this, args);
+    };
+    try {
+      const liveIndex = model.root.getObjectByName('fitting-room-body').geometry.index;
+      const expected = fits.map(({ look, style }) => {
+        searches = 0;
+        applyVillagerLook(model, look);
+        assert(searches > 0, 'each new selection traces its mask on demand');
+        return capture(model.root, style);
+      });
+      searches = 0;
+      for (const [i, { look, style }] of fits.entries()) {
+        applyVillagerLook(model, look);
+        assert.deepEqual(capture(model.root, style), expected[i]);
+        assert.equal(model.root.getObjectByName('fitting-room-body').geometry.index, liveIndex);
+      }
+      assert.equal(searches, 0, 'all nine sampled fits reuse their mask during a full cycle');
+
+      const peer = prepareVillager(actor, options);
+      try {
+        applyVillagerLook(peer, fits[0].look);
+        assert.deepEqual(capture(peer.root, fits[0].style), expected[0]);
+        const peerIndex = peer.root.getObjectByName('fitting-room-body').geometry.index;
+        assert.notEqual(peerIndex.array.buffer, liveIndex.array.buffer, 'each actor keeps a private skin index array');
+      } finally { peer.dispose(); }
+    } finally {
+      MeshBVH.prototype.shapecast = original;
+      model.dispose();
+    }
+  } finally { await vite.close(); }
+});
+
 test('wardrobe underwear reuses donor cuts and isolates actor geometry and dyes', async t => {
   const bytes = await readFile(new URL(bundledDir + 'gothic-02.mobile.glb', publicDir));
   if (isLfsPointer(bytes)) return skipMissingAsset(t, 'Run git lfs pull to materialize the fitting-room body donor.');

@@ -277,8 +277,9 @@ body positions unquantized because the face shaders use bind-space positions.
   skin. Keep visible triangles along strap roots, underarms, keyholes, and
   laced openings. Whole triangles can cross a garment edge and expose a hole
   if they are cut by a single sample. Each preview owns its index buffer. A
-  fitted Village actor with fixed source coverage retains up to eight recent
-  waist and bra masks, so revisiting a fit can reuse the visible triangle list.
+  fitted Village actor with fixed source coverage retains a mask for each
+  visited waist and bra combination, so switching back reuses the visible
+  triangle list. The shared Laced Bodice mask cache stays bounded at eight.
   When an outfit exposes part of the original cut body, the fitter remembers
   which donor triangles match that surface. Other outfits can reuse those
   answers until either surface's positions, indices, or draw range changes.
