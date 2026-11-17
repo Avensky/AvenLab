@@ -34,7 +34,7 @@ const fastSuites = [
 const realAssetTests = [
   'the authored Sweetheart', 'standalone wardrobe exports', 'standalone corsets and a selected skirt',
   'the rebuilt Gothic Underbust', 'rebuilt Tucked hardware', 'rebuilt Laced Bodice',
-  'the Village skirt and belt cover the back of the tucked Laced Bodice', 'Ruffled Corset', 'Laced Bodice straps',
+  'the Village skirt and belt cover', 'Ruffled Corset', 'Laced Bodice straps',
 ];
 
 function runTests(args, strictAssets = false) {

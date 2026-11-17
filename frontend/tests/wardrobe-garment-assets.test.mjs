@@ -1602,6 +1602,96 @@ test('the Village skirt and belt cover the back of the tucked Laced Bodice', asy
   } finally { await vite.close(); }
 });
 
+test('the Village skirt and belt cover reused Laced and Sweetheart tucked fits', async t => {
+  const paths = [
+    villagerDir + 'villager-female.portrait.glb',
+    garmentDir + 'corsets/gothic-laced-bodice.garage.glb',
+    bundledDir + 'gothic-02.mobile.glb',
+  ];
+  const bytes = await Promise.all(paths.map(path => readFile(new URL(path, publicDir)).catch(error => {
+    if (error.code !== 'ENOENT') throw error;
+  })));
+  if (bytes.some(file => !file || isLfsPointer(file))) return skipMissingAsset(t, 'Run git lfs pull and build the character LODs.');
+  const [base, laced, sweetheart] = await Promise.all(bytes.map(loadGeometry));
+  const garmentBody = sweetheart.getObjectByName('BODY_WARDROBE');
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  const models = [];
+  try {
+    const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
+    const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { getWardrobeGarment } = await vite.ssrLoadModule('/src/game/characters/wardrobeGarments.ts');
+    const skirt = getWardrobeGarment('village-skirt');
+    const belt = getWardrobeGarment('village-belt');
+    const skirtMesh = base.getObjectByName(skirt.villageNode);
+    const skirtGeometry = skirtMesh.geometry;
+    const prepare = (set, scene, withBelt) => {
+      const garments = (withBelt ? [skirt, belt] : [skirt]).map(item => ({ item, scene: base }));
+      const probe = t.mock.method(MeshBVH.prototype, 'raycastFirst');
+      let model;
+      try {
+        model = prepareVillager(base, { fitted: true, garmentBody, corsetSource: { set, scene }, garments });
+      } finally { probe.mock.restore(); }
+      models.push(model);
+      applyVillagerLook(model, characterLook({
+        ...DEFAULT_CHARACTER,
+        garments: { skirt: skirt.id, ...(withBelt && { belt: belt.id }) },
+        wardrobeTrial: { set, waist: 'tucked', shirt: 'none' },
+      }));
+      const tucked = model.detachedCorset.group.getObjectByName('CLOTH_CORSET_TUCKED');
+      const meshes = [];
+      tucked.traverseVisible(mesh => {
+        if (mesh.isSkinnedMesh) meshes.push(mesh);
+      });
+      const body = model.root.getObjectByName('fitting-room-body').geometry;
+      return { meshes, body, rays: probe.mock.callCount() };
+    };
+    const visibleIndices = ({ index, drawRange: { start, count } }) => index.array.subarray(start, start + count);
+    for (const [set, scene, file] of [['gothic-01', laced, bytes[1]], ['gothic-02', sweetheart, bytes[2]]]) {
+      const first = prepare(set, scene, false);
+      const warm = prepare(set, scene, true);
+      const cold = prepare(set, await loadGeometry(file), true);
+      assert(first.rays > 3000, `${set} samples the first waistband`);
+      assert(cold.rays - warm.rays > 3000, `${set} reuses waistband samples with an explicit belt`);
+      assert(warm.meshes.length, `${set} has visible tucked geometry`);
+      assert.deepEqual(warm.meshes.map(mesh => mesh.name), cold.meshes.map(mesh => mesh.name));
+      for (const [i, mesh] of warm.meshes.entries()) {
+        const positions = mesh.geometry.getAttribute('position');
+        assert.deepEqual(positions.array, cold.meshes[i].geometry.getAttribute('position').array, `${set} ${mesh.name}`);
+      }
+      const source = scene.getObjectByName('CLOTH_CORSET_TUCKED');
+      const fitted = warm.meshes.find(mesh => mesh.geometry !== source.getObjectByName(mesh.name)?.geometry);
+      assert(fitted, `${set} has a fitted mesh`);
+      assert.notEqual(fitted.geometry, first.meshes.find(mesh => mesh.name === fitted.name).geometry);
+      assert.notEqual(warm.body.index, cold.body.index);
+      assert(warm.body.drawRange.count > 0, `${set} has visible skin`);
+      assert.deepEqual(warm.body.drawRange, cold.body.drawRange);
+      assert.deepEqual(visibleIndices(warm.body), visibleIndices(cold.body));
+    }
+    const { start, count } = skirtGeometry.drawRange;
+    try {
+      const end = Math.min(skirtGeometry.index.count, start + count);
+      skirtGeometry.setDrawRange(start, end - start - 3);
+      const changed = prepare('gothic-01', laced, true);
+      const warm = prepare('gothic-01', laced, true);
+      assert(changed.rays - warm.rays > 3000, 'a changed skirt draw range samples a new waistband');
+    } finally { skirtGeometry.setDrawRange(start, count); }
+    const otherSkirt = skirtGeometry.clone();
+    try {
+      skirtMesh.geometry = otherSkirt;
+      const changed = prepare('gothic-01', laced, true);
+      skirtMesh.geometry = skirtGeometry;
+      const warm = prepare('gothic-01', laced, true);
+      assert(changed.rays - warm.rays > 3000, 'only the same skirt geometry can reuse sampled waistbands');
+    } finally {
+      skirtMesh.geometry = skirtGeometry;
+      otherSkirt.dispose();
+    }
+  } finally {
+    for (const model of models) model.dispose();
+    await vite.close();
+  }
+});
+
 test('Ruffled Corset keeps cup and rear waist clearance within both detail budgets', async t => {
   const paths = [
     villagerDir + 'villager-female.garage.glb', villagerDir + 'villager-female.portrait.glb',

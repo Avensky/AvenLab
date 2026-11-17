@@ -119,7 +119,7 @@ export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton
     underbust,
     authoredLacedBodice,
     sweetheartSkin,
-    authoredLacedSource: authoredLacedBodice ? source.scene : undefined,
+    villageWaistSource: authoredLacedBodice || sweetheartSkin ? source.scene : undefined,
     fitSkirt: laced || sweetheartSkin ? (skirts: readonly MeshBVH[], fit?: "village-tucked", reuse?: { adjustments?: Float32Array }) => {
       disposeSkirtFit = fitLacedBodiceToSkirt(group, body.geometry, skirts, fit, reuse);
     } : undefined,

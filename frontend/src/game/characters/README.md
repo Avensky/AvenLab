@@ -281,6 +281,9 @@ body positions unquantized because the face shaders use bind-space positions.
   waist and bra masks, so revisiting a fit can reuse the visible triangle list.
   For a new mask, coverage queries stop at the first cloth hit inside the
   sample range. They still check the center and corners near garment edges.
+  Authored Laced Bodice and Sweetheart reuse Village waistband samples for the
+  same corset, body donor, and skirt surface. Belt selections can reuse those
+  samples, while skin-mask reuse follows the visible layers.
 - **Fit front and rear straps through motion.** Start the front straps close
   to the chest and seat the rear straps near the shoulders. Favor torso and
   shoulder influence at the roots and reduce upper-arm and twist influence

@@ -72,21 +72,37 @@ const MAX_FITTED_MASKS = 8;
 
 type RestoredSkin = { upper: boolean; arms: boolean; skirt: boolean; feet: boolean };
 type SkinCover = { surface: MeshBVH; piece: ClothingPiece; baseLayer?: true; rebuiltUnderbust?: boolean };
-type VillageBodiceFit = {
-  body: BufferGeometry; original: BufferGeometry; skirt: BufferGeometry; explicit: boolean;
-  adjustments?: Float32Array; masks: Map<string, Uint32Array>;
+
+function captureSurface(geometry: BufferGeometry) {
+  const index = geometry.getIndex();
+  const position = geometry.getAttribute("position");
+  const { start, count } = geometry.drawRange;
+  return { geometry, index, position, start, count, indexVersion: index?.version,
+    positionVersion: "data" in position ? position.data.version : position.version };
+}
+
+type SurfaceInput = ReturnType<typeof captureSurface>;
+type VillageWaistFit = {
+  body: SurfaceInput; skirt: SurfaceInput; explicit: boolean;
+  adjustments?: Float32Array;
+  skin?: { original: SurfaceInput; masks: Map<string, Uint32Array> };
 };
 
-const villageBodiceFits = new WeakMap<Object3D, VillageBodiceFit[]>();
+function sameSurface(a: SurfaceInput, b: SurfaceInput) {
+  return a.geometry === b.geometry && a.index === b.index && a.position === b.position
+    && a.start === b.start && a.count === b.count && a.indexVersion === b.indexVersion && a.positionVersion === b.positionVersion;
+}
 
-function villageBodiceFit(source: Object3D, body: BufferGeometry, original: BufferGeometry, skirt: BufferGeometry, explicit: boolean) {
-  let fits = villageBodiceFits.get(source);
-  if (!fits) villageBodiceFits.set(source, fits = []);
-  const existing = fits.find(fit => fit.body === body && fit.original === original && fit.skirt === skirt && fit.explicit === explicit);
+const villageWaistFits = new WeakMap<Object3D, VillageWaistFit[]>();
+
+function villageWaistFit(source: Object3D, donor: BufferGeometry, waistband: BufferGeometry, explicit: boolean) {
+  const body = captureSurface(donor), skirt = captureSurface(waistband);
+  let fits = villageWaistFits.get(source);
+  if (!fits) villageWaistFits.set(source, fits = []);
+  const existing = fits.find(fit => fit.explicit === explicit && sameSurface(fit.body, body) && sameSurface(fit.skirt, skirt));
   if (existing) return existing;
-  const fit: VillageBodiceFit = { body, original, skirt, explicit, masks: new Map() };
-  // Keep only a few recent source combinations. The cached data is CPU-only;
-  // each actor still owns and disposes its fitted geometry and index buffers.
+  const fit: VillageWaistFit = { body, skirt, explicit };
+  // Cache CPU samples. Each actor owns its fitted geometry and GPU index buffer.
   if (fits.length >= 8) fits.shift();
   fits.push(fit);
   return fit;
@@ -363,9 +379,9 @@ export function prepareWardrobeGarments(
       const { start, count } = part.geometry.drawRange;
       if (index && count > 0 && start < index.count) villageSkirtMeshes.push(part);
     });
-    const cache = full && fixedBody && corset.authoredLacedSource && !removedClothing.length && villageSkirtMeshes.length === 1
-      && (!sources.length || (sources.length === 1 && sources[0].item.id === "village-skirt" && villageSkirtSurfaces.length > 0))
-      ? villageBodiceFit(corset.authoredLacedSource, full, original.geometry, villageSkirtMeshes[0].geometry, Boolean(sources.length))
+    const explicitSkirt = villageSkirtSurfaces.length > 0;
+    const cache = full && corset.villageWaistSource && villageSkirtMeshes.length === 1
+      ? villageWaistFit(corset.villageWaistSource, full, villageSkirtMeshes[0].geometry, explicitSkirt)
       : undefined;
     if (!villageSkirtSurfaces.length && !cache?.adjustments) {
       for (const mesh of villageSkirtMeshes) {
@@ -381,7 +397,16 @@ export function prepareWardrobeGarments(
       corset.fitSkirt(villageSkirt, "village-tucked", cache);
       villageTuckedWaist = prepareLacedBodiceVillageWaist(
         villageSkirtMeshes, villageBeltMeshes, corset.sweetheartSkin ? .0055 : 0);
-      if (cache) fittedMasks = cache.masks;
+      // Belts and other layers can affect coverage without changing the
+      // waistband samples. Share masks only for the original Laced cases.
+      if (cache && corset.authoredLacedBodice && fixedBody && !removedClothing.length
+        && (!sources.length || (sources.length === 1 && sources[0].item.id === "village-skirt" && explicitSkirt))) {
+        const sourceBody = captureSurface(original.geometry);
+        if (!cache.skin || !sameSurface(cache.skin.original, sourceBody)) {
+          cache.skin = { original: sourceBody, masks: new Map() };
+        }
+        fittedMasks = cache.skin.masks;
+      }
     }
     for (const { geometry } of stockSurfaces) geometry.dispose();
   }
