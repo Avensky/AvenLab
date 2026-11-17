@@ -14,6 +14,7 @@ import { prepareVillageBonnet } from "./villageBonnet";
 import { prepareVillageShoes } from "./wardrobeShoes";
 import { prepareWardrobeCoverage, wardrobeCoverageSurface as bodySurface } from "./wardrobeCoverage";
 import { prepareWardrobeUnderwear } from "./wardrobeUnderwear";
+import { getWardrobeActorBody, isWardrobeBodyDonor, sharesWardrobeRig } from "./wardrobeBody";
 
 export type WardrobeGarmentSource = { item: NonNullable<ReturnType<typeof getWardrobeGarment>>; scene: Object3D; authoredFit?: boolean };
 
@@ -24,11 +25,6 @@ export function replacesVillagerBody(slot: WardrobeGarmentSlot) {
 export function removalNeedsVillagerBody(slot: WardrobeRemoval) {
   return slot === "top" || slot === "corset" || slot === "skirt" || slot === "shoes" || slot === "dress"
     || slot === "sleeves" || slot === "underskirt" || slot === "village-skirt";
-}
-
-function sharesWardrobeRig(source: SkinnedMesh, skeleton: Skeleton) {
-  return source.skeleton.bones.length === skeleton.bones.length
-    && source.skeleton.bones.every((bone, i) => bone.name === skeleton.bones[i].name);
 }
 
 /** Imported Vesper garments are authored in the same bind space as the actor. */
@@ -180,10 +176,9 @@ export function prepareWardrobeGarments(
   root: Object3D, sources: readonly WardrobeGarmentSource[], fullBody?: Object3D, corset?: StandaloneCorset,
   removedClothing: readonly WardrobeRemoval[] = [],
 ) {
-  const original = root.getObjectByName("BODY_WARDROBE") ?? root.getObjectByName("BODY_OUTFIT_CUT");
-  if ((!sources.length && !corset && !removedClothing.length) || !(original instanceof SkinnedMesh)) return;
-  const full = fullBody instanceof SkinnedMesh && fullBody.geometry.getIndex() && sharesWardrobeRig(fullBody, original.skeleton)
-    ? fullBody.geometry : undefined;
+  const original = getWardrobeActorBody(root);
+  if ((!sources.length && !corset && !removedClothing.length) || !original) return;
+  const full = isWardrobeBodyDonor(fullBody, original.skeleton) ? fullBody.geometry : undefined;
   const stock: { part: Object3D; piece: ClothingPiece }[] = [];
   root.traverse(part => {
     const piece = clothingPieceFor(part);

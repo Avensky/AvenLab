@@ -222,8 +222,11 @@ legacy standalone file, or installed bundle, depending on the set.
 `wardrobePreviewAssets.ts` resolves the fallback order, donor choice, and next
 visible outfit from the current sources. The last complete outfit stays visible
 while a new selection loads. `GarageDriver` mounts loaders for pending URLs and
-passes resolved assets to the renderer. The fitting room binds each garment to the live
-Vesper rig and uses the shared full-skin donor for areas the original outfit
+passes resolved assets to the renderer. The resolver and fitter share the
+checks in `wardrobeBody.ts`. A full-skin donor needs indexed geometry, skin
+attributes, and the same ordered joints as the live character. A compatible
+bundle can supply the donor. Otherwise the resolver tries the dedicated donor
+and then the legacy Sweetheart bundle to restore the skin the stock outfit
 cuts away. From the repository root, run
 `node frontend/scripts/build-wardrobe-pieces.mjs` to regenerate the extracted
 pieces and donor.

@@ -1,5 +1,6 @@
 import type { Object3D } from "three";
 import type { CharacterLook } from "./characterCatalog";
+import { getWardrobeActorBody, getWardrobeBodyDonor } from "./wardrobeBody";
 import { FITTING_BODY_URL, hasAuthoredLacedBodiceFit, rebuiltUnderbustPart } from "./standaloneCorset";
 import { corsetModelUrls, corsetRenderChoice, isRebuiltHighCollarUrl, isRebuiltLacedBodiceUrl, isRebuiltUnderbustUrl } from "./wardrobe";
 import { removalNeedsVillagerBody, replacesVillagerBody, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
@@ -57,25 +58,29 @@ export function resolveWardrobePreview({
   });
 
   const scene = sources[url];
+  const skeleton = scene ? getWardrobeActorBody(scene)?.skeleton : undefined;
+  const compatibleBody = (source: Object3D | null | undefined) => skeleton ? getWardrobeBodyDonor(source, skeleton) : undefined;
   // Replacements can expose skin cut from the stock Village outfit.
-  const needsBody = Boolean(scene && !scene.getObjectByName("BODY_WARDROBE")
-    && (corsetUrl || requested.some(({ item }) => replacesVillagerBody(item.slot)) || look.removedClothing.some(removalNeedsVillagerBody)));
+  const needsBody = Boolean(scene && (corsetUrl || requested.some(({ item }) => replacesVillagerBody(item.slot))
+    || look.removedClothing.some(removalNeedsVillagerBody)) && !compatibleBody(scene));
   const loadedCorset = corsetUrl ? sources[corsetUrl] : undefined;
   const bundledCorset = corsetUrl?.startsWith("/models/characters/wardrobe/");
-  const bundledBody = bundledCorset ? loadedCorset?.getObjectByName("BODY_WARDROBE") : undefined;
+  const bundledBody = needsBody && bundledCorset ? compatibleBody(loadedCorset) : undefined;
   // Wait for a pending bundle that might supply its own donor.
-  const needsSeparateBody = needsBody && !bundledBody && !(bundledCorset && loadedCorset === undefined);
-  const fittingBody = sources[FITTING_BODY_URL];
-  const bodyUrl = fittingBody !== undefined && !fittingBody?.getObjectByName("BODY_WARDROBE")
+  const needsSeparateBody = needsBody && Boolean(skeleton) && !bundledBody && !(bundledCorset && loadedCorset === undefined);
+  const fittingBodySource = sources[FITTING_BODY_URL];
+  const fittingBody = needsSeparateBody ? compatibleBody(fittingBodySource) : undefined;
+  const bodyUrl = fittingBodySource !== undefined && !fittingBody
     ? LEGACY_FITTING_BODY_URL : FITTING_BODY_URL;
   const urls = new Set([url, ...requested.map(item => item.url)]);
   if (needsSeparateBody) urls.add(bodyUrl);
   if (corsetUrl) urls.add(corsetUrl);
   const assetUrls = [...urls];
   const pendingUrls = assetUrls.filter(asset => sources[asset] === undefined);
-  const garmentBody = needsBody ? bundledBody ?? sources[bodyUrl]?.getObjectByName("BODY_WARDROBE") : undefined;
+  const garmentBody = bundledBody ?? (needsSeparateBody
+    ? (bodyUrl === FITTING_BODY_URL ? fittingBody : compatibleBody(sources[bodyUrl])) : undefined);
   const unavailable = (corsetUrls.length > 0 && !corsetUrl) || assetUrls.some(asset => sources[asset] === null)
-    || (needsSeparateBody && sources[bodyUrl] !== undefined && !garmentBody);
+    || (needsBody && !garmentBody && (!skeleton || (needsSeparateBody && sources[bodyUrl] !== undefined)));
 
   // Keep the last complete preview while a new selection is pending or unavailable.
   if (!scene || pendingUrls.length || (unavailable && previous)) return { scene, pendingUrls, unavailable, preview: previous };

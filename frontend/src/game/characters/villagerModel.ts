@@ -17,6 +17,7 @@ import { prepareWardrobeGarments, type WardrobeGarmentSource } from "./wardrobeG
 import { prepareStandaloneCorset, type StandaloneCorsetSource } from "./standaloneCorset";
 import { applyCorsetDye } from "./corsetDye";
 import { getWardrobeGarment, wardrobeGarmentModelUrl, type WardrobeRemoval } from "./wardrobeGarments";
+import { getWardrobeActorBody, getWardrobeBodyDonor, isWardrobeBodyDonor } from "./wardrobeBody";
 
 export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait" = "garage", villageKind = kind) {
   if (look.character.id === ROOK_ID) return kind === "portrait" ? __ROOK_PORTRAIT_URL__ : __ROOK_MODEL_URL__;
@@ -68,9 +69,10 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
   const disposeShoes = female ? prepareVillageShoes(root) : undefined;
   const hat = root.getObjectByName("ACC_HAT");
   const bonnet = female ? prepareVillageBonnet(hat) : undefined;
-  const fullBody = scene.getObjectByName("BODY_WARDROBE") ?? garmentBody;
-  const actorBody = root.getObjectByName("BODY_WARDROBE") ?? root.getObjectByName("BODY_OUTFIT_CUT");
-  const detachedCorset = female && corsetSource && actorBody instanceof SkinnedMesh
+  const actorBody = getWardrobeActorBody(root);
+  const fullBody = actorBody && (getWardrobeBodyDonor(scene, actorBody.skeleton)
+    ?? (isWardrobeBodyDonor(garmentBody, actorBody.skeleton) ? garmentBody : undefined));
+  const detachedCorset = female && corsetSource && actorBody
     ? prepareStandaloneCorset(corsetSource, actorBody.skeleton, fullBody) : undefined;
   const materials = new Map<MeshStandardMaterial, MeshStandardMaterial>();
   const pieceMaterials = new Map<ClothingPiece, Map<MeshStandardMaterial, MeshStandardMaterial>>();
