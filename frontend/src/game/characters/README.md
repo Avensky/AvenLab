@@ -220,10 +220,13 @@ tiers. Authored Laced Bodice, High Collar, and Underbust variants have their own
 standalone GLBs. The loader can fall back to a compatible alternate tier,
 legacy standalone file, or installed bundle, depending on the set.
 `wardrobePreviewAssets.ts` resolves the fallback order, donor choice, and next
-visible outfit from the current sources. The last complete outfit stays visible
-while a new selection loads. `GarageDriver` mounts loaders for pending URLs and
-passes resolved assets to the renderer. The resolver and fitter share the
-checks in `wardrobeBody.ts`. A full-skin donor needs indexed geometry, skin
+visible outfit from the current sources. It checks that loaded clothing can
+bind to the live rig before replacing the last complete outfit. An incompatible
+local revision falls back to its original garment. An incompatible detached
+corset advances to the next available tier or bundle. `GarageDriver` mounts
+loaders for pending URLs and passes resolved assets to the renderer. The
+resolver and fitter share the donor checks in `wardrobeBody.ts`. A full-skin
+donor needs indexed geometry, skin
 attributes, and the same ordered joints as the live character. A compatible
 bundle can supply the donor. Otherwise the resolver tries the dedicated donor
 and then the legacy Sweetheart bundle to restore the skin the stock outfit

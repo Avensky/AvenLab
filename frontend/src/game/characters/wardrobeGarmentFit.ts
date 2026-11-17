@@ -36,6 +36,26 @@ export function bindWardrobeGarmentMesh(source: SkinnedMesh, skeleton: Skeleton)
   return mesh;
 }
 
+function wardrobeMeshCandidates({ item, scene }: WardrobeGarmentSource, removeSleeves: boolean) {
+  const source = item.villageNode ? scene.getObjectByName(item.villageNode) : scene;
+  const candidates: { part: SkinnedMesh; lining: boolean }[] = [];
+  source?.traverse(part => {
+    if (!(part instanceof SkinnedMesh)) return;
+    if (removeSleeves && item.detachableSleeves && /_SLEEVE(?:_|$)/.test(part.name)) return;
+    if (!Array.isArray(part.material) && part.material.userData.runtimeExclude) return;
+    const data = { ...part.parent?.userData, ...part.userData };
+    // These wrap skirts open at the center during normal movement.
+    const lining = data.wardrobeRole === "shorts";
+    if (lining && !item.outfit && item.id !== "skirt-01" && item.id !== "skirt-02") return;
+    candidates.push({ part, lining });
+  });
+  return candidates;
+}
+
+export function hasBindableWardrobeGarment(source: WardrobeGarmentSource, skeleton: Skeleton, removeSleeves = false) {
+  return wardrobeMeshCandidates(source, removeSleeves).some(({ part }) => sharesWardrobeRig(part, skeleton));
+}
+
 function tintChannel(material: Material, mesh: SkinnedMesh) {
   const data = material.userData;
   return String(data.tintChannel ?? data.color_slot ?? mesh.userData.wardrobePart ?? "fabric");
@@ -239,17 +259,9 @@ export function prepareWardrobeGarments(
     const liningColors: Color[] = [];
     const garmentMeshes: SkinnedMesh[] = [];
     let fabricColor: Color | undefined;
-    const source = item.villageNode ? scene.getObjectByName(item.villageNode) : scene;
-    source?.traverse(part => {
-      if (!(part instanceof SkinnedMesh)) return;
-      if (removeSleeves && item.detachableSleeves && /_SLEEVE(?:_|$)/.test(part.name)) return;
-      const data = { ...part.parent?.userData, ...part.userData };
-      if (!Array.isArray(part.material) && part.material.userData.runtimeExclude) return;
-      // The first two wrap skirts open at the center during normal movement.
-      const lining = data.wardrobeRole === "shorts";
-      if (lining && !item.outfit && item.id !== "skirt-01" && item.id !== "skirt-02") return;
+    for (const { part, lining } of wardrobeMeshCandidates({ item, scene }, removeSleeves)) {
       const mesh = bindWardrobeGarmentMesh(part, original.skeleton);
-      if (!mesh) return;
+      if (!mesh) continue;
       mesh.userData.clothingPiece = item.piece;
       if (lining) mesh.userData.wardrobeRole = "shorts";
       const cloneMaterial = (source: Material) => {
@@ -268,7 +280,7 @@ export function prepareWardrobeGarments(
       if (item.id === "village-belt" && fitVillageWaist) villageBeltMeshes.push(mesh);
       garmentMeshes.push(mesh);
       garment.add(mesh);
-    });
+    }
     if (!garmentMeshes.length) continue;
     if (item.villageNode) {
       villageBodySwap ||= replacesVillagerBody(item.slot);

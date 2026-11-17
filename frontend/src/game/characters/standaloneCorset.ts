@@ -8,6 +8,7 @@ import { tagRebuiltUnderbustMaterial } from "./rebuiltUnderbustDye";
 import { hasAuthoredSweetheartFit } from "./sweetheartCorset";
 import type { OverSkirtEase } from "./overSkirtEase";
 import type { MeshBVH } from "three-mesh-bvh";
+import { sharesWardrobeRig } from "./wardrobeBody";
 
 function bindCorsetPart(part: Object3D, skeleton: Skeleton): Object3D | undefined {
   if (part instanceof SkinnedMesh) return bindWardrobeGarmentMesh(part, skeleton);
@@ -41,6 +42,24 @@ export function hasAuthoredLacedBodiceFit(scene: Object3D) {
   });
 }
 
+function corsetFitParts({ scene, set }: StandaloneCorsetSource) {
+  const rebuilt = set === UNDERBUST_WARDROBE_SET ? rebuiltUnderbustPart(scene) : undefined;
+  const tucked = !rebuilt ? scene.getObjectByName("CLOTH_CORSET_TUCKED") : undefined;
+  const over = !rebuilt ? scene.getObjectByName("CLOTH_CORSET_OVER") : undefined;
+  return { rebuilt, tucked, over };
+}
+
+function hasBindableCorsetPart(part: Object3D, skeleton: Skeleton): boolean {
+  if (part instanceof SkinnedMesh) return sharesWardrobeRig(part, skeleton);
+  return !(part instanceof Mesh) && part.children.some(child => hasBindableCorsetPart(child, skeleton));
+}
+
+export function hasBindableStandaloneCorset(source: StandaloneCorsetSource, skeleton: Skeleton) {
+  const { rebuilt, tucked, over } = corsetFitParts(source);
+  if (rebuilt) return hasBindableCorsetPart(rebuilt, skeleton);
+  return Boolean(tucked && over && hasBindableCorsetPart(tucked, skeleton) && hasBindableCorsetPart(over, skeleton));
+}
+
 /** Bind the loaded fit to the actor. */
 export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton: Skeleton, fullBody: Object3D | undefined) {
   if (!(fullBody instanceof SkinnedMesh)) return;
@@ -48,7 +67,7 @@ export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton
   const laced = source.set === LACED_BODICE_WARDROBE_SET;
   const authoredLacedBodice = laced && hasAuthoredLacedBodiceFit(source.scene);
   const sweetheartSkin = hasAuthoredSweetheartFit(source.scene, 2);
-  const rebuilt = underbust ? rebuiltUnderbustPart(source.scene) : undefined;
+  const { rebuilt, tucked: tuckedSource, over: overSource } = corsetFitParts(source);
   const body = bindWardrobeGarmentMesh(fullBody, skeleton);
   if (!body) return;
 
@@ -85,8 +104,6 @@ export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton
       }
     });
   } else {
-    const tuckedSource = source.scene.getObjectByName("CLOTH_CORSET_TUCKED");
-    const overSource = source.scene.getObjectByName("CLOTH_CORSET_OVER");
     const tucked = tuckedSource && bindCorsetPart(tuckedSource, skeleton);
     const over = overSource && bindCorsetPart(overSource, skeleton);
     if (!tucked || !over) return;

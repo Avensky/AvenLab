@@ -8,7 +8,7 @@ import { createServer } from "vite";
 function wardrobePreviewServer() {
   return createServer({
     define: {
-      __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(["skirt-01", "skirt-02", "skirt-03", "skirt-04", "gothic-skirt-02", "gothic-skirt-03", "bowtie-01"]),
+      __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(["skirt-01", "skirt-02", "skirt-03", "skirt-04", "gothic-skirt-02", "gothic-skirt-03", "gothic-skirt-04", "bowtie-01"]),
       __DRESSING_ROOM_REVISION_IDS__: JSON.stringify(["gothic-skirt-02", "gothic-skirt-03"]),
       __STANDALONE_CORSET_LODS__: JSON.stringify({
         "gothic-05": { garage: true, mobile: false },
@@ -51,10 +51,10 @@ function wardrobePreviewServer() {
           export const villagerModelUrl = (look, kind, villageKind = kind) => look.wardrobe?.set ?? (villageKind === "portrait" ? "village" : "village-full");
           export const applyVillagerLook = (model, look) => { appliedLooks.push(look); };
 
-          function fixtureBody(shape) {
+          function fixtureMesh(name, shape = "full") {
             if (shape === "group") {
               const group = new Group();
-              group.name = "BODY_WARDROBE";
+              group.name = name;
               return group;
             }
             const geometry = new BufferGeometry();
@@ -69,40 +69,47 @@ function wardrobePreviewServer() {
             spine.name = "spine";
             hip.add(spine);
             const body = new SkinnedMesh(geometry);
-            body.name = shape === "cut" ? "BODY_OUTFIT_CUT" : "BODY_WARDROBE";
+            body.name = name;
             body.add(hip);
             body.bind(new Skeleton(shape === "reordered" ? [spine, hip] : [hip, spine]));
             return body;
           }
-          export function makeAssetAvailable(url, meshName, bodyShape = "full") {
+          export function makeAssetAvailable(url, bodyShape = "full") {
             const scene = new Group();
             scene.name = url;
-            if (bodyShape) scene.add(fixtureBody(bodyShape));
-            if (meshName) {
-              const mesh = new SkinnedMesh();
-              mesh.name = meshName;
-              scene.add(mesh);
-            }
+            if (bodyShape) scene.add(fixtureMesh(bodyShape === "cut" ? "BODY_OUTFIT_CUT" : "BODY_WARDROBE", bodyShape));
             assets.set(url, { scene });
             return scene;
           }
-          export function makeAuthoredCorset(url) {
-            const scene = makeAssetAvailable(url, undefined, false);
+          export function makeVillageAvailable(url, bodyShape = "full") {
+            const scene = makeAssetAvailable(url, bodyShape);
+            scene.add(fixtureMesh("CLOTH_BOTTOM_SKIRT"));
+            return scene;
+          }
+          export function makeGarmentAvailable(url, { name = "CLOTH_GARMENT", shape, lining = false, excluded = false } = {}) {
+            const scene = makeAssetAvailable(url, false);
+            const mesh = fixtureMesh(name, shape);
+            if (lining) mesh.userData.wardrobeRole = "shorts";
+            if (excluded) mesh.material.userData.runtimeExclude = true;
+            scene.add(mesh);
+            return scene;
+          }
+          export function makeCorsetAvailable(url, { authored = false, donor = false, tuckedShape } = {}) {
+            const scene = makeAssetAvailable(url, donor);
             for (const waist of ["over", "tucked"]) {
-              const part = new SkinnedMesh();
-              part.name = "CLOTH_CORSET_" + waist.toUpperCase();
-              part.userData = { authoredFit: true, wardrobeRole: "corset-" + waist };
+              const part = fixtureMesh("CLOTH_CORSET_" + waist.toUpperCase(), waist === "tucked" ? tuckedShape : undefined);
+              part.userData = { authoredFit: authored, wardrobeRole: "corset-" + waist };
               scene.add(part);
             }
             return scene;
           }
-          export function delayAsset(url) {
+          export function delayAsset(url, create = () => makeAssetAvailable(url)) {
             let resolve;
             const promise = new Promise(ready => { resolve = ready; });
             assets.set(url, { promise });
-            return (fail = false, bodyShape) => {
+            return (fail = false) => {
               if (fail) assets.set(url, { error: new Error("Unavailable " + url) });
-              else makeAssetAvailable(url, undefined, bodyShape);
+              else create();
               resolve();
             };
           }
@@ -139,8 +146,9 @@ test("the wardrobe resolver requests donors and authored tiers in order", async 
     const { characterLook, DEFAULT_CHARACTER } = await vite.ssrLoadModule("/src/game/characters/characterCatalog.ts");
     const { getWardrobeGarment } = await vite.ssrLoadModule("/src/game/characters/wardrobeGarments.ts");
     const { WARDROBE_BODY_DONOR_URLS: [FITTING_BODY_URL] } = await vite.ssrLoadModule("/src/game/characters/wardrobeBody.ts");
-    const { makeAssetAvailable, makeAuthoredCorset } = await vite.ssrLoadModule("virtual:wardrobe-preview");
-    const village = makeAssetAvailable("village", undefined, "cut");
+    const { makeAssetAvailable, makeVillageAvailable, makeGarmentAvailable, makeCorsetAvailable } =
+      await vite.ssrLoadModule("virtual:wardrobe-preview");
+    const village = makeVillageAvailable("village", "cut");
     const defaultRequest = { preferredUrl: "village", villageKind: "portrait", kind: "garage" };
     const previous = resolveWardrobePreview({
       ...defaultRequest, look: characterLook(DEFAULT_CHARACTER), sources: { village },
@@ -151,21 +159,21 @@ test("the wardrobe resolver requests donors and authored tiers in order", async 
     const look = characterLook({ ...DEFAULT_CHARACTER, garments: { skirt: skirt.id } });
     const legacyUrl = "/models/characters/wardrobe/gothic-02.mobile.glb";
     const legacy = makeAssetAvailable(legacyUrl);
-    const skirtSources = { village, [skirt.url]: makeAssetAvailable(skirt.url) };
+    const skirtSources = { village, [skirt.url]: makeGarmentAvailable(skirt.url) };
     const resolveSkirt = sources => resolveWardrobePreview({ ...defaultRequest, look, sources, previous });
     assert.deepEqual(resolveSkirt(skirtSources).pendingUrls, [FITTING_BODY_URL]);
-    const baseWithGroup = makeAssetAvailable("village-with-group", undefined, "cut");
-    baseWithGroup.add(makeAssetAvailable("body-group", undefined, "group").getObjectByName("BODY_WARDROBE"));
+    const baseWithGroup = makeVillageAvailable("village-with-group", "cut");
+    baseWithGroup.add(makeAssetAvailable("body-group", "group").getObjectByName("BODY_WARDROBE"));
     assert.deepEqual(resolveSkirt({ ...skirtSources, village: baseWithGroup }).pendingUrls, [FITTING_BODY_URL],
       "a named group on the actor does not override the cut body rig");
-    const noActorRig = resolveSkirt({ ...skirtSources, village: makeAssetAvailable("no-actor-rig", undefined, "group") });
+    const noActorRig = resolveSkirt({ ...skirtSources, village: makeAssetAvailable("no-actor-rig", "group") });
     assert.deepEqual(noActorRig.pendingUrls, [], "an actor without a body rig cannot use a donor");
     assert.equal(noActorRig.unavailable, true);
     assert.equal(noActorRig.preview, previous);
     for (const [label, rejectedDonor] of [
       ["failed load", null],
       ...[false, "group", "non-indexed", "no-skin", "reordered"].map(shape =>
-        [shape || "missing body", makeAssetAvailable(FITTING_BODY_URL, undefined, shape)]),
+        [shape || "missing body", makeAssetAvailable(FITTING_BODY_URL, shape)]),
     ]) {
       const sources = { ...skirtSources, [FITTING_BODY_URL]: rejectedDonor };
       const loading = resolveSkirt(sources);
@@ -181,6 +189,45 @@ test("the wardrobe resolver requests donors and authored tiers in order", async 
       const fresh = resolveWardrobePreview({ ...defaultRequest, look, sources: { ...sources, [legacyUrl]: null } });
       assert.deepEqual(fresh.preview.garments, [], "missing donors leave the stock clothing on a fresh preview");
     }
+    const stockWithDonor = { ...skirtSources, [FITTING_BODY_URL]: legacy };
+    for (const [label, garment] of [
+      ["incompatible rig", makeGarmentAvailable(skirt.url, { shape: "reordered" })],
+      ["excluded material", makeGarmentAvailable(skirt.url, { excluded: true })],
+      ["no skinned mesh", makeAssetAvailable(skirt.url, false)],
+    ]) {
+      const sources = { ...skirtSources, [skirt.url]: garment };
+      const rejected = resolveSkirt(sources);
+      assert.deepEqual(rejected.pendingUrls, [], label + " does not request a donor");
+      assert.equal(rejected.unavailable, true, label);
+      assert.equal(rejected.preview, previous, label);
+      assert.deepEqual(resolveWardrobePreview({ ...defaultRequest, look, sources }).preview.garments, [], label);
+    }
+    const mixedGarment = makeGarmentAvailable(skirt.url, { shape: "reordered" });
+    mixedGarment.add(makeGarmentAvailable("compatible-panel").getObjectByName("CLOTH_GARMENT"));
+    const mixedFit = resolveSkirt({ ...stockWithDonor, [skirt.url]: mixedGarment });
+    assert.equal(mixedFit.unavailable, false, "one compatible garment panel is enough to render the selection");
+    assert.equal(mixedFit.preview.garments[0].scene, mixedGarment);
+
+    const lining = getWardrobeGarment("gothic-skirt-04");
+    const liningOnly = resolveWardrobePreview({
+      ...defaultRequest, previous, look: characterLook({ ...DEFAULT_CHARACTER, garments: { skirt: lining.id } }),
+      sources: { ...stockWithDonor, [lining.url]: makeGarmentAvailable(lining.url, { lining: true }) },
+    });
+    assert.equal(liningOnly.unavailable, true, "lining that the fitter ignores does not make a skirt ready");
+    assert.equal(liningOnly.preview, previous);
+    const revised = getWardrobeGarment("gothic-skirt-02");
+    const wrongPiece = resolveWardrobePreview({
+      ...defaultRequest, previous, look: characterLook({ ...DEFAULT_CHARACTER, garments: { skirt: revised.id } }),
+      sources: { ...stockWithDonor, [revised.revisionUrl]: makeGarmentAvailable(revised.revisionUrl, { name: "CLOTH_CORSET_OVER" }) },
+    });
+    assert.deepEqual(wrongPiece.pendingUrls, [revised.url], "a revision containing a corset falls back to the original skirt");
+    assert.equal(wrongPiece.preview, previous);
+    const correctRevision = resolveWardrobePreview({
+      ...defaultRequest, previous, look: characterLook({ ...DEFAULT_CHARACTER, garments: { skirt: revised.id } }),
+      sources: { ...stockWithDonor, [revised.revisionUrl]: makeGarmentAvailable(revised.revisionUrl, { name: "CLOTH_GOTHIC_SKIRT_02" }) },
+    });
+    assert.equal(correctRevision.preview.garments[0].authoredFit, true, "a compatible revision remains preferred");
+    assert.deepEqual(correctRevision.pendingUrls, []);
 
     const trial = characterLook({
       ...DEFAULT_CHARACTER, wardrobeTrial: { set: "gothic-01", shirt: "none", waist: "tucked" },
@@ -192,20 +239,23 @@ test("the wardrobe resolver requests donors and authored tiers in order", async 
       const request = { ...defaultRequest, kind, look: trial, previous };
       const resolve = sources => resolveWardrobePreview({ ...request, sources });
       assert.deepEqual(resolve({ village, [FITTING_BODY_URL]: legacy }).pendingUrls, [preferred]);
-      const sources = { village, [preferred]: makeAssetAvailable(preferred, undefined, false), [FITTING_BODY_URL]: legacy };
-      assert.deepEqual(resolve(sources).pendingUrls, [alternate]);
-      const alternateScene = makeAuthoredCorset(alternate);
+      const sources = { village, [preferred]: makeCorsetAvailable(preferred, { authored: true, tuckedShape: "reordered" }),
+        [FITTING_BODY_URL]: legacy };
+      const awaitingAlternate = resolve(sources);
+      assert.deepEqual(awaitingAlternate.pendingUrls, [alternate], "the authored fit marker does not bypass rig validation");
+      assert.equal(awaitingAlternate.preview, previous);
+      const alternateScene = makeCorsetAvailable(alternate, { authored: true });
       assert.equal(resolve({ ...sources, [alternate]: alternateScene }).preview.corsetScene, alternateScene);
       const awaitingBundle = resolve({ village, [preferred]: null, [alternate]: null });
       assert.deepEqual(awaitingBundle.pendingUrls, [bundleUrl], "a pending bundle can supply the donor");
       assert.equal(awaitingBundle.preview, previous);
-      const bundle = makeAssetAvailable(bundleUrl);
+      const bundle = makeCorsetAvailable(bundleUrl, { donor: "full" });
       const bundled = resolve({ village, [preferred]: null, [alternate]: null, [bundleUrl]: bundle });
       assert.equal(bundled.preview.garmentBody, bundle.getObjectByName("BODY_WARDROBE"));
       assert.equal(bundled.preview.corsetScene, bundle);
       assert.deepEqual(bundled.pendingUrls, []);
 
-      const incompatibleBundle = makeAssetAvailable(bundleUrl, undefined, "reordered");
+      const incompatibleBundle = makeCorsetAvailable(bundleUrl, { donor: "reordered" });
       const incompatibleSources = { village, [preferred]: null, [alternate]: null, [bundleUrl]: incompatibleBundle };
       const waitingForDonor = resolve(incompatibleSources);
       assert.deepEqual(waitingForDonor.pendingUrls, [FITTING_BODY_URL], "a bundled body with different bone order requires a separate donor");
@@ -233,15 +283,18 @@ test("the fitting room keeps the last complete outfit until the latest selection
     const { DEFAULT_CHARACTER } = await vite.ssrLoadModule("/src/game/characters/characterCatalog.ts");
     const { getWardrobeGarment } = await vite.ssrLoadModule("/src/game/characters/wardrobeGarments.ts");
     const { useCharacterPreviewStore: preview } = await vite.ssrLoadModule("/src/game/characters/characterPreviewStore.ts");
-    const { committed, prepared, appliedLooks, loadedGarments, loadedBodies, assetReads, makeAssetAvailable, delayAsset } =
+    const { committed, prepared, appliedLooks, loadedGarments, loadedBodies, assetReads,
+      makeAssetAvailable, makeVillageAvailable, makeGarmentAvailable, makeCorsetAvailable, delayAsset } =
       await vite.ssrLoadModule("virtual:wardrobe-preview");
     const url = id => getWardrobeGarment(id).url;
-    makeAssetAvailable("village");
-    makeAssetAvailable(url("skirt-01"));
-    makeAssetAvailable(url("bowtie-01"));
-    const second = delayAsset(url("skirt-02"));
-    const third = delayAsset(url("skirt-03"));
+    makeVillageAvailable("village");
+    makeGarmentAvailable(url("skirt-01"));
+    makeGarmentAvailable(url("bowtie-01"));
+    const second = delayAsset(url("skirt-02"), () => makeGarmentAvailable(url("skirt-02")));
+    const third = delayAsset(url("skirt-03"), () => makeGarmentAvailable(url("skirt-03")));
     const fourth = delayAsset(url("skirt-04"));
+    const incompatibleSkirt = url("gothic-skirt-04");
+    const incompatible = delayAsset(incompatibleSkirt, () => makeGarmentAvailable(incompatibleSkirt, { shape: "reordered" }));
     const wardrobe = { set: "gothic-02", shirt: "none", waist: "over" };
     const nextBase = delayAsset(wardrobe.set);
     const choose = (skirt, wardrobe, props = {}) => act(async () => renderer.render(createElement(GarageDriver, {
@@ -267,6 +320,12 @@ test("the fitting room keeps the last complete outfit until the latest selection
     const thirdModel = model();
     await act(async () => second());
     assert.equal(model(), thirdModel, "a late result does not rebuild or replace the latest outfit");
+
+    await choose("gothic-skirt-04");
+    assert.equal(status(), "Loading garments");
+    await act(async () => incompatible());
+    assert.equal(model(), thirdModel, "a GLB that loads without a compatible garment cannot replace the visible outfit");
+    assert.equal(status(), "Garment unavailable");
 
     await choose("skirt-04");
     await act(async () => fourth(true));
@@ -294,14 +353,14 @@ test("the fitting room keeps the last complete outfit until the latest selection
 
     const secondGothic = getWardrobeGarment("gothic-skirt-02");
     const thirdGothic = getWardrobeGarment("gothic-skirt-03");
-    makeAssetAvailable(secondGothic.url);
-    makeAssetAvailable(thirdGothic.url);
-    makeAssetAvailable(secondGothic.revisionUrl, "CLOTH_CORSET_OVER");
+    makeGarmentAvailable(secondGothic.url);
+    makeGarmentAvailable(thirdGothic.url);
+    makeGarmentAvailable(secondGothic.revisionUrl, { name: "CLOTH_GOTHIC_SKIRT_02", shape: "reordered" });
     const thirdRevision = delayAsset(thirdGothic.revisionUrl);
     await choose(secondGothic.id);
     assert.deepEqual(rendered(), ["village gothic-skirt-02 bowtie-01"]);
     assert.deepEqual(loadedGarments.at(-1)[0], [secondGothic.url, false],
-      "an override containing a corset never reaches the renderer");
+      "a named override on a different rig falls back to the fitted original");
     await choose(thirdGothic.id);
     await act(async () => thirdRevision(true));
     assert.deepEqual(rendered(), ["village gothic-skirt-03 bowtie-01"]);
@@ -311,12 +370,12 @@ test("the fitting room keeps the last complete outfit until the latest selection
 
     // A failed standalone corset can use the bundled garment and body.
     await act(async () => renderer.render(null));
-    makeAssetAvailable("village", undefined, "cut");
+    makeVillageAvailable("village", "cut");
     const standaloneUrl = "/models/characters/female/wardrobe/corsets/gothic-05.garage.glb";
     const standalone = delayAsset(standaloneUrl);
     delayAsset("/models/characters/female/wardrobe/vesper-body.glb");
     const bundleUrl = "/models/characters/wardrobe/gothic-05.garage.glb";
-    const bundle = delayAsset(bundleUrl);
+    const bundle = delayAsset(bundleUrl, () => makeCorsetAvailable(bundleUrl, { donor: "full" }));
     const wardrobeTrial = { set: "gothic-05", shirt: "none", waist: "over" };
     await choose(undefined, undefined, { choice: { ...DEFAULT_CHARACTER, wardrobeTrial } });
     assert.equal(status(), "Loading garments");
@@ -328,21 +387,22 @@ test("the fitting room keeps the last complete outfit until the latest selection
 
     // Keep the stock actor mounted until a compatible donor replaces the rejected ones.
     await act(async () => renderer.render(null));
-    const fittingBody = delayAsset("/models/characters/female/wardrobe/vesper-body.glb");
+    const fittingBodyUrl = "/models/characters/female/wardrobe/vesper-body.glb";
+    const fittingBody = delayAsset(fittingBodyUrl, () => makeAssetAvailable(fittingBodyUrl, "non-indexed"));
     const legacyBodyUrl = "/models/characters/wardrobe/gothic-02.mobile.glb";
     const legacyBody = delayAsset(legacyBodyUrl);
     const lacedBundleUrl = "/models/characters/wardrobe/gothic-01.garage.glb";
     for (const tier of ["garage", "mobile"]) {
-      makeAssetAvailable("/models/characters/female/wardrobe/corsets/gothic-laced-bodice." + tier + ".glb", undefined, false);
+      makeAssetAvailable("/models/characters/female/wardrobe/corsets/gothic-laced-bodice." + tier + ".glb", false);
     }
-    makeAssetAvailable(lacedBundleUrl, undefined, "reordered");
+    makeCorsetAvailable(lacedBundleUrl, { donor: "reordered" });
     await choose(undefined, undefined, { choice: DEFAULT_CHARACTER });
     const stockModel = model();
     assert(stockModel);
     await choose(undefined, undefined, { choice: { ...DEFAULT_CHARACTER, wardrobeTrial: { ...wardrobeTrial, set: "gothic-01" } } });
     assert.equal(status(), "Loading garments");
     assert.equal(model(), stockModel);
-    await act(async () => fittingBody(false, "non-indexed"));
+    await act(async () => fittingBody());
     assert.equal(status(), "Loading garments");
     assert.equal(model(), stockModel);
     await act(async () => legacyBody());
@@ -352,7 +412,7 @@ test("the fitting room keeps the last complete outfit until the latest selection
 
     // Fresh mounts use their original context-specific loading and error states.
     await act(async () => renderer.render(null));
-    const victoryBase = delayAsset("village-full");
+    const victoryBase = delayAsset("village-full", () => makeVillageAvailable("village-full"));
     await choose(undefined, undefined, { victory: { id: "001", onFinish() {} } });
     assert(document.querySelector("[data-victory-loading]"));
     await act(async () => victoryBase());

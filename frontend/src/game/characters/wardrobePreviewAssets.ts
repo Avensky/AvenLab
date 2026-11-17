@@ -1,9 +1,9 @@
 import type { Object3D } from "three";
 import type { CharacterLook } from "./characterCatalog";
 import { getWardrobeActorBody, getWardrobeBodyDonor, WARDROBE_BODY_DONOR_URLS } from "./wardrobeBody";
-import { hasAuthoredLacedBodiceFit, rebuiltUnderbustPart } from "./standaloneCorset";
+import { hasAuthoredLacedBodiceFit, hasBindableStandaloneCorset, rebuiltUnderbustPart } from "./standaloneCorset";
 import { corsetModelUrls, corsetRenderChoice, isRebuiltHighCollarUrl, isRebuiltLacedBodiceUrl, isRebuiltUnderbustUrl } from "./wardrobe";
-import { removalNeedsVillagerBody, replacesVillagerBody, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
+import { hasBindableWardrobeGarment, removalNeedsVillagerBody, replacesVillagerBody, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
 import { getWardrobeGarment, hasWardrobeRevisionMesh, wardrobeGarmentModelUrl } from "./wardrobeGarments";
 
 const [fittingBodyUrl, legacyBodyUrl] = WARDROBE_BODY_DONOR_URLS;
@@ -36,14 +36,21 @@ export function resolveWardrobePreview({
   const originalVillage = kind !== villageKind && portrait && original !== portrait && sources[portrait] === null ? original : null;
   const url = originalVillage && preferredUrl === portrait ? originalVillage : preferredUrl;
   const villageAssetKind = originalVillage ? kind : villageKind;
+  const scene = sources[url];
+  const skeleton = scene ? getWardrobeActorBody(scene)?.skeleton : undefined;
   const corset = corsetRenderChoice(look);
   const corsetUrls = corsetModelUrls(corset, kind);
-  const corsetUrl = corsetUrls.find(asset => {
+  const corsetUrl = corset && corsetUrls.find(asset => {
+    if (scene && !skeleton) return false;
     const source = sources[asset];
     if (!source) return source !== null;
-    if (isRebuiltUnderbustUrl(asset)) return Boolean(rebuiltUnderbustPart(source, corset?.waist));
-    return !(isRebuiltHighCollarUrl(asset) || isRebuiltLacedBodiceUrl(asset)) || hasAuthoredLacedBodiceFit(source);
+    if (isRebuiltUnderbustUrl(asset) && !rebuiltUnderbustPart(source, corset.waist)) return false;
+    if ((isRebuiltHighCollarUrl(asset) || isRebuiltLacedBodiceUrl(asset)) && !hasAuthoredLacedBodiceFit(source)) return false;
+    return !skeleton || hasBindableStandaloneCorset({ scene: source, set: corset.set }, skeleton);
   });
+  const removeSleeves = look.removedClothing.includes("sleeves");
+  const garmentFits = (item: WardrobeGarmentSource["item"], source: Object3D) =>
+    !scene || Boolean(skeleton && hasBindableWardrobeGarment({ item, scene: source }, skeleton, removeSleeves));
   const requested = Object.values(look.garments ?? {}).flatMap(id => {
     const item = getWardrobeGarment(id);
     if (!item) return [];
@@ -52,16 +59,16 @@ export function resolveWardrobePreview({
     if (!preferred) return [];
     const loaded = sources[preferred];
     const brokenRevision = preferred === item.revisionUrl && loaded !== undefined
-      && (!loaded || !hasWardrobeRevisionMesh(item, loaded));
-    const url = brokenRevision ? wardrobeGarmentModelUrl(item, tier, { useRevision: false }) : preferred;
-    return url ? [{ item, url }] : [];
+      && (!loaded || !hasWardrobeRevisionMesh(item, loaded) || !garmentFits(item, loaded));
+    const url = (brokenRevision ? wardrobeGarmentModelUrl(item, tier, { useRevision: false }) : undefined) ?? preferred;
+    const source = sources[url];
+    const rejected = url === item.revisionUrl ? brokenRevision : Boolean(source && !garmentFits(item, source));
+    return [{ item, url, rejected }];
   });
 
-  const scene = sources[url];
-  const skeleton = scene ? getWardrobeActorBody(scene)?.skeleton : undefined;
   const compatibleBody = (source: Object3D | null | undefined) => skeleton ? getWardrobeBodyDonor(source, skeleton) : undefined;
   // Replacements can expose skin cut from the stock Village outfit.
-  const needsBody = Boolean(scene && (corsetUrl || requested.some(({ item }) => replacesVillagerBody(item.slot))
+  const needsBody = Boolean(scene && (corsetUrl || requested.some(({ item, rejected }) => !rejected && replacesVillagerBody(item.slot))
     || look.removedClothing.some(removalNeedsVillagerBody)) && !compatibleBody(scene));
   const loadedCorset = corsetUrl ? sources[corsetUrl] : undefined;
   const bundledCorset = corsetUrl?.startsWith("/models/characters/wardrobe/");
@@ -79,7 +86,8 @@ export function resolveWardrobePreview({
   const pendingUrls = assetUrls.filter(asset => sources[asset] === undefined);
   const garmentBody = bundledBody ?? (needsSeparateBody
     ? (bodyUrl === fittingBodyUrl ? fittingBody : compatibleBody(sources[bodyUrl])) : undefined);
-  const unavailable = (corsetUrls.length > 0 && !corsetUrl) || assetUrls.some(asset => sources[asset] === null)
+  const unavailable = (corsetUrls.length > 0 && !corsetUrl) || requested.some(({ rejected }) => rejected)
+    || assetUrls.some(asset => sources[asset] === null)
     || (needsBody && !garmentBody && (!skeleton || (needsSeparateBody && sources[bodyUrl] !== undefined)));
 
   // Keep the last complete preview while a new selection is pending or unavailable.
@@ -87,9 +95,9 @@ export function resolveWardrobePreview({
 
   const corsetScene = !needsBody || garmentBody ? loadedCorset ?? undefined : undefined;
   const corsetSet = corsetScene ? corset?.set : undefined;
-  const garments = requested.flatMap(({ item, url }): WardrobeGarmentSource[] => {
+  const garments = requested.flatMap(({ item, url, rejected }): WardrobeGarmentSource[] => {
     const source = sources[url];
-    if (!source || (needsBody && !garmentBody && replacesVillagerBody(item.slot))) return [];
+    if (!source || rejected || (needsBody && !garmentBody && replacesVillagerBody(item.slot))) return [];
     return [{ item, scene: source, authoredFit: url === item.revisionUrl }];
   });
   // Preserve the garment array for a dye-only edit so the renderer keeps its rig.
