@@ -12,13 +12,17 @@ const corsets = `${models}female/wardrobe/corsets/`;
 const tiers = ['garage', 'mobile'];
 const variants = tiers.flatMap(tier => [
   ['Laced Bodice', `${corsets}gothic-laced-bodice.${tier}.glb`],
-  ['Sweetheart', `${models}wardrobe/gothic-02.${tier}.glb`],
-  ['Ruffled', `${models}wardrobe/gothic-03.${tier}.glb`],
+  ['Sweetheart bundle', `${models}wardrobe/gothic-02.${tier}.glb`],
+  ['Ruffled bundle', `${models}wardrobe/gothic-03.${tier}.glb`],
   ['Underbust Over', `${corsets}gothic-underbust-vest.${tier}.glb`],
   ['Underbust Original Cut', `${corsets}gothic-underbust-vest-original-cut.${tier}.glb`],
   ['Underbust Tucked', `${corsets}gothic-underbust-vest-tucked.${tier}.glb`],
   ['High Collar', `${corsets}gothic-high-collar.${tier}.glb`],
 ].map(([name, path]) => ({ name, tier, path })));
+const generatedVariants = tiers.flatMap(tier => [
+  { name: 'Sweetheart standalone', tier, path: `${corsets}gothic-02.${tier}.glb` },
+  { name: 'Ruffled standalone', tier, path: `${corsets}gothic-03.${tier}.glb` },
+]);
 const required = [...new Set([
   ...variants.map(({ path }) => path),
   ...wardrobe.flatMap(({ id }) => tiers.map(tier => `${models}wardrobe/${id}.${tier}.glb`)),
@@ -30,21 +34,32 @@ const required = [...new Set([
 const fastSuites = [
   'tests/wardrobe-discovery.test.mjs', 'tests/wardrobe.test.mjs', 'tests/wardrobe-preview.test.mjs',
   'tests/dressing-room.test.mjs', 'tests/character-page.test.mjs', 'tests/wardrobe-over-skirt.test.mjs',
+  'tests/saved-outfits.test.mjs',
+];
+const fullSuites = [
+  ...fastSuites, 'tests/fitting-controls.test.mjs', 'tests/fitting-room-mirror.test.mjs',
+  'tests/fitting-orbit-pointer.test.mjs', 'tests/character-portrait-cadence.test.mjs',
+  'tests/menu-preview-lifecycle.test.mjs',
 ];
 const realAssetTests = [
   'the authored Sweetheart', 'standalone wardrobe exports', 'standalone corsets and a selected skirt',
+  'turning off wardrobe layers fits underwear', 'Gothic Skirt 04 and Top 02 replace stock pieces',
   'the rebuilt Gothic Underbust', 'wardrobe underwear reuses donor cuts', 'rebuilt Tucked hardware', 'rebuilt Laced Bodice',
   'the Village skirt and belt cover', 'Ruffled Corset', 'Laced Bodice straps',
 ];
 
-function runTests(args, strictAssets = false) {
-  const result = spawnSync(process.execPath, ['--test', '--test-concurrency=2', ...args], {
+function runFrontendNode(args, strictAssets = false) {
+  const result = spawnSync(process.execPath, args, {
     cwd: frontend,
     env: strictAssets ? { ...process.env, AVENLAB_WARDROBE_REQUIRE_ASSETS: '1' } : process.env,
     stdio: 'inherit',
   });
   if (result.error) throw result.error;
   return result.status === 0;
+}
+
+function runTests(args, strictAssets = false) {
+  return runFrontendNode(['--test', '--test-concurrency=2', ...args], strictAssets);
 }
 
 async function hasGlbHeader(path) {
@@ -73,11 +88,13 @@ async function runFullAudit() {
     return false;
   }
   console.log(`Wardrobe audit found all ${required.length} required GLB inputs.`);
+  const piecesPass = runFrontendNode(['scripts/build-wardrobe-pieces.mjs']);
+  if (!piecesPass) console.error('FAIL generated wardrobe pieces: scripts/build-wardrobe-pieces.mjs failed.');
   const { auditWardrobeAssets, auditCurrentCorsetMasks } = await import('./audit-wardrobe-assets.mjs');
-  const assetsPass = await auditWardrobeAssets(publicRoot, variants);
+  const assetsPass = await auditWardrobeAssets(publicRoot, [...variants, ...generatedVariants]);
   const testsPass = runTests([`--test-name-pattern=${realAssetTests.join('|')}`, 'tests/wardrobe-garment-assets.test.mjs'], true);
   const masksPass = await auditCurrentCorsetMasks(frontend, publicRoot);
-  return assetsPass && testsPass && masksPass;
+  return piecesPass && assetsPass && testsPass && masksPass;
 }
 
 const [mode, ...extra] = process.argv.slice(2);
@@ -87,6 +104,7 @@ if (extra.length || (mode && mode !== '--full' && mode !== '--list-lfs')) {
 } else if (mode === '--list-lfs') {
   console.log(required.map(path => `frontend/public/${path}`).join(','));
 } else {
-  const passed = mode === '--full' ? await runFullAudit() : runTests(fastSuites);
-  if (!passed) process.exitCode = 1;
+  const fixturesPass = runTests(mode === '--full' ? fullSuites : fastSuites);
+  const assetsPass = mode === '--full' ? await runFullAudit() : true;
+  if (!fixturesPass || !assetsPass) process.exitCode = 1;
 }

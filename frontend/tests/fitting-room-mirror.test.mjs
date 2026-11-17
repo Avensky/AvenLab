@@ -4,7 +4,10 @@ import { MathUtils, PerspectiveCamera, Plane, Ray, Scene, Vector3 } from 'three'
 import { createServer } from 'vite';
 
 test('the fitting-room wall mirror shows the rear of the live actor beside the front view', async () => {
-  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  const vite = await createServer({
+    configFile: false, optimizeDeps: { noDiscovery: true, include: [] },
+    server: { middlewareMode: true, hmr: false, ws: false, watch: null }, appType: 'custom', logLevel: 'error',
+  });
   try {
     const { createFittingRoomMirror, FITTING_WALL_MIRROR } = await vite.ssrLoadModule('/src/game/characters/fittingRoomMirror.ts');
     const scene = new Scene(), camera = new PerspectiveCamera(46.7, 16 / 9, .1, 100);

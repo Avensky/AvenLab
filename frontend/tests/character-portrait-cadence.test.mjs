@@ -8,8 +8,16 @@ import { createRoot } from 'react-dom/client';
 import { DefaultLoadingManager } from 'three';
 
 const serverOptions = {
+  configFile: false,
+  define: {
+    __VILLAGER_PORTRAIT_URL__: JSON.stringify('/character-portrait-test/vega.glb'),
+    __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(['linen-nightgown']),
+    __DRESSING_ROOM_MOBILE_IDS__: JSON.stringify(['linen-nightgown']),
+    __DRESSING_ROOM_REVISION_IDS__: '[]',
+    __WARDROBE_SET_IDS__: '[]',
+  },
   optimizeDeps: { noDiscovery: true, include: [] },
-  server: { middlewareMode: true, hmr: false, ws: false },
+  server: { middlewareMode: true, hmr: false, ws: false, watch: null },
   appType: 'custom',
   logLevel: 'error',
 };
@@ -87,11 +95,6 @@ test('portraits create one background job for each quiet, visible main-menu requ
     vite = await createServer({
       ...serverOptions,
       cacheDir: 'node_modules/.vite-character-portrait-cadence',
-      define: {
-        __VILLAGER_PORTRAIT_URL__: JSON.stringify('/character-portrait-test/vega.glb'),
-        __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(['linen-nightgown']),
-        __DRESSING_ROOM_MOBILE_IDS__: JSON.stringify(['linen-nightgown']),
-      },
     });
     const { CharacterPortrait } = await vite.ssrLoadModule('/src/game/characters/CharacterPortrait.tsx');
     const { DEFAULT_CHARACTER, characterAppearance } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');

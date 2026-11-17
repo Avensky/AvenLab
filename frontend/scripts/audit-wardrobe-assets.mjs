@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { NodeIO } from '@gltf-transform/core';
+import { NodeIO, Primitive } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
+import { getGLPrimitiveCount, listTextureInfoByMaterial } from '@gltf-transform/functions';
 import { MeshoptDecoder } from 'meshoptimizer';
 import sharp from 'sharp';
 import { createServer } from 'vite';
@@ -27,11 +28,32 @@ export async function auditWardrobeAssets(publicRoot, variants) {
       assert.equal(joints.length, 88, 'Vesper joint count');
       const meshes = model.listMeshes();
       assert(meshes.length > 0, 'visible garment geometry');
+      let triangleCount = 0;
+      let primitiveCount = 0;
       for (const mesh of meshes) for (const part of mesh.listPrimitives()) {
+        primitiveCount++;
         const positions = part.getAttribute('POSITION');
         const weights = part.getAttribute('WEIGHTS_0');
         const skinIndices = part.getAttribute('JOINTS_0');
         assert(positions?.getArray().every(Number.isFinite), 'finite positions');
+        const vertexCount = positions.getCount();
+        const indices = part.getIndices();
+        assert(!indices || indices.getArray().every(i => Number.isInteger(i) && i >= 0 && i < vertexCount),
+          `${mesh.getName()}: vertex index outside the position buffer`);
+        const count = getGLPrimitiveCount(part);
+        assert(Number.isInteger(count) && count > 0, `${mesh.getName()}: incomplete or empty primitive`);
+        if (part.getMode() >= Primitive.Mode.TRIANGLES) triangleCount += count;
+        const normals = part.getAttribute('NORMAL');
+        if (normals) assert(normals.getElementSize() === 3 && normals.getCount() === vertexCount && normals.getArray().every(Number.isFinite),
+          `${mesh.getName()}: invalid vertex normals`);
+        const material = part.getMaterial();
+        const channels = new Set(material ? listTextureInfoByMaterial(material).map(info =>
+          info.getExtension('KHR_texture_transform')?.getTexCoord() ?? info.getTexCoord()) : []);
+        for (const channel of channels) {
+          const uv = part.getAttribute(`TEXCOORD_${channel}`);
+          assert(uv?.getElementSize() === 2 && uv.getCount() === vertexCount && uv.getArray().every(Number.isFinite),
+            `${mesh.getName()}: material ${material.getName()} requires valid TEXCOORD_${channel}`);
+        }
         assert.equal(weights?.getCount(), positions.getCount(), 'one weight tuple per vertex');
         assert.equal(skinIndices?.getCount(), positions.getCount(), 'one joint tuple per vertex');
         assert(skinIndices.getArray().every(index => index < joints.length), 'valid joint indices');
@@ -53,7 +75,7 @@ export async function auditWardrobeAssets(publicRoot, variants) {
         assert(pixels.info.width > 0 && pixels.info.height > 0, 'decoded image dimensions');
         decodedImages.add(hash);
       }
-      console.log(`PASS ${label}: ${(bytes.length / 1_000_000).toFixed(2)} MB, ${joints.length} joints, ${textures.length} embedded images`);
+      console.log(`PASS ${label}: ${(bytes.length / 1_000_000).toFixed(2)} MB, ${triangleCount} stored triangles, ${primitiveCount} mesh primitives, ${joints.length} joints, ${textures.length} embedded images`);
     } catch (error) {
       passed = false;
       console.error(`FAIL ${label}: ${error.message}`);
@@ -82,82 +104,113 @@ export async function auditCurrentCorsetMasks(frontend, publicRoot) {
   try {
     const [{ prepareVillager, applyVillagerLook, villagerModelUrl }, { DEFAULT_CHARACTER, characterLook },
       { corsetRenderChoice, corsetModelUrls }, { hasAuthoredLacedBodiceFit }, { hasAuthoredSweetheartFit },
-      { usesFittedAnimation }, { buildEmoteClips, findGaragePreviewEmote }] = await Promise.all(
-      ['villagerModel', 'characterCatalog', 'wardrobe', 'standaloneCorset', 'sweetheartCorset', 'animationFit', 'garageEmotes']
-        .map(name => vite.ssrLoadModule(`/src/game/characters/${name}.ts`)),
-    );
-    const villageBase = '/models/characters/villagers/villager-female/villager-female.portrait.glb';
+      { usesFittedAnimation }, { buildEmoteClips, findGaragePreviewEmote }, { getWardrobeGarment }, { clothingPieceFor }] =
+      await Promise.all(['villagerModel', 'characterCatalog', 'wardrobe', 'standaloneCorset', 'sweetheartCorset',
+        'animationFit', 'garageEmotes', 'wardrobeGarments', 'clothingPieces']
+        .map(name => vite.ssrLoadModule(`/src/game/characters/${name}.ts`)));
+    const villageFolder = '/models/characters/villagers/villager-female';
     const bundleFolder = '/models/characters/wardrobe';
     const fittedFolder = '/models/characters/female/wardrobe/corsets';
     const donor = (await sceneFor(`${bundleFolder}/gothic-02.mobile.glb`)).getObjectByName('BODY_WARDROBE');
     assert(donor?.isSkinnedMesh, 'Sweetheart Mobile provides the complete fitting body');
-    let passed = true;
+    const scenarios = [];
     for (const [name, set] of [['Sweetheart', 'gothic-02'], ['High Collar', 'gothic-05']]) {
-      for (const [tier, kind, alternate] of [['garage', 'garage', 'mobile'], ['mobile', 'portrait', 'garage']]) {
-        for (const [route, field] of [['Village skirt', 'wardrobeTrial'], ['matched outfit', 'wardrobe']]) {
-          for (const waist of ['over', 'tucked']) {
-            const label = `${name} ${tier} ${waist} with ${route}`;
-            let model;
-            try {
-              const selection = { set, waist, shirt: 'none' };
-              const look = characterLook({ ...DEFAULT_CHARACTER, [field]: selection });
-              const expectedBase = field === 'wardrobe' ? `${bundleFolder}/${set}.${tier}.glb` : villageBase;
-              const url = villagerModelUrl(look, kind, 'portrait');
-              assert.equal(url, expectedBase, 'correct actor and skirt URL');
-              const actor = await sceneFor(url);
-              const urls = corsetModelUrls(corsetRenderChoice(look), kind);
-              const highCollar = set === 'gothic-05';
-              if (highCollar) {
-                assert.deepEqual(urls.slice(0, 2), [tier, alternate].map(lod => `${fittedFolder}/gothic-high-collar.${lod}.glb`),
-                  'authored High Collar precedes its alternate tier and legacy asset');
-              } else {
-                assert.equal(urls[0], field === 'wardrobeTrial' ? `${fittedFolder}/${set}.${tier}.glb` : undefined,
-                  'standalone Sweetheart precedes the bundled fallback; matched outfit retains its own corset');
-              }
-              const scene = urls[0] ? await sceneFor(urls[0]) : undefined;
-              if (highCollar) assert(hasAuthoredLacedBodiceFit(scene), 'authored High Collar contains both fit roles');
-              else assert(hasAuthoredSweetheartFit(scene ?? actor, 2), 'current authored Sweetheart v2 fit');
-              model = prepareVillager(actor, {
-                fitted: usesFittedAnimation(look),
-                garmentBody: donor,
-                corsetSource: scene ? { set, scene } : undefined,
-              });
-              assert.equal(Boolean(model.detachedCorset), Boolean(scene), 'requested corset binds to the live actor');
-              applyVillagerLook(model, look);
-              const group = model.detachedCorset?.group ?? model.root;
-              const cloth = group.getObjectByName(`CLOTH_CORSET_${waist.toUpperCase()}`);
-              const other = group.getObjectByName(`CLOTH_CORSET_${waist === 'over' ? 'TUCKED' : 'OVER'}`);
-              assert(cloth?.visible && other && !other.visible, 'correct waist fit is visible');
-              const bindBody = (actor.getObjectByName('BODY_WARDROBE') ?? donor).geometry;
-              const skin = model.root.getObjectByName(model.detachedCorset ? 'fitting-room-body' : 'BODY_WARDROBE');
-              assert(skin?.visible && skin.isSkinnedMesh && skin.geometry.drawRange.count > 0, 'live skinned body retained');
-              assert(model.root.getObjectByName('CLOTH_BOTTOM_SKIRT')?.visible, 'selected skirt retained');
-              cloth.traverseVisible(mesh => {
-                if (!mesh.isSkinnedMesh) return;
-                const bones = mesh.skeleton.bones;
-                assert(bones.length === skin.skeleton.bones.length && bones.every((bone, index) => bone === skin.skeleton.bones[index]),
-                  'corset and body follow the same live rig joints');
-              });
-              const probes = auditCorsetSkinMask(model.root, skin, bindBody, cloth, buildEmoteClips, findGaragePreviewEmote);
-              const gaps = probes.filter(probe => probe.uncovered > 0);
-              if (gaps.length) {
-                passed = false;
-                console.error(`FAIL ${label}: ${gaps.map(probe =>
-                  `${probe.pose}@${probe.phase} ${probe.uncovered}/${probe.sampled} externally visible masked-skin rays`).join(', ')}`);
-              } else {
-                console.log(`PASS ${label}: no uncovered masked torso skin in the three sampled poses`);
-              }
-            } catch (error) {
-              passed = false;
-              console.error(`FAIL ${label}: ${error.message}`);
-            } finally {
-              model?.dispose();
-            }
+      for (const matched of [false, true]) for (const waist of ['over', 'tucked']) {
+        const asset = name === 'High Collar' ? 'gothic-high-collar' : matched ? undefined : set;
+        scenarios.push({ name, set, waist, matched, asset, route: matched ? 'matched outfit' : 'Village skirt' });
+      }
+    }
+    const villageWaist = { explicitWaist: true, route: 'Village skirt and belt' };
+    scenarios.push({ name: 'Laced Bodice', set: 'gothic-01', asset: 'gothic-laced-bodice', waist: 'tucked', ...villageWaist });
+    for (const waist of ['over', 'tucked']) {
+      scenarios.push({ name: 'Ruffled', set: 'gothic-03', asset: 'gothic-03', waist, ...villageWaist });
+      for (const bra of ['classic', 'push-up']) {
+        const asset = waist === 'over' ? 'gothic-underbust-vest' : 'gothic-underbust-vest-tucked';
+        scenarios.push({ name: 'Underbust', set: 'gothic-04', asset, waist, bra, route: `${bra} bra` });
+      }
+    }
+    for (const bra of ['classic', 'push-up']) scenarios.push({ name: `Standalone ${bra} bra`, bra });
+
+    let poseCount = 0, clearCases = 0, gapCases = 0, errors = 0;
+    for (const [tier, kind, alternate] of [['garage', 'garage', 'mobile'], ['mobile', 'portrait', 'garage']]) {
+      for (const { name, set, waist, matched, asset, explicitWaist, bra, route } of scenarios) {
+        const label = set ? `${name} ${tier} ${waist} with ${route}` : `${name} ${tier}`;
+        let model;
+        try {
+          const outfit = set ? { [matched ? 'wardrobe' : 'wardrobeTrial']: { set, waist, shirt: 'none' } }
+            : { removedClothing: ['top', 'corset'] };
+          const equipped = explicitWaist ? { skirt: 'village-skirt', belt: 'village-belt' } : {};
+          const appearance = characterLook(DEFAULT_CHARACTER).appearance;
+          const look = characterLook({ ...DEFAULT_CHARACTER, ...outfit, garments: equipped,
+            ...(bra && { bra: true, appearance: { ...appearance, bra_style: bra } }) });
+          const expectedBase = matched ? `${bundleFolder}/${set}.${tier}.glb` : `${villageFolder}/villager-female.portrait.glb`;
+          const baseUrl = villagerModelUrl(look, kind, 'portrait');
+          assert.equal(baseUrl, expectedBase, 'correct actor and skirt URL');
+          // Exercise both Village actor meshes for the independently fitted underwear.
+          const actor = await sceneFor(set ? baseUrl : `${villageFolder}/villager-female.${kind}.glb`);
+          const urls = corsetModelUrls(corsetRenderChoice(look), kind);
+          assert.equal(urls[0], asset && `${fittedFolder}/${asset}.${tier}.glb`, 'correct primary corset asset');
+          if (asset === 'gothic-high-collar') assert.equal(urls[1], `${fittedFolder}/${asset}.${alternate}.glb`, 'alternate High Collar tier');
+          const scene = asset ? await sceneFor(urls[0]) : undefined;
+          if (asset === 'gothic-high-collar' || asset === 'gothic-laced-bodice') {
+            assert(hasAuthoredLacedBodiceFit(scene), 'authored asset contains both fit roles');
           }
+          if (set === 'gothic-02') assert(hasAuthoredSweetheartFit(scene ?? actor, 2), 'current authored Sweetheart v2 fit');
+          model = prepareVillager(actor, {
+            fitted: usesFittedAnimation(look), garmentBody: donor, removedClothing: look.removedClothing,
+            garments: Object.values(equipped).map(id => ({ item: getWardrobeGarment(id), scene: actor })),
+            corsetSource: scene ? { set, scene } : undefined,
+          });
+          assert.equal(Boolean(model.detachedCorset), Boolean(scene), 'requested corset binds to the live actor');
+          applyVillagerLook(model, look);
+          const bindBody = (actor.getObjectByName('BODY_WARDROBE') ?? donor).geometry;
+          const skin = model.root.getObjectByName(model.detachedCorset || !set ? 'fitting-room-body' : 'BODY_WARDROBE');
+          assert(skin?.visible && skin.isSkinnedMesh && skin.geometry.drawRange.count > 0, 'live skinned body retained');
+          if (set) {
+            const group = model.detachedCorset?.group ?? model.root;
+            const cloth = group.getObjectByName(`CLOTH_CORSET_${waist.toUpperCase()}`);
+            const other = group.getObjectByName(`CLOTH_CORSET_${waist === 'over' ? 'TUCKED' : 'OVER'}`);
+            assert(cloth?.visible && !other?.visible, 'correct waist fit is visible');
+            if (set === 'gothic-02' || set === 'gothic-05') assert(other, 'both waist fits exist');
+          }
+          const covers = [];
+          model.root.traverseVisible(mesh => {
+            if (!mesh.isSkinnedMesh || !mesh.geometry.index || !clothingPieceFor(mesh)) return;
+            if (!mesh.material.visible || mesh.material.transparent || mesh.material.alphaTest > 0) return;
+            covers.push(mesh);
+          });
+          assert(covers.some(mesh => clothingPieceFor(mesh) === 'skirt'), 'selected skirt retained');
+          if (set) assert(covers.some(mesh => clothingPieceFor(mesh) === 'corset'), 'selected corset retained');
+          if (bra) assert(model.root.getObjectByName(`wardrobe-underwear-bra${bra === 'push-up' ? '-push-up' : ''}`)?.visible,
+            'selected bra cut retained');
+          for (const mesh of covers) {
+            const bones = mesh.skeleton.bones;
+            assert(bones.length === skin.skeleton.bones.length && bones.every((bone, index) => bone === skin.skeleton.bones[index]),
+              'clothing and body follow the same live rig joints');
+          }
+          const probes = auditCorsetSkinMask(model.root, skin, bindBody, covers, buildEmoteClips, findGaragePreviewEmote);
+          poseCount += probes.length;
+          const gaps = probes.filter(probe => probe.uncovered > 0);
+          if (gaps.length) {
+            gapCases++;
+            console.error(`FAIL ${label}: ${gaps.map(probe =>
+              `${probe.pose}@${probe.phase} ${probe.uncovered}/${probe.sampled} externally visible masked-skin rays (${probe.upperBackUncovered}/${probe.upperBackSampled} upper back)`).join(', ')}`);
+          } else {
+            clearCases++;
+            const samples = probes.reduce((total, probe) => total + probe.sampled, 0);
+            const detail = samples ? `0/${samples} uncovered masked-skin rays` : 'no externally visible masked torso samples';
+            console.log(`PASS ${label}: ${detail} across the three poses`);
+          }
+        } catch (error) {
+          errors++;
+          console.error(`FAIL ${label}: ${error.message}`);
+        } finally {
+          model?.dispose();
         }
       }
     }
-    return passed;
+    console.log(`Torso mask audit: ${poseCount} poses, ${clearCases} clear cases, ${gapCases} cases with uncovered rays, ${errors} errors.`);
+    return gapCases === 0 && errors === 0;
   } finally {
     await vite.close();
   }

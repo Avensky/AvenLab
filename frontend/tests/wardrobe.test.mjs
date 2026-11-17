@@ -157,7 +157,7 @@ test('wardrobe coverage stays on, mask buffers are isolated, and layer changes r
  }finally{await vite.close();}
 });
 
-test('Dressing room swaps tops and corsets and saves approved waist fits', async () => {
+test('Dressing room swaps tops and corsets and saves approved waist fits', async t => {
  const {JSDOM}=await import('jsdom');const {act,createElement:h}=await import('react');const {createRoot}=await import('react-dom/client');
  const dom=new JSDOM('<div id="root"></div>',{url:'http://localhost/',pretendToBeVisual:true}),original=new Map();let root,vite;
  const globals={window:dom.window,document:dom.window.document,navigator:dom.window.navigator,HTMLElement:dom.window.HTMLElement,Event:dom.window.Event,localStorage:dom.window.localStorage,IS_REACT_ACT_ENVIRONMENT:true};
@@ -319,6 +319,8 @@ test('Dressing room swaps tops and corsets and saves approved waist fits', async
   assert.equal(previews.at(-1).garments.top,undefined);
   await click('[data-wardrobe-back]');
   await click('[data-category=outfits]');
+  // Keep the debounce pending until the close handler flushes the latest selection.
+  t.mock.timers.enable({apis:['setTimeout']});
   await click('[data-wardrobe-item=gothic-03]');
   assert.deepEqual(previews.at(-1).wardrobe,{set:'gothic-03',shirt:'none',waist:'over'},'Ruffled equips the reviewed over-skirt fit by default');
   await layer('Wide over skirt');
@@ -341,6 +343,7 @@ test('Dressing room swaps tops and corsets and saves approved waist fits', async
   assert.equal(requests[0].character.wardrobeEase,undefined);
   assert.equal(requests[0].character.removedClothing,undefined);
   await act(async()=>{client.receiveSocialResult({request_id:requests[0].request_id,ok:true,data:{character:requests[0].character}});await pending;});
+  t.mock.timers.reset();
   assert.deepEqual(social.getState().view.profile.progression.character.wardrobe,{set:'gothic-05',shirt:'none',waist:'tucked'});
   await act(async()=>{
     const {view}=social.getState();

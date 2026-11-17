@@ -279,7 +279,8 @@ body positions unquantized because the face shaders use bind-space positions.
   if they are cut by a single sample. Each preview owns its index buffer. A
   fitted Village actor with fixed source coverage retains a mask for each
   visited waist and bra combination, so switching back reuses the visible
-  triangle list. The shared Laced Bodice mask cache stays bounded at eight.
+  triangle list. The shared Laced Bodice cache holds up to eight masks per
+  fitted source combination.
   When an outfit exposes part of the original cut body, the fitter remembers
   which donor triangles match that surface. Other outfits can reuse those
   answers until either surface's positions, indices, or draw range changes.
@@ -337,8 +338,11 @@ git lfs pull --include="$audit_assets" --exclude="" &&
 npm --prefix frontend run audit:wardrobe -- --full
 ```
 
-The full audit checks Garage and Mobile files, GLB structure and textures,
-rig and fit data, and runtime coverage in sampled poses. The geometry probes
+The full audit runs the fixture checks, builds standalone pieces, and checks
+both the tracked and generated Garage and Mobile files. Each asset row reports
+file size, stored triangles, and mesh primitives across the file's fit variants.
+The validator checks vertex indices, authored normals, and the UV set each
+material texture samples, including texture-coordinate overrides. The geometry probes
 include idle, shoulder stretch, arm reaches, and waist weight shifts for the
 garments that need them. Missing required LFS objects fail the full audit.
 Review the finished materials and transitions in the game as well. The Node
@@ -363,12 +367,17 @@ node scripts/sample-wardrobe-emotes.mjs /path/to/raw/gothic-01.glb /path/to/pose
 
 | Garment | Confirmed | Open review |
 | --- | --- | --- |
-| Laced Bodice, Ruffled, Underbust | The targeted waist, shoulder, or hardware checks passed for the configurations exercised by each garment's test. | Check new skirt combinations as they are authored. |
+| Laced Bodice | The tucked hem had zero measured intersections with the Village skirt and rear belt in 56 sampled states. | The idle and overhead rear views both show a small piece of the shell at the viewer-left belt tip. Both tiers also produced upper-torso skin-mask findings. |
+| Ruffled | The waist and cup clearance checks passed on both tiers. | Inspect the upper back during Overhead heart. On the tucked fit, 4 upper-back rays on each tier found missing skin. Other rays also found gaps outside that region. |
+| Underbust and bras | Both vest fits with Classic and standalone Push-up passed the torso mask probe on both tiers. | The vest with Push-up produced four uncovered rays at Overhead heart on each fit and tier. Standalone Classic also produced findings. |
 | Sweetheart | The authored refit preserves chest and underarm skin. The animated skin mask passed both fits, both tiers, and both skirt routes in three sampled poses. | Review the revised cup and underarm silhouette and the Tucked waistband in motion. The old coverage samples predate the revised opening and authored skirt rim. |
 | High Collar | Both tiers load, bind to Vesper, and switch between Over and Tucked. | The full audit reports uncovered masked skin at rest and during motion with the Village skirt and the matched Gothic outfit. Review the straps, rear collar, and front keyhole on the live model. |
 
-The full audit currently exits with status 1 on High Collar coverage. Use the
-reported tier, waist, outfit, and pose to reproduce each finding.
+The torso mask probe evaluates 34 outfit and tier combinations in idle,
+Happy applause, and Overhead heart. The full audit currently exits with
+status 1 on mask findings in 20 combinations. Its rays identify candidate
+gaps for visual review. Use the reported tier, waist, outfit, and pose to
+reproduce each finding.
 
 ## Garage presentation fixes
 

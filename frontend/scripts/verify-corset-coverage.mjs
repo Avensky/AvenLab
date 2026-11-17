@@ -311,7 +311,7 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
 // A neckline or keyhole can expose skin intentionally. Look for actual mask
 // holes instead: skin removed by the live outfit, visible on the complete body
 // from an external view, with neither cloth nor retained skin replacing it.
-export function auditCorsetSkinMask(root, skin, bindBody, cloth, buildEmoteClips, findGaragePreviewEmote) {
+export function auditCorsetSkinMask(root, skin, bindBody, visibleCloth, buildEmoteClips, findGaragePreviewEmote) {
   const vertices = bindBody.getAttribute('position').array;
   const original = bindBody.index.array;
   const retained = visibleIndices(skin);
@@ -332,12 +332,14 @@ export function auditCorsetSkinMask(root, skin, bindBody, cloth, buildEmoteClips
     if (keep.has(key(original, i))) continue;
     const indices = original.subarray(i, i + 3);
     triangle(vertices, indices);
-    if (center.y >= 1.20 && center.y <= 1.43 && Math.abs(center.x) <= .168) masked.push(indices);
+    if (center.y >= 1.20 && center.y <= 1.43 && Math.abs(center.x) <= .168) {
+      // Classify in bind space so the same upper-back faces keep their label in motion.
+      const upperBack = center.y > 1.24 && center.z < -.020 && normal.z < -.25;
+      masked.push({ indices, upperBack });
+    }
   }
 
-  const visibleCloth = [];
-  cloth.traverseVisible(mesh => { if (mesh.isSkinnedMesh && mesh.geometry.index) visibleCloth.push(mesh); });
-  assert(visibleCloth.length, 'mask audit needs visible skinned corset geometry');
+  assert(visibleCloth.length, 'mask audit needs visible opaque clothing');
   const poses = [['idle', 0], ['013', .45], ['heart-overhead', .50]];
   const views = [[0, 0, 1], [0, 0, -1], [.65, .2, -.73], [-.65, .2, -.73]].map(view => new Vector3(...view).normalize());
   const mixer = new AnimationMixer(root);
@@ -352,9 +354,9 @@ export function auditCorsetSkinMask(root, skin, bindBody, cloth, buildEmoteClips
     const points = posedVertices(skin);
     const allSkin = surfaceFromVertices(points, original);
     const covered = [surfaceFromVertices(points, retained), ...visibleCloth.map(posedSurface)];
-    const result = { pose, phase, sampled: 0, uncovered: 0 };
+    const result = { pose, phase, sampled: 0, uncovered: 0, upperBackSampled: 0, upperBackUncovered: 0 };
     try {
-      for (const indices of masked) {
+      for (const { indices, upperBack } of masked) {
         triangle(points, indices);
         for (const direction of views) {
           if (normal.dot(direction) < .10) continue;
@@ -362,8 +364,10 @@ export function auditCorsetSkinMask(root, skin, bindBody, cloth, buildEmoteClips
           ray.direction.copy(direction).negate();
           if (Math.abs(firstHit(ray, [allSkin]) - .30) > .0002) continue;
           result.sampled++;
+          if (upperBack) result.upperBackSampled++;
           if (firstHit(ray, covered) <= .301) continue;
           result.uncovered++;
+          if (upperBack) result.upperBackUncovered++;
         }
       }
       return result;

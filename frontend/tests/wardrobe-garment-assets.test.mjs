@@ -266,10 +266,13 @@ test('turning off wardrobe layers fits underwear and keeps the other pieces', as
     bundledDir + 'gothic-02.mobile.glb', top.url.slice(1), skirt.url.slice(1), garmentDir + 'vesper-body.glb',
   ];
   const bytes = await Promise.all(paths.map(path => readFile(new URL(path, publicDir))));
-  if (bytes.some(isLfsPointer)) return t.skip('Run git lfs pull to materialize the fitting-room models.');
+  if (bytes.some(isLfsPointer)) return skipMissingAsset(t, 'Run git lfs pull to materialize the fitting-room models.');
   const [village, bundle, donorScene, topScene, skirtScene, fittingBody] = await Promise.all(bytes.map(loadGeometry));
   const donor = donorScene.getObjectByName('BODY_WARDROBE');
-  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  const vite = await createServer({
+    define: { __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify([top.id, skirt.id, 'linen-nightgown']) },
+    server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error',
+  });
   try {
     const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
     const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
@@ -442,7 +445,8 @@ test('turning off wardrobe layers fits underwear and keeps the other pieces', as
     try {
       assert(withoutDress.root.getObjectByName('wardrobe-underwear-briefs')?.visible);
       assert(withoutDress.root.getObjectByName('CLOTH_TOP_CORSET').visible, 'revealing the briefs uses the stock top beneath a complete outfit');
-      assert(withoutDress.root.getObjectByName('CLOTH_FEET_SHOES').visible, 'removing the nightgown restores the stock shoes');
+      assert.equal(withoutDress.root.getObjectByName('CLOTH_FEET_SHOES').visible, false,
+        'revealing the briefs keeps the selected sleepwear outfit barefoot');
       assert.equal(withoutDress.root.getObjectByName('wardrobe-underwear-bra'), undefined);
     } finally { withoutDress.dispose(); }
 
@@ -450,6 +454,7 @@ test('turning off wardrobe layers fits underwear and keeps the other pieces', as
     try {
       assert(defaultModel.root.getObjectByName('CLOTH_TOP_CORSET').visible);
       assert(defaultModel.root.getObjectByName('CLOTH_BOTTOM_SKIRT').visible);
+      assert(defaultModel.root.getObjectByName('CLOTH_FEET_SHOES').visible, 'returning to the Village outfit restores the shoes');
       assert.equal(defaultModel.root.getObjectByName('fitting-room-body'), undefined);
       assert.equal(defaultModel.root.getObjectByName('wardrobe-underwear'), undefined);
     } finally { defaultModel.dispose(); }
@@ -775,7 +780,7 @@ test('Gothic Skirt 04 and Top 02 replace stock pieces and animate together on bo
   const paths = [skirt.url.slice(1), top.url.slice(1), 'models/characters/wardrobe/gothic-02.mobile.glb',
     villagerDir + 'villager-female.garage.glb', villagerDir + 'villager-female.portrait.glb'];
   const bytes = await Promise.all(paths.map(path => readFile(new URL(path, publicDir))));
-  if (bytes.some(isLfsPointer)) return t.skip('Run git lfs pull to materialize the try-on models.');
+  if (bytes.some(isLfsPointer)) return skipMissingAsset(t, 'Run git lfs pull to materialize the try-on models.');
   const [skirtScene, topScene, gothic, garage, portrait] = await Promise.all(bytes.map(loadGeometry));
   const sourceBody = gothic.getObjectByName('BODY_WARDROBE');
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
@@ -1732,26 +1737,29 @@ test('the Village skirt and belt cover the back of the tucked Laced Bodice', asy
           } finally {
             for (const { geometry } of [...skirt, ...tucked]) geometry.dispose();
           }
-          // The automatic weight shift lets the bodice catch on the side rim between rest poses.
-          const [clip] = buildEmoteClips(root, [findGaragePreviewEmote('002', false)]);
           const mixer = new AnimationMixer(root);
-          mixer.clipAction(clip).play();
-          try {
-            for (const phase of [0, .25, .38, .5, .62]) {
-              mixer.setTime(clip.duration * phase);
-              root.updateMatrixWorld(true);
-              const waistband = surfaces(activeSkirt), beltBack = surfaces(activeBelt, true), bodice = surfaces(activeBodice);
-              try {
-                assert(!overlaps(waistband, bodice),
-                  `${label} clears the tucked bodice at weight-shift phase ${phase}`);
-                assert(beltBack.length, `${label} has a rendered rear belt`);
-                assert(!overlaps(beltBack, bodice),
-                  `${label} rear belt covers the tucked bodice at weight-shift phase ${phase}`);
-              } finally {
-                for (const { geometry } of [...waistband, ...beltBack, ...bodice]) geometry.dispose();
+          const motions = [['002', [0, .25, .38, .5, .62]], ['013', [.45]], ['heart-overhead', [.5]]];
+          for (const [emote, phases] of motions) {
+            const [clip] = buildEmoteClips(root, [findGaragePreviewEmote(emote, false)]);
+            mixer.clipAction(clip).play();
+            try {
+              for (const phase of phases) {
+                mixer.setTime(clip.duration * phase);
+                root.updateMatrixWorld(true);
+                const waistband = surfaces(activeSkirt), beltBack = surfaces(activeBelt, true), bodice = surfaces(activeBodice);
+                try {
+                  assert(!overlaps(waistband, bodice), `${label} waistband intersects the bodice at ${emote}@${phase}`);
+                  assert(beltBack.length, `${label} has a rendered rear belt`);
+                  assert(!overlaps(beltBack, bodice), `${label} rear belt intersects the bodice at ${emote}@${phase}`);
+                } finally {
+                  for (const { geometry } of [...waistband, ...beltBack, ...bodice]) geometry.dispose();
+                }
               }
+            } finally {
+              mixer.stopAllAction();
+              mixer.uncacheClip(clip);
             }
-          } finally { mixer.stopAllAction(); }
+          }
           applyVillagerLook(model, characterLook({ ...choice, wardrobeTrial: { set, waist: 'over', shirt: 'none' } }));
           const over = model.detachedCorset.group.getObjectByName('CLOTH_CORSET_OVER');
           assert(over.visible);
