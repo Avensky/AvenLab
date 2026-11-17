@@ -4,7 +4,7 @@ import { usesFittedAnimation } from "./animationFit";
 import { clothingColors } from "./clothingPieces";
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import { Html, useGLTF } from "@react-three/drei";
-import { useThree } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import type { Object3D } from "three";
 import { AssetBoundary } from "../../components/debugger/AssetBoundary";
 import { ROOK_ID, VILLAGER_ID, characterLook, type CharacterChoice, type CharacterLook } from "./characterCatalog";
@@ -74,6 +74,12 @@ function VillagerDriver({ url: preferredUrl, look, kind, villageKind, fallback, 
   </>;
 }
 
+function HighCollarMotion({ update }: { update: () => void }) {
+  // The emote mixer and cockpit IK both run at a negative frame priority.
+  useFrame(update, 0);
+  return null;
+}
+
 function ReadyVillager({ preview, bag, previewPacks, leanFit, mirrorFit, victory, cockpit, paused, upright }: VillagerPlayback & { preview: WardrobePreview }) {
   const { look, scene, garments, garmentBody, corsetScene, corsetSet } = preview;
   const femaleWithBag = look.female && bag;
@@ -99,6 +105,7 @@ function ReadyVillager({ preview, bag, previewPacks, leanFit, mirrorFit, victory
   }, [model]);
 
   return <group name="garage-driver" rotation={upright ? [0, 0, 0] : DRIVER_TILT}>
+    {model.detachedCorset?.updateShoulders && <HighCollarMotion update={model.detachedCorset.updateShoulders} />}
     <GarageEmotePlayer root={model.root} bag={bag} personality={look.appearance.personality} bagColors={clothingColors(look, "bag")} previewPacks={previewPacks} leanFit={leanFit} mirrorFit={mirrorFit} victory={victory} cockpit={cockpit} paused={paused} />
   </group>;
 }

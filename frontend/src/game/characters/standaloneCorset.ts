@@ -1,5 +1,6 @@
 import { Group, Matrix4, Mesh, SkinnedMesh, type Material, type Object3D, type Skeleton } from "three";
 import { fitLacedBodiceToSkirt } from "./lacedStrapFit";
+import { prepareHighCollarShoulders } from "./highCollarShoulders";
 import { prepareWardrobeLining } from "./wardrobeLining";
 import { bindWardrobeGarmentMesh } from "./wardrobeGarmentFit";
 import { LACED_BODICE_WARDROBE_SET, prepareWardrobe, UNDERBUST_WARDROBE_SET, type WardrobeChoice } from "./wardrobe";
@@ -67,6 +68,8 @@ export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton
   const authoredLacedBodice = laced && hasAuthoredLacedBodiceFit(source.scene);
   const sweetheartSkin = hasAuthoredSweetheartFit(source.scene, 2);
   const { rebuilt, tucked: tuckedSource, over: overSource } = corsetFitParts(source);
+  const authoredHighCollar = source.set === "gothic-05" && tuckedSource?.userData.authoredHighCollarFit === 1
+    && overSource?.userData.authoredHighCollarFit === 1;
   const body = bindWardrobeGarmentMesh(fullBody, skeleton);
   if (!body) return;
 
@@ -108,7 +111,8 @@ export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton
     if (!tucked || !over) return;
     group.add(tucked, over, body);
   }
-  const disposeFit = rebuilt || authoredLacedBodice ? undefined : prepareWardrobeLining(group);
+  const updateShoulders = authoredHighCollar ? prepareHighCollarShoulders(group, skeleton) : undefined;
+  const disposeFit = rebuilt || authoredLacedBodice || updateShoulders ? undefined : prepareWardrobeLining(group);
   // The authored straps benefit from the same conservative skin coverage as the legacy fit.
   if (authoredLacedBodice) group.userData.lacedBodiceStraps = true;
   body.removeFromParent();
@@ -119,6 +123,7 @@ export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton
     underbust,
     authoredLacedBodice,
     sweetheartSkin,
+    updateShoulders,
     villageWaistSource: authoredLacedBodice || sweetheartSkin ? source.scene : undefined,
     fitSkirt: laced || sweetheartSkin ? (skirts: readonly MeshBVH[], fit?: "village-tucked", reuse?: { adjustments?: Float32Array }) => {
       disposeSkirtFit = fitLacedBodiceToSkirt(group, body.geometry, skirts, fit, reuse);
