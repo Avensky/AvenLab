@@ -192,6 +192,12 @@ Underbust Vest starts in Over skirt and can be worn on its own or over a
 separately chosen top. The vest and top take separate colors. Try-ons carry
 into Emotes for the session.
 
+Ruffled has independent fabric, ruffles, and ribbon dyes. The authored High
+Collar has main fabric, inset, laces, trim, and metal dyes. Define corset
+groups in [`corsetDye.ts`](corsetDye.ts) so the palette and renderer agree on
+material names, saved keys, and fallback colors. Update the interface color
+scheme through the [shared UI theme](../../theme/README.md).
+
 Roomy and Wide Over skirt add 12 and 24 mm of clearance at the corset hem for
 fuller skirts. Tucked and standard Over use their authored fits. Save a named
 look in Wardrobe > Saved outfits to store its pieces, waist fit, hair, and

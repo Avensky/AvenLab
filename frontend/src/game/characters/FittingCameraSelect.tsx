@@ -1,4 +1,5 @@
 import { MenuIcon } from "../../components/menus/MenuIcon";
+import { PreviewToolButton } from "../preview/PreviewToolButton";
 import type { CharacterChoice } from "./characterCatalog";
 import { focusClothingPiece, useCharacterPreviewStore } from "./characterPreviewStore";
 import { clothingPieceLabel, wornClothing, type ClothingPiece } from "./clothingPieces";
@@ -66,10 +67,10 @@ export function FittingWearableShortcuts({ pieces, active, vertical = false, onS
     role="group" aria-label="Clothing close-ups" data-controller-row data-controller-columns={vertical ? 1 : 7}>
     {pieces.map(piece => {
       const label = clothingPieceLabel(piece);
-      return <button key={piece} type="button" className="menu-control fitting-tool-icon"
+      return <PreviewToolButton key={piece} label={label}
         data-camera-choice={`piece:${piece}`} data-wearable-quick-select={vertical ? piece : undefined}
-        aria-label={label} title={label} aria-pressed={active === piece}
-        onClick={() => onSelect(piece)}><CameraChoiceIcon path={PIECE_ICONS[piece]} /></button>;
+        aria-pressed={active === piece}
+        onClick={() => onSelect(piece)}><CameraChoiceIcon path={PIECE_ICONS[piece]} /></PreviewToolButton>;
     })}
   </div>;
 }
@@ -93,8 +94,8 @@ export function FittingCameraSelect<View extends string>({ choice, views, view, 
         const icon = item === "Whole car" ? <MenuIcon name="vehicles" />
           : item === "Full body" && !choice ? <MenuIcon name="cockpit" />
           : <CameraChoiceIcon path={VIEW_ICONS[item] ?? FRAME} />;
-        return <button key={item} type="button" className="menu-control fitting-tool-icon" data-camera-choice={item}
-          aria-label={name} title={name} aria-pressed={view === item} onClick={() => { if (view !== item) onViewChange(item); }}>{icon}</button>;
+        return <PreviewToolButton key={item} label={name} data-camera-choice={item}
+          aria-pressed={view === item} onClick={() => { if (view !== item) onViewChange(item); }}>{icon}</PreviewToolButton>;
       })}
     </div>
     <FittingWearableShortcuts pieces={pieces} active={view === "Selected item" ? selected : undefined}

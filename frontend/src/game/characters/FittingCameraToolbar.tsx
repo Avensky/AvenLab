@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { PreviewControlDisclosure } from "../preview/PreviewControlDisclosure";
+import { PreviewToolButton } from "../preview/PreviewToolButton";
 import { FittingRotationControls } from "./FittingRotationControls";
 import "./fittingCameraToolbar.css";
 
@@ -35,14 +36,13 @@ export function FittingCameraToolbar({ camera, visibility, actions, paused, onPa
 }) {
   const pauseLabel = paused ? "Resume pose" : "Hold pose";
   const zoomControls = (onZoomOut || onZoomIn) && <div className="fitting-camera-range" role="group" aria-label="Camera zoom" data-controller-row>
-    {onZoomOut && <button type="button" className="menu-control fitting-tool-icon" aria-label="Zoom out" title="Zoom out" disabled={zoomOutDisabled} onClick={onZoomOut}><ToolIcon icon="zoomOut" /></button>}
-    {onZoomIn && <button type="button" className="menu-control fitting-tool-icon" aria-label="Zoom in" title="Zoom in" disabled={zoomInDisabled} onClick={onZoomIn}><ToolIcon icon="zoomIn" /></button>}
+    {onZoomOut && <PreviewToolButton label="Zoom out" disabled={zoomOutDisabled} onClick={onZoomOut}><ToolIcon icon="zoomOut" /></PreviewToolButton>}
+    {onZoomIn && <PreviewToolButton label="Zoom in" disabled={zoomInDisabled} onClick={onZoomIn}><ToolIcon icon="zoomIn" /></PreviewToolButton>}
   </div>;
   const adjustments = (!rotationDisabled || onReframe || zoomControls) && <div className="fitting-camera-adjustments">
     {zoomControls}
     {!rotationDisabled && <FittingRotationControls compact vehicle={vehicle} />}
-    {onReframe && <div data-controller-row><button type="button" className="menu-control fitting-tool-icon" aria-label="Reframe" title="Reframe"
-      onClick={onReframe}><ToolIcon icon="reframe" /></button></div>}
+    {onReframe && <div data-controller-row><PreviewToolButton label="Reframe" onClick={onReframe}><ToolIcon icon="reframe" /></PreviewToolButton></div>}
   </div>;
   return <div className="fitting-camera-toolbar" role="group" aria-label="Character camera tools">
     <div className="fitting-camera-row" data-controller-row>
@@ -50,7 +50,7 @@ export function FittingCameraToolbar({ camera, visibility, actions, paused, onPa
       {((!splitCamera && camera) || adjustments || (splitCamera && actions)) && <PreviewControlDisclosure label="Camera tools" icon={<ToolIcon icon={splitCamera ? "adjustments" : "camera"} />}>
         {!splitCamera && camera}{adjustments}{splitCamera && actions}
       </PreviewControlDisclosure>}
-      <button type="button" className="menu-control fitting-tool-icon" aria-label={pauseLabel} title={pauseLabel} aria-pressed={paused} onClick={onPause}><ToolIcon icon={paused ? "resume" : "hold"} /></button>
+      <PreviewToolButton label={pauseLabel} aria-pressed={paused} onClick={onPause}><ToolIcon icon={paused ? "resume" : "hold"} /></PreviewToolButton>
       {visibility}
       {!splitCamera && actions}
     </div>

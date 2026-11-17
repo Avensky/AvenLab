@@ -23,6 +23,7 @@ import { FittingCameraSelect } from "./FittingCameraSelect";
 import { FittingCameraToolbar } from "./FittingCameraToolbar";
 import { DressingRoom } from "./DressingRoom";
 import { clothingColorKey, UNDERWEAR_PIECES } from "./clothingPieces";
+import { PreviewToolButton } from "../preview/PreviewToolButton";
 import { PreviewVisibilityToggle } from "../preview/PreviewVisibilityToggle";
 import { PreviewZoomSlider } from "../preview/PreviewZoomSlider";
 
@@ -448,10 +449,9 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
   </div>;
   const zoomBy = (step: number) => setZoom(Math.min(CHARACTER_ZOOM_MAX, Math.max(CHARACTER_ZOOM_MIN, +(zoom + step).toFixed(2))));
   const togglePose = () => useCharacterPreviewStore.setState({ playbackPaused: !playbackPaused });
-  const exitCockpit = insideCar && <button type="button" className="menu-control fitting-tool-icon" data-cockpit-toggle
-    aria-label={`Exit ${stationName}`} title={`Exit ${stationName}`} onClick={toggleCockpit}>
+  const exitCockpit = insideCar && <PreviewToolButton label={`Exit ${stationName}`} data-cockpit-toggle onClick={toggleCockpit}>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M11 4H4v16h7m2-12 4 4-4 4m4-4H8" /></svg>
-  </button>;
+  </PreviewToolButton>;
   const cameraTools = <FittingCameraToolbar key={tab} camera={fitting ? undefined : cameraSelect} splitCamera
     visibility={<PreviewVisibilityToggle />} paused={playbackPaused} onPause={togglePose}
     vehicle={vehiclePreview} rotationDisabled={rotationDisabled} actions={exitCockpit}

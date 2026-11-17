@@ -15,9 +15,7 @@ import { prepareVillageShoes } from "./wardrobeShoes";
 import { prepareVillageBonnet } from "./villageBonnet";
 import { prepareWardrobeGarments, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
 import { prepareStandaloneCorset, type StandaloneCorsetSource } from "./standaloneCorset";
-import { applyRebuiltUnderbustDye } from "./rebuiltUnderbustDye";
-import { applyLacedBodiceAppearance } from "./lacedBodiceAppearance";
-import { applySweetheartDye } from "./sweetheartDye";
+import { applyCorsetDye } from "./corsetDye";
 import { getWardrobeGarment, wardrobeGarmentModelUrl, type WardrobeRemoval } from "./wardrobeGarments";
 
 export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait" = "garage", villageKind = kind) {
@@ -229,13 +227,11 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
     }
     if (look.appearance.accent) material.color.set(look.trim);
   }
+  const outfitColor = look.appearance.color === "original" ? undefined : look.fabric;
   for (const [piece, palette] of model.pieceMaterials) {
     const colors = clothingColors(look, piece);
     for (const [source, material] of palette) {
-      const outfitColor = look.appearance.color === "original" ? undefined : look.fabric;
-      if (applySweetheartDye(source, material, colors, outfitColor, look.appearance.accent)
-        || applyLacedBodiceAppearance(source, material, colors, outfitColor, look.appearance.accent)
-        || applyRebuiltUnderbustDye(source, material, colors, outfitColor, look.appearance.accent)) continue;
+      if (piece === "corset" && applyCorsetDye(source, material, colors, outfitColor, look.appearance.accent)) continue;
       const accent = source.userData.color_slot === "accent" || source.userData.color_slot === "hardware" || /Details/.test(source.name);
       const color = accent ? colors?.accent ?? colors?.color : colors?.color;
       if (color) material.color.set(color);

@@ -7,7 +7,7 @@
 .fitting-camera-row, .fitting-camera-adjustments, .fitting-camera-range { display: flex; align-items: center; gap: 3px; }
 .fitting-camera-row { flex-wrap: wrap; justify-content: center; }
 .fitting-camera-adjustments { justify-content: center; gap: 5px; }
-.fitting-camera-toolbar .menu-control:is(.fitting-tool-icon, .garage-hide-toggle),
+.fitting-camera-toolbar .menu-control.fitting-tool-icon,
 .fitting-camera-toolbar .fitting-rotation-grid .menu-control {
   display: grid;
   flex: none;
@@ -23,7 +23,7 @@
   color: var(--app-text);
 }
 .fitting-camera-toolbar .menu-control:is(:hover, :focus-visible, [aria-expanded="true"], [aria-pressed="true"]):not(:disabled) { border-color: var(--app-accent); color: var(--app-accent); }
-.fitting-camera-toolbar :is(.fitting-tool-icon, .fitting-rotation-grid, .garage-hide-toggle) svg { width: 16px; height: 16px; }
+.fitting-camera-toolbar :is(.fitting-tool-icon, .fitting-rotation-grid) svg { width: 16px; height: 16px; }
 .fitting-camera-panel {
   position: absolute;
   left: 50%;

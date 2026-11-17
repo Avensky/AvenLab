@@ -23,13 +23,7 @@ export function tagRebuiltUnderbustMaterial(material: Material) {
 
 const gains = new WeakMap<MeshStandardMaterial, { value: number }>();
 
-export function applyRebuiltUnderbustDye(source: MeshStandardMaterial, material: MeshStandardMaterial,
-  colors: PieceColors | undefined, outfitColor: string | undefined, outfitAccent: string | undefined) {
-  const group = source.userData.underbustDyeGroup as DyeGroup | undefined;
-  if (!group) return false;
-  const color = colors?.[group] ?? (group === "accent" ? outfitAccent : group === "hardware" ? undefined : outfitColor);
-  if (color) material.color.set(color);
-
+export function updateUnderbustDyeGain(source: MeshStandardMaterial, material: MeshStandardMaterial, dyed: boolean) {
   const luminance = source.userData.underbustLuminance as number | undefined;
   if (luminance && material.map) {
     let gain = gains.get(material);
@@ -57,7 +51,6 @@ export function applyRebuiltUnderbustDye(source: MeshStandardMaterial, material:
     }
     // The stored atlas is the original dark fabric. Normalize only when dyed
     // so light swatches keep the stitching without inheriting that base color.
-    gain.value = color ? 1 / luminance : 0;
+    gain.value = dyed ? 1 / luminance : 0;
   }
-  return true;
 }

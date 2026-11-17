@@ -1595,6 +1595,67 @@ test('Ruffled Corset keeps cup and rear waist clearance within both detail budge
   } finally { await vite.close(); }
 });
 
+test('Ruffled Corset and High Collar apply independent dyes on Garage and Mobile materials', async t => {
+  const specs = [
+    { set: 'gothic-03', asset: 'gothic-03', dyes: { color: '#123456', panel: '#654321', laces: '#abcdef' },
+      groups: { MAT_CORSET_03_Brocade: 'color', MAT_CORSET_03_Ruffles: 'panel', MAT_CORSET_03_Ribbon: 'laces' } },
+    { set: 'gothic-05', asset: 'gothic-high-collar', dyes: { color: '#123456', panel: '#654321', laces: '#abcdef', lining: '#321abc', hardware: '#fe7412' },
+      groups: { Corset05_Main: 'color', Corset05_Inset: 'panel', Corset05_Laces: 'laces', Corset05_Trim: 'lining', Corset05_Metal: 'hardware' } },
+  ];
+  const tiers = ['garage', 'mobile'];
+  const basePath = villagerDir + 'villager-female.portrait.glb';
+  const donorPath = bundledDir + 'gothic-02.mobile.glb';
+  const bundleFor = (set, tier) => `${bundledDir}${set}.${tier}.glb`;
+  const assetFor = (asset, tier) => `${garmentDir}corsets/${asset}.${tier}.glb`;
+  const tracked = [basePath, donorPath, ...specs.flatMap(({ set, asset }) => tiers.flatMap(tier => [
+    bundleFor(set, tier), ...(set === asset ? [] : [assetFor(asset, tier)]),
+  ]))];
+  const inputs = await Promise.all(tracked.map(path => readFile(new URL(path, publicDir))));
+  if (inputs.some(isLfsPointer)) return skipMissingAsset(t, 'Pull the fitting-room and authored corset Git LFS models.');
+  await promisify(execFile)(process.execPath, [fileURLToPath(new URL('../scripts/build-wardrobe-pieces.mjs', import.meta.url))]);
+  const scenes = new Map(await Promise.all(tracked.map(async (path, i) => [path, await loadGeometry(inputs[i])])));
+  const body = scenes.get(donorPath).getObjectByName('BODY_WARDROBE');
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  try {
+    const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
+    const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { withClothingColors } = await vite.ssrLoadModule('/src/game/characters/clothingPieces.ts');
+    for (const { set, asset, dyes, groups } of specs) for (const tier of tiers) {
+      const assetPath = assetFor(asset, tier);
+      const source = scenes.get(assetPath) ?? await readFile(new URL(assetPath, publicDir)).then(loadGeometry);
+      for (const field of ['wardrobeTrial', 'wardrobe']) {
+        const bundled = field === 'wardrobe';
+        const base = scenes.get(bundled ? bundleFor(set, tier) : basePath);
+        const model = prepareVillager(base, { fitted: true,
+          ...(!(bundled && set === asset) && { garmentBody: body, corsetSource: { set, scene: source } }) });
+        try {
+          for (const waist of ['over', 'tucked']) {
+            const selection = { ...DEFAULT_CHARACTER, [field]: { set, waist, shirt: 'none' } };
+            const garment = (model.detachedCorset?.group ?? model.root).getObjectByName(`CLOTH_CORSET_${waist.toUpperCase()}`);
+            const slots = new Map();
+            garment.traverse(mesh => { if (mesh.isSkinnedMesh) slots.set(mesh.material.name, mesh.material); });
+            assert.deepEqual([...slots.keys()].sort(), Object.keys(groups).sort());
+            applyVillagerLook(model, characterLook(selection));
+            assert(garment.visible, `${set} ${tier} ${waist} ${field}`);
+            const originals = [...slots.values()].map(material => material.color.getHexString());
+            applyVillagerLook(model, characterLook(withClothingColors(selection, 'corset', dyes)));
+            for (const [name, key] of Object.entries(groups)) {
+              assert.equal(slots.get(name).color.getHexString(), dyes[key].slice(1), `${set} ${tier} ${waist} ${field} ${name}`);
+            }
+            if (set === 'gothic-03') {
+              applyVillagerLook(model, characterLook(withClothingColors(selection, 'corset', { accent: '#fedcba' })));
+              assert.equal(slots.get('MAT_CORSET_03_Ruffles').color.getHexString(), 'fedcba');
+              assert.equal(slots.get('MAT_CORSET_03_Ribbon').color.getHexString(), 'fedcba');
+            }
+            applyVillagerLook(model, characterLook(selection));
+            assert.deepEqual([...slots.values()].map(material => material.color.getHexString()), originals);
+          }
+        } finally { model.dispose(); }
+      }
+    }
+  } finally { await vite.close(); }
+});
+
 test('Laced Bodice straps clear the rear shoulders and Tucked lacing shows skin', async t => {
   const set = 'gothic-01';
   const item = catalog.find(garment => garment.id === 'skirt-02');

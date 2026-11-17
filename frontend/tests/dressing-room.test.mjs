@@ -18,7 +18,10 @@ test('corset palettes save independent colors and the Laced Bodice finish', asyn
   try {
     const { createRoot } = await import('react-dom/client');
     vite = await createServer({ define: {
-      __STANDALONE_CORSET_LODS__: JSON.stringify({ 'gothic-laced-bodice': { garage: true, mobile: true } }),
+      __STANDALONE_CORSET_LODS__: JSON.stringify({
+        'gothic-laced-bodice': { garage: true, mobile: true }, 'gothic-high-collar': { garage: true, mobile: true },
+      }),
+      __BUNDLED_WARDROBE_LODS__: JSON.stringify({ 'gothic-03': { garage: true, mobile: true } }),
     }, server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
     const { ClothingColorToolbar } = await vite.ssrLoadModule('/src/game/characters/ClothingColorToolbar.tsx');
     const { DEFAULT_CHARACTER } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
@@ -58,7 +61,7 @@ test('corset palettes save independent colors and the Laced Bodice finish', asyn
     await act(async () => root.render(h(Palette, { key: 'tucked', set: 'gothic-01', waist: 'tucked' })));
     assert.equal(finish().length, 4);
     assert(!document.querySelector('[aria-label="Zipper color"]'), 'Tucked hides its covered zipper');
-    const { applySweetheartDye } = await vite.ssrLoadModule('/src/game/characters/sweetheartDye.ts');
+    const { applyCorsetDye } = await vite.ssrLoadModule('/src/game/characters/corsetDye.ts');
     await act(async () => root.render(h(Palette, { key: 'sweetheart-over', name: 'Sweetheart', set: 'gothic-02', waist: 'over' })));
     assert.equal(finish().length, 0, 'the Sweetheart has no Laced Bodice finish controls');
     await pick('[aria-label="Open clothing colors"]');
@@ -74,10 +77,10 @@ test('corset palettes save independent colors and the Laced Bodice finish', asyn
       const source = new MeshStandardMaterial({ color: '#706c73' });
       source.userData = { authoredSweetheartDye: true, color_slot: slot };
       const material = source.clone();
-      assert.equal(applySweetheartDye(source, material, { ...dye, accent: '#ccbbaa' }, undefined, undefined), true);
+      assert.equal(applyCorsetDye(source, material, { ...dye, accent: '#ccbbaa' }, undefined, undefined), true);
       assert.equal(material.color.getHexString(), hex.slice(1));
       if (slot !== 'fabric') {
-        applySweetheartDye(source, material, { accent: '#ccbbaa' }, undefined, undefined);
+        applyCorsetDye(source, material, { accent: '#ccbbaa' }, undefined, undefined);
         assert.equal(material.color.getHexString(), 'ccbbaa', 'saved accents retain their previous tint');
       }
       source.dispose();
@@ -88,6 +91,25 @@ test('corset palettes save independent colors and the Laced Bodice finish', asyn
     assert(!document.querySelector('[aria-label="Hip laces color"]'), 'the tucked fit hides the hip laces');
     await pick('[aria-label="Front fasteners color: Forest"]');
     assert.deepEqual(readLocalOutfits().Sweetheart.appearance.item_colors['gothic-02:corset'], { closure: '#5f8962' });
+
+    for (const { name, set, waist, groups, values } of [
+      { name: 'Ruffled', set: 'gothic-03', waist: 'over',
+        groups: [['Fabric', 'Crimson'], ['Ruffles', 'Forest'], ['Ribbon', 'Navy']],
+        values: { color: '#ad444d', panel: '#5f8962', laces: '#4b79a4' } },
+      { name: 'High Collar', set: 'gothic-05', waist: 'tucked',
+        groups: [['Main', 'Crimson'], ['Inset', 'Forest'], ['Laces', 'Navy'], ['Trim', 'Ink'], ['Metal', 'White']],
+        values: { color: '#ad444d', panel: '#5f8962', laces: '#4b79a4', lining: '#262630', hardware: '#ffffff' } },
+    ]) {
+      await act(async () => root.render(h(Palette, { key: set, name, set, waist, saved: true })));
+      await pick('[aria-label="Open clothing colors"]');
+      for (const [group, color] of groups) await pick(`[aria-label="${group} color: ${color}"]`);
+      assert.deepEqual(readLocalOutfits()[name].appearance.item_colors[`${set}:corset`], values);
+      for (const [group, color] of groups) {
+        assert.equal(document.querySelector(`[aria-label="${group} color: ${color}"]`).getAttribute('aria-pressed'), 'true');
+      }
+      await pick('[aria-label="Reset piece colors"]');
+      assert.equal(readLocalOutfits()[name].appearance.item_colors, undefined);
+    }
   } finally {
     if (root) await act(async () => root.unmount());
     await vite?.close();

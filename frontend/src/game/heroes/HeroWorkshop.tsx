@@ -1,5 +1,6 @@
 import {useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState,type CSSProperties,type ReactNode} from "react";
 import {VehicleMods} from "./VehicleMods";
+import {ColorSwatchButton} from "../../components/menus/ColorSwatch";
 import {MenuIcon} from "../../components/menus/MenuIcon";
 import {SceneTabHeader} from "../../components/menus/SceneTabHeader";
 import {HEROES,useAlphaStore,type HeroFilter} from "../../store/alpha/alphaStore";
@@ -328,9 +329,9 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
      <section className="vehicle-studio-card">
       <header><small>EXTERIOR COLOR</small><h3>{marine?"Hull paint":"Body paint"}</h3></header>
       <div className="vehicle-studio-swatches" aria-label="Paint presets">
-       {paintPresets.map(preset=><button key={preset.label} type="button" className="vehicle-studio-swatch"
-        style={{"--paint-swatch":preset.color==="factory"?"#aeb7c0":preset.color} as CSSProperties}
-        aria-label={`Paint: ${preset.label}`} title={preset.label} aria-pressed={appearance.body===preset.color}
+       {paintPresets.map(preset=><ColorSwatchButton key={preset.label} className="vehicle-studio-swatch"
+        color={preset.color==="factory"?"#aeb7c0":preset.color}
+        label={`Paint: ${preset.label}`} title={preset.label} pressed={appearance.body===preset.color}
         disabled={!owner} onClick={()=>edit({body:preset.color})}/>)}
       </div>
       <label>Custom paint<input type="color" aria-label="Custom hero body color" disabled={!owner}
