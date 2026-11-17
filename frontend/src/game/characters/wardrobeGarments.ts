@@ -1,8 +1,9 @@
 import type { CharacterChoice } from "./characterCatalog";
 import type { ClothingPiece } from "./clothingPieces";
 import type { Object3D, SkinnedMesh } from "three";
-import villageItems from "../../../../avenlab-server/src/assets/character-village-pieces.json";
-import importedItems from "../../../../avenlab-server/src/assets/character-garments.json";
+import villageItems from "../../../../packages/wardrobe-catalog/character-village-pieces.json";
+import importedItems from "../../../../packages/wardrobe-catalog/character-garments.json";
+import discoveredManifest from "../../../../packages/wardrobe-catalog/discovered-wardrobe-garments.json";
 
 export const wardrobeGarmentReplacements = {
   top: ["corset", "shirt", "sleeves", "bow"],
@@ -60,7 +61,7 @@ export type WardrobeGarment = {
   outfit?: { description: string; barefoot?: boolean };
 };
 
-const discoveredItems: WardrobeGarment[] = typeof __DISCOVERED_WARDROBE_GARMENTS__ === "undefined" ? [] : __DISCOVERED_WARDROBE_GARMENTS__;
+const discoveredItems = discoveredManifest as WardrobeGarment[];
 const discoveredIds = new Set(discoveredItems.map(item => item.id));
 export const importedWardrobeItems = [...(importedItems as WardrobeGarment[]).filter(item => !item.retired), ...discoveredItems];
 
@@ -78,10 +79,10 @@ export function wardrobeReplacedPieces(item: WardrobeGarment): readonly Clothing
 
 export function wardrobeGarmentModelUrl(item: WardrobeGarment, kind: "garage" | "portrait", { useRevision = true } = {}) {
   if (item.villageNode) return (kind === "portrait" ? __VILLAGER_PORTRAIT_URL__ : __VILLAGER_MODEL_URL__) ?? undefined;
-  if (discoveredIds.has(item.id)) return kind === "portrait" ? item.mobileUrl ?? item.url : item.url;
-  if (!__DRESSING_ROOM_IMPORTED_IDS__.includes(item.id)) return undefined;
+  const mobile = item.mobileUrl && __DRESSING_ROOM_MOBILE_IDS__.includes(item.id) ? item.mobileUrl : undefined;
+  if (!__DRESSING_ROOM_IMPORTED_IDS__.includes(item.id)) return discoveredIds.has(item.id) ? mobile : undefined;
   if (useRevision && item.revisionUrl && __DRESSING_ROOM_REVISION_IDS__.includes(item.id)) return item.revisionUrl;
-  if (kind === "portrait" && item.mobileUrl && __DRESSING_ROOM_MOBILE_IDS__.includes(item.id)) return item.mobileUrl;
+  if (kind === "portrait" && mobile) return mobile;
   return item.url;
 }
 

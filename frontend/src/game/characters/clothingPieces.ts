@@ -1,5 +1,5 @@
 import { Box3, Mesh, type Object3D } from "three";
-import catalog from "../../../../avenlab-server/src/assets/character-clothing-pieces.json";
+import catalog from "../../../../packages/wardrobe-catalog/character-clothing-pieces.json";
 import { characterAppearance, characterLook, VILLAGER_ID, type CharacterChoice, type CharacterLook } from "./characterCatalog";
 import type { LacedBodiceFinish } from "./lacedBodiceAppearance";
 import { resolveWardrobe, UNDERBUST_WARDROBE_SET } from "./wardrobe";

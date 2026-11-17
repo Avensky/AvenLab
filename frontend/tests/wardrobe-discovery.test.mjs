@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { copyFile, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
+import { promisify } from "node:util";
 
 import { discoverWardrobeGarments } from "../scripts/discover-wardrobe-garments.mts";
 
@@ -74,4 +76,36 @@ test("wardrobe discovery merges valid tiers and skips LFS placeholders, misplace
   assert.equal(mobileOnly.url, "/models/characters/female/wardrobe/tops/travel-top.mobile.glb");
   assert.equal(skirt.id, "auto-gothic-skirts-jacquard-skirt");
   assert.equal(skirt.slot, "skirt");
+});
+
+test("wardrobe manifest refresh is deterministic and a sparse check preserves the committed IDs", async t => {
+  const checkout = await mkdtemp(join(tmpdir(), "avenlab-catalog-"));
+  t.after(() => rm(checkout, { recursive: true, force: true }));
+  const frontend = join(checkout, "frontend");
+  const scripts = join(frontend, "scripts");
+  const fixtures = join(frontend, "tests", "fixtures");
+  const tops = join(frontend, "public", "models", "characters", "female", "wardrobe", "tops");
+  const catalog = join(checkout, "packages", "wardrobe-catalog");
+  await Promise.all([scripts, fixtures, tops, catalog].map(directory => mkdir(directory, { recursive: true })));
+  const manifest = join(catalog, "discovered-wardrobe-garments.json");
+  const scanner = join(scripts, "discover-wardrobe-garments.mts");
+  const model = join(tops, "demo-top.glb");
+  await Promise.all([
+    copyFile(new URL("../scripts/discover-wardrobe-garments.mts", import.meta.url), scanner),
+    writeFile(join(fixtures, "villager-female-rig.json"), JSON.stringify(rig)),
+    writeFile(join(catalog, "character-garments.json"), "[]\n"),
+    writeFile(manifest, "[]\n"),
+    writeFile(model, testGlb()),
+  ]);
+  const run = flag => promisify(execFile)(process.execPath, [scanner, flag]);
+  await assert.rejects(run("--check"), { code: 1 });
+  await run("--write");
+  const generated = await readFile(manifest, "utf8");
+  assert.deepEqual(JSON.parse(generated).map(item => item.id), ["auto-tops-demo-top"]);
+  await run("--check");
+  await run("--write");
+  assert.equal(await readFile(manifest, "utf8"), generated);
+  await writeFile(model, "version https://git-lfs.github.com/spec/v1\n");
+  await assert.rejects(run("--check"), { code: 1 });
+  assert.equal(await readFile(manifest, "utf8"), generated);
 });

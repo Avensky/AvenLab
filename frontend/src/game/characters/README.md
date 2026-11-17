@@ -8,10 +8,13 @@ saved outfit and appearance. Identity saves Male, Female, or Nonbinary
 independently of the equipped model. The server saves edits automatically,
 and the editor keeps pending changes through a reconnect to the same profile.
 
-Vesper's desktop garage uses the full `villager-female.glb`. The compact
-garage and portrait share the same geometry with smaller textures. The
-selected car loads over a simple stage first. Once the car is on screen, the
-garage shell and driver can load. A circular reflective turntable accentuates the vehicle. The platform follows the display rotation, and Reduced Motion stops automatic rotation. If the character file is missing or unreadable,
+Vesper's garage normally uses `villager-female.portrait.glb`, which keeps the
+original geometry and rig with smaller textures. The desktop preview can fall
+back to `villager-female.glb`. Garment detail is selected independently of the
+base character. The selected car loads over a simple stage first. Once the car
+is on screen, the garage shell and driver can load. A circular reflective
+turntable accentuates the vehicle. The platform follows the display rotation,
+and Reduced Motion stops automatic rotation. If the character file is missing or unreadable,
 the portrait uses a neutral tile. Download the Git LFS object and restart Vite
 after restoring the file.
 
@@ -140,25 +143,27 @@ the full gesture library, retaining reviewed prop pairings and stowing the bag f
 camera presets support zoom from 80% to 125%. Heroes, Garage and the
 pre-match hero picker share vehicle zoom from 100% to 160%.
 
-Character choices and palettes shared by the game client and server are in
-`avenlab-server/src/assets/characters.json` and `character-appearance.json`.
-The garage renderer consumes those choices, while the profile endpoint
-validates and persists them.
-# Fitted wardrobe sets
+The [shared wardrobe catalog](../../../../packages/wardrobe-catalog/README.md)
+defines the character choices and palettes. The garage renderer consumes
+those choices, while the profile endpoint validates and persists them.
 
-The dressing room supports five Gothic skirt/corset sets on the existing Village
-Woman rig. `character-wardrobe.json` is shared with server validation. Saved
+## Fitted wardrobe sets
+
+The dressing room supports five Gothic corset designs on the existing Village
+Woman rig. The Underbust Vest remains available as a try-on after retirement of
+its complete outfit. `character-wardrobe.json` is shared with server validation. Saved
 choices contain `wardrobe: { set, shirt, waist }`. Older profiles with a saved
 shirt layer keep their set and waist fit and now load with `shirt: "none"`.
 Complete Gothic outfits hide the original black shorts and use the skirt with
 a lower-body coverage mask. Identity, bag, face, hair, and color choices stay
 on the same character.
 
-Each set has a `garage.glb` and `mobile.glb` in
-`public/models/characters/wardrobe/`. Both must be installed before the set can be equipped. Portraits and compact garage/victory views use the mobile model. A
-missing or retired saved set falls back to the original clothed character model.
-The Underbust Vest uses its original Thin Weld mesh as a separate corset with
-room for a fitted top.
+Each complete set has `.garage.glb` and `.mobile.glb` bundles under
+`frontend/public/models/characters/wardrobe/`. Both tiers make the complete
+outfit available. Full-size garage previews prefer the Garage garment tier.
+Compact previews and portraits prefer Mobile. A missing or retired saved set
+falls back to the clothed base character. The Underbust Vest has a separate
+Over fit with room for a fitted top, an Original Cut option, and a Tucked fit.
 
 Garment nodes carry `wardrobeRole` extras. Fitted variants provide tucked and
 long hems. The runtime uses the first two `_AVEN_COVERAGE` bits in older GLBs
@@ -166,23 +171,6 @@ for the tucked and over-skirt fits. Hidden body triangles are removed from a
 private index buffer when the selection changes. The source model stays shared
 and disposal restores source geometry. New imported clothes still need fitting,
 weights, and masks.
-
-Asset checks (run from `frontend`):
-
-```sh
-node scripts/build-wardrobe-lods.mjs /path/to/raw /path/to/output
-node scripts/check-wardrobe-assets.mjs /path/to/output
-node scripts/sample-wardrobe-emotes.mjs /path/to/raw/gothic-01.glb /path/to/poses.json
-node --test tests/wardrobe.test.mjs
-```
-
-Keep face/body coordinates unquantized: existing face shaders use bind-space
-positions. The asset checker loads compressed GLBs through Three.js and tests
-both waist fits, weights, role tags, and coverage flags. It compares corset
-vertices, normals, UVs, and weights with the authored shell. For the revised
-sets it also tests coverage in idle, clap, shoulder stretch, and wave poses.
-It strips textures for Node loading, so live material rendering still needs
-visual review.
 
 ## Dressing room
 
@@ -212,19 +200,22 @@ The × cards toggle individual layers and retain the selected piece so it can
 be restored. Saved looks also keep those layer settings.
 Headwear has separate controls for the Village bonnet and its chin bow.
 
-The dev and production builds extract separate garage and mobile corset GLBs
-from the installed Gothic assets. Each file contains the two corset fits and
-their rig. Corset 04's strap and shell fit is baked into both generated model
-tiers. If the separate files are missing, the fitting room reads the corset
-from an installed Gothic bundle. The fitting room binds the selected garments
-to Vesper's animated rig and uses a shared full-skin donor for areas that the
-original outfit cuts away. Run `node frontend/scripts/build-wardrobe-pieces.mjs` from the repo root
-to generate the files in `frontend/public/models/characters/female/wardrobe/`.
+The dev and production builds extract separate Garage and Mobile corset GLBs
+from the installed Gothic bundles. The extracted files contain the two fits
+and their rig. Corset 04's strap and shell fit is baked into its generated
+tiers. Authored Laced Bodice, High Collar, and Underbust variants have their own
+standalone GLBs. The loader can fall back to a compatible alternate tier,
+legacy standalone file, or installed bundle, depending on the set. It keeps
+the last complete outfit visible while a new selection loads. The fitting
+room binds each garment to the live Vesper rig and uses the shared full-skin
+donor for areas the original outfit cuts away. From the repository root, run
+`node frontend/scripts/build-wardrobe-pieces.mjs` to regenerate the extracted
+pieces and donor.
 
-`avenlab-server/src/assets/character-garments.json` inventories 41 separate female garments under
-`frontend/public/models/characters/female/wardrobe/`. It includes 14 bows,
-nine skirts, five tops, five harnesses, four pairs of socks, two hats, a coat,
-and a dress. Coat 01 and Dress 01 are archived, leaving 39 active imports.
+The [shared garment catalog](../../../../packages/wardrobe-catalog/character-garments.json)
+inventories the separate female garments under
+`frontend/public/models/characters/female/wardrobe/`. The catalog keeps IDs
+for archived imports such as Coat 01 and Dress 01.
 Layers groups the pieces by where they sit in an outfit, from underwear to
 overwear. Each entry groups its available model detail levels. Browse the
 catalog to see the pieces, then try them on Vesper and check combinations with
@@ -244,9 +235,100 @@ waistband fit.
 Equipping a complete outfit uses the existing autosave. Keyboard and controller
 navigation work in the catalog and outfit details.
 
+## Garment authoring and validation
+
+Keep the source garment, textures, and unmodified Vesper body available when
+editing a fit. A thin welded export worked for the Underbust Vest. Use the
+source that preserves the garment's seam and material boundaries, then check
+the export against the 88-joint Vesper rig. Preserve joint order, bind
+transforms, inverse bind matrices, and normalized skin weights. Keep face and
+body positions unquantized because the face shaders use bind-space positions.
+
+- **Fit the cloth before changing skin coverage.** Bring the shell toward the
+  body and check cups, armholes, necklines, and rear panels from several
+  angles. Adjust crowded cup panels locally to preserve the silhouette and
+  seam placement. Use the full-body donor and a per-fit index mask for covered
+  skin. Keep visible triangles along strap roots, underarms, keyholes, and
+  laced openings. Whole triangles can cross a garment edge and expose a hole
+  if they are cut by a single sample. The runtime builds private masks when
+  the fit changes and reuses them while the garment animates.
+- **Fit front and rear straps through motion.** Start the front straps close
+  to the chest and seat the rear straps near the shoulders. Favor torso and
+  shoulder influence at the roots and reduce upper-arm and twist influence
+  along the narrow edges. Compare both sides at rest and through arm reaches.
+  Check the top and rear crest as well as the visible front seam. Keep an
+  authored keyhole open, including the skin visible through it.
+- **Check the waist with the skirt actually worn.** Compare Over and Tucked
+  with the stock Village skirt and belt, the same pieces explicitly
+  equipped, and the target Gothic skirt. The rear belt and skirt rim are
+  separate surfaces. A fit can clear one and intersect the other during a
+  weight shift. Check the rear in idle and intermediate frames as well as
+  the front. Inspect visible skin and cloth at the waist after changing dyes.
+- **Preserve details through re-export.** Keep authored UVs, base texture
+  detail, normal maps, and material slots for fabric, trim, laces, eyelets, and fasteners.
+  Sweetheart has independent front and hip laces. Laced Bodice has a separate
+  finish control. Check a light and a dark dye, metal highlights, and close-up
+  seam quality. Roughness and metalness affect how two materials with the same
+  dye read under garage lighting. Decimation belongs on broad fabric regions
+  where it preserves the fit boundary. Batch meshes with matching materials and skin behavior to
+  reduce draws, while keeping separately dyed pieces independently selectable.
+  Compare GLB bytes and triangle counts for each tier, and compare visible draw
+  calls in the same pose.
+  Compression can rotate a triangle's starting index while preserving its
+  vertices and winding.
+
+### Run the checks
+
+From the repository root, with the frontend dependencies installed, run the
+fast catalog and selection checks. They also work on a checkout with Git LFS
+pointers.
+
 ```sh
-node --test tests/dressing-room.test.mjs tests/character-page.test.mjs tests/wardrobe.test.mjs
+npm --prefix frontend run audit:wardrobe
 ```
+
+For the real-asset audit, install Git LFS and pull the tracked files named by
+the audit. This Git Bash command limits the pull to the audit inputs.
+
+```bash
+audit_assets=$(npm --prefix frontend run --silent audit:wardrobe -- --list-lfs) &&
+test -n "$audit_assets" &&
+git lfs pull --include="$audit_assets" --exclude="" &&
+npm --prefix frontend run audit:wardrobe -- --full
+```
+
+The full audit checks Garage and Mobile files, GLB structure and textures,
+rig and fit data, and runtime coverage in sampled poses. The geometry probes
+include idle, shoulder stretch, arm reaches, and waist weight shifts for the
+garments that need them. Missing required LFS objects fail the full audit.
+Review the finished materials and transitions in the game as well. The Node
+geometry checks use the Three.js loader with textures stripped, and the audit
+decodes texture files independently of browser rendering.
+
+The [Wardrobe audit workflow](../../../../.github/workflows/wardrobe-audit.yml)
+runs fixture checks on relevant pull requests. In GitHub Actions, select
+**Wardrobe audit → Run workflow** to run the real-asset checks with the
+required Git LFS files installed.
+
+The bundle-specific commands remain available from `frontend` for imported
+source packages and animation sampling.
+
+```sh
+node scripts/build-wardrobe-lods.mjs /path/to/raw /path/to/output
+node scripts/check-wardrobe-assets.mjs /path/to/output
+node scripts/sample-wardrobe-emotes.mjs /path/to/raw/gothic-01.glb /path/to/poses.json
+```
+
+### Current fit review
+
+| Garment | Confirmed | Open review |
+| --- | --- | --- |
+| Laced Bodice, Ruffled, Underbust | The targeted waist, shoulder, or hardware checks passed for the configurations exercised by each garment's test. | Check new skirt and top combinations as they are authored. |
+| Sweetheart | The authored refit preserves chest and underarm skin. The animated skin mask passed both fits, both tiers, and both skirt routes in three sampled poses. | Review the revised cup and underarm silhouette and the Tucked waistband in motion. The old coverage samples predate the revised opening and authored skirt rim. |
+| High Collar | Both tiers load, bind to Vesper, and switch between Over and Tucked. | The full audit reports uncovered masked skin at rest and during motion with the Village skirt and the matched Gothic outfit. Review the straps, rear collar, and front keyhole on the live model. |
+
+The full audit currently exits with status 1 on High Collar coverage. Use the
+reported tier, waist, outfit, and pose to reproduce each finding.
 
 ## Garage presentation fixes
 

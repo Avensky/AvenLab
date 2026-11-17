@@ -74,7 +74,7 @@ struct WardrobeSet {
 }
 
 static WARDROBE: LazyLock<Vec<WardrobeSet>> = LazyLock::new(|| {
-    serde_json::from_str(include_str!("../assets/character-wardrobe.json"))
+    serde_json::from_str(include_str!("../../../packages/wardrobe-catalog/character-wardrobe.json"))
         .expect("the built-in wardrobe catalog is valid")
 });
 
@@ -88,12 +88,12 @@ struct Garment {
 }
 
 static GARMENTS: LazyLock<Vec<Garment>> = LazyLock::new(|| {
-    let mut garments: Vec<Garment> = serde_json::from_str(include_str!("../assets/character-garments.json"))
+    let mut garments: Vec<Garment> = serde_json::from_str(include_str!("../../../packages/wardrobe-catalog/character-garments.json"))
         .expect("the built-in garment catalog is valid");
-    let village: Vec<Garment> = serde_json::from_str(include_str!("../assets/character-village-pieces.json"))
+    let village: Vec<Garment> = serde_json::from_str(include_str!("../../../packages/wardrobe-catalog/character-village-pieces.json"))
         .expect("the Village garment catalog is valid");
     garments.extend(village);
-    let discovered: Vec<Garment> = serde_json::from_str(include_str!(concat!(env!("OUT_DIR"), "/discovered-wardrobe-garments.json")))
+    let discovered: Vec<Garment> = serde_json::from_str(include_str!("../../../packages/wardrobe-catalog/discovered-wardrobe-garments.json"))
         .expect("the generated garment catalog is valid");
     garments.extend(discovered);
     garments
@@ -168,7 +168,7 @@ enum FabricFinish {
 #[derive(Deserialize)]
 struct ClothingPiece { id: String }
 static CLOTHING_PIECES: LazyLock<Vec<ClothingPiece>> = LazyLock::new(|| {
-    serde_json::from_str(include_str!("../assets/character-clothing-pieces.json")).expect("valid clothing pieces")
+    serde_json::from_str(include_str!("../../../packages/wardrobe-catalog/character-clothing-pieces.json")).expect("valid clothing pieces")
 });
 
 #[derive(Deserialize)]
@@ -184,12 +184,12 @@ struct Outfit {
 
 static APPEARANCES: LazyLock<std::collections::HashMap<String, Vec<Outfit>>> =
     LazyLock::new(|| {
-        serde_json::from_str(include_str!("../assets/character-appearance.json"))
+        serde_json::from_str(include_str!("../../../packages/wardrobe-catalog/character-appearance.json"))
             .expect("the built-in character appearance catalog is valid")
     });
 
 static CAST: LazyLock<Vec<Character>> = LazyLock::new(|| {
-    serde_json::from_str(include_str!("../assets/characters.json"))
+    serde_json::from_str(include_str!("../../../packages/wardrobe-catalog/characters.json"))
         .expect("the built-in character catalog is valid")
 });
 

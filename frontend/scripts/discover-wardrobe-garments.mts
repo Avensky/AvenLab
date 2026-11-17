@@ -1,11 +1,13 @@
-import { closeSync, fstatSync, lstatSync, openSync, readFileSync, readdirSync, readSync, realpathSync } from "node:fs";
+import { closeSync, fstatSync, lstatSync, openSync, readFileSync, readdirSync, readSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const directory = "models/characters/female/wardrobe/";
 export const wardrobePublicRoot = new URL("../public/", import.meta.url);
 export const wardrobeDirectory = new URL(directory, wardrobePublicRoot);
-export const wardrobeCatalogFile = new URL("../../avenlab-server/src/assets/character-garments.json", import.meta.url);
+const catalogDirectory = new URL("../../packages/wardrobe-catalog/", import.meta.url);
+export const wardrobeCatalogFile = new URL("character-garments.json", catalogDirectory);
+export const discoveredWardrobeCatalogFile = new URL("discovered-wardrobe-garments.json", catalogDirectory);
 const femaleRig = new URL("../tests/fixtures/villager-female-rig.json", import.meta.url);
 type CuratedGarment = { id: string; url: string; mobileUrl?: string; revisionUrl?: string };
 type GarmentSlot = "top" | "skirt" | "dress" | "coat" | "hat" | "socks" | "bow" | "harness" | "bracer";
@@ -174,9 +176,33 @@ export function discoverWardrobeGarments(publicRoot = wardrobePublicRoot,
 
 export function isWardrobeCatalogInput(file: string) {
   const path = pathToFileURL(file).href;
-  return path === wardrobeCatalogFile.href || (path.startsWith(wardrobeDirectory.href) && path.endsWith(".glb"));
+  return path === wardrobeCatalogFile.href || path === discoveredWardrobeCatalogFile.href
+    || (path.startsWith(wardrobeDirectory.href) && path.endsWith(".glb"));
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
-  process.stdout.write(JSON.stringify(discoverWardrobeGarments()));
+  const [mode, ...args] = process.argv.slice(2);
+  if (args.length || (mode !== undefined && mode !== "--write" && mode !== "--check")) {
+    throw Error("Usage: node frontend/scripts/discover-wardrobe-garments.mts [--write|--check]");
+  }
+  const items = discoverWardrobeGarments();
+  if (mode === undefined) process.stdout.write(JSON.stringify(items));
+  else {
+    const contents = JSON.stringify(items, null, 2) + "\n";
+    const previous = readFileSync(discoveredWardrobeCatalogFile, "utf8").replaceAll("\r\n", "\n");
+    if (previous !== contents) {
+      if (mode === "--check") {
+        console.error("Wardrobe discovery differs from the committed manifest. Review your installed GLBs and run npm run wardrobe:catalog.");
+        process.exitCode = 1;
+      } else {
+        const temporary = `${fileURLToPath(discoveredWardrobeCatalogFile)}.${process.pid}.tmp`;
+        try {
+          writeFileSync(temporary, contents);
+          renameSync(temporary, discoveredWardrobeCatalogFile);
+        } finally {
+          rmSync(temporary, { force: true });
+        }
+      }
+    }
+  }
 }

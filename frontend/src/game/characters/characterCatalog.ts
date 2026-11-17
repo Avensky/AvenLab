@@ -1,7 +1,7 @@
 import type { PieceColors } from "./clothingPieces";
 import type { AnimationFit, CharacterPersonality } from "./characterPersonality";
-import catalog from "../../../../avenlab-server/src/assets/characters.json";
-import appearanceOptions from "../../../../avenlab-server/src/assets/character-appearance.json";
+import catalog from "../../../../packages/wardrobe-catalog/characters.json";
+import appearanceOptions from "../../../../packages/wardrobe-catalog/character-appearance.json";
 import { resolveWardrobe, wardrobeOverEase, type WardrobeChoice } from "./wardrobe";
 import type { OverSkirtEase } from "./overSkirtEase";
 import { getWardrobeGarment, removedWardrobeLayers, visibleWardrobeGarments, wardrobeGarmentModelUrl, type WardrobeGarmentChoice, type WardrobeRemoval } from "./wardrobeGarments";

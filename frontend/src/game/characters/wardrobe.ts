@@ -1,5 +1,5 @@
 import { Mesh, type BufferGeometry, type Object3D } from "three";
-import catalog from "../../../../avenlab-server/src/assets/character-wardrobe.json";
+import catalog from "../../../../packages/wardrobe-catalog/character-wardrobe.json";
 import { prepareLacedBodyMask } from "./lacedStrapFit";
 import { prepareOverSkirtEase, type OverSkirtEase } from "./overSkirtEase";
 import { hasAuthoredSweetheartFit } from "./sweetheartCorset";

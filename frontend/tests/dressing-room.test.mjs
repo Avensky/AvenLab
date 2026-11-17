@@ -122,7 +122,7 @@ test('the fitting camera orbits a close-up without changing its target or crossi
 });
 
 test('dressing room keeps fitted presets and lets imported garments be tried on independently', async () => {
-  const inventory = JSON.parse(await readFile(new URL('../../avenlab-server/src/assets/character-garments.json', import.meta.url), 'utf8'));
+  const inventory = JSON.parse(await readFile(new URL('../../packages/wardrobe-catalog/character-garments.json', import.meta.url), 'utf8'));
   const imports = inventory.filter(item => !item.retired && !item.outfit);
   const missingImport = 'bowtie-13';
   const missingOutfit = 'medieval-08';

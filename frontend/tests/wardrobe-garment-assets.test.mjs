@@ -10,17 +10,17 @@ import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
 import { AnimationMixer, Box3, BufferGeometry, DoubleSide, Float32BufferAttribute, Matrix4, Ray, Texture, Vector3 } from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshBVH } from 'three-mesh-bvh';
 import { createServer } from 'vite';
 import { hasCompatibleWardrobeRevision } from '../scripts/character-model-paths.mts';
+import { loadWardrobeGeometry as loadGeometry } from '../scripts/load-wardrobe-geometry.mjs';
 
 const publicDir = new URL('../public/', import.meta.url);
 const villagerDir = 'models/characters/villagers/villager-female/';
 const garmentDir = 'models/characters/female/wardrobe/';
 const bundledDir = 'models/characters/wardrobe/';
-const catalog = JSON.parse(await readFile(new URL('../../avenlab-server/src/assets/character-garments.json', import.meta.url), 'utf8'));
-const wardrobeSets = JSON.parse(await readFile(new URL('../../avenlab-server/src/assets/character-wardrobe.json', import.meta.url), 'utf8'));
+const catalog = JSON.parse(await readFile(new URL('../../packages/wardrobe-catalog/character-garments.json', import.meta.url), 'utf8'));
+const wardrobeSets = JSON.parse(await readFile(new URL('../../packages/wardrobe-catalog/character-wardrobe.json', import.meta.url), 'utf8'));
 const garmentFiles = catalog.flatMap(item => [item.url, item.mobileUrl].filter(Boolean).map(url => url.slice(1)));
 const hoodIds = Array.from({ length: 7 }, (_, index) => `hood-0${index + 1}`);
 const hoodFiles = new Set(catalog.filter(item => hoodIds.includes(item.id))
@@ -33,6 +33,10 @@ const supersededHoodFiles = new Set([
 ]);
 const rigTolerance = 2e-5;
 const isLfsPointer = bytes => bytes.subarray(0, 64).toString().startsWith('version https://git-lfs.github.com/spec/v1');
+function skipMissingAsset(t, message) {
+  if (process.env.AVENLAB_WARDROBE_REQUIRE_ASSETS === '1') assert.fail(message);
+  return t.skip(message);
+}
 
 test('each loose female garment and its available model tiers are in the wardrobe catalog', async () => {
   const families = { top: 5, armor: 5, bracer: 1, skirt: 4, 'gothic-skirt': 5, coat: 1, dress: 1, medieval: 8, hat: 2, socks: 4, bowtie: 14, harness: 5, 'medieval-kaftan': 5 };
@@ -203,7 +207,7 @@ test('the authored Sweetheart keeps chest and underarm skin in both waist fits',
   const paths = [villagerDir + 'villager-female.garage.glb',
     bundledDir + 'gothic-02.garage.glb', bundledDir + 'gothic-02.mobile.glb'];
   const bytes = await Promise.all(paths.map(path => readFile(new URL(path, publicDir))));
-  if (bytes.some(isLfsPointer)) return t.skip('Run git lfs pull to materialize the Sweetheart and Villager models.');
+  if (bytes.some(isLfsPointer)) return skipMissingAsset(t, 'Run git lfs pull to materialize the Sweetheart and Villager models.');
   const [village, ...bundles] = await Promise.all(bytes.map(loadGeometry));
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
   try {
@@ -590,7 +594,7 @@ test('standalone wardrobe exports keep the corset rig and discard unrelated laye
 
   for (const { source, output, roles } of jobs) await t.test(output, async t => {
     const sourceBytes = await readFile(new URL(bundledDir + source, publicDir));
-    if (isLfsPointer(sourceBytes)) return t.skip('Run git lfs pull to materialize this Gothic wardrobe model.');
+    if (isLfsPointer(sourceBytes)) return skipMissingAsset(t, 'Run git lfs pull to materialize this Gothic wardrobe model.');
     const pieceUrl = new URL(garmentDir + output, publicDir);
     const pieceBytes = await readFile(pieceUrl);
     assert(pieceBytes.length < sourceBytes.length, 'standalone pieces should be smaller than their bundles');
@@ -645,6 +649,16 @@ test('standalone wardrobe exports keep the corset rig and discard unrelated laye
           const weights = primitive.getAttribute('WEIGHTS_0').getArray();
           for (let i = 0; i < weights.length; i += 4) {
             assert(Math.abs(weights[i] + weights[i + 1] + weights[i + 2] + weights[i + 3] - 1) < 1e-4);
+          }
+        } else if (source.startsWith('gothic-03.')) {
+          // Meshopt may rotate a triangle's first index while keeping winding and face order.
+          const actual = primitive.getIndices().getArray(), expected = sourcePrimitive.getIndices().getArray();
+          assert.equal(actual.length, expected.length);
+          for (let offset = 0; offset < expected.length; offset += 3) {
+            const [a, b, c] = actual.subarray(offset, offset + 3);
+            const [x, y, z] = expected.subarray(offset, offset + 3);
+            assert((a === x && b === y && c === z) || (a === y && b === z && c === x) || (a === z && b === x && c === y),
+              `Ruffled preserves the winding and position of triangle ${offset / 3}`);
           }
         } else assert.deepEqual(primitive.getIndices().getArray(), sourcePrimitive.getIndices().getArray());
         assert.deepEqual(primitive.listSemantics().toSorted(), sourcePrimitive.listSemantics().toSorted());
@@ -736,37 +750,6 @@ test('materialized loose garments can share the live female skeleton and skin we
     });
   }
 });
-
-// Let the game loader exercise the authored skinning data without decoding images in Node.
-async function loadGeometry(bytes) {
-  const jsonLength = bytes.readUInt32LE(12);
-  const gltf = JSON.parse(bytes.subarray(20, 20 + jsonLength));
-  for (const material of gltf.materials ?? []) {
-    delete material.normalTexture;
-    delete material.occlusionTexture;
-    delete material.emissiveTexture;
-    delete material.extensions;
-    if (material.pbrMetallicRoughness) {
-      delete material.pbrMetallicRoughness.baseColorTexture;
-      delete material.pbrMetallicRoughness.metallicRoughnessTexture;
-    }
-  }
-  delete gltf.images;
-  delete gltf.textures;
-  for (const key of ['extensionsUsed', 'extensionsRequired']) {
-    if (gltf[key]) gltf[key] = gltf[key].filter(extension => extension !== 'EXT_texture_webp');
-  }
-  const json = Buffer.from(JSON.stringify(gltf));
-  const padding = Buffer.alloc((4 - json.length % 4) % 4, 32);
-  const bin = bytes.subarray(20 + jsonLength);
-  const header = Buffer.from(bytes.subarray(0, 20));
-  header.writeUInt32LE(20 + json.length + padding.length + bin.length, 8);
-  header.writeUInt32LE(json.length + padding.length, 12);
-  const glb = Buffer.concat([header, json, padding, bin]);
-  await MeshoptDecoder.ready;
-  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  return (await loader.parseAsync(glb.buffer.slice(glb.byteOffset, glb.byteOffset + glb.length), '')).scene;
-}
 
 function verifyTopShoulderContact(top, body) {
   const positions = new Float32Array(top.geometry.attributes.position.count * 3);
@@ -891,7 +874,7 @@ test('standalone corsets and a selected skirt share the live rig and switch wais
   const top = catalog.find(item => item.id === 'top-02');
   const common = await Promise.all([skirt.url.slice(1), top.url.slice(1), villagerDir + 'villager-female.garage.glb', villagerDir + 'villager-female.portrait.glb',
     bundledDir + 'gothic-02.mobile.glb'].map(path => readFile(new URL(path, publicDir))));
-  if (common.some(isLfsPointer)) return t.skip('Run git lfs pull to materialize the fitting-room models.');
+  if (common.some(isLfsPointer)) return skipMissingAsset(t, 'Run git lfs pull to materialize the fitting-room models.');
   const [skirtScene, topScene, garage, portrait, donor] = await Promise.all([
     ...common.slice(0, 4).map(loadGeometry), readFile(new URL(garmentDir + 'vesper-body.glb', publicDir)).then(loadGeometry),
   ]);
@@ -1012,7 +995,7 @@ test('the rebuilt Gothic Underbust uses independent Over and Tucked fits on both
   const inputs = [top.url.slice(1), bundledDir + 'gothic-02.mobile.glb',
     ...tiers.flatMap(([tier]) => ['over', 'tucked'].map(waist => rebuiltPath(tier, waist)))];
   const sources = await Promise.all(inputs.map(path => readFile(new URL(path, publicDir))));
-  if (sources.some(isLfsPointer)) return t.skip('Run git lfs pull to materialize the fitting-room models.');
+  if (sources.some(isLfsPointer)) return skipMissingAsset(t, 'Run git lfs pull to materialize the fitting-room models.');
   const topScene = await loadGeometry(sources[0]);
   await promisify(execFile)(process.execPath, [fileURLToPath(new URL('../scripts/build-wardrobe-pieces.mjs', import.meta.url))]);
   const donor = await readFile(new URL(garmentDir + 'vesper-body.glb', publicDir)).then(loadGeometry);
@@ -1031,7 +1014,7 @@ test('the rebuilt Gothic Underbust uses independent Over and Tucked fits on both
       const baseUrl = villagerModelUrl(characterLook(DEFAULT_CHARACTER), kind);
       assert(baseUrl, `${tier} has a live Vesper model`);
       const baseBytes = await readFile(new URL(baseUrl.slice(1), publicDir));
-      if (isLfsPointer(baseBytes)) return t.skip('Run git lfs pull to materialize the character models.');
+      if (isLfsPointer(baseBytes)) return skipMissingAsset(t, 'Run git lfs pull to materialize the character models.');
       const base = await loadGeometry(baseBytes);
       for (const waist of ['over', 'tucked']) {
         const garments = waist === 'over' ? [{ item: top, scene: topScene }] : [];
@@ -1149,7 +1132,7 @@ test('rebuilt Tucked hardware clears the fitted skirt waist', async t => {
   const rebuilt = `${garmentDir}corsets/gothic-underbust-vest-tucked.garage.glb`;
   const read = path => readFile(new URL(path, publicDir));
   const bytes = await Promise.all([rebuilt, `${villagerDir}villager-female.garage.glb`, `${bundledDir}gothic-02.mobile.glb`].map(read));
-  if (bytes.some(isLfsPointer)) return t.skip('Run git lfs pull to materialize the fitting-room models.');
+  if (bytes.some(isLfsPointer)) return skipMissingAsset(t, 'Run git lfs pull to materialize the fitting-room models.');
   const [scene, base, donor] = await Promise.all(bytes.map(loadGeometry));
   const garmentBody = donor.getObjectByName('BODY_WARDROBE');
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
@@ -1166,7 +1149,7 @@ test('rebuilt Tucked hardware clears the fitted skirt waist', async t => {
       const url = wardrobeGarmentModelUrl(item, 'garage');
       assert(url, `${skirt} has a fitting-room model`);
       const skirtBytes = await read(url.slice(1));
-      if (isLfsPointer(skirtBytes)) return t.skip('Run git lfs pull to materialize the Gothic skirts.');
+      if (isLfsPointer(skirtBytes)) return skipMissingAsset(t, 'Run git lfs pull to materialize the Gothic skirts.');
       const garments = [{ item, scene: await loadGeometry(skirtBytes), authoredFit: url === item.revisionUrl }];
       const model = prepareVillager(base, { fitted: true, garments, garmentBody, corsetSource: { set, scene } });
       try {
@@ -1196,7 +1179,7 @@ test('the rebuilt Gothic Underbust and bra keep skin around the armholes and bin
   const tiers = [['garage', 'garage'], ['mobile', 'portrait']];
   const read = path => readFile(new URL(path, publicDir));
   const donorBytes = await read(bundledDir + 'gothic-02.mobile.glb');
-  if (isLfsPointer(donorBytes)) return t.skip('Run git lfs pull to materialize the fitting-room donor.');
+  if (isLfsPointer(donorBytes)) return skipMissingAsset(t, 'Run git lfs pull to materialize the fitting-room donor.');
   const donor = (await loadGeometry(donorBytes)).getObjectByName('BODY_WARDROBE');
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
   try {
@@ -1209,7 +1192,7 @@ test('the rebuilt Gothic Underbust and bra keep skin around the armholes and bin
     try {
       for (const [tier, kind] of tiers) {
         const bytes = await read(villagerDir + `villager-female.${kind}.glb`);
-        if (isLfsPointer(bytes)) return t.skip('Run git lfs pull to materialize the fitting-room character.');
+        if (isLfsPointer(bytes)) return skipMissingAsset(t, 'Run git lfs pull to materialize the fitting-room character.');
         const base = await loadGeometry(bytes);
         for (const style of ['regular', 'original', 'bra']) {
           const braOnly = style === 'bra';
@@ -1222,7 +1205,7 @@ test('the rebuilt Gothic Underbust and bra keep skin around the armholes and bin
             const url = corsetModelUrl(look.corset, kind);
             assert.equal(url, `/${garmentDir}corsets/gothic-underbust-vest${cut ? '-original-cut' : ''}.${tier}.glb`);
             const bytes = await read(url.slice(1));
-            if (isLfsPointer(bytes)) return t.skip('Run git lfs pull to materialize the rebuilt vest.');
+            if (isLfsPointer(bytes)) return skipMissingAsset(t, 'Run git lfs pull to materialize the rebuilt vest.');
             scene = await loadGeometry(bytes);
           }
           const model = prepareVillager(base, { fitted: true, garmentBody: donor, removedClothing: look.removedClothing,
@@ -1280,7 +1263,7 @@ test('rebuilt Laced Bodice keeps its authored mesh and dyes five groups independ
   const bytes = await Promise.all(inputs.map(path => readFile(new URL(path, publicDir)).catch(error => {
     if (error.code !== 'ENOENT') throw error;
   })));
-  if (bytes.some(file => !file || isLfsPointer(file))) return t.skip('Run git lfs pull and build the character LODs.');
+  if (bytes.some(file => !file || isLfsPointer(file))) return skipMissingAsset(t, 'Run git lfs pull and build the character LODs.');
   const [donor, ...models] = await Promise.all(bytes.map(loadGeometry));
   const garmentBody = donor.getObjectByName('BODY_WARDROBE');
   assert(garmentBody);
@@ -1382,7 +1365,7 @@ test('the Village skirt and belt cover the back of the tucked Laced Bodice', asy
   const bytes = await Promise.all(paths.map(path => readFile(new URL(path, publicDir)).catch(error => {
     if (error.code !== 'ENOENT') throw error;
   })));
-  if (bytes.some(file => !file || isLfsPointer(file))) return t.skip('Run git lfs pull and build the character LODs.');
+  if (bytes.some(file => !file || isLfsPointer(file))) return skipMissingAsset(t, 'Run git lfs pull and build the character LODs.');
   const [donor, ...models] = await Promise.all(bytes.map(loadGeometry));
   const garmentBody = donor.getObjectByName('BODY_WARDROBE');
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
@@ -1516,7 +1499,7 @@ test('Ruffled Corset keeps cup and rear waist clearance within both detail budge
     bundledDir + 'gothic-03.garage.glb', bundledDir + 'gothic-03.mobile.glb',
   ];
   const bytes = await Promise.all(paths.map(path => readFile(new URL(path, publicDir))));
-  if (bytes.some(isLfsPointer)) return t.skip('Run git lfs pull to materialize the Ruffled Corset and Village outfit.');
+  if (bytes.some(isLfsPointer)) return skipMissingAsset(t, 'Run git lfs pull to materialize the Ruffled Corset and Village outfit.');
   const [garage, portrait, high, low] = await Promise.all(bytes.map(loadGeometry));
   const vite = await createServer({ define: { __VILLAGER_MODEL_URL__: JSON.stringify('/' + paths[0]) }, server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
   try {
@@ -1620,7 +1603,7 @@ test('Laced Bodice straps clear the rear shoulders and Tucked lacing shows skin'
   ]);
   paths.push(bundledDir + 'gothic-02.mobile.glb', item.url.slice(1), item.mobileUrl.slice(1));
   const bytes = await Promise.all(paths.map(path => readFile(new URL(path, publicDir))));
-  if (bytes.some(isLfsPointer)) return t.skip('Run git lfs pull to materialize the fitting-room models.');
+  if (bytes.some(isLfsPointer)) return skipMissingAsset(t, 'Run git lfs pull to materialize the fitting-room models.');
   const [garageBundle, garage, mobileBundle, portrait, donor, skirtGarage, skirtMobile] = await Promise.all(bytes.map(loadGeometry));
   const garmentBody = donor.getObjectByName('BODY_WARDROBE');
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });

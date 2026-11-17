@@ -4,10 +4,10 @@ import assert from 'node:assert/strict';
 import {NodeIO} from '@gltf-transform/core';
 import {ALL_EXTENSIONS} from '@gltf-transform/extensions';
 import {MeshoptDecoder} from 'meshoptimizer';
-import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {Vector3} from 'three';
 import {MeshBVH} from 'three-mesh-bvh';
 import {createServer} from 'vite';
+import {loadWardrobeGeometry} from './load-wardrobe-geometry.mjs';
 import {verifyCorsetCoverage} from './verify-corset-coverage.mjs';
 const dir=process.argv[2];if(!dir)throw Error('Usage: check-wardrobe-assets.mjs directory');
 await MeshoptDecoder.ready;
@@ -75,12 +75,14 @@ try{
  const {DEFAULT_CHARACTER,OUTFIT_THEMES,characterAppearance,characterLook}=await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
  const {resolveWardrobe}=await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
  const {withClothingColors}=await vite.ssrLoadModule('/src/game/characters/clothingPieces.ts');
+ const {hasAuthoredSweetheartFit}=await vite.ssrLoadModule('/src/game/characters/sweetheartCorset.ts');
  const {buildEmoteClips,findGaragePreviewEmote}=await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
  const gothicPink=OUTFIT_THEMES.find(theme=>theme.name==='Gothic Pink');
  const appearance={...characterAppearance(DEFAULT_CHARACTER),color:gothicPink.color,accent:gothicPink.accent};
  const assetLook=choice=>({...characterLook(choice),wardrobe:resolveWardrobe(choice.wardrobeTrial??choice.wardrobe,{includeRetired:true})});
  for(let n=1;n<=5;n++)for(const lod of ['garage','mobile']){
-  const set=`gothic-${String(n).padStart(2,'0')}`,file=join(dir,`${set}.${lod}.glb`),doc=await io.read(file);
+  const set=`gothic-${String(n).padStart(2,'0')}`,file=join(dir,`${set}.${lod}.glb`);
+  const original=await readFile(file),doc=await io.readBinary(original);
   assert.equal(doc.getRoot().listSkins().length,1);assert.equal(doc.getRoot().listSkins()[0].listJoints().length,88);
   const roles=new Set(doc.getRoot().listNodes().map(n=>n.getExtras().wardrobeRole));
   for(const role of ['body','bottom','shorts','corset-tucked','corset-over','shirt-under','shirt-over-tucked','shirt-over-over'])assert(roles.has(role),role);
@@ -91,14 +93,9 @@ try{
    for(let i=0;i<weights.length;i+=4)assert(Math.abs(weights[i]+weights[i+1]+weights[i+2]+weights[i+3]-1)<1e-4);
    const flags=p.getAttribute('_AVEN_COVERAGE');if(flags)for(const f of flags.getArray())assert(Number.isInteger(f)&&f>=0&&f<=63);
   }
-  // Test the actual Three loader and clone/mask code without requiring image decoding in Node.
-  const original=await readFile(file),len=original.readUInt32LE(12),json=JSON.parse(original.subarray(20,20+len));
-  for(const m of json.materials??[]){delete m.normalTexture;delete m.occlusionTexture;delete m.emissiveTexture;delete m.extensions;if(m.pbrMetallicRoughness){delete m.pbrMetallicRoughness.baseColorTexture;delete m.pbrMetallicRoughness.metallicRoughnessTexture;}}
-  delete json.textures;delete json.images;
-  for(const key of ['extensionsUsed','extensionsRequired'])json[key]=json[key]?.filter(e=>e!=='EXT_texture_webp');
-  const text=Buffer.from(JSON.stringify(json)),padded=Buffer.alloc(Math.ceil(text.length/4)*4,32);text.copy(padded);
-  const bin=original.subarray(20+len),header=Buffer.alloc(20);header.write('glTF');header.writeUInt32LE(2,4);header.writeUInt32LE(20+padded.length+bin.length,8);header.writeUInt32LE(padded.length,12);header.writeUInt32LE(0x4e4f534a,16);
-  const bytes=Buffer.concat([header,padded,bin]);const {scene}=await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
+  const scene=await loadWardrobeGeometry(original);
+  const authoredSweetheart=n===2&&hasAuthoredSweetheartFit(scene);
+  const sweetheartV2=authoredSweetheart&&hasAuthoredSweetheartFit(scene,2);
   const model=prepareVillager(scene,{female:true,fitted:true});const counts=[];
   const facing=model.root.getObjectByName('CLOTH_CORSET_FACING');
   const shorts=model.root.getObjectByName('CLOTH_UNDER_MODESTY_SHORTS');
@@ -112,7 +109,15 @@ try{
   }else{
    assert(facing?.isSkinnedMesh,'fitted corset coverage uses the body rig');
   }
-  if(n===2){
+  if(sweetheartV2){
+   const skirt=model.root.getObjectByName('CLOTH_BOTTOM_SKIRT');
+   const fabric=[];
+   skirt.traverse(part=>{if(part.isSkinnedMesh)fabric.push(part);});
+   assert.deepEqual(fabric.map(part=>part.material.name),['MAT_GOTHIC_02_Fabric_0'],'Sweetheart v2 keeps the authored skirt rim');
+   const source=scene.getObjectByName(fabric[0].name).geometry;
+   assert.deepEqual(fabric[0].geometry.index.array,source.index.array,'Sweetheart v2 skirt keeps its authored triangles');
+   assert.deepEqual(fabric[0].geometry.attributes.position.array,source.attributes.position.array,'Sweetheart v2 skirt keeps its authored positions');
+  }else if(n===2){
    const skirt=model.root.getObjectByName('CLOTH_BOTTOM_SKIRT');
    const materials=[];
    skirt.traverse(part=>{if(part.isMesh)materials.push(part.material.name);});
@@ -138,6 +143,7 @@ try{
   for(const name of ['CLOTH_CORSET_TUCKED','CLOTH_CORSET_OVER']){
    const tuckRefit=n===3&&name==='CLOTH_CORSET_TUCKED';
    const authored=scene.getObjectByName(name), fitted=model.root.getObjectByName(name);
+   const sweetheartSlots=[];
    if(n===4)assert.equal(authored.userData.source,'z-h_Medieval Corset 04-THIN WELD.fbx');
    authored.traverse(source=>{
     if(!source.isSkinnedMesh)return;
@@ -150,8 +156,23 @@ try{
      assert(geometry.index.count>0,'Sweetheart keeps each visible material');
      assert.equal(material.transparent,false,'Sweetheart layers are opaque');
      for(let i=0;i<weights.count;i++)assert(Math.abs(weights.getX(i)+weights.getY(i)+weights.getZ(i)+weights.getW(i)-1)<1e-4);
+     if(authoredSweetheart){
+      assert.deepEqual(geometry.index.array,source.geometry.index.array,'Sweetheart keeps its authored shell and cutouts');
+      for(const attribute of ['position','normal','uv','skinIndex','skinWeight']){
+       assert.deepEqual(geometry.getAttribute(attribute)?.array,source.geometry.getAttribute(attribute)?.array,
+        `Sweetheart keeps authored ${attribute}`);
+      }
+     }
+     if(sweetheartV2){
+      assert.equal(material.userData.authoredSweetheartDye,true,'Sweetheart v2 keeps its authored dye designation');
+      assert.equal(material.name,source.material.name);
+      assert.equal(material.roughness,source.material.roughness);
+      assert.equal(material.metalness,source.material.metalness);
+      sweetheartSlots.push(slot);
+      return;
+     }
      if(slot==='fabric'){
-      assert.notDeepEqual(geometry.index.array,source.geometry.index.array,'Sweetheart has a rebuilt fabric shell');
+      if(!authoredSweetheart)assert.notDeepEqual(geometry.index.array,source.geometry.index.array,'Sweetheart has a rebuilt fabric shell');
       assert(material.roughness>=.9&&material.metalness===0,'Sweetheart fabric stays matte');
       assert(geometry.boundingBox.min.z<-.05&&geometry.boundingBox.max.y>1.325,'the shell covers the back and raised cup crests');
      }else{
@@ -232,6 +253,12 @@ try{
      }
     }
    });
+   if(sweetheartV2){
+    const expected=['closure','fabric','hardware','laces'];
+    // The lower hip laces are covered in Tucked and omitted from that export.
+    if(name==='CLOTH_CORSET_OVER')expected.unshift('accent');
+    assert.deepEqual(sweetheartSlots.sort(),expected,'Sweetheart v2 keeps the dye slots for the active cut');
+   }
   }
   if(n===5){
    assert(collarRemovedIndices>0,'High Collar removes the old shoulder fragments');
@@ -281,13 +308,19 @@ try{
   assert(shoeBounds.max.x>.197&&shoeBounds.min.x<-.197&&shoeBounds.min.z<-.098,'shoes cover both heels and outer feet');
   if(n===2){
    const pinkAccent=withClothingColors({...DEFAULT_CHARACTER,wardrobe:{set,shirt:'none',waist:'tucked'}},'skirt',{color:'#335577',accent:'#ff2d95'});
-   const dyedCorset=withClothingColors(pinkAccent,'corset',{color:'#426640',accent:'#ff2d95'});
-   applyVillagerLook(model,assetLook(dyedCorset));
-   model.root.getObjectByName('CLOTH_CORSET_TUCKED').traverse(part=>{
-    if(!part.isMesh)return;
-    assert.equal(part.material.color.getHexString(),part.material.userData.color_slot==='fabric'?'426640':'ff2d95',
-     'Sweetheart back fabric uses the main dye while front lacing and eyelets take the accent');
-   });
+   const dyes={color:'#426640',accent:'#ff2d95'};
+   const authoredDyes={...dyes,laces:'#eaba63',panel:'#5eafad',hardware:'#7691bc',closure:'#dba674'};
+   for(const waist of sweetheartV2?['tucked','over']:['tucked']){
+    const choice={...pinkAccent,wardrobe:{set,shirt:'none',waist}};
+    applyVillagerLook(model,assetLook(withClothingColors(choice,'corset',sweetheartV2?authoredDyes:dyes)));
+    const authoredColors={fabric:authoredDyes.color,accent:authoredDyes.panel,laces:authoredDyes.laces,hardware:authoredDyes.hardware,closure:authoredDyes.closure};
+    model.root.getObjectByName(`CLOTH_CORSET_${waist.toUpperCase()}`).traverse(part=>{
+     if(!part.isMesh)return;
+     const slot=part.material.userData.color_slot;
+     const expected=sweetheartV2?authoredColors[slot]:slot==='fabric'?dyes.color:dyes.accent;
+     assert.equal(part.material.color.getHexString(),expected.slice(1),`Sweetheart ${waist} ${slot} uses its dye`);
+    });
+   }
    model.root.getObjectByName('CLOTH_BOTTOM_SKIRT').traverse(part=>{
     if(part.isMesh)assert.equal(part.material.color.getHexString(),'335577','pink trim cannot color the Sweetheart waist seam');
    });
@@ -297,9 +330,20 @@ try{
   const dyed=withClothingColors(dyeChoice,'corset',{color:'#ff0066',accent:'#ff0066'});
   applyVillagerLook(model,assetLook(dyed));
   let dyedMeshes=0;model.root.traverse(o=>{if(o.isMesh&&o.userData.clothingPiece==='corset'){for(const m of(Array.isArray(o.material)?o.material:[o.material]))assert.equal(m.color.getHexString(),'ff0066');dyedMeshes++;}});assert(dyedMeshes>2,'multi-material corsets all receive the piece dye');
-  for(const node of doc.getRoot().listNodes().filter(n=>String(n.getExtras().wardrobeRole).startsWith('corset')&&n.getExtras().fit_version===5))for(const p of node.getMesh().listPrimitives()){
-   const joints=p.getAttribute('JOINTS_0').getArray(),weights=p.getAttribute('WEIGHTS_0').getArray();
-   for(let i=0;i<joints.length;i++)if(weights[i]>1e-5)assert(joints[i]<=5,'v5 corset straps never follow arm or twist joints');
+  for(const node of doc.getRoot().listNodes().filter(n=>String(n.getExtras().wardrobeRole).startsWith('corset')&&n.getExtras().fit_version===5)){
+   const jointNames=sweetheartV2?node.getSkin().listJoints().map(joint=>joint.getName()):[];
+   for(const p of node.getMesh().listPrimitives()){
+    const joints=p.getAttribute('JOINTS_0').getArray(),weights=p.getAttribute('WEIGHTS_0').getArray();
+    const positions=p.getAttribute('POSITION').getArray();
+    for(let i=0;i<joints.length;i++){
+     if(weights[i]<=1e-5||joints[i]<=5)continue;
+     const joint=jointNames[joints[i]];
+     assert(sweetheartV2,'v5 corset straps never follow arm or twist joints');
+     if(/^clavicle_[lr]$/.test(joint))continue;
+     assert(/^upperarm_twist_01_[lr]$/.test(joint)&&weights[i]<=.15&&positions[Math.floor(i/4)*3+1]>=1.19,
+      'Sweetheart v2 limits upper-arm twist to a small blend on the upper bodice');
+    }
+   }
   }
 
   for(const waist of ['tucked','over']){
@@ -309,7 +353,7 @@ try{
    applyVillagerLook(model,look);
    assert.equal(shorts.visible,false,'complete Gothic outfits hide the standalone shorts');
    if(facing)assert(facing.visible);
-   if(n===2)for(const fit of ['tucked','over'])assert.equal(model.root.getObjectByName(`CLOTH_GOTHIC_02_WAIST_SEAM_${fit.toUpperCase()}`).visible,fit===waist);
+   if(n===2&&!sweetheartV2)for(const fit of ['tucked','over'])assert.equal(model.root.getObjectByName(`CLOTH_GOTHIC_02_WAIST_SEAM_${fit.toUpperCase()}`).visible,fit===waist);
    if(n===3){
     assert.equal(ruffledTrim.visible,waist==='tucked');
     assert.equal(ruffledOver.visible,waist==='over');
@@ -328,7 +372,10 @@ try{
     assert.equal(piping.material.color.getHexString(),gothicPink.accent.slice(1),'the Underbust piping takes the accent dye');
    }
    const bindBody=scene.getObjectByName('BODY_WARDROBE').geometry;
-   if(n!==3||waist==='tucked')verifyCorsetCoverage(model.root,`${set} ${lod} ${waist}`,n,buildEmoteClips,findGaragePreviewEmote,bindBody,waist==='tucked');
+   if(n!==3||waist==='tucked'){
+    const label=`${set} ${lod} ${waist}${sweetheartV2?' (authored Sweetheart v2, legacy silhouette probes)':''}`;
+    verifyCorsetCoverage(model.root,label,n,buildEmoteClips,findGaragePreviewEmote,bindBody,waist==='tucked');
+   }
    let triangles=0,draws=0;
    model.root.traverse(o=>{if(!o.isMesh)return;for(let a=o;a;a=a.parent)if(!a.visible)return;const g=o.geometry;triangles+=Math.min(g.drawRange.count,g.index?.count??g.attributes.position.count)/3;draws+=Array.isArray(o.material)?g.groups.length:1;});
    counts.push({shirt:look.wardrobe.shirt,waist,triangles,draws});
