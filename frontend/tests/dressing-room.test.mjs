@@ -4,9 +4,9 @@ import { readFile } from 'node:fs/promises';
 import { JSDOM } from 'jsdom';
 import { createServer } from 'vite';
 import { act, createElement as h, useState } from 'react';
-import { Spherical, Vector3 } from 'three';
+import { MeshStandardMaterial, Spherical, Vector3 } from 'three';
 
-test('the Laced Bodice palette saves the finish and separate ribbons and fasteners', async () => {
+test('corset palettes save independent colors and the Laced Bodice finish', async () => {
   const dom = new JSDOM('<div id="root"></div>', { url: 'http://localhost/', pretendToBeVisual: true });
   const original = new Map();
   for (const [key, value] of Object.entries({ window: dom.window, document: dom.window.document,
@@ -23,11 +23,14 @@ test('the Laced Bodice palette saves the finish and separate ribbons and fastene
     const { ClothingColorToolbar } = await vite.ssrLoadModule('/src/game/characters/ClothingColorToolbar.tsx');
     const { DEFAULT_CHARACTER } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
     const { readLocalOutfits, writeLocalOutfit } = await vite.ssrLoadModule('/src/game/characters/localOutfits.ts');
-    function Palette({ set, waist }) {
-      const [choice, change] = useState({ ...DEFAULT_CHARACTER, wardrobeTrial: { set, waist, shirt: 'none' } });
+    function Palette({ set, waist, saved = false, name = 'Laced Bodice' }) {
+      const selection = { set, waist, shirt: 'none' };
+      const [choice, change] = useState(saved
+        ? { ...DEFAULT_CHARACTER, wardrobe: selection }
+        : { ...DEFAULT_CHARACTER, wardrobeTrial: selection });
       return h(ClothingColorToolbar, { choice, piece: 'corset', onChange: next => {
         change(next);
-        writeLocalOutfit('Laced Bodice', next);
+        writeLocalOutfit(name, next);
       } });
     }
     const pick = async selector => act(async () => {
@@ -55,8 +58,36 @@ test('the Laced Bodice palette saves the finish and separate ribbons and fastene
     await act(async () => root.render(h(Palette, { key: 'tucked', set: 'gothic-01', waist: 'tucked' })));
     assert.equal(finish().length, 4);
     assert(!document.querySelector('[aria-label="Zipper color"]'), 'Tucked hides its covered zipper');
-    await act(async () => root.render(h(Palette, { key: 'other', set: 'gothic-02', waist: 'over' })));
-    assert.equal(finish().length, 0, 'other corsets retain their previous controls');
+    const { applySweetheartDye } = await vite.ssrLoadModule('/src/game/characters/sweetheartDye.ts');
+    await act(async () => root.render(h(Palette, { key: 'sweetheart-over', name: 'Sweetheart', set: 'gothic-02', waist: 'over' })));
+    assert.equal(finish().length, 0, 'the Sweetheart has no Laced Bodice finish controls');
+    await pick('[aria-label="Open clothing colors"]');
+    const swatches = [
+      ['Fabric', 'Crimson', 'fabric', '#ad444d'], ['Front laces', 'Forest', 'laces', '#5f8962'],
+      ['Hip laces', 'Navy', 'accent', '#4b79a4'], ['Eyelets', 'Ink', 'hardware', '#262630'],
+      ['Front fasteners', 'White', 'closure', '#ffffff'],
+    ];
+    for (const [group, color] of swatches) await pick(`[aria-label="${group} color: ${color}"]`);
+    const dye = readLocalOutfits().Sweetheart.appearance.item_colors['gothic-02:corset'];
+    assert.deepEqual(dye, { color: '#ad444d', laces: '#5f8962', panel: '#4b79a4', hardware: '#262630', closure: '#ffffff' });
+    for (const [, , slot, hex] of swatches) {
+      const source = new MeshStandardMaterial({ color: '#706c73' });
+      source.userData = { authoredSweetheartDye: true, color_slot: slot };
+      const material = source.clone();
+      assert.equal(applySweetheartDye(source, material, { ...dye, accent: '#ccbbaa' }, undefined, undefined), true);
+      assert.equal(material.color.getHexString(), hex.slice(1));
+      if (slot !== 'fabric') {
+        applySweetheartDye(source, material, { accent: '#ccbbaa' }, undefined, undefined);
+        assert.equal(material.color.getHexString(), 'ccbbaa', 'saved accents retain their previous tint');
+      }
+      source.dispose();
+      material.dispose();
+    }
+    await act(async () => root.render(h(Palette, { key: 'sweetheart-tucked', name: 'Sweetheart', set: 'gothic-02', waist: 'tucked', saved: true })));
+    await pick('[aria-label="Open clothing colors"]');
+    assert(!document.querySelector('[aria-label="Hip laces color"]'), 'the tucked fit hides the hip laces');
+    await pick('[aria-label="Front fasteners color: Forest"]');
+    assert.deepEqual(readLocalOutfits().Sweetheart.appearance.item_colors['gothic-02:corset'], { closure: '#5f8962' });
   } finally {
     if (root) await act(async () => root.unmount());
     await vite?.close();

@@ -1,7 +1,7 @@
 import { DoubleSide, MathUtils, Mesh, MeshStandardMaterial, SkinnedMesh, type BufferGeometry, type Object3D } from "three";
 import { fitHighCollarShoulders, fitHighCollarSurface } from "./highCollarFit";
 import { fitLacedBodice } from "./lacedStrapFit";
-import { rebuildSweetheartCorset } from "./sweetheartCorset";
+import { hasAuthoredSweetheartFit, rebuildSweetheartCorset } from "./sweetheartCorset";
 import { prepareUnderbustColors } from "./underbustColors";
 import { fitUnderbustVest, UNDERBUST_FIT_VERSION } from "./underbustFit";
 import { fitWardrobeSurface } from "./wardrobeSurface";
@@ -53,11 +53,8 @@ export function prepareWardrobeLining(root: Object3D) {
       disposeFit = bodice?.disposeShell;
       break;
     }
-    case "02": {
-      const baked = [corset, root.getObjectByName("CLOTH_CORSET_OVER")].every(part =>
-        part?.userData.authoredSweetheartVersion === 1);
-      return baked ? undefined : rebuildSweetheartCorset(root, body.geometry);
-    }
+    case "02":
+      return hasAuthoredSweetheartFit(root) ? undefined : rebuildSweetheartCorset(root, body.geometry);
     case "04": {
       const baked = [corset, root.getObjectByName("CLOTH_CORSET_OVER")].every(part =>
         part?.userData.underbustFitVersion === UNDERBUST_FIT_VERSION);

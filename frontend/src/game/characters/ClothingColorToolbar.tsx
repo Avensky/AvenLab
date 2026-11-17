@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { CHARACTER_APPEARANCE_OPTIONS, OUTFIT_THEMES, characterLook, type CharacterChoice } from "./characterCatalog";
 import { clothingColors, clothingPieceLabel, isUnderwearPiece, underwearColors, withClothingColors, type ClothingPiece, type PieceColors } from "./clothingPieces";
 import { LACED_BODICE_FINISHES } from "./lacedBodiceAppearance";
+import { SWEETHEART_DYE_GROUPS, SWEETHEART_DYE_SLOTS, sweetheartDyeColor } from "./sweetheartDye";
 import { corsetModelUrl, corsetRenderChoice, isRebuiltLacedBodiceUrl, isRebuiltUnderbustUrl } from "./wardrobe";
 import "./clothingColorToolbar.css";
 
@@ -28,13 +29,22 @@ export function ClothingColorToolbar({ choice, piece, onChange }: {
   const corset = corsetModelUrl(corsetFit, "garage");
   const rebuilt = Boolean(corset && isRebuiltUnderbustUrl(corset));
   const laced = Boolean(corset && isRebuiltLacedBodiceUrl(corset));
+  const sweetheartFit = piece === "corset" ? corsetFit ?? look.wardrobe : undefined;
+  const sweetheart = sweetheartFit?.set === "gothic-02";
   const outfitFabric = look.appearance.color === "original" ? undefined : look.fabric;
-  const fabric = underwear?.color ?? colors?.color ?? (laced ? outfitFabric ?? "#6e6660" : rebuilt ? outfitFabric ?? "#30282a" : look.fabric);
-  const trim = underwear?.accent ?? (laced ? colors?.laces ?? colors?.accent ?? look.appearance.accent ?? "#cdb693"
+  const dye = (value?: PieceColors) => onChange(withClothingColors(choice, piece, value));
+  const sweetheartBars = sweetheart ? SWEETHEART_DYE_SLOTS.filter(slot => slot !== "accent" || sweetheartFit.waist === "over")
+    .map(slot => {
+      const { key, label, original } = SWEETHEART_DYE_GROUPS[slot];
+      const value = sweetheartDyeColor(slot, colors, outfitFabric, look.appearance.accent) ?? original;
+      return { label, value, apply: (color: string) => dye({ [key]: color }) };
+    }) : undefined;
+  const fabric = sweetheartBars?.[0].value ?? underwear?.color ?? colors?.color
+    ?? (laced ? outfitFabric ?? "#6e6660" : rebuilt ? outfitFabric ?? "#30282a" : look.fabric);
+  const trim = sweetheartBars?.[1].value ?? underwear?.accent ?? (laced ? colors?.laces ?? colors?.accent ?? look.appearance.accent ?? "#cdb693"
     : colors?.accent ?? (rebuilt ? look.appearance.accent ?? "#362d2c" : colors?.color ?? look.trim));
   const pieceName = clothingPieceLabel(piece);
-  const dye = (value?: PieceColors) => onChange(withClothingColors(choice, piece, value));
-  const bars = laced ? [
+  const bars = sweetheartBars ?? (laced ? [
     { label: "Fabric", value: fabric, apply: (color: string) => dye({ color }) },
     { label: "Trim", value: colors?.panel ?? outfitFabric ?? "#635a54", apply: (panel: string) => dye({ panel }) },
     { label: "Laces", value: trim, apply: (laces: string) => dye({ laces }) },
@@ -50,7 +60,7 @@ export function ClothingColorToolbar({ choice, piece, onChange }: {
       { label: "Lining", value: colors?.lining ?? outfitFabric ?? "#2a262b", apply: (lining: string) => dye({ lining }) },
       { label: "Hardware", value: colors?.hardware ?? "#ad8451", apply: (hardware: string) => dye({ hardware }) },
     ] : []),
-  ];
+  ]);
 
   useEffect(() => {
     if (!open) return;
@@ -74,8 +84,10 @@ export function ClothingColorToolbar({ choice, piece, onChange }: {
         <span aria-hidden="true">Themes</span>
         <div className="dressing-color-chips">
           {OUTFIT_THEMES.map(theme => <button key={theme.name} type="button" className="menu-control menu-panel-frame dressing-color-preset"
-            aria-label={theme.name} title={theme.name} aria-pressed={fabric === theme.color && trim === theme.accent}
-            onClick={() => dye(laced ? { color: theme.color, panel: theme.color, laces: theme.accent }
+            aria-label={theme.name} title={theme.name} aria-pressed={fabric === theme.color && trim === theme.accent
+              && (!sweetheartBars || sweetheartBars.slice(2).every(({ value }) => value === theme.accent))}
+            onClick={() => dye(sweetheart ? { color: theme.color, laces: theme.accent, panel: theme.accent, hardware: theme.accent, closure: theme.accent }
+              : laced ? { color: theme.color, panel: theme.color, laces: theme.accent }
               : rebuilt ? { color: theme.color, accent: theme.accent, panel: theme.color, lining: theme.color, hardware: theme.accent }
               : { color: theme.color, accent: theme.accent })}>
             <i className="dressing-color-swatch" style={swatch(theme.color, theme.accent)} aria-hidden="true" />

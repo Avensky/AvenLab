@@ -2,6 +2,7 @@ import { Mesh, type BufferGeometry, type Object3D } from "three";
 import catalog from "../../../../avenlab-server/src/assets/character-wardrobe.json";
 import { prepareLacedBodyMask } from "./lacedStrapFit";
 import { prepareOverSkirtEase, type OverSkirtEase } from "./overSkirtEase";
+import { hasAuthoredSweetheartFit } from "./sweetheartCorset";
 
 export const WARDROBE_SETS = catalog.filter(set => !set.retired);
 export const WARDROBE_CORSETS = catalog;
@@ -134,6 +135,7 @@ export function prepareWardrobe(root: Object3D) {
   const parts: Object3D[] = [];
   const masked: { mesh: Mesh; source: BufferGeometry; geometry: BufferGeometry; indices: Uint32Array[] }[] = [];
   const skirtCoversHips = Boolean(root.getObjectByName("CLOTH_BOTTOM_SKIRT"));
+  const sweetheartSkin = hasAuthoredSweetheartFit(root, 2);
   root.traverse(part => {
     if (typeof part.userData.wardrobeRole === "string") {
       parts.push(part);
@@ -154,12 +156,16 @@ export function prepareWardrobe(root: Object3D) {
       const lacedMask = body && prepareLacedBodyMask(root, mode === 1 ? "over" : "tucked");
       for (let i = 0; i < index.count; i += 3) {
         const a = index.getX(i), b = index.getX(i + 1), c = index.getX(i + 2);
-        if (body && skirtCoversHips && Math.max(Math.abs(body.getX(a)), Math.abs(body.getX(b)), Math.abs(body.getX(c))) < .203) {
-          const bottom = Math.min(body.getY(a), body.getY(b), body.getY(c));
+        if (body) {
           const top = Math.max(body.getY(a), body.getY(b), body.getY(c));
-          // Restore complete lower legs. Hide the surface inside the skirt at the hips.
-          if (bottom < .736 && top < .758) { visible.push(a, b, c); continue; }
-          if (bottom < 1.02 && top > .736) continue;
+          if (skirtCoversHips && Math.max(Math.abs(body.getX(a)), Math.abs(body.getX(b)), Math.abs(body.getX(c))) < .203) {
+            const bottom = Math.min(body.getY(a), body.getY(b), body.getY(c));
+            // Restore complete lower legs. Hide the surface inside the skirt at the hips.
+            if (bottom < .736 && top < .758) { visible.push(a, b, c); continue; }
+            if (bottom < 1.02 && top > .736) continue;
+          }
+          // The Sweetheart neckline and armholes need the full skinned torso.
+          if (sweetheartSkin && top > 1.10) { visible.push(a, b, c); continue; }
         }
         if ((coverage.getX(a) & coverage.getX(b) & coverage.getX(c) & bit) === 0
           || (body && lacedMask?.retainsFace(body, a, b, c))) visible.push(a, b, c);

@@ -323,7 +323,8 @@ export function fitLacedBodiceToSkirt(root: Object3D, body: BufferGeometry, skir
 }
 
 /** Give the tucked hem room behind the Village skirt and its separate belt. */
-export function prepareLacedBodiceVillageWaist(skirts: readonly SkinnedMesh[], belts: readonly SkinnedMesh[]) {
+export function prepareLacedBodiceVillageWaist(skirts: readonly SkinnedMesh[], belts: readonly SkinnedMesh[],
+  beltSideRoom = 0) {
   const fit = (mesh: SkinnedMesh, belt: boolean) => {
     const source = mesh.geometry, fitted = source.clone(), position = fitted.getAttribute("position");
     for (let i = 0; i < position.count; i++) {
@@ -336,6 +337,7 @@ export function prepareLacedBodiceVillageWaist(skirts: readonly SkinnedMesh[], b
       // Open the belt across the rear only. Keep its lower edge close to the skirt.
       const room = belt
         ? MathUtils.smoothstep(rear, .05, .52) * MathUtils.lerp(.0055, .012, MathUtils.smoothstep(y, 1.092, 1.117))
+          + beltSideRoom * side * MathUtils.smoothstep(y, 1.091, 1.121)
         : .0055 * MathUtils.smoothstep(rear, -.42, .25) * side * MathUtils.smoothstep(y, 1.052, 1.102);
       if (!room) continue;
       const scale = 1 + room / radius;

@@ -199,6 +199,61 @@ test('medieval hoods replace the bonnet while keeping the outfit and stored hair
   } finally { await vite.close(); }
 });
 
+test('the authored Sweetheart keeps chest and underarm skin in both waist fits', async t => {
+  const paths = [villagerDir + 'villager-female.garage.glb',
+    bundledDir + 'gothic-02.garage.glb', bundledDir + 'gothic-02.mobile.glb'];
+  const bytes = await Promise.all(paths.map(path => readFile(new URL(path, publicDir))));
+  if (bytes.some(isLfsPointer)) return t.skip('Run git lfs pull to materialize the Sweetheart and Villager models.');
+  const [village, ...bundles] = await Promise.all(bytes.map(loadGeometry));
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  try {
+    const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
+    const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { hasAuthoredSweetheartFit } = await vite.ssrLoadModule('/src/game/characters/sweetheartCorset.ts');
+    for (const bundle of bundles) {
+      assert(hasAuthoredSweetheartFit(bundle, 2));
+      const donor = bundle.getObjectByName('BODY_WARDROBE');
+      const { index, attributes: { position } } = donor.geometry;
+      const chest = [], underarm = [];
+      for (let i = 0; i < index.count; i += 3) {
+        const face = index.array.subarray(i, i + 3);
+        const y = (position.getY(face[0]) + position.getY(face[1]) + position.getY(face[2])) / 3;
+        const x = Math.abs((position.getX(face[0]) + position.getX(face[1]) + position.getX(face[2])) / 3);
+        const z = (position.getZ(face[0]) + position.getZ(face[1]) + position.getZ(face[2])) / 3;
+        if (y < 1.21 || y > 1.38) continue;
+        if (x < .075 && z > .075) chest.push(face.join(','));
+        if (x > .10 && x < .19 && z > -.04 && z < .11) underarm.push(face.join(','));
+      }
+      assert(chest.length > 25 && underarm.length > 25, 'both openings contain body geometry');
+      for (const standalone of [false, true]) {
+        const label = standalone ? 'standalone' : 'bundled';
+        const source = standalone ? village : bundle;
+        const model = prepareVillager(source, { fitted: true,
+          ...(standalone ? { garmentBody: donor, corsetSource: { set: 'gothic-02', scene: bundle } } : {}),
+        });
+        try {
+          const body = model.root.getObjectByName(standalone ? 'fitting-room-body' : 'BODY_WARDROBE');
+          for (const waist of ['tucked', 'over']) {
+            const choice = { set: 'gothic-02', shirt: 'none', waist };
+            applyVillagerLook(model, characterLook({ ...DEFAULT_CHARACTER,
+              ...(standalone ? { wardrobeTrial: choice } : { wardrobe: choice }),
+            }));
+            const corset = model.root.getObjectByName(`CLOTH_CORSET_${waist.toUpperCase()}`);
+            assert(corset?.visible, `${label} ${waist} corset`);
+            assert(body.visible, `${label} wears the full body donor`);
+            const visible = new Set();
+            for (let i = 0; i < body.geometry.drawRange.count; i += 3) {
+              visible.add(body.geometry.index.array.subarray(i, i + 3).join(','));
+            }
+            for (const face of chest) assert(visible.has(face), `${label} ${waist} chest ${face}`);
+            for (const face of underarm) assert(visible.has(face), `${label} ${waist} underarm ${face}`);
+          }
+        } finally { model.dispose(); }
+      }
+    }
+  } finally { await vite.close(); }
+});
+
 test('turning off wardrobe layers fits underwear and keeps the other pieces', async t => {
   const top = catalog.find(item => item.id === 'top-02');
   const skirt = catalog.find(item => item.id === 'gothic-skirt-02');

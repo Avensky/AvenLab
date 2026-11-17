@@ -17,6 +17,7 @@ import { prepareWardrobeGarments, type WardrobeGarmentSource } from "./wardrobeG
 import { prepareStandaloneCorset, type StandaloneCorsetSource } from "./standaloneCorset";
 import { applyRebuiltUnderbustDye } from "./rebuiltUnderbustDye";
 import { applyLacedBodiceAppearance } from "./lacedBodiceAppearance";
+import { applySweetheartDye } from "./sweetheartDye";
 import { getWardrobeGarment, wardrobeGarmentModelUrl, type WardrobeRemoval } from "./wardrobeGarments";
 
 export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait" = "garage", villageKind = kind) {
@@ -232,7 +233,8 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
     const colors = clothingColors(look, piece);
     for (const [source, material] of palette) {
       const outfitColor = look.appearance.color === "original" ? undefined : look.fabric;
-      if (applyLacedBodiceAppearance(source, material, colors, outfitColor, look.appearance.accent)
+      if (applySweetheartDye(source, material, colors, outfitColor, look.appearance.accent)
+        || applyLacedBodiceAppearance(source, material, colors, outfitColor, look.appearance.accent)
         || applyRebuiltUnderbustDye(source, material, colors, outfitColor, look.appearance.accent)) continue;
       const accent = source.userData.color_slot === "accent" || source.userData.color_slot === "hardware" || /Details/.test(source.name);
       const color = accent ? colors?.accent ?? colors?.color : colors?.color;

@@ -1,4 +1,5 @@
 import { DoubleSide, MathUtils, MeshStandardMaterial, SkinnedMesh, type BufferGeometry, type Object3D, type Vector3 } from "three";
+import { hasAuthoredSweetheartFit } from "./sweetheartCorset";
 import { fitWardrobeSurface } from "./wardrobeSurface";
 
 function addWaistSeams(body: SkinnedMesh, skirt: Object3D, fabric: MeshStandardMaterial, style: string,
@@ -152,7 +153,11 @@ export function prepareWardrobeSkirt(root: Object3D) {
     if (name === "MAT_GOTHIC_05_Fabric_0") highCollarFabric = part;
   });
   for (const part of retiredSweetheartPanels) part.removeFromParent();
-  if (sweetheartFabric) return finishSweetheartWaist(root, skirt, sweetheartFabric);
+  if (sweetheartFabric) {
+    // The revised bundle has an authored skirt rim fitted over the tucked corset.
+    if (hasAuthoredSweetheartFit(root, 2)) return;
+    return finishSweetheartWaist(root, skirt, sweetheartFabric);
+  }
   if (highCollarFabric) return finishHighCollarSkirt(highCollarFabric);
   // Give the Gothic 03 overskirt room around its ruffles, fading out at the waist.
   const outer = panel;

@@ -270,11 +270,12 @@ impl CharacterChoice {
                         || (piece == "bag" && variant == "shop-bag"),
                 };
                 let laced = variant == "gothic-01" && piece == "corset";
+                let sweetheart = variant == "gothic-02" && piece == "corset";
                 let underbust = variant == "gothic-04" && piece == "corset";
                 known_piece && known_variant && colors.color.as_deref().is_none_or(hex_color) && colors.accent.as_deref().is_none_or(hex_color)
-                    && [&colors.panel, &colors.hardware].into_iter().all(|group| group.as_deref().is_none_or(|color| (underbust || laced) && hex_color(color)))
+                    && [&colors.panel, &colors.hardware].into_iter().all(|group| group.as_deref().is_none_or(|color| (underbust || laced || sweetheart) && hex_color(color)))
                     && colors.lining.as_deref().is_none_or(|color| underbust && hex_color(color))
-                    && [&colors.laces, &colors.closure].into_iter().all(|group| group.as_deref().is_none_or(|color| laced && hex_color(color)))
+                    && [&colors.laces, &colors.closure].into_iter().all(|group| group.as_deref().is_none_or(|color| (laced || sweetheart) && hex_color(color)))
                     && (colors.finish.is_none() || laced)
             })) { return false; }
             if !appearance.accent.as_deref().is_none_or(hex_color) {
@@ -375,6 +376,7 @@ mod wardrobe_tests {
             "item_colors": {"gothic-01:skirt":{"color":"#123aBC","accent":"#abcdef"}, "aviator:glasses":{"color":"#112233"},
                 "underwear:bra":{"color":"#445566"}, "underwear:briefs":{"accent":"#778899"},
                 "gothic-01:corset":{"color":"#112233","panel":"#443322","laces":"#f1e2d3","hardware":"#ccbbaa","closure":"#998877","finish":"satin"},
+                "gothic-02:corset":{"color":"#ad444d","panel":"#4b79a4","laces":"#5f8962","hardware":"#262630","closure":"#ffffff"},
                 "gothic-04:corset":{"color":"#ffffff","accent":"#223344","panel":"#005588","lining":"#445533","hardware":"#886644"}} });
         let good: CharacterChoice = serde_json::from_value(value.clone()).unwrap();
         assert!(good.is_available());
@@ -387,7 +389,8 @@ mod wardrobe_tests {
             ("item_colors", json!({"gothic-04:corset":{"panel":"transparent"}})),
             ("item_colors", json!({"gothic-01:corset":{"laces":"transparent"}})),
             ("item_colors", json!({"gothic-01:corset":{"lining":"#112233"}})),
-            ("item_colors", json!({"gothic-02:corset":{"closure":"#998877"}})),
+            ("item_colors", json!({"gothic-02:corset":{"closure":"transparent"}})),
+            ("item_colors", json!({"gothic-02:skirt":{"closure":"#998877"}})),
             ("item_colors", json!({"gothic-04:corset":{"finish":"glossy"}})),
             ("item_colors", json!({"gothic-01:skirt":{"panel":"#112233"}}))] {
             let mut invalid = value.clone(); invalid["appearance"][field] = bad;

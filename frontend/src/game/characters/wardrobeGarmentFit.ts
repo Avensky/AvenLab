@@ -213,6 +213,7 @@ export function prepareWardrobeGarments(
   let disposeVillageShoes: ReturnType<typeof prepareVillageShoes>;
   let villageBodySwap = false;
   let checkTopEdges = Boolean(corset);
+  const fitVillageWaist = Boolean(corset?.authoredLacedBodice || corset?.sweetheartSkin);
   const shapes: SkinCover[] = [];
   const topSurfaces: MeshBVH[] = [];
   const shortSkirtSurfaces: MeshBVH[] = [];
@@ -269,7 +270,7 @@ export function prepareWardrobeGarments(
         return material;
       };
       mesh.material = Array.isArray(part.material) ? part.material.map(cloneMaterial) : cloneMaterial(part.material);
-      if (item.id === "village-belt" && corset?.authoredLacedBodice) villageBeltMeshes.push(mesh);
+      if (item.id === "village-belt" && fitVillageWaist) villageBeltMeshes.push(mesh);
       garmentMeshes.push(mesh);
       garment.add(mesh);
     });
@@ -304,8 +305,8 @@ export function prepareWardrobeGarments(
         if (surface) {
           shapes.push({ surface, piece: item.piece });
           if (item.slot === "top" && corset?.fitTop) topSurfaces.push(surface);
-          if (fitShortSkirt && !lining && corset?.fitSkirt) shortSkirtSurfaces.push(surface);
-          if (item.id === "village-skirt" && corset?.authoredLacedBodice) {
+          if (fitShortSkirt && !lining && corset?.fitSkirt && !corset.sweetheartSkin) shortSkirtSurfaces.push(surface);
+          if (item.id === "village-skirt" && fitVillageWaist) {
             villageSkirtSurfaces.push(surface);
             villageSkirtMeshes.push(mesh);
           }
@@ -333,7 +334,7 @@ export function prepareWardrobeGarments(
   let villageTuckedWaist: ReturnType<typeof prepareLacedBodiceVillageWaist> | undefined;
   if (topSurfaces.length) corset?.fitTop?.(topSurfaces);
   if (shortSkirtSurfaces.length) corset?.fitSkirt?.(shortSkirtSurfaces);
-  else if (corset?.authoredLacedBodice && corset.fitSkirt) {
+  else if (fitVillageWaist && corset?.fitSkirt) {
     const stockSkirt = !replacements.has("skirt")
       ? root.getObjectByName("CLOTH_BOTTOM_SKIRT") : undefined;
     const stockSurfaces: MeshBVH[] = [];
@@ -359,7 +360,8 @@ export function prepareWardrobeGarments(
         if (part instanceof SkinnedMesh) villageBeltMeshes.push(part);
       });
       corset.fitSkirt(villageSkirt, "village-tucked", cache);
-      villageTuckedWaist = prepareLacedBodiceVillageWaist(villageSkirtMeshes, villageBeltMeshes);
+      villageTuckedWaist = prepareLacedBodiceVillageWaist(
+        villageSkirtMeshes, villageBeltMeshes, corset.sweetheartSkin ? .0055 : 0);
       if (cache) fittedMasks = cache.masks;
     }
     for (const { geometry } of stockSurfaces) geometry.dispose();
@@ -484,7 +486,8 @@ export function prepareWardrobeGarments(
             const surface = bodySurface(part.geometry);
             if (surface) fittedSurfaces.push({ surface, piece, rebuiltUnderbust: part.userData.rebuiltUnderbust === true });
           };
-          corset?.group.traverseVisible(part => addSurface(part, "corset"));
+          // This fitted shell is worn over the full chest and armholes.
+          if (corset && !corset.sweetheartSkin) corset.group.traverseVisible(part => addSurface(part, "corset"));
           if (restoresBody || villageBodySwap) {
             for (const { part, piece } of stock) {
               if (!coversSkin.has(piece) && !(restored.arms && piece === "coat")) continue;
