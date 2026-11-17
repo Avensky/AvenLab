@@ -1788,6 +1788,85 @@ test('the Village skirt and belt cover reused Laced and Sweetheart tucked fits',
   }
 });
 
+test('the authored Sweetheart reuses original skin matches and resamples changed geometry', async t => {
+  const paths = [villagerDir + 'villager-female.portrait.glb', bundledDir + 'gothic-02.mobile.glb'];
+  const bytes = await Promise.all(paths.map(path => readFile(new URL(path, publicDir))));
+  if (bytes.some(isLfsPointer)) return skipMissingAsset(t, 'Run git lfs pull to materialize Sweetheart and the Village outfit.');
+  const [base, sweetheart, coldBase, coldSweetheart] = await Promise.all([...bytes, ...bytes].map(loadGeometry));
+  const original = base.getObjectByName('BODY_OUTFIT_CUT').geometry;
+  const coldOriginal = coldBase.getObjectByName('BODY_OUTFIT_CUT').geometry;
+  const donor = sweetheart.getObjectByName('BODY_WARDROBE').geometry;
+  const coldDonor = coldSweetheart.getObjectByName('BODY_WARDROBE').geometry;
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  try {
+    const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
+    const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { getWardrobeGarment } = await vite.ssrLoadModule('/src/game/characters/wardrobeGarments.ts');
+    const look = characterLook({
+      ...DEFAULT_CHARACTER,
+      garments: { skirt: 'village-skirt', belt: 'village-belt' },
+      wardrobeTrial: { set: 'gothic-02', waist: 'tucked', shirt: 'none' },
+    });
+    function preview(scene, corset) {
+      const garments = ['village-skirt', 'village-belt'].map(id => ({ item: getWardrobeGarment(id), scene }));
+      const model = prepareVillager(scene, {
+        fitted: true, garmentBody: corset.getObjectByName('BODY_WARDROBE'),
+        corsetSource: { set: 'gothic-02', scene: corset }, garments,
+      });
+      const closest = t.mock.method(MeshBVH.prototype, 'closestPointToPoint');
+      const coverage = t.mock.method(MeshBVH.prototype, 'shapecast');
+      try {
+        applyVillagerLook(model, look);
+        const { index, drawRange: { start, count } } = model.root.getObjectByName('fitting-room-body').geometry;
+        assert(count > 0, 'the preview keeps visible skin');
+        return { mask: index.array.slice(start, start + count), closest: closest.mock.callCount(), coverage: coverage.mock.callCount() };
+      } finally {
+        closest.mock.restore();
+        coverage.mock.restore();
+        model.dispose();
+      }
+    }
+
+    function compare(label) {
+      const first = preview(base, sweetheart);
+      const warm = preview(base, sweetheart);
+      const cold = preview(coldBase, coldSweetheart);
+      assert(first.closest > 0, `${label} samples original-body membership`);
+      assert.equal(cold.closest, first.closest, `${label} samples independently parsed geometry`);
+      assert.equal(warm.closest, 0, `${label} reuses membership in another actor`);
+      assert(warm.coverage > 0, `${label} still checks cloth coverage`);
+      assert.deepEqual(first.mask, cold.mask, label);
+      assert.deepEqual(warm.mask, cold.mask, label);
+      return warm.mask;
+    }
+
+    const initial = compare('original inputs');
+    for (const geometry of [original, coldOriginal]) {
+      geometry.setDrawRange(0, Math.floor(geometry.index.count / 6) * 3);
+    }
+    const reduced = compare('reduced original draw range');
+    assert.notDeepEqual(reduced, initial, 'cut-body draw range changes visible skin');
+
+    for (const geometry of [donor, coldDonor]) {
+      const position = geometry.getAttribute('position');
+      for (let vertex = 0; vertex < position.count; vertex++) position.setX(vertex, position.getX(vertex) + .006);
+      position.needsUpdate = true;
+    }
+    const shifted = compare('changed donor positions');
+    assert.notDeepEqual(shifted, reduced, 'donor bind-space positions change visible skin');
+
+    for (const geometry of [donor, coldDonor]) {
+      const index = geometry.getIndex();
+      const half = Math.floor(index.count / 6) * 3;
+      const first = index.array.slice(0, half);
+      index.array.copyWithin(0, half, 2 * half);
+      index.array.set(first, half);
+      index.needsUpdate = true;
+    }
+    compare('reordered donor triangles');
+  } finally { await vite.close(); }
+});
+
 test('Ruffled Corset keeps cup and rear waist clearance within both detail budgets', async t => {
   const paths = [
     villagerDir + 'villager-female.garage.glb', villagerDir + 'villager-female.portrait.glb',

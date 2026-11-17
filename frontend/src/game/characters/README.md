@@ -279,6 +279,9 @@ body positions unquantized because the face shaders use bind-space positions.
   if they are cut by a single sample. Each preview owns its index buffer. A
   fitted Village actor with fixed source coverage retains up to eight recent
   waist and bra masks, so revisiting a fit can reuse the visible triangle list.
+  When an outfit exposes part of the original cut body, the fitter remembers
+  which donor triangles match that surface. Other outfits can reuse those
+  answers until either surface's positions, indices, or draw range changes.
   For a new mask, coverage queries stop at the first cloth hit inside the
   sample range. They still check the center and corners near garment edges.
   Authored Laced Bodice and Sweetheart reuse Village waistband samples for the

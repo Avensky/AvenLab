@@ -78,7 +78,7 @@ function captureSurface(geometry: BufferGeometry) {
   const position = geometry.getAttribute("position");
   const { start, count } = geometry.drawRange;
   return { geometry, index, position, start, count, indexVersion: index?.version,
-    positionVersion: "data" in position ? position.data.version : position.version };
+    positionVersion: position && ("data" in position ? position.data.version : position.version) };
 }
 
 type SurfaceInput = ReturnType<typeof captureSurface>;
@@ -91,6 +91,20 @@ type VillageWaistFit = {
 function sameSurface(a: SurfaceInput, b: SurfaceInput) {
   return a.geometry === b.geometry && a.index === b.index && a.position === b.position
     && a.start === b.start && a.count === b.count && a.indexVersion === b.indexVersion && a.positionVersion === b.positionVersion;
+}
+
+type BaselineMatches = { donor: SurfaceInput; original: SurfaceInput; triangles: Int8Array };
+const baselineByDonor = new WeakMap<BufferGeometry, WeakMap<BufferGeometry, BaselineMatches>>();
+
+function baselineTriangleMatches(full: BufferGeometry, cut: BufferGeometry) {
+  let byOriginal = baselineByDonor.get(full);
+  if (!byOriginal) baselineByDonor.set(full, byOriginal = new WeakMap());
+  const donor = captureSurface(full), original = captureSurface(cut);
+  const saved = byOriginal.get(cut);
+  if (saved && sameSurface(donor, saved.donor) && sameSurface(original, saved.original)) return saved.triangles;
+  const triangles = new Int8Array(Math.ceil(donor.index!.count / 3));
+  byOriginal.set(cut, { donor, original, triangles });
+  return triangles;
 }
 
 const villageWaistFits = new WeakMap<Object3D, VillageWaistFit[]>();
@@ -152,6 +166,7 @@ function fitBodyMask(
   const position = full.getAttribute("position"), index = full.getIndex()!;
   const baselineDistance = .0016;
   let baseline: MeshBVH | null | undefined;
+  let baselineMatches: Int8Array | undefined;
   const a = new Vector3(), b = new Vector3(), c = new Vector3(), point = new Vector3();
   const hit = { point: new Vector3(), distance: 0, faceIndex: 0 };
   const surfaces = clothes.map(({ surface }) => surface);
@@ -189,9 +204,15 @@ function fitBodyMask(
     const replaced = restoredSkin || (upperBody ? top : skirt && point.y > .075);
     const openLacing = lacedBodice === "tucked" && showsTuckedLacingSkin(point);
     if (!openLacing && !replaced) {
-      if (baseline === undefined) baseline = bodySurface(original.geometry) ?? null;
-      // Only the existence of a match matters. Exit the BVH on an in-range hit.
-      if (!baseline?.closestPointToPoint(point, hit, baselineDistance, baselineDistance)) continue;
+      // Each donor triangle has the same distance to the original cut across outfits.
+      // Zero means untested. Query only when an outfit needs this triangle.
+      baselineMatches ??= baselineTriangleMatches(full, original.geometry);
+      const triangle = i / 3;
+      if (baselineMatches[triangle] === 0) {
+        if (baseline === undefined) baseline = bodySurface(original.geometry) ?? null;
+        baselineMatches[triangle] = baseline?.closestPointToPoint(point, hit, baselineDistance, baselineDistance) ? 1 : -1;
+      }
+      if (baselineMatches[triangle] < 0) continue;
     }
     // A strap or neckline can cross the middle of a skin triangle. Keep the
     // skin at that edge unless the fabric covers the face and its corners.
