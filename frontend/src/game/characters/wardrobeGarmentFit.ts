@@ -134,7 +134,8 @@ function fitBodyMask(
     return;
   }
   const position = full.getAttribute("position"), index = full.getIndex()!;
-  const baseline = bodySurface(original.geometry);
+  const baselineDistance = .0016;
+  let baseline: MeshBVH | null | undefined;
   const a = new Vector3(), b = new Vector3(), c = new Vector3(), point = new Vector3();
   const hit = { point: new Vector3(), distance: 0, faceIndex: 0 };
   const surfaces = clothes.map(({ surface }) => surface);
@@ -171,7 +172,11 @@ function fitBodyMask(
       || (restored.feet && point.y < .115);
     const replaced = restoredSkin || (upperBody ? top : skirt && point.y > .075);
     const openLacing = lacedBodice === "tucked" && showsTuckedLacingSkin(point);
-    if (!openLacing && !replaced && !baseline?.closestPointToPoint(point, hit, 0, .0016)) continue;
+    if (!openLacing && !replaced) {
+      if (baseline === undefined) baseline = bodySurface(original.geometry) ?? null;
+      // Only the existence of a match matters. Exit the BVH on an in-range hit.
+      if (!baseline?.closestPointToPoint(point, hit, baselineDistance, baselineDistance)) continue;
+    }
     // A strap or neckline can cross the middle of a skin triangle. Keep the
     // skin at that edge unless the fabric covers the face and its corners.
     // Keep the exposed torso intact through pose changes at the skirt waist.

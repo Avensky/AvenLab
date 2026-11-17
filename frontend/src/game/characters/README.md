@@ -278,6 +278,8 @@ body positions unquantized because the face shaders use bind-space positions.
   if they are cut by a single sample. Each preview owns its index buffer. A
   fitted Village actor with fixed source coverage retains up to eight recent
   waist and bra masks, so revisiting a fit can reuse the visible triangle list.
+  For a new mask, coverage queries stop at the first cloth hit inside the
+  sample range. They still check the center and corners near garment edges.
 - **Fit front and rear straps through motion.** Start the front straps close
   to the chest and seat the rear straps near the shoulders. Favor torso and
   shoulder influence at the roots and reduce upper-arm and twist influence

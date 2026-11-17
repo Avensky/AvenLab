@@ -1,7 +1,32 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'vite';
-import { BufferGeometry, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial } from 'three';
+import { BufferGeometry, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, Vector3 } from 'three';
+
+test('skin coverage accepts a double-sided hit inside the sample range and checks triangle corners', async () => {
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  try {
+    const { prepareWardrobeCoverage, wardrobeCoverageSurface } = await vite.ssrLoadModule('/src/game/characters/wardrobeCoverage.ts');
+    const a = new Vector3(-1, -1, 0), b = new Vector3(1, -1, 0), c = new Vector3(0, 2, 0);
+    const center = new Vector3();
+    for (const [depth, covered] of [[-.02, false], [0, false], [.011, true], [.041, false]]) {
+      const geometry = new BufferGeometry();
+      geometry.setAttribute('position', new Float32BufferAttribute([-.2, -.2, depth, .2, -.2, depth, 0, .2, depth], 3));
+      geometry.setIndex([0, 2, 1]);
+      const surface = wardrobeCoverageSurface(geometry);
+      try {
+        const covers = prepareWardrobeCoverage([surface], .001);
+        assert.equal(covers(center, a, b, c, false), covered, `coverage at depth ${depth}`);
+        assert.equal(covers(center, a, b, c, true), false, 'the small patch does not cover the corners');
+      } finally {
+        surface.geometry.dispose();
+        geometry.dispose();
+      }
+    }
+  } finally {
+    await vite.close();
+  }
+});
 
 test('the Laced Bodice tries its other authored tier before legacy models', async () => {
   const both = { garage: true, mobile: true };
