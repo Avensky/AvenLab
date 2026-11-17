@@ -9,6 +9,8 @@ export const WARDROBE_CORSETS = catalog;
 export const LACED_BODICE_WARDROBE_SET = "gothic-01";
 const RUFFLED_WARDROBE_SET = "gothic-03";
 export const REBUILT_LACED_BODICE_ASSET = "gothic-laced-bodice";
+const HIGH_COLLAR_WARDROBE_SET = "gothic-05";
+const REBUILT_HIGH_COLLAR_ASSET = "gothic-high-collar";
 export const UNDERBUST_WARDROBE_SET = "gothic-04";
 export const REBUILT_UNDERBUST_ASSET = "gothic-underbust-vest";
 export const ORIGINAL_CUT_UNDERBUST_ASSET = "gothic-underbust-vest-original-cut";
@@ -65,6 +67,10 @@ export function isRebuiltLacedBodiceUrl(url: string) {
   return url.includes(`/${REBUILT_LACED_BODICE_ASSET}.`);
 }
 
+export function isRebuiltHighCollarUrl(url: string) {
+  return url.includes(`/${REBUILT_HIGH_COLLAR_ASSET}.`);
+}
+
 export function hasRebuiltLacedBodice() {
   const lods = __STANDALONE_CORSET_LODS__[REBUILT_LACED_BODICE_ASSET];
   return Boolean(lods?.garage || lods?.mobile);
@@ -82,6 +88,11 @@ export function corsetRenderChoice(look: {
     && !look.garments.top && !look.garments.dress && !look.removedClothing.includes("corset")) return look.wardrobe;
   if (look.wardrobe?.set === LACED_BODICE_WARDROBE_SET && !look.garments?.top && !look.garments?.dress
     && !look.removedClothing.includes("corset") && hasRebuiltLacedBodice()) return look.wardrobe;
+  if (look.wardrobe?.set === HIGH_COLLAR_WARDROBE_SET && !look.garments?.top && !look.garments?.dress
+    && !look.removedClothing.includes("corset")) {
+    const lods = __STANDALONE_CORSET_LODS__[REBUILT_HIGH_COLLAR_ASSET];
+    if (lods?.garage || lods?.mobile) return look.wardrobe;
+  }
 }
 
 export function wardrobeOverEase(choice?: WardrobeSelection | null): OverSkirtEase {
@@ -108,6 +119,9 @@ export function corsetModelUrls(choice: WardrobeChoice | undefined, kind: "garag
   };
   if (useStandalone) {
     const directory = "female/wardrobe/corsets";
+    if (resolved.set === HIGH_COLLAR_WARDROBE_SET) {
+      add(REBUILT_HIGH_COLLAR_ASSET, directory, __STANDALONE_CORSET_LODS__[REBUILT_HIGH_COLLAR_ASSET], true);
+    }
     if (resolved.set === LACED_BODICE_WARDROBE_SET) {
       add(REBUILT_LACED_BODICE_ASSET, directory, __STANDALONE_CORSET_LODS__[REBUILT_LACED_BODICE_ASSET], true);
     }

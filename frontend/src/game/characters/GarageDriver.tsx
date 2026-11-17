@@ -19,7 +19,7 @@ import { isCompactPreview } from "../preview/previewBudget";
 import { failCockpitPreview, useCharacterPreviewStore } from "./characterPreviewStore";
 import { removalNeedsVillagerBody, replacesVillagerBody, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
 import { getWardrobeGarment, hasWardrobeRevisionMesh, wardrobeGarmentModelUrl, type WardrobeRemoval } from "./wardrobeGarments";
-import { corsetModelUrls, corsetRenderChoice, isRebuiltLacedBodiceUrl, isRebuiltUnderbustUrl } from "./wardrobe";
+import { corsetModelUrls, corsetRenderChoice, isRebuiltHighCollarUrl, isRebuiltLacedBodiceUrl, isRebuiltUnderbustUrl } from "./wardrobe";
 import { FITTING_BODY_URL, hasAuthoredLacedBodiceFit, rebuiltUnderbustPart } from "./standaloneCorset";
 
 const DRIVER_TILT: [number, number, number] = [-.095, -.16, -.045];
@@ -73,7 +73,7 @@ function VillagerDriver({ url: preferredUrl, look, kind, villageKind, fallback, 
     const source = sources[asset];
     if (!source) return source !== null;
     if (isRebuiltUnderbustUrl(asset)) return Boolean(rebuiltUnderbustPart(source, corset?.waist));
-    return !isRebuiltLacedBodiceUrl(asset) || hasAuthoredLacedBodiceFit(source);
+    return !(isRebuiltHighCollarUrl(asset) || isRebuiltLacedBodiceUrl(asset)) || hasAuthoredLacedBodiceFit(source);
   });
   const requested = useMemo(() => Object.values(look.garments ?? {}).flatMap(id => {
     const item = getWardrobeGarment(id);
