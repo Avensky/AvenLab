@@ -58,6 +58,8 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, onOpenIden
   const owner = useSocialStore(state => state.view?.profile.id ?? state.profileOwner);
   const connectedOwner = useSocialStore(state => state.view?.profile.id);
   const saved = useSocialStore(selectEquippedCharacter);
+  // Null is a supported profile awaiting setup. Older servers omit the field.
+  const saveToProfile = Boolean(owner) && saved !== undefined;
   const editingAllowed = useUIStore(canEditCharacter);
   const reducedMotion = usePreferencesStore(state => state.reducedMotion);
   const [initialChoice] = useState(() => characterLook(saved) ? saved! : readLocalCharacter());
@@ -200,13 +202,13 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, onOpenIden
 
   function update(next: CharacterChoice, preview?: CharacterChoice) {
     if (!canEditCharacter()) return;
-    if (!preview) setLoadedOutfit(false);
-    setTrial(preview);
+    if (preview) setTrial(preview);
+    else clearFittingPreview();
     setChoice(next);
     setMessage("");
     if (!locked) return;
     drafts.current.set(next.id, next);
-    if (!owner) {
+    if (!saveToProfile) {
       saveLocalCharacter(next);
       return;
     }
@@ -239,10 +241,13 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, onOpenIden
     useCharacterPreviewStore.setState({ camera: "Full body", zoom: 1 });
   }
 
-  function endOutfitPreview() {
-    if (!canEditCharacter()) return;
+  function clearFittingPreview() {
     setLoadedOutfit(false);
     setTrial(undefined);
+  }
+
+  function endOutfitPreview() {
+    if (canEditCharacter()) clearFittingPreview();
   }
 
   function editPreviewAppearance(next: CharacterChoice) {
@@ -420,6 +425,10 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, onOpenIden
       {!visibleEmotes.length && <p role="status">No emotes match this filter.</p>}
     </div>
   </>);
+  const emoteResultsPanel = <section className={locked ? "character-controls menu-panel-frame character-controls--right" : undefined}
+    id={emoteResultsId} aria-label={emoteDetail ? "Emote details" : "Emote results"} hidden={!resultsOpen}>
+    {emoteResults}
+  </section>;
   const fitting = tab === "appearance";
   const rotationDisabled = insideCar || emote?.id === MIRROR_CHECK_ID;
   const vehiclePreview = tab === "emotes" && Boolean(cockpitVehicle);
@@ -470,9 +479,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, onOpenIden
           <p role="status">{message || (!connectedOwner ? "Connect your player profile to confirm." : saved === undefined ? "Update the game server to choose a character." : "")}</p>
         </div>
         {emoteBrowser}
-        <section id={emoteResultsId} aria-label={emoteDetail ? "Emote details" : "Emote results"} hidden={!resultsOpen}>
-          {emoteResults}
-        </section>
+        {emoteResultsPanel}
       </section>
       {previewZoom}
       {cameraTools && <div className="dressing-toolbar">{cameraTools}</div>}
@@ -522,22 +529,19 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose, onOpenIden
         </>}
         {tab === "emotes" && emoteBrowser}
       </section>}
-      {tab === "emotes" && <section className="character-controls menu-panel-frame character-controls--right" id={emoteResultsId}
-        aria-label={emoteDetail ? "Emote details" : "Emote results"} hidden={!resultsOpen}>
-        {emoteResults}
-      </section>}
+      {tab === "emotes" && emoteResultsPanel}
       {!fitting && <div className="dressing-toolbar">{cameraTools}</div>}
       {previewZoom}
       <section className="character-controls menu-panel-frame character-controls--bottom" aria-label="Save status" hidden={status === "idle"}>
         <div className="character-equip" data-controller-row>
           <p role="status">{status === "error" ? message : status === "saved" ? "Saved to your profile." : status === "local" ? "Saved on this device." : "Saving…"}</p>
           {status === "error" && <>
-            <button type="button" className="menu-control" onClick={() => owner ? void flush() : saveLocalCharacter(choice)}>Retry</button>
+            <button type="button" className="menu-control" onClick={() => saveToProfile ? void flush() : saveLocalCharacter(choice)}>Retry</button>
             <button type="button" className="menu-control" onClick={() => {
               if (!canEditCharacter()) return;
               queued.current.clear();
               drafts.current.clear();
-              setTrial(undefined);
+              clearFittingPreview();
               if (acknowledged.current) setChoice(acknowledged.current);
               setStatus("idle");
             }}>Revert unsaved</button>

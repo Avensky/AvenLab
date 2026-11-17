@@ -60,6 +60,10 @@ test('character portraits wait for a quiet main menu and reuse unchanged portrai
   try {
     vite = await createServer({
       cacheDir: 'node_modules/.vite-character-portrait-cadence',
+      define: {
+        __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(['linen-nightgown']),
+        __DRESSING_ROOM_MOBILE_IDS__: JSON.stringify(['linen-nightgown']),
+      },
       optimizeDeps: { noDiscovery: true, include: [] },
       server: { middlewareMode: true, hmr: false, ws: false },
       appType: 'custom', logLevel: 'error',
@@ -81,8 +85,8 @@ test('character portraits wait for a quiet main menu and reuse unchanged portrai
               listeners.add(listener);
               return () => listeners.delete(listener);
             }
-            export async function bakeCharacterPortrait(look, key) {
-              bakes.push({ key, hair: look.appearance.hair_color });
+            export async function bakeCharacterPortrait(look, key, source, outfit) {
+              bakes.push({ key, hair: look.appearance.hair_color, source, outfit });
               const image = 'data:image/webp;base64,' + btoa(String(bakes.length));
               images.set(key, image);
               listeners.forEach(listener => listener());
@@ -90,15 +94,18 @@ test('character portraits wait for a quiet main menu and reuse unchanged portrai
             }
           `;
           if (id === '\0' + loaderMock) return `
-            const scene = { name: 'character-portrait-test-scene' };
-            export const preloads = [], loads = [];
+            const scene = { name: 'character-portrait-test-scene', getObjectByName() {} };
+            export const preloads = [], loads = [], failedUrls = new Set();
             export function useGLTF(url) {
               loads.push(url);
-              return { scene };
+              for (const candidate of [url].flat()) {
+                if (failedUrls.has(candidate)) throw Error('Test model unavailable');
+              }
+              return Array.isArray(url) ? url.map(() => ({ scene })) : { scene };
             }
             useGLTF.preload = url => preloads.push(url);
           `;
-          if (id === '\0' + modelMock) return 'export const villagerModelUrl = () => "/character-portrait-test.glb";';
+          if (id === '\0' + modelMock) return 'export const villagerModelUrl = look => `/character-portrait-test/${look.character.id}.glb`;';
         },
       }],
     });
@@ -109,7 +116,9 @@ test('character portraits wait for a quiet main menu and reuse unchanged portrai
     const loader = await vite.ssrLoadModule(loaderMock);
     const choice = { ...DEFAULT_CHARACTER, appearance: characterAppearance(DEFAULT_CHARACTER) };
     const equivalent = { ...choice, appearance: { ...choice.appearance } };
-    root = createRoot(document.getElementById('root'));
+    root = createRoot(document.getElementById('root'), { onCaughtError(error) {
+      if (error.message !== 'Test model unavailable') throw error;
+    } });
     const render = value => act(async () => root.render(value && h(CharacterPortrait, { choice: value, compact: true })));
     const screen = (screen, overlay = null, isModeLoading = false) => act(async () => ui.setState({ screen, overlay, isModeLoading }));
     const step = ms => act(async () => { advance(ms); runIdle(); });
@@ -191,6 +200,33 @@ test('character portraits wait for a quiet main menu and reuse unchanged portrai
     assert.equal(baker.bakes.length, 2, 'a new visual appearance updates after returning to a quiet menu');
     assert.equal(baker.bakes[1].hair, 'espresso');
     assert.notEqual(image(), cached);
+
+    loader.failedUrls.add('/character-portrait-test/jules-okafor.glb');
+    await render({ id: 'jules-okafor', outfit: 'night-run' });
+    await settled();
+    assert.equal(baker.bakes.length, 3);
+    assert.equal(baker.bakes[2].source, undefined, 'a missing model uses the stylized driver');
+    const stylized = image();
+    assert.ok(stylized);
+    await screen('mode_select');
+    assert.equal(image(), stylized, 'Play displays the finished fallback portrait after a model load failure');
+    await screen('main');
+    await settled();
+    assert.equal(baker.bakes.length, 3, 'returning to Main reuses the fallback bake');
+
+    loader.failedUrls.add('/models/characters/female/wardrobe/dress/linen-nightgown.mobile.glb');
+    await render({ ...choice, outfit: 'linen-nightgown' });
+    await settled();
+    assert.equal(baker.bakes.length, 4);
+    assert.ok(baker.bakes[3].source, 'a missing outfit uses the base character model');
+    assert.equal(baker.bakes[3].outfit, undefined);
+    const stock = image();
+    assert.ok(stock);
+    await screen('heroes');
+    assert.equal(image(), stock, 'Heroes displays the finished stock portrait after an outfit load failure');
+    await screen('main');
+    await settled();
+    assert.equal(baker.bakes.length, 4, 'returning to Main reuses the stock bake');
   } finally {
     if (root) await act(async () => root.unmount());
     await vite?.close();

@@ -178,8 +178,8 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
   function waistForSet(set: string): WardrobeChoice["waist"] {
     return wardrobe?.set === set && !garments ? wardrobe.waist : FITTED_PRESETS[set]?.waist ?? "tucked";
   }
-  function wearSet(set: string) {
-    onEquip({ ...choice, wardrobe: resolveWardrobe({ set, shirt: "none", waist: waistForSet(set) }), garments: undefined,
+  function wearOutfit(outfit: string, wardrobe?: WardrobeChoice) {
+    onEquip({ ...choice, outfit, wardrobe, garments: undefined,
       wardrobeTrial: undefined, wardrobeEase: undefined, removedClothing: undefined, bra: undefined });
   }
   function tryCorset(set: string) {
@@ -229,7 +229,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
       id: set.id, label: set.name, section: "Gothic collection", icon: "outfits", selected: !garments && !corset && !removedClothing.length && wardrobe?.set === set.id, set: set.id,
       description: preset.description, pieces: "outfit",
       detail: "Matched corset + skirt", unavailable: installed ? undefined : "Pack not installed",
-      choose: installed ? () => wearSet(set.id) : undefined,
+      choose: installed ? () => wearOutfit(outfit.id, resolveWardrobe({ set: set.id, shirt: "none", waist: waistForSet(set.id) })) : undefined,
       clear: wardrobe?.set === set.id ? next => ({ ...next, wardrobe: undefined,
         wardrobeEase: next.wardrobeTrial ? next.wardrobeEase : undefined }) : undefined,
     }];
@@ -245,8 +245,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
       selected: installed && selected, color: item.jacket, accent: item.trim, focus: preset ? "Full body" : undefined,
       unavailable: installed ? undefined : "Pack not installed",
       remove: selected && preset ? () => onTryOn(setWardrobeRemoval(choice, "dress", true)) : undefined,
-      choose: installed ? () => onEquip({ ...choice, outfit: item.id, wardrobe: undefined, garments: undefined,
-        wardrobeTrial: undefined, wardrobeEase: undefined, removedClothing: undefined, bra: undefined }) : undefined,
+      choose: installed ? () => wearOutfit(item.id) : undefined,
       clear: !wardrobe && outfit.id === item.id && outfit.id !== character.outfits[0].id
         ? next => ({ ...next, outfit: character.outfits[0].id }) : undefined,
     };
@@ -397,12 +396,15 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
     inspectWardrobe(categoryFocus[category]);
   }
 
-  function openCategory(next: Category) {
-    focusLayer.current = true;
+  function showCatalog(next: Category, item?: Item) {
     setCategory(next);
     setCatalogOpen(true);
-    setInspectedId(undefined);
+    setInspectedId(item?.id);
     setSearch("");
+  }
+  function openCategory(next: Category) {
+    focusLayer.current = true;
+    showCatalog(next);
     inspectWardrobe(categoryFocus[next]);
   }
   function closeCatalog() {
@@ -413,14 +415,14 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
 
   function selectWornPiece(piece: ClothingPiece) {
     focusClothingPiece(piece);
-    const match = categories.flatMap(({ id }) => id === "layers" ? [] : allItems[id]
-      .filter(item => item.selected && (item.focus === piece || (item.pieces !== "outfit" && item.pieces?.includes(piece))))
-      .map(item => ({ id, item })))[0];
-    if (!match) return;
-    setCategory(match.id);
-    setCatalogOpen(true);
-    setInspectedId(match.item.id);
-    setSearch("");
+    for (const { id } of categories) {
+      if (id === "layers") continue;
+      const item = allItems[id].find(item => item.selected
+        && (item.focus === piece || (item.pieces !== "outfit" && item.pieces?.includes(piece))));
+      if (!item) continue;
+      showCatalog(id, item);
+      return;
+    }
   }
 
   function controls(title: string, children: ReactNode, columns?: number) {

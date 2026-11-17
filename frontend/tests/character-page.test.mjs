@@ -5,10 +5,9 @@ import { createServer } from 'vite';
 import { act, createElement as h } from 'react';
 import { AnimationMixer, LoopOnce, Object3D, Vector3 } from 'three';
 
-test('Heroes opens the character picker, saves one profile choice, and opens Garage from a vehicle', async t => {
+function characterTestDom() {
   const dom = new JSDOM('<div id="root"></div>', { url: 'http://localhost/', pretendToBeVisual: true });
   const original = new Map();
-  let vite, root;
   const globals = {
     window: dom.window, document: dom.window.document, navigator: dom.window.navigator,
     HTMLElement: dom.window.HTMLElement, HTMLSelectElement: dom.window.HTMLSelectElement,
@@ -22,11 +21,27 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
   }
   document.hasFocus = () => true;
   HTMLElement.prototype.scrollIntoView = () => {};
+  return {
+    dom,
+    close() {
+      dom.window.close();
+      for (const [key, descriptor] of original) {
+        if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+        else delete globalThis[key];
+      }
+    },
+  };
+}
+
+test('Heroes opens the character picker, saves one profile choice, and opens Garage from a vehicle', async t => {
+  const { close } = characterTestDom();
+  let vite, root;
   try {
     vite = await createServer({ define: { __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(['gothic-skirt-04', 'top-01']) },
       server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
     const load = path => vite.ssrLoadModule(`/src/${path}`);
     const { HeroWorkshop } = await load('game/heroes/HeroWorkshop.tsx');
+    const { readLocalCharacter } = await load('game/characters/localOutfits.ts');
     const { useUIStore: ui } = await load('store/menus/uiStore.ts');
     const { useSocialStore: social } = await load('store/social/socialStore.ts');
     const { useHeroLoadouts: loadouts } = await load('vehicles/cosmetics/heroLoadouts.ts');
@@ -232,7 +247,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert(document.querySelectorAll('.character-emotes button').length > 180);
     await act(async () => {
       const input = find('[aria-label="Emote results"] input[type="search"]');
-      Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set.call(input, 'applause');
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(input, 'applause');
       input.dispatchEvent(new Event('input', { bubbles: true }));
     });
     assert(document.querySelectorAll('.character-emotes button').length > 0);
@@ -555,8 +570,10 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(drafts.at(-1).outfit, 'race-crew');
     assert.equal(drafts.at(-1).appearance.eye_color, 'obsidian');
     await act(async () => social.getState().reset());
+    await select('Hair color', 'copper');
     await act(async () => t.mock.timers.tick(350));
     assert.equal(requests.length, 4);
+    assert.equal(readLocalCharacter(), undefined, 'a known profile continues queuing edits while disconnected');
     assert.equal(drafts.at(-1).id, 'jules-okafor', 'a disconnect keeps the latest draft');
     await act(async () => social.getState().receive({ ...view, profile: { ...view.profile, progression: serverProgression } }));
     assert.equal(requests[4].character.outfit, 'shop-crew', 'pending female edits resume on reconnect');
@@ -565,6 +582,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await acknowledge(requests[4], requests[4].character);
     assert.equal(drafts.at(-1).id, 'jules-okafor', 'an acknowledgement for another model does not change the preview');
     assert.equal(requests[5].character.outfit, 'race-crew');
+    assert.equal(requests[5].character.appearance.hair_color, 'copper');
     await acknowledge(requests[5], requests[5].character);
     assert.equal(social.getState().view.profile.progression.character_presets['mara-vega'].outfit, 'shop-crew');
 
@@ -621,11 +639,76 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     t.mock.timers.reset();
     if (root) await act(async () => root.unmount());
     await vite?.close();
-    dom.window.close();
-    for (const [key, descriptor] of original) {
-      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
-      else delete globalThis[key];
-    }
+    close();
+  }
+});
+
+test('device character edits stay local when the connected profile has no character support', async t => {
+  const { dom, close } = characterTestDom();
+  let vite, root, client;
+  try {
+    vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+    const load = path => vite.ssrLoadModule(`/src/${path}`);
+    const { CharacterPage } = await load('game/characters/CharacterPage.tsx');
+    const { readLocalCharacter, writeLocalOutfit } = await load('game/characters/localOutfits.ts');
+    const { useSocialStore } = await load('store/social/socialStore.ts');
+    const { useUIStore } = await load('store/menus/uiStore.ts');
+    client = await load('net/socialClient.ts');
+    const requests = [];
+    client.setSocialConnection({ readyState: WebSocket.OPEN, send: value => requests.push(JSON.parse(value)) });
+    useSocialStore.getState().receive({
+      profile: { id: 'legacy', name: 'Driver', progression: {} },
+      players: [], teammates: [], requests: [], groups: [], worlds: [], world_invites: [], maps: [],
+      current_world_id: null, limits: { max_active_worlds: 3 },
+    });
+    useUIStore.getState().setScreen('heroes');
+    const { createRoot } = await import('react-dom/client');
+    root = createRoot(document.getElementById('root'));
+    const props = { onReady: () => {}, beforeClose: { current: null } };
+    const show = tab => act(async () => root.render(h(CharacterPage, { ...props, tab })));
+    const click = selector => act(async () => document.querySelector(selector).click());
+    const button = label => [...document.querySelectorAll('button')].find(node => node.textContent === label);
+
+    await show('identity');
+    await click('[data-character-option="jules-okafor"]');
+    await act(async () => button('Use locally').click());
+    assert.equal(readLocalCharacter().id, 'jules-okafor');
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    await act(async () => button('Nonbinary').click());
+    await act(async () => t.mock.timers.tick(350));
+    assert.equal(requests.length, 0);
+    assert.equal(readLocalCharacter().identity, 'nonbinary');
+
+    const failedWrite = t.mock.method(dom.window.Storage.prototype, 'setItem', () => { throw new Error('Storage unavailable'); });
+    await act(async () => button('Female').click());
+    assert.equal(readLocalCharacter().identity, 'nonbinary');
+    assert(button('Retry'));
+    failedWrite.mock.restore();
+    await act(async () => button('Retry').click());
+    assert.equal(readLocalCharacter().identity, 'female');
+
+    writeLocalOutfit('Race fit', { ...readLocalCharacter(), outfit: 'race-crew' });
+    await show('appearance');
+    await click('[data-category=saved]');
+    await click('[aria-label="Try on Race fit"]');
+    assert(!document.querySelector('[aria-label="Clear saved outfit preview"]').disabled);
+    await show('identity');
+    t.mock.method(dom.window.Storage.prototype, 'setItem', () => { throw new Error('Storage unavailable'); });
+    const eyeColor = document.querySelector('select[aria-label="Eye color"]');
+    await act(async () => {
+      eyeColor.value = 'obsidian';
+      eyeColor.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await act(async () => button('Revert unsaved').click());
+    await show('appearance');
+    await click('[data-category=saved]');
+    assert(document.querySelector('[aria-label="Clear saved outfit preview"]').disabled);
+  } finally {
+    t.mock.timers.reset();
+    if (root) await act(async () => root.unmount());
+    client?.setSocialConnection(null);
+    await vite?.close();
+    close();
   }
 });
 

@@ -3,6 +3,35 @@ import assert from 'node:assert/strict';
 import { createServer } from 'vite';
 import { BufferGeometry, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial } from 'three';
 
+test('the Laced Bodice tries its other authored tier before legacy models', async () => {
+  const both = { garage: true, mobile: true };
+  const standaloneRoot = '/models/characters/female/wardrobe/corsets';
+  const bundledRoot = '/models/characters/wardrobe';
+  const choice = { set: 'gothic-01', shirt: 'none', waist: 'tucked' };
+  for (const available of [both, { garage: true, mobile: false }, { garage: false, mobile: true }]) {
+    const vite = await createServer({
+      define: {
+        __STANDALONE_CORSET_LODS__: JSON.stringify({ 'gothic-laced-bodice': available, 'gothic-01': both }),
+        __BUNDLED_WARDROBE_LODS__: JSON.stringify({ 'gothic-01': both }),
+      },
+      server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error',
+    });
+    try {
+      const { corsetModelUrl, corsetModelUrls } = await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
+      for (const [view, preferred, alternative] of [['garage', 'garage', 'mobile'], ['portrait', 'mobile', 'garage']]) {
+        const authored = [preferred, alternative].filter(tier => available[tier])
+          .map(tier => `${standaloneRoot}/gothic-laced-bodice.${tier}.glb`);
+        const bundled = `${bundledRoot}/gothic-01.${preferred}.glb`;
+        assert.deepEqual(corsetModelUrls(choice, view), [...authored, `${standaloneRoot}/gothic-01.${preferred}.glb`, bundled]);
+        assert.equal(corsetModelUrl(choice, view), authored[0]);
+        assert.deepEqual(corsetModelUrls(choice, view, { useStandalone: false }), [bundled]);
+      }
+    } finally {
+      await vite.close();
+    }
+  }
+});
+
 test('saved Underbust presets fall back and standalone corsets select an available model tier', async () => {
  const vite=await createServer({define:{__WARDROBE_SET_IDS__:JSON.stringify(['gothic-04','gothic-05']),
   __STANDALONE_CORSET_LODS__:JSON.stringify({'gothic-02':{garage:true,mobile:false},'gothic-04':{garage:true,mobile:true},'gothic-05':{garage:false,mobile:true}}),

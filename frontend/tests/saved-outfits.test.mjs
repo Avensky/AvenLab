@@ -142,6 +142,7 @@ test('saved outfits preserve a tuned look through a confirmed save, reconnect, a
     });
     assert.equal(window.localStorage.getItem(LOCAL_OUTFITS_KEY), null, 'a stale form cannot save a device outfit while loading');
     await act(async () => ui.setState({ isModeLoading: false }));
+    window.localStorage.setItem(LOCAL_OUTFITS_KEY, '{broken');
     await act(async () => button('Save outfit').click());
     assert.match(document.body.textContent, /Saved Offline fit on this device/);
     assert.equal(sent.length, 2, 'local saves send no network request');

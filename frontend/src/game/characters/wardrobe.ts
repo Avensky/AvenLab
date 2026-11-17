@@ -95,15 +95,17 @@ export function corsetModelUrls(choice: WardrobeChoice | undefined, kind: "garag
   const resolved = resolveWardrobe(choice, { includeRetired: true });
   if (!resolved) return [];
   const urls: string[] = [];
-  const add = (id: string, directory: string, available: { garage: boolean; mobile: boolean } | undefined) => {
-    if (!available?.garage && !available?.mobile) return;
-    const tier = available.mobile && (kind === "portrait" || !available.garage) ? "mobile" : "garage";
-    urls.push(`/models/characters/${directory}/${id}.${tier}.glb`);
+  const preferred = kind === "portrait" ? "mobile" : "garage";
+  const alternate = preferred === "mobile" ? "garage" : "mobile";
+  const add = (id: string, directory: string, available: { garage: boolean; mobile: boolean } | undefined, includeAlternate = false) => {
+    const path = `/models/characters/${directory}/${id}`;
+    if (available?.[preferred]) urls.push(`${path}.${preferred}.glb`);
+    if (available?.[alternate] && (includeAlternate || !available[preferred])) urls.push(`${path}.${alternate}.glb`);
   };
   if (useStandalone) {
     const directory = "female/wardrobe/corsets";
     if (resolved.set === LACED_BODICE_WARDROBE_SET) {
-      add(REBUILT_LACED_BODICE_ASSET, directory, __STANDALONE_CORSET_LODS__[REBUILT_LACED_BODICE_ASSET]);
+      add(REBUILT_LACED_BODICE_ASSET, directory, __STANDALONE_CORSET_LODS__[REBUILT_LACED_BODICE_ASSET], true);
     }
     if (resolved.set === UNDERBUST_WARDROBE_SET && resolved.waist === "over") {
       if (resolved.cut === "original") {
