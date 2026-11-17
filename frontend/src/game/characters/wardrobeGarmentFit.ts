@@ -68,6 +68,7 @@ function isFabric(mesh: SkinnedMesh) {
 
 const coversSkin = new Set<ClothingPiece>(["corset", "shirt", "sleeves", "skirt", "underskirt", "shorts", "shoes", "socks", "dress"]);
 const coversTorso = new Set<ClothingPiece>(["corset", "shirt", "sleeves", "dress", "armor"]);
+const MAX_FITTED_MASKS = 8;
 
 type RestoredSkin = { upper: boolean; arms: boolean; skirt: boolean; feet: boolean };
 type SkinCover = { surface: MeshBVH; piece: ClothingPiece; baseLayer?: true; rebuiltUnderbust?: boolean };
@@ -188,7 +189,14 @@ function fitBodyMask(
   }
   fittedIndex.needsUpdate = true;
   body.geometry.setDrawRange(0, visible);
-  if (cache) cache.masks.set(cache.key, new Uint32Array(fittedIndex.array.subarray(0, visible)));
+  if (cache) {
+    const { masks, key } = cache;
+    if (masks.size >= MAX_FITTED_MASKS) {
+      const oldest = masks.keys().next().value;
+      if (oldest !== undefined) masks.delete(oldest);
+    }
+    masks.set(key, new Uint32Array(fittedIndex.array.subarray(0, visible)));
+  }
   baseline?.geometry.dispose();
 }
 
@@ -220,7 +228,7 @@ export function prepareWardrobeGarments(
   const replacements = new Set<ClothingPiece>(removals.flatMap(slot => wardrobeRemovalPieces[slot]));
   const group = new Group();
   group.name = "fitting-room-garments";
-  const materials: { piece: ClothingPiece; base: Color; color: Color; accent: boolean }[] = [];
+  const materials = new Map<ClothingPiece, { base: Color; color: Color; accent: boolean }[]>();
   const ownedMaterials = new Set<Material>();
   const fittedGarments: BufferGeometry[] = [];
   const tallSocks: SkinnedMesh[] = [];
@@ -237,10 +245,10 @@ export function prepareWardrobeGarments(
   const villageBeltMeshes: SkinnedMesh[] = [];
   const tuckedSkirtSurfaces: MeshBVH[] = [];
   const fittedShapes = new Map<string, SkinCover[]>();
-  // Authored bodices on the base Villager use fixed bind-space meshes.
-  // Bundled outfits can change their body indices with the fit.
-  let fittedMasks = corset?.authoredLacedBodice && original.name === "BODY_OUTFIT_CUT"
-    && !original.geometry.getAttribute("_aven_coverage") ? new Map<string, Uint32Array>() : undefined;
+  // The Village body's bind-space coverage is fixed for the prepared actor.
+  // Bundled outfits can change their source body indices with the fit.
+  const fixedBody = original.name === "BODY_OUTFIT_CUT" && !original.geometry.getAttribute("_aven_coverage");
+  let fittedMasks: Map<string, Uint32Array> | undefined;
   if (corset) {
     group.add(corset.group);
     for (const piece of wardrobeGarmentReplacements.top) replacements.add(piece);
@@ -272,7 +280,9 @@ export function prepareWardrobeGarments(
           const base = material.color.clone();
           if (lining) liningColors.push(base);
           else if (channel === "fabric") fabricColor ??= base;
-          materials.push({ piece: item.piece, base, color: material.color, accent: !lining && channel !== "fabric" });
+          let palette = materials.get(item.piece);
+          if (!palette) materials.set(item.piece, palette = []);
+          palette.push({ base, color: material.color, accent: !lining && channel !== "fabric" });
         }
         return material;
       };
@@ -351,7 +361,7 @@ export function prepareWardrobeGarments(
       const { start, count } = part.geometry.drawRange;
       if (index && count > 0 && start < index.count) villageSkirtMeshes.push(part);
     });
-    const cache = full && fittedMasks && corset.authoredLacedSource && !removedClothing.length && villageSkirtMeshes.length === 1
+    const cache = full && fixedBody && corset.authoredLacedSource && !removedClothing.length && villageSkirtMeshes.length === 1
       && (!sources.length || (sources.length === 1 && sources[0].item.id === "village-skirt" && villageSkirtSurfaces.length > 0))
       ? villageBodiceFit(corset.authoredLacedSource, full, original.geometry, villageSkirtMeshes[0].geometry, Boolean(sources.length))
       : undefined;
@@ -447,6 +457,7 @@ export function prepareWardrobeGarments(
     body.geometry = full.clone().setIndex(new BufferAttribute(new Uint32Array(full.getIndex()!.count), 1));
     group.add(body);
   }
+  if (fixedBody && body && (corset || underwear?.bra)) fittedMasks ??= new Map();
   if (skirt) root.userData.skirtHandRoom = MathUtils.clamp((skirtRadius ?? .23) - .23, 0, .12);
   root.add(group);
   let maskedWaist: string | undefined;
@@ -515,11 +526,16 @@ export function prepareWardrobeGarments(
       }
       if (body) original.visible = false;
       underwear?.applyColors(piece => underwearColors(look, piece));
-      for (const { piece, color, base, accent } of materials) {
+      const outfitColor = look.appearance.color !== "original" ? look.fabric : undefined;
+      for (const [piece, palette] of materials) {
         const dye = clothingColors(look, piece);
-        color.copy(base);
-        const tint = accent ? dye?.accent ?? look.appearance.accent : dye?.color ?? (look.appearance.color !== "original" ? look.fabric : undefined);
-        if (tint) color.set(tint);
+        const fabric = dye?.color ?? outfitColor;
+        const trim = dye?.accent ?? look.appearance.accent;
+        for (const { color, base, accent } of palette) {
+          const tint = accent ? trim : fabric;
+          color.copy(base);
+          if (tint) color.set(tint);
+        }
       }
     },
     dispose() {

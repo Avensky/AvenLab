@@ -903,6 +903,7 @@ test('standalone corsets and a selected skirt share the live rig and switch wais
           assert(!corset.getObjectByName('BODY_WARDROBE') && !corset.getObjectByName('CLOTH_BOTTOM_SKIRT'));
           const body = root.getObjectByName('fitting-room-body');
           const bodyIndex = body.geometry.index;
+          const maskRevisits = [];
           for (const waist of ['over', 'tucked']) {
             const wardrobeTrial = { set, waist, shirt: 'none' };
             const choice = { ...DEFAULT_CHARACTER, wardrobeTrial,
@@ -926,6 +927,9 @@ test('standalone corsets and a selected skirt share the live rig and switch wais
             assert.equal(root.getObjectByName('CLOTH_BOTTOM_SKIRT').visible, false);
             assert.equal(body.geometry.index, bodyIndex);
             assert(body.geometry.drawRange.count > 0);
+            if (tier === 'garage' && set === 'gothic-02') {
+              maskRevisits.push({ look, indices: bodyIndex.array.slice(0, body.geometry.drawRange.count) });
+            }
             assert.equal(corset.getObjectByName('CLOTH_CORSET_TUCKED').visible, waist === 'tucked');
             assert.equal(corset.getObjectByName('CLOTH_CORSET_OVER').visible, waist === 'over');
             const visibleMeshes = [];
@@ -962,6 +966,25 @@ test('standalone corsets and a selected skirt share the live rig and switch wais
                 applyVillagerLook(model, look);
                 assert.equal(shell.geometry, fitted, 'turning ease off restores the same layered fit');
               }
+            }
+          }
+          if (maskRevisits.length) {
+            assert(!original.geometry.hasAttribute('_aven_coverage'), 'the cut Village body has no changing authored mask');
+            const baselineIndexReads = t.mock.method(original.geometry, 'getIndex');
+            try {
+              for (const { look, indices } of maskRevisits) {
+                const version = bodyIndex.version;
+                applyVillagerLook(model, look);
+                assert.equal(corset.getObjectByName('CLOTH_CORSET_TUCKED').visible, look.corset.waist === 'tucked');
+                assert.equal(corset.getObjectByName('CLOTH_CORSET_OVER').visible, look.corset.waist === 'over');
+                assert.equal(body.geometry.index, bodyIndex, 'returning to a fit uses the live index buffer');
+                assert(bodyIndex.version > version, 'switching fits publishes the reused mask');
+                assert.equal(body.geometry.drawRange.count, indices.length);
+                assert.deepEqual(bodyIndex.array.subarray(0, indices.length), indices);
+              }
+              assert.equal(baselineIndexReads.mock.callCount(), 0, 'revisiting fits skips rebuilding the cut-body coverage surface');
+            } finally {
+              baselineIndexReads.mock.restore();
             }
           }
           const active = corset.getObjectByName('CLOTH_CORSET_TUCKED');

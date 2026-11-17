@@ -275,8 +275,9 @@ body positions unquantized because the face shaders use bind-space positions.
   seam placement. Use the full-body donor and a per-fit index mask for covered
   skin. Keep visible triangles along strap roots, underarms, keyholes, and
   laced openings. Whole triangles can cross a garment edge and expose a hole
-  if they are cut by a single sample. The runtime builds private masks when
-  the fit changes and reuses them while the garment animates.
+  if they are cut by a single sample. Each preview owns its index buffer. A
+  fitted Village actor with fixed source coverage retains up to eight recent
+  waist and bra masks, so revisiting a fit can reuse the visible triangle list.
 - **Fit front and rear straps through motion.** Start the front straps close
   to the chest and seat the rear straps near the shoulders. Favor torso and
   shoulder influence at the roots and reduce upper-arm and twist influence
