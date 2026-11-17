@@ -6,6 +6,7 @@ import { AnimationMixer, LoopOnce, MathUtils, type AnimationAction, type Group, 
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
 import { AUTOMATIC_GARAGE_EMOTE_IDS, buildEmoteClips, buildGarageEmotes, findGaragePreviewEmote, garageBreathing } from "./garageEmotes";
 import { driverFaceTargets } from "./villagerFace";
+import { skipHiddenCharacterRaycasts } from "./characterPreviewRaycast";
 import { failCockpitPreview, useCharacterPreviewStore } from "./characterPreviewStore";
 import { DriverBag } from "./DriverBag";
 import { availableVictoryEmotes, type VictoryEmoteId } from "./victoryEmotes";
@@ -73,6 +74,10 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
   }>(null);
 
   useLayoutEffect(() => {
+    if (previewPacks) return skipHiddenCharacterRaycasts(root);
+  }, [root, previewPacks]);
+
+  useLayoutEffect(() => {
     if (!cockpit || reducedMotion) return;
     if (previewPacks) {
       useCharacterPreviewStore.setState({ cockpitAvailable: true });
@@ -126,7 +131,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
       props.forEach(prop => prop.dispose());
       setBlinkWeight(blink, 0);
     };
-  }, [reducedMotion, root, bag, victory, restSeconds]);
+  }, [reducedMotion, root, bag, victory, previewPacks, restSeconds]);
 
   useFrame((_, delta) => {
     const current = player.current;

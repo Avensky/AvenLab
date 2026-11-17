@@ -55,6 +55,25 @@ const coversTorso = new Set<ClothingPiece>(["corset", "shirt", "sleeves", "dress
 
 type RestoredSkin = { upper: boolean; arms: boolean; skirt: boolean; feet: boolean };
 type SkinCover = { surface: MeshBVH; piece: ClothingPiece; baseLayer?: true; rebuiltUnderbust?: boolean };
+type VillageBodiceFit = {
+  body: BufferGeometry; original: BufferGeometry; skirt: BufferGeometry; explicit: boolean;
+  adjustments?: Float32Array; masks: Map<string, Uint32Array>;
+};
+
+const villageBodiceFits = new WeakMap<Object3D, VillageBodiceFit[]>();
+
+function villageBodiceFit(source: Object3D, body: BufferGeometry, original: BufferGeometry, skirt: BufferGeometry, explicit: boolean) {
+  let fits = villageBodiceFits.get(source);
+  if (!fits) villageBodiceFits.set(source, fits = []);
+  const existing = fits.find(fit => fit.body === body && fit.original === original && fit.skirt === skirt && fit.explicit === explicit);
+  if (existing) return existing;
+  const fit: VillageBodiceFit = { body, original, skirt, explicit, masks: new Map() };
+  // Keep only a few recent source combinations. The cached data is CPU-only;
+  // each actor still owns and disposes its fitted geometry and index buffers.
+  if (fits.length >= 8) fits.shift();
+  fits.push(fit);
+  return fit;
+}
 
 function isUnderbustOpening(point: Vector3) {
   // Vesper bind space. The inner armhole curves forward below the upper edge.
@@ -203,7 +222,7 @@ export function prepareWardrobeGarments(
   const fittedShapes = new Map<string, SkinCover[]>();
   // Authored bodices on the base Villager use fixed bind-space meshes.
   // Bundled outfits can change their body indices with the fit.
-  const fittedMasks = corset?.authoredLacedBodice && original.name === "BODY_OUTFIT_CUT"
+  let fittedMasks = corset?.authoredLacedBodice && original.name === "BODY_OUTFIT_CUT"
     && !original.geometry.getAttribute("_aven_coverage") ? new Map<string, Uint32Array>() : undefined;
   if (corset) {
     group.add(corset.group);
@@ -318,16 +337,25 @@ export function prepareWardrobeGarments(
     const stockSurfaces: MeshBVH[] = [];
     stockSkirt?.traverse(part => {
       if (!(part instanceof SkinnedMesh) || Array.isArray(part.material) || part.material.name !== "MAT_ClothLower") return;
-      const surface = bodySurface(part.geometry);
-      if (surface) {
-        stockSurfaces.push(surface);
-        villageSkirtMeshes.push(part);
-      }
+      const index = part.geometry.getIndex();
+      const { start, count } = part.geometry.drawRange;
+      if (index && count > 0 && start < index.count) villageSkirtMeshes.push(part);
     });
+    const cache = full && fittedMasks && corset.authoredLacedSource && !removedClothing.length && villageSkirtMeshes.length === 1
+      && (!sources.length || (sources.length === 1 && sources[0].item.id === "village-skirt" && villageSkirtSurfaces.length > 0))
+      ? villageBodiceFit(corset.authoredLacedSource, full, original.geometry, villageSkirtMeshes[0].geometry, Boolean(sources.length))
+      : undefined;
+    if (!villageSkirtSurfaces.length && !cache?.adjustments) {
+      for (const mesh of villageSkirtMeshes) {
+        const surface = bodySurface(mesh.geometry);
+        if (surface) stockSurfaces.push(surface);
+      }
+    }
     const villageSkirt = villageSkirtSurfaces.length ? villageSkirtSurfaces : stockSurfaces;
-    if (villageSkirt.length) {
-      corset.fitSkirt(villageSkirt, "village-tucked");
+    if (villageSkirt.length || cache?.adjustments) {
+      corset.fitSkirt(villageSkirt, "village-tucked", cache);
       villageTuckedWaist = prepareLacedBodiceVillageWaist(villageSkirtMeshes);
+      if (cache) fittedMasks = cache.masks;
     }
     for (const { geometry } of stockSurfaces) geometry.dispose();
   }
@@ -394,8 +422,9 @@ export function prepareWardrobeGarments(
         socksFitted = true;
       }
       if (body && full && (maskedWaist !== waist || maskedBra !== showBra)) {
+        const maskKey = `${waist}:${showBra}`;
         let surfaces = fittedShapes.get(waist);
-        if ((corset || restoresBody || villageBodySwap) && !surfaces) {
+        if ((corset || restoresBody || villageBodySwap) && !surfaces && !fittedMasks?.has(maskKey)) {
           const fittedSurfaces: SkinCover[] = [];
           const addSurface = (part: Object3D, piece: ClothingPiece) => {
             if (!(part instanceof SkinnedMesh) || !isFabric(part)) return;
@@ -417,7 +446,7 @@ export function prepareWardrobeGarments(
         const visibleShapes = [...shapes, ...(surfaces ?? [])];
         fitBodyMask(body, original, full, top, skirt, restored, visibleShapes,
           showBra ? braShapes : [], checkTopEdges, corset?.group.userData.lacedBodiceStraps ? corsetWaist : undefined,
-          corset?.authoredLacedBodice ?? false, fittedMasks && { masks: fittedMasks, key: `${waist}:${showBra}` });
+          corset?.authoredLacedBodice ?? false, fittedMasks && { masks: fittedMasks, key: maskKey });
         maskedWaist = waist;
         maskedBra = showBra;
       }

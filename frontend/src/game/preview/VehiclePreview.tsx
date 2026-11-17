@@ -345,7 +345,7 @@ export function VehiclePreview({
   return (
     <>
       <GarageEnvironment turntable={turntable} onPlatformReady={setPlatform} accentOverride={selectionAccent}
-        allowLoad={characterOnly || !waitingForCar} onSettled={roomSettled} />
+        allowLoad={characterOnly || !waitingForCar} onSettled={roomSettled} floorCaptureRate={fittingRoom ? 12 : undefined} />
       {fittingRoom && roomReady && <FittingMirrorDisplay />}
       {loadLabel && <PreviewLoadingStatus label={loadLabel} />}
       <PerspectiveCamera ref={cameraRef} name="garage-preview-camera" makeDefault>

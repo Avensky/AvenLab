@@ -102,11 +102,12 @@ export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton
   return {
     group,
     authoredLacedBodice,
+    authoredLacedSource: authoredLacedBodice ? source.scene : undefined,
     fitTop: underbust ? (tops: readonly MeshBVH[]) => {
       disposeTopFit = fitUnderbustOverTop(group, body.geometry, tops, { preserveNormals: Boolean(rebuilt) });
     } : undefined,
-    fitSkirt: laced ? (skirts: readonly MeshBVH[], fit?: "village-tucked") => {
-      disposeSkirtFit = fitLacedBodiceToSkirt(group, body.geometry, skirts, fit);
+    fitSkirt: laced ? (skirts: readonly MeshBVH[], fit?: "village-tucked", reuse?: { adjustments?: Float32Array }) => {
+      disposeSkirtFit = fitLacedBodiceToSkirt(group, body.geometry, skirts, fit, reuse);
     } : undefined,
     fitTuckedHardware: tuckedHardware.length ? (skirts: readonly MeshBVH[]) => {
       // Imported garments share the actor's bind space. Hide only fasteners

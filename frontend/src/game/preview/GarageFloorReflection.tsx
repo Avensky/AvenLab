@@ -108,12 +108,14 @@ export function GarageFloorReflection({
   turntable,
   perimeter,
   active = true,
+  captureRate,
 }: {
   width: number;
   depth: number;
   turntable: Group | null;
   perimeter: Box3 | null;
   active?: boolean;
+  captureRate?: number;
 }) {
   const settings = usePreferencesStore((s) => s.garageEffects);
   const getScene = useThree(s => s.get);
@@ -132,8 +134,6 @@ export function GarageFloorReflection({
       clipBias: 0,
     });
     object.name = "garage-floor-reflection";
-    gateGarageFloorCapture(object, () => usePreferencesStore.getState().reducedMotion
-      ? undefined : getScene().clock.elapsedTime, compact ? 1 / 15 : 1 / 24);
     object.rotation.x = -Math.PI / 2;
     object.position.y = 0.003;
     const material = object.material as ShaderMaterial;
@@ -158,7 +158,15 @@ export function GarageFloorReflection({
       material.uniforms.showPerimeter.value = 1;
     }
     return object;
-  }, [width, depth, perimeter, getScene, compact]);
+  }, [width, depth, perimeter, compact]);
+  const captureInterval = 1 / (captureRate ?? (compact ? 15 : 24));
+  useLayoutEffect(() => {
+    // Change the capture cadence without replacing the existing reflection texture.
+    const capture = floor.onBeforeRender;
+    gateGarageFloorCapture(floor, () => usePreferencesStore.getState().reducedMotion
+      ? undefined : getScene().clock.elapsedTime, captureInterval);
+    return () => { floor.onBeforeRender = capture; };
+  }, [floor, getScene, captureInterval]);
   useLayoutEffect(() => {
     configureGarageFloor(floor, settings);
   }, [floor, settings]);

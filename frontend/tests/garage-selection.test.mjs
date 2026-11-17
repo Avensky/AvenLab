@@ -52,9 +52,9 @@ function garageTestServer() {
           useLayoutEffect(() => { ref.current = camera; return () => { ref.current = null; }; }, [ref]);
           return h('div', {'data-camera': true}, children);
         }
-        export function GarageEnvironment({onSettled}) {
+        export function GarageEnvironment({onSettled, floorCaptureRate}) {
           useLayoutEffect(() => { onSettled(); }, [onSettled]);
-          return h('div',{'data-garage':true});
+          return h('div',{'data-garage':true,'data-floor-capture-rate':floorCaptureRate});
         }
         export function PreviewTurntable({children, onReady}) {
           useLayoutEffect(() => { onReady(turntable); }, [onReady]);
@@ -146,6 +146,8 @@ test('a delayed vehicle swap retains the camera and mounted driver until a new s
     useGarageDrive.setState({camera:'Driver Door', stage:'station'});
     await act(async()=>root.render(createElement(VehiclePreview,{awaitingHero:true})));
     stepCamera();
+    const garage = document.querySelector('[data-garage]');
+    assert.equal(garage.dataset.floorCaptureRate, undefined);
     assert.equal(camera.position.x,3);
     const position = camera.position.clone(), rotation = camera.quaternion.clone(), fov = camera.fov;
     const mountedCamera = document.querySelector('[data-camera]');
@@ -156,6 +158,7 @@ test('a delayed vehicle swap retains the camera and mounted driver until a new s
     setGarageMotion(Math.PI / 3, 1, 2);
     await act(async()=>root.render(createElement(VehiclePreview,{awaitingHero:true,wardrobeOpen:true,characterOnly:true,fittingRoom:true})));
     stepCamera();
+    assert.equal(garage.dataset.floorCaptureRate, '12', 'the fitting room limits the decorative floor reflection');
     assert.equal(document.querySelector('[data-model="brz"]'),vehicle,'the vehicle stays mounted');
     assert.equal(vehicle.dataset.active,'false','the fitting room suspends the vehicle');
     assert.equal(document.querySelector('[data-character-actor="true"][data-upright="true"]'),driver);
@@ -171,6 +174,7 @@ test('a delayed vehicle swap retains the camera and mounted driver until a new s
     setGarageMotion(0, 0, 0);
     await act(async()=>root.render(createElement(VehiclePreview,{awaitingHero:true,wardrobeOpen:true})));
     stepCamera();
+    assert.equal(garage.dataset.floorCaptureRate, undefined, 'the Emotes tab keeps the normal reflection cadence');
     assert.equal(vehicle.dataset.active,'true','the Emotes tab keeps its vehicle');
     assert.equal(useCharacterPreviewStore.getState().cockpitVehicle,'brz');
     await act(async()=>root.render(createElement(VehiclePreview,{awaitingHero:true})));
