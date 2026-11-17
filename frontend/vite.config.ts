@@ -2,13 +2,16 @@
 import { execFile } from "node:child_process";
 import { resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { defineConfig, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 import { discoveredWardrobeCatalogFile, isWardrobeCatalogInput, wardrobeCatalogFile, wardrobeDirectory } from "./scripts/discover-wardrobe-garments.mts";
 import { findVillagerModel, hasCharacterModel, hasCompatibleWardrobeRevision } from "./scripts/character-model-paths.mts";
+const heroesPreviewManifest = new URL("./public/models/heroes-generated/previews.json", import.meta.url);
+const heroesVehiclePreviews = existsSync(heroesPreviewManifest)
+  ? JSON.parse(readFileSync(heroesPreviewManifest, "utf8")) : {};
 const wardrobeSets: { id: string }[] = JSON.parse(readFileSync(new URL("../packages/wardrobe-catalog/character-wardrobe.json", import.meta.url), "utf8"));
 const standaloneCorsetIds = [...wardrobeSets.map(({ id }) => id),
   "gothic-laced-bodice", "gothic-underbust-vest", "gothic-underbust-vest-original-cut", "gothic-underbust-vest-tucked",
@@ -48,6 +51,7 @@ const vesperModelUrl = vesper?.sourceUrl ?? (vesper && hasCharacterModel(vesper.
 
 export default defineConfig({
   define: {
+    __HEROES_VEHICLE_PREVIEWS__: JSON.stringify(heroesVehiclePreviews),
     __DRESSING_ROOM_IMPORTED_IDS__: JSON.stringify(activeImports.filter(item => hasCharacterModel(garmentFile(item.url))).map(item => item.id)),
     __DRESSING_ROOM_MOBILE_IDS__: JSON.stringify(activeImports.filter(item => item.mobileUrl && hasCharacterModel(garmentFile(item.mobileUrl))).map(item => item.id)),
     __DRESSING_ROOM_REVISION_IDS__: JSON.stringify(installedRevisions),

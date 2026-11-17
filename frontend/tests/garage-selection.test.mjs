@@ -13,7 +13,7 @@ function garageTestServer() {
     plugins:[{name:'garage-surface',enforce:'pre',
       transform(source,id){
         if(id.endsWith('/game/preview/VehiclePreview.tsx'))
-          return source.replace(/from "(?:@react-three\/(?:fiber|drei)|\.\/(?:VehiclePreviewModel|GarageEnvironment|PreviewTurntable|PreviewLoadingSeal|PreviewContactShadow)|\.\.\/characters\/(?:GarageDriver|FittingCameraOrbit|FittingMirrorDisplay))"/g,'from "virtual:garage-surface"')
+          return source.replace(/from "(?:@react-three\/(?:fiber|drei)|\.\/(?:StagedVehiclePreviewModel|GarageEnvironment|PreviewTurntable|PreviewLoadingSeal|PreviewContactShadow)|\.\.\/characters\/(?:GarageDriver|FittingCameraOrbit|FittingMirrorDisplay))"/g,'from "virtual:garage-surface"')
             .replace('import { Html, PerspectiveCamera }','import { Html, PerspectiveCamera, useCharacterActor, useMotionGroup }')
             .replace('const characterActor = useRef<Group>(null);','const characterActor = useCharacterActor();')
             .replace('const motion = useRef<Group>(null);','const motion = useMotionGroup();')
@@ -65,7 +65,7 @@ function garageTestServer() {
           useLayoutEffect(() => { characterActor.matrixAutoUpdate = !upright; }, [upright]);
           return h('span', {'data-driver': choice.id, 'data-character-actor': previewPacks, 'data-upright': upright});
         }
-        export function VehiclePreviewModel({model, garageOpen, allowDriver, onSettled, onDriverFit, summon, active, diagnostics}) {
+        export function StagedVehiclePreviewModel({model, garageOpen, allowDriver, onSettled, onDriverFit, summon, active, diagnostics}) {
           if (pending?.model === model) throw pending.promise;
           const materialized = useRef(summon);
           useLayoutEffect(() => {

@@ -269,7 +269,7 @@ export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
   data-main-vehicle={isMainVehicle?headerVehicle?.id:undefined} data-selection-action
   disabled={Boolean(headerVehicle&&!owner)} aria-label={vehicleLabel} title={vehicleLabel}
   aria-current={editing?"page":undefined} onClick={openVehicleCustomization}>
-  {headerVehicle?<HeroPortrait hero={headerVehicle.id} appearance={appearance} showStyleStatus={false}/>:<MenuIcon name="vehicles"/>}
+  {headerVehicle?<HeroPortrait hero={headerVehicle.id} appearance={appearance} cacheOnly={!garageSession} showStyleStatus={false}/>:<MenuIcon name="vehicles"/>}
   <span className="hero-workshop-main-name">{headerVehicle?.name??"Vehicles"}</span>
  </button>;
  const customizationHeader={onOpen:openCharacter,leadingAction:vehicleAction,active:characterOpen};

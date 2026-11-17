@@ -7,7 +7,6 @@ import {
   DirectionalLight,
   Group,
   HemisphereLight,
-  Mesh,
   OrthographicCamera,
   PMREMGenerator,
   Scene,
@@ -15,8 +14,6 @@ import {
   Vector3,
   WebGLRenderer,
   ACESFilmicToneMapping,
-  type Object3D,
-  type Texture,
 } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
@@ -24,6 +21,7 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import { FACTORY_APPEARANCE, type HeroAppearance } from "../../vehicles/cosmetics/heroLoadouts";
 import {isDrivingScreen, useUIStore} from "../../store/menus/uiStore";
 import { prepareGarageVehiclePaint, applyShowroomPaint, applyShowroomHighlights } from "./garageVehiclePaint";
+import { disposeVehicleAsset } from "./disposeVehicleAsset";
 import { prepareVehicleVisual } from "../../vehicles/tools/vehicleMaterials";
 import { vehicleSystems } from "../../vehicles/vehicleSystems";
 import { applyWindowTone, DEFAULT_WINDOW_TONE, type WindowTone } from "./windowTones";
@@ -34,24 +32,6 @@ import {
 
 function requireMenu() {
   if (isDrivingScreen(useUIStore.getState().screen)) throw Error("Styled portraits are generated in menus, not during gameplay.");
-}
-
-function disposeLoadedPortrait(scene: Object3D) {
-  const textures = new Set<Texture>();
-  scene.traverse((object) => {
-    if (!(object instanceof Mesh)) return;
-    object.geometry.dispose();
-    for (const material of Array.isArray(object.material)
-      ? object.material
-      : [object.material])
-      {
-        for (const value of Object.values(material)) {
-          if (value && typeof value === "object" && "isTexture" in value && value.isTexture) textures.add(value as Texture);
-        }
-        material.dispose();
-      }
-  });
-  for (const texture of textures) texture.dispose();
 }
 
 export async function bakeHeroPortrait(model: VehicleModelId, appearance: HeroAppearance = FACTORY_APPEARANCE, tone: WindowTone = DEFAULT_WINDOW_TONE): Promise<string> {
@@ -111,7 +91,7 @@ export async function bakeHeroPortrait(model: VehicleModelId, appearance: HeroAp
     return renderer.domElement.toDataURL("image/webp", 0.88);
   } finally {
     prepared?.dispose();
-    if (gltf) disposeLoadedPortrait(gltf.scene);
+    if (gltf) disposeVehicleAsset(gltf.scene);
     room?.dispose();
     environment?.dispose();
     pmrem?.dispose();

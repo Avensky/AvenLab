@@ -7,10 +7,11 @@ import { AssetBoundary } from "../../components/debugger/AssetBoundary";
 import { Html, PerspectiveCamera } from "@react-three/drei";
 
 import { useSelectionStore } from "../../store/selection/selectionStore";
-import { VehiclePreviewModel, type VehiclePreviewDriverFit } from "./VehiclePreviewModel";
+import type { VehiclePreviewDriverFit } from "./VehiclePreviewModel";
 import { GarageDriver } from "../characters/GarageDriver";
 import { PreviewContactShadow } from "./PreviewContactShadow";
 import { usePreferencesStore } from "../../store/preferences/preferencesStore";
+import { StagedVehiclePreviewModel } from "./StagedVehiclePreviewModel";
 import { GarageEnvironment } from "./GarageEnvironment";
 import { PreviewTurntable } from "./PreviewTurntable";
 import { DEFAULT_PREVIEW_PLATFORM } from "./previewPlacement";
@@ -342,6 +343,7 @@ export function VehiclePreview({
     if (frameloop === "demand" && (!compact || stationary || reducedMotion) &&
       (reframing || camera.position.distanceToSquared(position) > .000001 || pivot.distanceToSquared(target) > .000001)) invalidate();
   }, -.25);
+  const unavailable = vehicleId && <MissingVehicle model={vehicleId} onSettled={setSettledVehicle} cockpit={insideCar} visible={!characterOnly} />;
   return (
     <>
       <GarageEnvironment turntable={turntable} onPlatformReady={setPlatform} accentOverride={selectionAccent}
@@ -367,10 +369,11 @@ export function VehiclePreview({
             </group>}
             {vehicleId && <AssetBoundary
               key={vehicleId}
-              fallback={<MissingVehicle model={vehicleId} onSettled={setSettledVehicle} cockpit={insideCar} visible={!characterOnly} />}
+              fallback={unavailable}
             >
               <Suspense fallback={null}>
-                <VehiclePreviewModel platform={platform} model={vehicleId} driver={vehicleEmotes ? driver : garageDriver} previewPacks={vehicleEmotes}
+                <StagedVehiclePreviewModel browse={workshop && !garageOpen && !vehicleEmotes} unavailable={unavailable}
+                  platform={platform} model={vehicleId} driver={vehicleEmotes ? driver : garageDriver} previewPacks={vehicleEmotes}
                   motion={motion} onDriverFit={reportDriverFit} onSettled={setSettledVehicle} allowDriver={roomReady}
                   garageOpen={garageOpen} garageCameraAnchors={workshop} reducedMotion={reducedMotion} active={!characterOnly} diagnostics={!wardrobeOpen}
                   summon={Boolean(settledVehicle && waitingForCar && !stationary && !reducedMotion)} />

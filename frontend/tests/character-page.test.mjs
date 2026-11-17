@@ -59,7 +59,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     const { readLocalCharacter } = await load('game/characters/localOutfits.ts');
     const { useUIStore: ui } = await load('store/menus/uiStore.ts');
     const { useSocialStore: social } = await load('store/social/socialStore.ts');
-    const { useHeroLoadouts: loadouts } = await load('vehicles/cosmetics/heroLoadouts.ts');
+    const { useHeroLoadouts: loadouts, FACTORY_APPEARANCE } = await load('vehicles/cosmetics/heroLoadouts.ts');
     const { useAlphaStore: alpha } = await load('store/alpha/alphaStore.ts');
     const { usePreviewZoom: zoom } = await load('game/preview/previewZoomStore.ts');
     const { useCharacterPreviewStore: preview } = await load('game/characters/characterPreviewStore.ts');
@@ -74,7 +74,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
       current_world_id: null, limits: { max_active_worlds: 3 },
     };
     social.getState().receive(view);
-    loadouts.getState().adopt('driver', 'brz');
+    loadouts.getState().adopt('driver', 'brz', { brz: { ...FACTORY_APPEARANCE, body: '#ef2244' } });
     ui.setState({ screen: 'heroes', overlay: null, isModeLoading: false });
     const { createRoot } = await import('react-dom/client');
     root = createRoot(document.getElementById('root'));
@@ -121,12 +121,16 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     const title = () => find('.menu-frame-header h1').textContent;
 
     assert.equal(title(), 'HEROES');
+    const headerPortrait = () => find('[data-customize-vehicle] .hero-portrait-art');
+    assert.equal(headerPortrait().dataset.style, 'deferred', 'the roster header waits to bake a custom vehicle portrait');
+    assert.equal(find('[data-hero=brz] .hero-portrait-art').dataset.style, 'deferred');
     await click('[aria-label="Zoom vehicle in"]');
     assert.equal(zoom.getState().level, 1);
     await click('[aria-label="Reset vehicle zoom"]');
     assert.equal(zoom.getState().level, 0);
     await click('[data-open-character]');
     assert.equal(title(), 'CHARACTER');
+    assert.equal(headerPortrait().dataset.style, 'deferred', 'wardrobe entry keeps the cold vehicle bake deferred');
     assert.equal(find('.hero-roster'), null);
     assert.equal(find('[role=tab]'), null);
     assert.equal(find('[data-character-preview]').dataset.characterPreview, 'mara-vega');
@@ -501,6 +505,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.match(find('[data-open-character]').textContent, /Rook Okafor/);
     await click('[data-hero=camaro]');
     assert.equal(title(), 'GARAGE');
+    assert.equal(headerPortrait().dataset.cacheOnly, 'false', 'the full garage can prepare a custom vehicle portrait');
     assert.equal(alpha.getState().previewHero, 'camaro');
     assert.equal(loadouts.getState().defaultHero, 'brz');
     const garageCamera = () => find('[aria-label="Garage camera and drive preview"] [data-camera-choice][aria-pressed="true"]').getAttribute('aria-label');
