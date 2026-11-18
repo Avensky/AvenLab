@@ -2,9 +2,9 @@ import { BufferGeometry, MathUtils, Triangle, Vector3, type BufferAttribute, typ
 import { MeshBVH, type HitPointInfo } from "three-mesh-bvh";
 import { sameWardrobeFitInputs, wardrobeFitInputs } from "./wardrobeSurface.ts";
 
-// Preserve the original torso blend at the bottom of the sleeveless armholes. The
+// Preserve the original torso blend at the bottom of Top 03's armholes. The
 // upper rim still follows the shoulders and the collar keeps its own rigging.
-function anchorLowerArmholes(source: BufferGeometry, armJoints: boolean[]) {
+function anchorTop03Armholes(source: BufferGeometry, armJoints: boolean[]) {
   const positions = source.getAttribute("position"), joints = source.getAttribute("skinIndex"), weights = source.getAttribute("skinWeight");
   if (!positions || !joints || !weights) return;
   let fitted: BufferGeometry | undefined;
@@ -72,7 +72,7 @@ function buildWardrobeTopFit(body: BufferGeometry, id: string, skeleton?: Skelet
 
   const contact = .010;
   const shoulderFit = id === "top-02" || id === "top-03";
-  const armJoints = id === "top-03" || id === "top-04"
+  const armJoints = id === "top-03"
     ? skeleton?.bones.map(bone => /^(clavicle|upperarm)(_|$)/.test(bone.name))
     : undefined;
   const surfaceGeometry = new BufferGeometry().setAttribute("position", position).setIndex(index.clone());
@@ -85,7 +85,7 @@ function buildWardrobeTopFit(body: BufferGeometry, id: string, skeleton?: Skelet
   return (source: BufferGeometry) => {
     const cloth = source.getAttribute("position");
     if (!cloth) return;
-    let fitted = armJoints && anchorLowerArmholes(source, armJoints);
+    let fitted = armJoints && anchorTop03Armholes(source, armJoints);
     for (let vertex = 0; vertex < cloth.count; vertex++) {
       point.fromBufferAttribute(cloth, vertex);
       if (!surface.closestPointToPoint(point, hit, 0, contact) || hit.distance >= contact) continue;
@@ -107,20 +107,6 @@ function buildWardrobeTopFit(body: BufferGeometry, id: string, skeleton?: Skelet
       point.addScaledVector(direction, ease);
       fitted.getAttribute("position").setXYZ(vertex, point.x, point.y, point.z);
     }
-    if (id === "top-04") {
-      // Open the front and rear lips around the upper arm, tapering into the torso.
-      fitted ??= source.clone();
-      const rim = fitted.getAttribute("position");
-      for (let v = 0; v < rim.count; v++) {
-        const x = rim.getX(v), y = rim.getY(v), z = rim.getZ(v);
-        const band = MathUtils.smoothstep(y, 1.195, 1.233) * (1 - MathUtils.smoothstep(y, 1.31, 1.36));
-        const side = band * MathUtils.smoothstep(Math.abs(x), .091, .119);
-        const underarm = 1 - MathUtils.smoothstep(Math.abs(z), .005, .025);
-        rim.setY(v, y - .006 * side * underarm);
-        rim.setZ(v, z + side * (.016 * MathUtils.smoothstep(z, .008, .044) - .018 * (1 - MathUtils.smoothstep(z, -.048, -.008))));
-        rim.setX(v, x + Math.sign(x) * side * (.003 * (1 - MathUtils.smoothstep(Math.abs(z + .025), .012, .04)) - .004 * underarm));
-      }
-    }
     if (id === "top-05") smoothTop05Back(fitted ??= source.clone());
     if (fitted) {
       fitted.computeBoundingBox();
@@ -135,8 +121,8 @@ type SavedTopFit = { inputs: FitInputs; position?: BufferAttribute; skinWeight?:
 type DonorFit = {
   inputs: FitInputs; jointNames: string; parts: WeakMap<BufferGeometry, SavedTopFit>;
 };
-const fitCaches = new Map(["top-03", "top-04", "top-05"].map(id =>
-  [id, new WeakMap<BufferGeometry, DonorFit>()] as const));
+const top03ByBody = new WeakMap<BufferGeometry, DonorFit>();
+const top05ByBody = new WeakMap<BufferGeometry, DonorFit>();
 
 function restoreAttribute(geometry: BufferGeometry, name: string, saved: BufferAttribute) {
   const target = geometry.getAttribute(name);
@@ -153,7 +139,7 @@ function restoreAttribute(geometry: BufferGeometry, name: string, saved: BufferA
 
 export function prepareWardrobeTopFit(body: BufferGeometry, id: string, skeleton?: Skeleton) {
   if (!body.hasAttribute("position") || !body.hasAttribute("normal") || !body.getIndex()) return;
-  const cache = fitCaches.get(id);
+  const cache = id === "top-03" ? top03ByBody : id === "top-05" ? top05ByBody : undefined;
   if (!cache) return buildWardrobeTopFit(body, id, skeleton);
 
   const inputs = wardrobeFitInputs(body);
@@ -184,7 +170,7 @@ export function prepareWardrobeTopFit(body: BufferGeometry, id: string, skeleton
     const fitted = fit(source);
     parts.set(source, { inputs, position: fitted?.getAttribute("position").clone(),
       normal: id === "top-05" ? fitted?.getAttribute("normal").clone() : undefined,
-      skinWeight: id !== "top-05" ? fitted?.getAttribute("skinWeight")?.clone() : undefined });
+      skinWeight: id === "top-03" ? fitted?.getAttribute("skinWeight")?.clone() : undefined });
     return fitted;
   };
 }
