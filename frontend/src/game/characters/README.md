@@ -285,8 +285,10 @@ body positions unquantized because the face shaders use bind-space positions.
   if they are cut by a single sample. Each preview owns its index buffer. A
   fitted Village actor with fixed source coverage retains a mask for each
   visited waist and bra combination, so switching back reuses the visible
-  triangle list. The shared Laced Bodice cache holds up to eight masks per
-  fitted source combination.
+  triangle list. On an outfit with selectable bras, the first fit records
+  which triangles the other clothes cover at that waist. Changing the bra
+  checks only skin that could be covered by the new style. The shared Laced
+  Bodice cache holds up to eight masks per fitted source combination.
   When an outfit exposes part of the original cut body, the fitter remembers
   which donor triangles match that surface. Other outfits can reuse those
   answers until either surface's positions, indices, or draw range changes.
@@ -305,6 +307,13 @@ body positions unquantized because the face shaders use bind-space positions.
   along the narrow edges. Compare both sides at rest and through arm reaches.
   Check the top and rear crest as well as the visible front seam. Keep an
   authored keyhole open, including the skin visible through it.
+- **Check a shirt with the hair and headwear equipped.** For Top 03, isolate
+  arm motion from torso motion before altering the lower armhole. Then check
+  which body triangles are visible through it as the shoulder rises. Preserve
+  the collar folds by adjusting the braid at the nape and fitting the loose
+  bonnet ribbons below their attachment. Recheck the ribbons against all five
+  Pack 7 tops. Top 03 reuses fitted positions and skin weights on repeat equips
+  while each actor owns the geometry it renders.
 - **Check the waist with the skirt actually worn.** Compare Over and Tucked
   with the stock Village skirt and belt, the same pieces explicitly
   equipped, and the target Gothic skirt. The rear belt and skirt rim are
@@ -314,7 +323,12 @@ body positions unquantized because the face shaders use bind-space positions.
 - **Preserve details through re-export.** Keep authored UVs, base texture
   detail, normal maps, and material slots for fabric, trim, laces, eyelets, and fasteners.
   Sweetheart has independent front and hip laces. Laced Bodice has a separate
-  finish control. Check a light and a dark dye, metal highlights, and close-up
+  finish control. Its original Thin Weld normal supplies the fold and weave
+  detail on UV0. The fitted shell uses UV1 for the seam decal. Keep those
+  channels separate when changing the fabric. The source material gives the
+  undyed shell and eyelet panels their neutral tint and subdued sheen. Apply
+  the tint only to undyed cloth so saved colors still match their swatches.
+  Check a light and a dark dye, metal highlights, and close-up
   seam quality. Roughness and metalness affect how two materials with the same
   dye read under garage lighting. Decimation belongs on broad fabric regions
   where it preserves the fit boundary. Batch meshes with matching materials and skin behavior to
@@ -374,17 +388,21 @@ node scripts/sample-wardrobe-emotes.mjs /path/to/raw/gothic-01.glb /path/to/pose
 
 | Garment | Confirmed | Open review |
 | --- | --- | --- |
-| Laced Bodice | The tucked hem had zero measured intersections with the Village skirt and rear belt in 56 sampled states. | The idle and overhead rear views both show a small piece of the shell at the viewer-left belt tip. Both tiers also produced upper-torso skin-mask findings. |
-| Ruffled | The waist and cup clearance checks passed on both tiers. | Inspect the upper back during Overhead heart. On the tucked fit, 4 upper-back rays on each tier found missing skin. Other rays also found gaps outside that region. |
-| Underbust and bras | Both vest fits with Classic and standalone Push-up passed the torso mask probe on both tiers. | The vest with Push-up produced four uncovered rays at Overhead heart on each fit and tier. Standalone Classic also produced findings. |
+| Pack 7 Top 03 | The lower armhole follows the torso, while the upper rim follows the shoulder. The body mask retains the skin visible through the moving opening. The long Village braid bends over the rear collar and the Village bonnet ties hang higher. | Raise both arms in Overhead heart, turn to the rear quarter, then check the braid and ties with the arms lowered. |
+| Laced Bodice | The tucked fit draws the hem inside the side turns of the Village belt. The skin mask retains the body behind the rear lacing and moving neckline. | Review the rear belt tip at an oblique angle and compare the cloth folds in a light and a dark dye. |
+| Ruffled | The waist and cup clearance checks passed on both tiers. With the Village skirt and belt, both Over and Tucked passed the torso mask probe in all three poses. | Check the upper back and neckline in game during Overhead heart. |
+| Underbust and bras | Both vest fits preserve skin at the outer cup as the arms rise. Each bra mask retains the skin under its moving neckline binding. | Review the vest with the bra removed and the Classic neckline during Overhead heart. |
 | Sweetheart | The authored refit preserves chest and underarm skin. The animated skin mask passed both fits, both tiers, and both skirt routes in three sampled poses. | Review the revised cup and underarm silhouette and the Tucked waistband in motion. The old coverage samples predate the revised opening and authored skirt rim. |
-| High Collar | Both tiers load, bind to Vesper, and switch between Over and Tucked. | The full audit reports uncovered masked skin at rest and during motion with the Village skirt and the matched Gothic outfit. Review the straps, rear collar, and front keyhole on the live model. |
+| High Collar | Both tiers passed the torso mask probe with the Village skirt and the matched Gothic outfit after the Corset 05 update. | Review the raised-arm straps, armholes, and keyhole on the live model. |
 
-The torso mask probe evaluates 34 outfit and tier combinations in idle,
-Happy applause, and Overhead heart. The full audit currently exits with
-status 1 on mask findings in 20 combinations. Its rays identify candidate
-gaps for visual review. Use the reported tier, waist, outfit, and pose to
-reproduce each finding.
+The torso mask probe covers 44 outfit and tier combinations and 148 pose
+samples. It checks idle, Happy applause, and Overhead heart on both tiers.
+For Laced Bodice it also checks Comfortable weight shift and Shoulder stretch,
+following the opening below the rear eyelets down to the waist.
+Each finding includes the tier, waist, outfit, and
+pose so it can be reproduced in the fitting room. Inspect the cloth against
+the skirt and the separate belt as well. A torso mask can pass while a hem
+still shows through the waistband.
 
 ## Garage presentation fixes
 
@@ -432,6 +450,8 @@ click gestures. Character drag and pointer cancellation do not trigger an emote.
 
 Inner rotation arrows turn the character; outer arrows turn the vehicle display.
 Dragging directly on the character with a mouse turns the model independently.
+The initial press hit-tests the visible model. Once the drag starts, pointer
+movement turns the character without testing each skinned garment again.
 In the Fitting Room, dragging the scene background orbits the camera around its
 current framing target. Touch supports one-finger orbit. The garage vehicle
 display keeps its turntable drag.
@@ -539,3 +559,17 @@ a lower neckline and smaller cups. Both styles can be worn on their own or
 with the Gothic Underbust Vest. Choosing another top or corset clears the bra
 selection. The rebuilt vest has independent Main, Binding, Front panel, Lining
 and Hardware colors.
+
+## Pack 7 tops — visual review
+
+**Top 04 and shared underarm shading — provisional pass.** In a close rear
+three-quarter view at the midpoint of Overhead heart, a short, angular shadow
+remains where Vesper's upper arm meets the ribs. The bare reference body shows
+the same crease. Keep the current shirt fit. Revisit the shared skin if the line
+becomes visible during ordinary movement or at the usual fitting-room distance.
+
+**Top 05 — visual review passed.** Check the white back panel between the
+braid and waistband in idle, then raise both arms with Overhead heart. The
+previous horizontal opening was absent in both review renders. A faint fabric
+fold remains. The garage and portrait skin-mask checks found no missing
+exposed skin in five sampled poses per tier.

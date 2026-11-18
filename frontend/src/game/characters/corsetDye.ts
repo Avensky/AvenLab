@@ -40,8 +40,8 @@ const profiles: readonly CorsetDyeProfile[] = [
   },
   {
     groups: {
-      fabric: { key: "color", label: "Fabric", original: "#6e6660", theme: "color", fallback: ["outfitFabric"] },
-      panel: { key: "panel", label: "Trim", original: "#635a54", theme: "color", fallback: ["outfitFabric"] },
+      fabric: { key: "color", label: "Fabric", original: "#797471", theme: "color", fallback: ["outfitFabric"] },
+      panel: { key: "panel", label: "Trim", original: "#746e6c", theme: "color", fallback: ["outfitFabric"] },
       laces: { key: "laces", label: "Laces", original: "#cdb693", theme: "accent", fallback: ["accent", "outfitAccent"] },
       hardware: { key: "hardware", label: "Eyelets", original: "#b18e61" },
       closure: { key: "closure", label: "Zipper", original: "#a6906f", overOnly: true },
@@ -49,8 +49,8 @@ const profiles: readonly CorsetDyeProfile[] = [
     supports: (_, url) => url !== null && isRebuiltLacedBodiceUrl(url),
     materialGroup: (source, material) => material.userData.rebuiltLacedBodice ? source.userData.color_slot : undefined,
     finishes: LACED_BODICE_FINISHES,
-    applyFinish: (source, material, group, colors) => {
-      if (group.key === "color" || group.key === "panel") applyLacedBodiceFinish(source, material, colors?.finish);
+    applyFinish: (source, material, group, colors, dyed) => {
+      if (group.key === "color" || group.key === "panel") applyLacedBodiceFinish(source, material, colors?.finish, dyed);
     },
   },
   {

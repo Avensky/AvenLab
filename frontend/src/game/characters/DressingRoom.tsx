@@ -348,8 +348,9 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
       remove: selected ? () => onTryOn(setWardrobeRemoval(choice, removal, true)) : undefined,
     });
   }
+  const wearsBonnet = !removedClothing.includes("hat") && (!garments?.hat || garments.hat === "village-bonnet");
   if (female) for (const { category, slot, label, section, focus, layer } of REMOVAL_CARDS) {
-    if (outfitRemovals.includes(slot) || (slot === "bonnet-bow" && (choice.garments?.hat || outfitRemovals.includes("hat")))) continue;
+    if (outfitRemovals.includes(slot) || (slot === "bonnet-bow" && !wearsBonnet)) continue;
     if (slot === "bracer" && !choice.garments?.bracer) continue;
     const name = slot === "hat" && !choice.garments?.hat ? "bonnet" : label;
     const selected = removedClothing.includes(slot) || (slot === "skirt" && removedClothing.includes("village-skirt"));

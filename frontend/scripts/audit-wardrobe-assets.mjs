@@ -123,19 +123,22 @@ export async function auditCurrentCorsetMasks(frontend, publicRoot) {
       }
     }
     const villageWaist = { explicitWaist: true, route: 'Village skirt and belt' };
-    scenarios.push({ name: 'Laced Bodice', set: 'gothic-01', asset: 'gothic-laced-bodice', waist: 'tucked', ...villageWaist });
+    // Weight shift and shoulder stretch can expose the lacing down to the waist.
+    const laced = { name: 'Laced Bodice', set: 'gothic-01', asset: 'gothic-laced-bodice',
+      maskProbe: { minHeight: 1.09, extraPoses: [['002', .38], ['008', .5]] } };
     for (const waist of ['over', 'tucked']) {
+      scenarios.push({ ...laced, waist, ...villageWaist }, { ...laced, waist, matched: true, route: 'matched outfit' });
       scenarios.push({ name: 'Ruffled', set: 'gothic-03', asset: 'gothic-03', waist, ...villageWaist });
-      for (const bra of ['classic', 'push-up']) {
+      for (const bra of [false, 'classic', 'push-up']) {
         const asset = waist === 'over' ? 'gothic-underbust-vest' : 'gothic-underbust-vest-tucked';
-        scenarios.push({ name: 'Underbust', set: 'gothic-04', asset, waist, bra, route: `${bra} bra` });
+        scenarios.push({ name: 'Underbust', set: 'gothic-04', asset, waist, bra, route: bra ? `${bra} bra` : 'bra removed' });
       }
     }
     for (const bra of ['classic', 'push-up']) scenarios.push({ name: `Standalone ${bra} bra`, bra });
 
     let poseCount = 0, clearCases = 0, gapCases = 0, errors = 0;
     for (const [tier, kind, alternate] of [['garage', 'garage', 'mobile'], ['mobile', 'portrait', 'garage']]) {
-      for (const { name, set, waist, matched, asset, explicitWaist, bra, route } of scenarios) {
+      for (const { name, set, waist, matched, asset, explicitWaist, bra, route, maskProbe } of scenarios) {
         const label = set ? `${name} ${tier} ${waist} with ${route}` : `${name} ${tier}`;
         let model;
         try {
@@ -144,6 +147,7 @@ export async function auditCurrentCorsetMasks(frontend, publicRoot) {
           const equipped = explicitWaist ? { skirt: 'village-skirt', belt: 'village-belt' } : {};
           const appearance = characterLook(DEFAULT_CHARACTER).appearance;
           const look = characterLook({ ...DEFAULT_CHARACTER, ...outfit, garments: equipped,
+            ...(bra === false && { bra: false }),
             ...(bra && { bra: true, appearance: { ...appearance, bra_style: bra } }) });
           const expectedBase = matched ? `${bundleFolder}/${set}.${tier}.glb` : villagePortrait;
           const baseUrl = villagerModelUrl(look, kind, 'portrait');
@@ -185,12 +189,13 @@ export async function auditCurrentCorsetMasks(frontend, publicRoot) {
           if (set) assert(covers.some(mesh => clothingPieceFor(mesh) === 'corset'), 'selected corset retained');
           if (bra) assert(model.root.getObjectByName(`wardrobe-underwear-bra${bra === 'push-up' ? '-push-up' : ''}`)?.visible,
             'selected bra cut retained');
+          if (bra === false) assert(!covers.some(mesh => clothingPieceFor(mesh) === 'bra'), 'removed bra stays hidden');
           for (const mesh of covers) {
             const bones = mesh.skeleton.bones;
             assert(bones.length === skin.skeleton.bones.length && bones.every((bone, index) => bone === skin.skeleton.bones[index]),
               'clothing and body follow the same live rig joints');
           }
-          const probes = auditCorsetSkinMask(model.root, skin, bindBody, covers, buildEmoteClips, findGaragePreviewEmote);
+          const probes = auditCorsetSkinMask(model.root, skin, bindBody, covers, buildEmoteClips, findGaragePreviewEmote, maskProbe);
           poseCount += probes.length;
           const gaps = probes.filter(probe => probe.uncovered > 0);
           if (gaps.length) {
@@ -201,7 +206,7 @@ export async function auditCurrentCorsetMasks(frontend, publicRoot) {
             clearCases++;
             const samples = probes.reduce((total, probe) => total + probe.sampled, 0);
             const detail = samples ? `0/${samples} uncovered masked-skin rays` : 'no externally visible masked torso samples';
-            console.log(`PASS ${label}: ${detail} across the three poses`);
+            console.log(`PASS ${label}: ${detail} across ${probes.length} poses`);
           }
         } catch (error) {
           errors++;

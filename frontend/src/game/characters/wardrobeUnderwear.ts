@@ -1,6 +1,6 @@
 import { DoubleSide, Group, MathUtils, MeshStandardMaterial, SkinnedMesh, type BufferGeometry, type Vector3 } from "three";
 import { DEFAULT_UNDERWEAR_COLORS, type PieceColors, type UnderwearPiece } from "./clothingPieces";
-import { fitWardrobeSurface } from "./wardrobeSurface";
+import { fitWardrobeSurface, sameWardrobeFitInputs, wardrobeFitInputs } from "./wardrobeSurface";
 
 export type BraStyle = "classic" | "push-up";
 
@@ -58,6 +58,11 @@ const patterns = {
   briefs: { upper: briefsWaist, lower: briefsLeg, halfWidth: .185, clearance: .0008, topWidth: .010, hemWidth: .006 },
 };
 
+export function insideBraNeckline(style: BraStyle, point: Vector3) {
+  const { upper, topWidth } = patterns[style];
+  return point.y < upper(point) - topWidth;
+}
+
 function traceUnderwear(source: BufferGeometry, style: UnderwearStyle): UnderwearCut | undefined {
   const { upper, lower, halfWidth, clearance, topWidth, hemWidth } = patterns[style];
   const aboveHem = (point: Vector3) => point.y - lower(point);
@@ -75,24 +80,15 @@ function traceUnderwear(source: BufferGeometry, style: UnderwearStyle): Underwea
   return { fabric, topBinding: traceBinding(belowTop, topWidth), hemBinding: traceBinding(aboveHem, hemWidth) };
 }
 
-function cutInputs(source: BufferGeometry) {
-  return [source.getIndex(), source.getAttribute("position"), source.getAttribute("normal"),
-    source.getAttribute("skinIndex"), source.getAttribute("skinWeight")].map(attribute => ({
-    attribute,
-    version: attribute && ("data" in attribute ? attribute.data.version : attribute.version),
-  }));
-}
-
 const cutsByDonor = new WeakMap<BufferGeometry, {
-  inputs: ReturnType<typeof cutInputs>;
+  inputs: ReturnType<typeof wardrobeFitInputs>;
   cuts: Map<UnderwearStyle, UnderwearCut | undefined>;
 }>();
 
 function underwearCut(source: BufferGeometry, style: UnderwearStyle) {
-  const inputs = cutInputs(source);
+  const inputs = wardrobeFitInputs(source);
   let cached = cutsByDonor.get(source);
-  if (!cached || cached.inputs.some(({ attribute, version }, i) =>
-    attribute !== inputs[i].attribute || version !== inputs[i].version)) {
+  if (!cached || !sameWardrobeFitInputs(cached.inputs, inputs)) {
     cached = { inputs, cuts: new Map() };
     cutsByDonor.set(source, cached);
   }
