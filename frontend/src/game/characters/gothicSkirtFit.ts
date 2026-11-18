@@ -2,8 +2,8 @@ import { Box3, DoubleSide, MathUtils, Ray, type BufferGeometry, type Skeleton } 
 import type { MeshBVH } from "three-mesh-bvh";
 import { warpWardrobeGeometry } from "./warpWardrobeGeometry";
 
-// Highest point of each finished waistband in Vesper's bind space. Her
-// natural waist lies at 1.09–1.10 m and the lower bust crease starts at 1.184 m.
+// Lower limits for waistbands that are already close to Vesper's natural waist.
+// Taller authored skirts keep their own rise with only a small downward nudge.
 const waistlines: Readonly<Record<string, number>> = {
   "gothic-skirt-01": 1.115,
   "gothic-skirt-02": 1.120,
@@ -11,6 +11,15 @@ const waistlines: Readonly<Record<string, number>> = {
   "gothic-skirt-04": 1.100,
   "gothic-skirt-05": 1.118,
 };
+// The first and fifth skirts need a few extra millimeters for their waistband
+// to stay below the bust while the pelvis turns during a step.
+const subtleDrops: Readonly<Record<string, number>> = {
+  "gothic-skirt-01": .022,
+  "gothic-skirt-05": .019,
+};
+// The tall separate Skirt 02 band needs a little more room below the 1.184 m
+// lower bust crease. Stop just below it instead of lowering to the natural waist.
+const underbustCeiling = 1.170;
 const drapeStart = .78;
 const hipStart = .90;
 const centerDepth = .025;
@@ -93,7 +102,9 @@ export function prepareGothicWaistline(body: MeshBVH, skirt: readonly MeshBVH[],
   const rim = Math.max(...skirt.map(surface => surface.getBoundingBox(bounds).max.y));
   const target = waistlines[id];
   if (!target || rim <= target + .0001) return () => undefined;
-  const drop = rim - target;
+  const nudge = subtleDrops[id] ?? .015;
+  const clearanceDrop = id === "gothic-skirt-02" ? Math.max(nudge, rim - underbustCeiling) : nudge;
+  const drop = Math.min(rim - target, clearanceDrop);
   // Keep the height of the decorated top band. The shortening is distributed
   // over the upper drape, so the hem, ruffles and foot clearance are preserved.
   const lowerY = (y: number) => y - drop * MathUtils.smoothstep(y, drapeStart, rim - .09);

@@ -2012,7 +2012,8 @@ test('the lowered Gothic skirts keep skin visible at the bodice and hem openings
     const { wardrobeCoverageSurface } = await vite.ssrLoadModule('/src/game/characters/wardrobeCoverage.ts');
     const cases = [
       { set: 'gothic-01', skirt: 'gothic-skirt-04', probes: [[.038, 1.180, 1], [.037, 1.140, 1], [-.006, 1.093, -1]] },
-      { set: 'gothic-03', skirt: 'gothic-skirt-03', probes: [[.022, 1.127, -1]] },
+      // The raised waistband covers the lower probe; the opening just above it keeps its skin.
+      { set: 'gothic-03', skirt: 'gothic-skirt-03', probes: [[.022, 1.140, -1], [.022, 1.127, -1, false]] },
       // The high-low hem exposes both front thighs and lower calves. The rear knee stays inside the train mid-stride.
       { set: 'gothic-02', skirt: 'gothic-skirt-02', probes: [[-.152, .684, 1], [.156, .732, 1], [-.121, .471, -1], [-.087, .617, -1, false]] },
       { set: 'gothic-02', skirt: 'gothic-skirt-02', socks: 'socks-04', probes: [[-.121, .471, -1, false]] },
@@ -3128,7 +3129,9 @@ test('each Gothic skirt closes its waistband gap and clears the animated torso',
     if (triangle.every(isTorso)) torsoFaces.push(...triangle);
   }
   const waistMaterial = ['Fabric_1', 'Trim_1', 'Trim_1', 'Fabric_0', 'Fabric_0'];
-  const targetRims = [1.115, 1.120, 1.110, 1.100, 1.118];
+  // Keep each change to a small nudge, with enough room for a walking pose.
+  // Only Skirt 02's tall front band needs more to clear the bust.
+  const maximumDrops = [.022, .048, .015, .015, .019];
   const identity = new Matrix4();
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
   try {
@@ -3170,7 +3173,11 @@ test('each Gothic skirt closes its waistband gap and clears the animated torso',
               continue;
             }
             if (original.getY(i) <= .78) assert.equal(cloth.getY(i), original.getY(i), `${item.id} preserves the hem`);
-            else assert(cloth.getY(i) <= original.getY(i) + 1e-6, `${item.id} lowers the upper skirt`);
+            else {
+              const drop = original.getY(i) - cloth.getY(i);
+              assert(drop >= -1e-6 && drop <= maximumDrops[index] + 1e-6,
+                `${item.id} keeps the upper-skirt drop subtle (${drop} m)`);
+            }
             if (original.getY(i) >= .90) continue;
             if (fittedHem && original.getY(i) < .84) {
               assert(Math.hypot(cloth.getX(i) - original.getX(i), cloth.getZ(i) - original.getZ(i)) <= .032001,
@@ -3191,7 +3198,13 @@ test('each Gothic skirt closes its waistband gap and clears the animated torso',
           const positions = part.geometry.attributes.position;
           return Math.max(...Array.from({ length: positions.count }, (_, i) => positions.getY(i)));
         }));
-        assert(Math.abs(rim - targetRims[index]) < .0001, `${item.id} sets the entire waistband to the natural waist (${rim})`);
+        const originalRim = Math.max(...children.map(part => {
+          const positions = scene.getObjectByName(part.name).geometry.attributes.position;
+          return Math.max(...Array.from({ length: positions.count }, (_, i) => positions.getY(i)));
+        }));
+        assert(originalRim - rim > .001 && originalRim - rim <= maximumDrops[index] + 1e-6,
+          `${item.id} lowers its own waistband only slightly (${originalRim - rim} m)`);
+        assert(rim < 1.184, `${item.id} keeps its waistband below the lower bust`);
         const front = Array.from({ length: cloth.count }, (_, i) => i)
           .filter(i => cloth.getZ(i) - .042 > Math.abs(cloth.getX(i)));
         const crest = Math.max(...front.map(i => cloth.getY(i)));
@@ -3225,7 +3238,7 @@ test('each Gothic skirt closes its waistband gap and clears the animated torso',
                 }
               }
             }
-            assert(Math.abs(highest - targetRims[index]) < .0001, `${item.id} also lowers the authored waistband`);
+            assert(Math.abs(highest - rim) < .0001, `${item.id} applies the same subtle drop to the authored waistband`);
           } finally {
             revision.dispose();
           }

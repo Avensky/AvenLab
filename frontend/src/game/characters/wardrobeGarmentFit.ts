@@ -575,11 +575,10 @@ export function prepareWardrobeGarments(
   const ruffledTucked = corset?.group.getObjectByName("CLOTH_CORSET_TUCKED");
   const corsetScope = corset?.group ?? (!replacements.has("corset") ? root : undefined);
   const skirtCloth = selectedSkirt.filter(isFabric);
-  const strideEase = shortSkirt && corset?.updateShoulders ? .022 : 0;
   const tuck = corsetScope && full
-    ? prepareSkirtCorsetFit(corsetScope, selectedSkirt, skirtCloth, full, gothicWaist, strideEase) : undefined;
+    ? prepareSkirtCorsetFit(corsetScope, skirtCloth, full, gothicWaist) : undefined;
   if (skirtCloth.length && corset?.fitTuckedHardware) {
-    // Test the finished waistband and buckle after both layers have moved.
+    // Test the buckle against the unchanged waistband after seating the corset.
     const panels = skirtCloth.flatMap(mesh => bodySurface(mesh.geometry) ?? []);
     corset.fitTuckedHardware(panels);
     for (const panel of panels) panel.geometry.dispose();
@@ -702,7 +701,6 @@ export function prepareWardrobeGarments(
       const activeBra = underwear?.setBraStyle(braStyle);
       const briefsStyle = underwear?.setBriefsStyle(look.appearance.briefs_style ?? "briefs");
       corset?.apply(corsetWaist, look.overEase);
-      tuck?.apply(corsetWaist === "tucked");
       villageTuckedWaist?.apply(corsetWaist === "tucked");
       if (villageBelt) villageBelt.mesh.geometry = corsetWaist === "tucked" ? villageBelt.tucked : villageBelt.original;
       villageBonnet?.setBowVisible(!look.removedClothing.includes("bonnet-bow"));
