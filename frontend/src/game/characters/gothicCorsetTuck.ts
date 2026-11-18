@@ -1,6 +1,5 @@
 import { MathUtils, SkinnedMesh, type BufferGeometry, type Object3D } from "three";
 import { angularStep, centerZ, columns, createGarmentProfiler, type GarmentProfiler, meridian, profile, sample, top } from "./skirtWaistProfile";
-import { prepareTuckedSkirtRoom } from "./tuckedSkirtRoom";
 import { warpWardrobeGeometry } from "./warpWardrobeGeometry";
 
 function tuckedParts(root: Object3D) {
@@ -84,8 +83,7 @@ function seatHem(parts: readonly SkinnedMesh[], skirts: readonly SkinnedMesh[], 
 }
 
 export function prepareSkirtCorsetFit(
-  root: Object3D, skirt: readonly SkinnedMesh[], fabric: readonly SkinnedMesh[], body: BufferGeometry,
-  extend: boolean, strideEase = 0,
+  root: Object3D, fabric: readonly SkinnedMesh[], body: BufferGeometry, extend: boolean,
 ) {
   if (!fabric.length) return;
   const parts = tuckedParts(root);
@@ -93,14 +91,12 @@ export function prepareSkirtCorsetFit(
   const measure = createGarmentProfiler();
   const skin = profile([body], true).radius;
   const restoreHem = extend ? extendHem(parts, fabric, skin, measure) : undefined;
-  const room = prepareTuckedSkirtRoom(skirt, parts, measure, strideEase);
-  room?.apply(true);
+  // Fit the tucked corset to the existing waistband. Expanding the skirt here
+  // makes its belt bulge and stretches the fabric whenever a corset is selected.
   const restoreTuck = seatHem(parts, fabric, skin, measure);
   return {
-    apply(tucked: boolean) { room?.apply(tucked); },
     dispose() {
       restoreTuck?.();
-      room?.dispose();
       restoreHem?.();
     },
   };

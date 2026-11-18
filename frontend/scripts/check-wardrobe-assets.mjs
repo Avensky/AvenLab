@@ -132,16 +132,11 @@ try{
    assert.deepEqual(fabric.map(part=>part.material.name),['MAT_GOTHIC_02_Fabric_0'],'Sweetheart v2 keeps the authored skirt rim');
    const source=scene.getObjectByName(fabric[0].name).geometry;
    assert.deepEqual(fabric[0].geometry.index.array,source.index.array,'Sweetheart v2 skirt keeps its authored triangles');
-   const tucked=fabric[0].geometry.attributes.position,before=source.attributes.position;
-   for(let i=0;i<tucked.count;i++){
-    assert.equal(tucked.getY(i),before.getY(i),'the authored Sweetheart rim keeps its height');
-    const room=Math.hypot(tucked.getX(i)-before.getX(i),tucked.getZ(i)-before.getZ(i));
-    assert(room<=(before.getY(i)>=1.0?.009:0),'Sweetheart adds only local waistband room');
-   }
+   const before=source.attributes.position;
+   assert.deepEqual(fabric[0].geometry.attributes.position.array,before.array,'Sweetheart keeps its authored skirt width');
    for(const waist of ['over','tucked']){
     applyVillagerLook(model,assetLook({...DEFAULT_CHARACTER,wardrobe:{set,shirt:'none',waist}}));
-    const expected=waist==='over'?before:tucked;
-    assert.deepEqual(fabric[0].geometry.attributes.position.array,expected.array,`Sweetheart restores its ${waist} waistband`);
+    assert.deepEqual(fabric[0].geometry.attributes.position.array,before.array,`Sweetheart keeps its waistband in ${waist} mode`);
    }
   }else if(n===2){
    const skirt=model.root.getObjectByName('CLOTH_BOTTOM_SKIRT');

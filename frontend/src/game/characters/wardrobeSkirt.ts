@@ -224,9 +224,8 @@ export function fitBundledGothicWaist(root: Object3D, body: BufferGeometry, cors
   });
   bodySurface.geometry.dispose();
   const tuckedPanels = tucked.map(panel => panel.mesh);
-  const tuck = corset && prepareSkirtCorsetFit(corset, tuckedPanels, tuckedPanels, body, true);
+  const tuck = corset && prepareSkirtCorsetFit(corset, tuckedPanels, body, true);
   return {
-    apply(active: boolean) { tuck?.apply(active); },
     dispose() {
       tuck?.dispose();
       for (const { mesh, source, fitted } of changed) {

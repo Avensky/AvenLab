@@ -214,7 +214,6 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
   const savedWardrobe = look.wardrobe && model.detachedCorset && look.corset
     ? { ...look.wardrobe, waist: look.corset.waist } : look.wardrobe;
   model.wardrobe.apply(savedWardrobe, model.detachedCorset ? 0 : look.overEase);
-  model.bundledWaist?.apply((look.corset?.waist ?? savedWardrobe?.waist ?? "tucked") === "tucked");
   model.applyFaceColors(look);
   model.faceAccessories.setGlasses(look.appearance.glasses);
   model.faceAccessories.setColors(clothingColors(look, "glasses"));

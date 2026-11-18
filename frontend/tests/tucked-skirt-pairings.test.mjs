@@ -33,43 +33,25 @@ function checkCorsetSides(tucked, source) {
   assert(sampled > 0 && growth < .018, `tucked corset side seams stay close to their authored width (${growth * 1000} mm growth)`);
 }
 
-// The raised seam on 02 and the fitted band on 04 need extra radial room for
-// Ruffled. Toggling waist modes must preserve the shorts, drape and skirt length.
-function checkSkirtRoom(skirt, applyWaist) {
+// A corset changes its own tuck; the skirt's belt, drape and lining keep their fit.
+function checkSkirtWidth(skirt, applyWaist) {
   applyWaist('over');
   const over = new Map();
   skirt.traverse(node => {
-    if (node.isSkinnedMesh) over.set(node, node.geometry);
+    if (node.isSkinnedMesh) over.set(node, {
+      geometry: node.geometry,
+      positions: node.geometry.attributes.position.array.slice(),
+    });
   });
-  applyWaist('tucked');
-  let maxWidening = 0, hemVertices = 0, lined = false;
-  for (const [mesh, original] of over) {
-    if (mesh.userData.wardrobeRole === 'shorts') {
-      assert.equal(mesh.geometry, original, 'the shorts lining keeps its geometry');
-      lined = true;
-      continue;
-    }
-    const a = original.attributes.position, b = mesh.geometry.attributes.position;
-    assert.equal(a.count, b.count);
-    for (let i = 0; i < a.count; i++) {
-      const x = a.getX(i), y = a.getY(i), z = a.getZ(i);
-      const dx = b.getX(i) - x, dz = b.getZ(i) - z;
-      assert.equal(b.getY(i), y, 'waist room preserves the waistband and hem heights');
-      if (y < .95) {
-        hemVertices++;
-        assert.equal(Math.hypot(dx, dz), 0, 'the lower drape keeps its original width');
-      }
-      const before = Math.hypot(x, z - .025), after = Math.hypot(x + dx, z + dz - .025);
-      assert(after >= before - 1e-6, 'waistband room opens outwards');
-      maxWidening = Math.max(maxWidening, after - before);
+  assert(over.size > 0, 'the fitted skirt has measurable geometry');
+  for (const waist of ['tucked', 'over', 'tucked']) {
+    applyWaist(waist);
+    for (const [mesh, original] of over) {
+      assert.equal(mesh.geometry, original.geometry, `${skirt.name} keeps its geometry in ${waist} mode`);
+      assert.deepEqual(mesh.geometry.attributes.position.array, original.positions,
+        `${skirt.name} keeps its waistband, drape and lining in ${waist} mode`);
     }
   }
-  if (skirt.name === 'wardrobe-skirt-02') assert(lined, '02 retains its authored shorts');
-  assert(hemVertices > 0 && maxWidening > .0005,
-    skirt.name + ' needs measurable local room and an intact lining and lower hem');
-  applyWaist('over');
-  for (const [mesh, original] of over) assert.equal(mesh.geometry, original, 'Over restores its exact skirt geometry');
-  applyWaist('tucked');
 }
 
 test('Gothic and Pack 7 skirts clear the bust and layer outside every tucked corset on both detail tiers', async t => {
@@ -114,7 +96,7 @@ test('Gothic and Pack 7 skirts clear the bust and layer outside every tucked cor
             if (item.id.startsWith('gothic-')) {
               checkCorsetSides(model.detachedCorset.group.getObjectByName('CLOTH_CORSET_TUCKED'), corset);
             }
-            if (set === 'gothic-03' && ['skirt-02', 'skirt-04'].includes(item.id)) checkSkirtRoom(skirt, applyWaist);
+            checkSkirtWidth(skirt, applyWaist);
             const checks = set === 'gothic-05' ? [...poses, ['walk-casual', .49]] : poses;
             for (const [pose, phase] of checks) {
               if (phase) {
