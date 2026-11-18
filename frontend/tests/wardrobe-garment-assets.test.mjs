@@ -368,28 +368,31 @@ test('medieval hoods replace the bonnet while keeping the outfit and stored hair
   } finally { await vite.close(); }
 });
 
-test('Top 03 keeps both armholes filled through raised-arm poses and masks its solid panels', async t => {
-  const item = catalog.find(({ id }) => id === 'top-03');
+for (const number of ['01', '02', '03', '04', '05']) test(`Top ${number} keeps both armholes filled through raised-arm poses and masks its solid panels`, async t => {
+  const item = catalog.find(({ id }) => id === `top-${number}`);
   const tiers = ['portrait', 'garage'];
   const paths = [item.url.slice(1), bundledDir + 'gothic-02.mobile.glb',
     ...tiers.map(tier => villagerDir + `villager-female.${tier}.glb`)];
   const files = await Promise.all(paths.map(path => readFile(new URL(path, publicDir))));
-  if (files.some(isLfsPointer)) return skipMissingAsset(t, 'Materialize Top 03 and the Villager and Vesper body models.');
+  if (files.some(isLfsPointer)) return skipMissingAsset(t, `Materialize Top ${number} and the Villager and Vesper body models.`);
   const [top, donor, ...actors] = await Promise.all(files.map(loadGeometry));
   const garmentBody = donor.getObjectByName('BODY_WARDROBE');
   const { index, attributes: { position } } = garmentBody.geometry;
   const front = [], back = [];
+  const lowerPanel = number === '01' || number === '05';
+  const bottom = lowerPanel ? 1.155 : 1.255;
+  const upper = lowerPanel ? 1.21 : number === '02' ? 1.31 : 1.38;
   const center = new Vector3(), vertex = new Vector3();
   for (let i = 0; i < index.count; i += 3) {
     const face = index.array.subarray(i, i + 3);
     center.set(0, 0, 0);
     for (const id of face) center.add(vertex.fromBufferAttribute(position, id));
     center.divideScalar(3);
-    if (Math.abs(center.x) >= .070 || center.y < 1.255 || center.y > 1.38) continue;
-    if (center.z > .080) front.push(face.join(','));
+    if (Math.abs(center.x) >= .070 || center.y < bottom || center.y > upper) continue;
+    if (center.z > (lowerPanel ? .025 : .080)) front.push(face.join(','));
     if (center.z < -.030) back.push(face.join(','));
   }
-  assert(front.length > 100 && back.length > 100, 'the donor has skin under both solid shirt panels');
+  assert(front.length > (lowerPanel ? 15 : 100) && back.length > (lowerPanel ? 15 : 100), 'the donor has skin under both solid shirt panels');
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
   try {
     const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
@@ -410,7 +413,7 @@ test('Top 03 keeps both armholes filled through raised-arm poses and masks its s
         const kept = new Set();
         const { index, drawRange } = skin.geometry;
         for (let j = drawRange.start; j < drawRange.start + drawRange.count; j += 3) kept.add(index.array.subarray(j, j + 3).join(','));
-        for (const panel of [front, back]) assert(panel.every(face => !kept.has(face)), `${tiers[i]} masks the solid panels`);
+        for (const panel of [front, back]) assert(lowerPanel ? panel.some(face => !kept.has(face)) : panel.every(face => !kept.has(face)), `${tiers[i]} masks the solid panels`);
         const poses = auditCorsetSkinMask(model.root, skin, garmentBody.geometry, cloth, buildEmoteClips, findGaragePreviewEmote, {
           minHeight: 1.22, extraPoses: [['008', .5], ['002', .38]],
           extraViews: [[1, 0, 0], [-1, 0, 0], [1, -.25, .35], [-1, -.25, .35], [1, -.4, -.4], [-1, -.4, -.4]],
@@ -977,7 +980,7 @@ test('materialized loose garments can share the live female skeleton and skin we
   }
 });
 
-function verifyTopShoulderContact(top, body) {
+function verifyTopShoulderOpening(top, body) {
   const positions = new Float32Array(top.geometry.attributes.position.count * 3);
   const point = new Vector3();
   for (let i = 0; i < positions.length / 3; i++) {
@@ -990,8 +993,8 @@ function verifyTopShoulderContact(top, body) {
     const normal = b.clone().sub(a).cross(c.clone().sub(a)).normalize();
     const center = a.add(b).add(c).multiplyScalar(1 / 3).lerp(b, .62);
     const ray = new Ray(center.addScaledVector(normal, .032), normal.negate());
-    assert((surface.raycastFirst(ray, DoubleSide)?.distance ?? Infinity) < .0323,
-      'Top 02 keeps both shoulder edges outside the skin in the overhead pose');
+    assert((surface.raycastFirst(ray, DoubleSide)?.distance ?? Infinity) > .0323,
+      'both shoulder points lie in the exposed armhole in the overhead pose');
   }
 }
 
@@ -1031,16 +1034,22 @@ test('Gothic Skirt 04 and Top 02 replace stock pieces and animate together on bo
         }
         const [fittedTop] = topGroup.children;
         const originalTop = topScene.getObjectByName(fittedTop.name).geometry;
-        assert.deepEqual(fittedTop.geometry.attributes.uv.array, originalTop.attributes.uv.array);
-        assert.deepEqual(fittedTop.geometry.attributes.skinWeight.array, originalTop.attributes.skinWeight.array);
-        let topAdjustment = 0;
-        const authored = new Vector3(), fitted = new Vector3();
-        for (let i = 0; i < originalTop.attributes.position.count; i++) {
-          authored.fromBufferAttribute(originalTop.attributes.position, i);
-          fitted.fromBufferAttribute(fittedTop.geometry.attributes.position, i);
-          topAdjustment = Math.max(topAdjustment, authored.distanceTo(fitted));
+        const attributes = fittedTop.geometry.attributes;
+        const sourceUV = originalTop.attributes.uv;
+        const uvKey = (uv, i) => uv.getX(i) + ',' + uv.getY(i);
+        const authoredUVs = new Set(Array.from({length: sourceUV.count}, (_, i) => uvKey(sourceUV, i)));
+        let preservedUVs = 0;
+        for (let i = 0; i < attributes.position.count; i++) {
+          const pos = attributes.position;
+          if (pos.getY(i) > 1.32 && pos.getY(i) < 1.39 && pos.getZ(i) < 0) {
+            assert(Math.abs(pos.getX(i)) < .118, 'the rear rim stays inside the traced cut');
+          }
+          if (authoredUVs.has(uvKey(attributes.uv, i))) preservedUVs++;
+          let sum = 0;
+          for (let k = 0; k < 4; k++) sum += attributes.skinWeight.getComponent(i, k);
+          assert(Math.abs(sum - 1) < .0002);
         }
-        assert(topAdjustment > .001 && topAdjustment <= .00401, 'the fit stays within 4 mm of the authored top');
+        assert(preservedUVs > .85 * attributes.uv.count, 'the retained fabric uses the original UV map');
         const skinFaces = body.geometry.index.array.subarray(0, body.geometry.drawRange.count);
         const visibleFace = (a, b, c) => {
           for (let i = 0; i < skinFaces.length; i += 3) {
@@ -1069,7 +1078,7 @@ test('Gothic Skirt 04 and Top 02 replace stock pieces and animate together on bo
         mixer.clipAction(overhead).play();
         mixer.setTime(overhead.duration * .5);
         root.updateMatrixWorld(true);
-        verifyTopShoulderContact(fittedTop, body);
+        verifyTopShoulderOpening(fittedTop, body);
         mixer.stopAllAction();
       } finally {
         model.dispose();

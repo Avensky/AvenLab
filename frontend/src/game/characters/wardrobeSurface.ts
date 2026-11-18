@@ -1,9 +1,9 @@
 import { BufferGeometry, Float32BufferAttribute, Uint16BufferAttribute, Uint8BufferAttribute, Vector2, Vector3 } from "three";
 
 /** Bind-space inputs shared by fitted tops and body-derived underwear. */
-export function wardrobeFitInputs(source: BufferGeometry) {
+export function wardrobeFitInputs(source: BufferGeometry, extraAttributes: readonly string[] = []) {
   return [source.getIndex(), source.getAttribute("position"), source.getAttribute("normal"),
-    source.getAttribute("skinIndex"), source.getAttribute("skinWeight")].map(attribute => ({
+    source.getAttribute("skinIndex"), source.getAttribute("skinWeight"), ...extraAttributes.map(name => source.getAttribute(name))].map(attribute => ({
     attribute,
     version: attribute && ("data" in attribute ? attribute.data.version : attribute.version),
   }));

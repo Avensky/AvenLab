@@ -553,3 +553,17 @@ a lower neckline and smaller cups. Both styles can be worn on their own or
 with the Gothic Underbust Vest. Choosing another top or corset clears the bra
 selection. The rebuilt vest has independent Main, Binding, Front panel, Lining
 and Hardware colors.
+
+## Pack 7 tops — visual review
+
+**Top 04 and shared underarm shading — provisional pass.** In a close rear
+three-quarter view at the midpoint of Overhead heart, a short, angular shadow
+remains where Vesper's upper arm meets the ribs. The bare reference body shows
+the same crease. Keep the current shirt fit. Revisit the shared skin if the line
+becomes visible during ordinary movement or at the usual fitting-room distance.
+
+**Top 05 — visual review passed.** Check the white back panel between the
+braid and waistband in idle, then raise both arms with Overhead heart. The
+previous horizontal opening was absent in both review renders. A faint fabric
+fold remains. The garage and portrait skin-mask checks found no missing
+exposed skin in five sampled poses per tier.
