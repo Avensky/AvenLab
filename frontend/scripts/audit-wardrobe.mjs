@@ -46,7 +46,7 @@ const realAssetTests = [
   'turning off wardrobe layers fits underwear', 'Gothic Skirt 04 and Top 02 replace stock pieces',
   'the rebuilt Gothic Underbust', 'standalone briefs follow a V', 'wardrobe underwear reuses donor cuts', 'rebuilt Tucked hardware', 'rebuilt Laced Bodice',
   'the Village skirt and belt cover', 'Ruffled Corset', 'High Collar cup', 'Laced Bodice straps', 'Top 03 keeps', 'Top 04 keeps', 'the Village bonnet',
-  'short skirts use', 'each Gothic skirt closes its waistband gap', 'the lowered Gothic waist keeps skin', 'neck bows follow the worn neckline',
+  'short skirts use', 'each Gothic skirt closes its waistband gap', 'the lowered Gothic skirts keep skin', 'neck bows follow the worn neckline',
 ];
 
 function runFrontendNode(args, strictAssets = false) {

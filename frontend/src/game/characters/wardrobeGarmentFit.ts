@@ -75,7 +75,9 @@ const coversSkin = new Set<ClothingPiece>(["corset", "shirt", "sleeves", "skirt"
 const coversTorso = new Set<ClothingPiece>(["corset", "shirt", "sleeves", "dress", "armor"]);
 const MAX_SHARED_FITTED_MASKS = 8;
 
-type RestoredSkin = { upper: boolean; arms: boolean; skirt: boolean; feet: boolean; shortSkirt: boolean; fittedSkirt: boolean };
+type RestoredSkin = {
+  upper: boolean; arms: boolean; skirt: boolean; feet: boolean; shortSkirt: boolean; fittedSkirt: boolean; openFrontSkirt: boolean;
+};
 type SkinCover = { surface: MeshBVH; piece: ClothingPiece; opening?: (point: Vector3) => boolean };
 type TriangleCoverage = (center: Vector3, a: Vector3, b: Vector3, c: Vector3) => boolean;
 
@@ -280,6 +282,8 @@ function fitBodyMask(
   const hit = { point: new Vector3(), distance: 0, faceIndex: 0 };
   const surfaces = clothes.map(({ surface }) => surface);
   const covered = prepareWardrobeCoverage(surfaces);
+  const coveredWithoutSkirt = restored.openFrontSkirt
+    && prepareWardrobeCoverage(clothes.filter(({ piece }) => piece !== "skirt").map(({ surface }) => surface));
   const coveredShoulder = lacedBodice && prepareWardrobeCoverage(surfaces, .001);
   const coveredWithoutCorset = strapOpening || ruffledWaist
     // A separate high-waisted skirt can sit within the coverage tolerance of
@@ -306,7 +310,11 @@ function fitBodyMask(
     // split. Restore both sides of that seam and let the remaining cloth mask it.
     const restoredTorso = restored.upper && point.y > .92;
     const restoredArms = arms && (arms[ai] || arms[bi] || arms[ci]);
-    const restoredSkin = Boolean(restoredTorso || restoredArms)
+    // Gothic 02 rises in front of the thighs. The swinging train can cover
+    // the backs of the knees, while the lower calves clear its hem.
+    const openLeg = restored.openFrontSkirt && Math.abs(point.x) < .20 && point.y > .20 && point.y < .90
+      && (point.z > 0 || point.y < .55);
+    const restoredSkin = Boolean(restoredTorso || restoredArms || openLeg)
       || (restored.skirt && point.y > .075 && point.y < 1.24)
       || (restored.feet && point.y < .115);
     const replaced = restoredSkin || (upperBody ? top : skirt && point.y > .075);
@@ -332,7 +340,8 @@ function fitBodyMask(
     // A lowered waistband also exposes the bottom of the rear opening during a step.
     const ruffledRim = ruffledWaist && (Math.max(a.y, b.y, c.y) >= 1.15
       || (ruffledWaist === "tucked" && restored.fittedSkirt && point.y > 1.11 && point.z < -.025 && Math.abs(point.x) < .04));
-    const isCovered = coveredWithoutCorset && (ruffledRim || strapOpening?.(point)) ? coveredWithoutCorset
+    const isCovered = openLeg && coveredWithoutSkirt ? coveredWithoutSkirt
+      : coveredWithoutCorset && (ruffledRim || strapOpening?.(point)) ? coveredWithoutCorset
       : coveredOpenings && opening?.(point) ? coveredOpenings
       : coveredShoulder && isLacedShoulder(point) ? coveredShoulder : restoredTorso && !restoredArms ? coveredTorso : covered;
     // The stock bodice can move independently of the short skirt at its waistband.
@@ -376,9 +385,10 @@ export function prepareWardrobeGarments(
     skirt: exposesBottom || removals.includes("underskirt") || shortSkirt,
     shortSkirt,
     fittedSkirt: shortSkirt || sources.some(({ item }) => item.id.startsWith("gothic-skirt-")),
+    openFrontSkirt: sources.some(({ item, authoredFit }) => item.id === "gothic-skirt-02" && !authoredFit),
     feet: removals.includes("shoes"),
   };
-  const restoresBody = restored.upper || restored.arms || restored.skirt || restored.feet;
+  const restoresBody = restored.upper || restored.arms || restored.skirt || restored.feet || restored.openFrontSkirt;
   const replacements = new Set<ClothingPiece>(removals.flatMap(slot => wardrobeRemovalPieces[slot]));
   const group = new Group();
   group.name = "fitting-room-garments";

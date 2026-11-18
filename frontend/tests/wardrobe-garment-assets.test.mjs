@@ -2003,7 +2003,7 @@ test('rebuilt Laced Bodice keeps its authored mesh and dyes five groups independ
   } finally { await vite.close(); }
 });
 
-test('the lowered Gothic waist keeps skin behind the tucked bodice openings', async t => {
+test('the lowered Gothic skirts keep skin visible at the bodice and hem openings', async t => {
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
   try {
     const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
@@ -2013,6 +2013,9 @@ test('the lowered Gothic waist keeps skin behind the tucked bodice openings', as
     const cases = [
       { set: 'gothic-01', skirt: 'gothic-skirt-04', probes: [[.038, 1.180, 1], [.037, 1.140, 1], [-.006, 1.093, -1]] },
       { set: 'gothic-03', skirt: 'gothic-skirt-03', probes: [[.022, 1.127, -1]] },
+      // The high-low hem exposes both front thighs and lower calves. The rear knee stays inside the train mid-stride.
+      { set: 'gothic-02', skirt: 'gothic-skirt-02', probes: [[-.152, .684, 1], [.156, .732, 1], [-.121, .471, -1], [-.087, .617, -1, false]] },
+      { set: 'gothic-02', skirt: 'gothic-skirt-02', socks: 'socks-04', probes: [[-.121, .471, -1, false]] },
     ];
     const read = async path => {
       const bytes = await readFile(new URL(path.replace(/^\//, ''), publicDir));
@@ -2024,22 +2027,23 @@ test('the lowered Gothic waist keeps skin behind the tucked bodice openings', as
     try {
       for (const kind of ['garage', 'portrait']) {
         const actor = await read(villagerDir + `villager-female.${kind}.glb`);
-        for (const { set, skirt, probes } of cases) {
-          const item = catalog.find(item => item.id === skirt);
+        for (const { set, skirt, socks, probes } of cases) {
+          const selected = [skirt, socks].filter(Boolean).map(id => catalog.find(item => item.id === id));
+          const garments = await Promise.all(selected.map(async item => ({ item, scene: await read(item.url) })));
           const trial = { set, waist: 'tucked', shirt: 'none' };
           const url = corsetModelUrl(trial, kind);
-          if (!url) return skipMissingAsset(t, 'Build the Laced Bodice and Ruffled corset LODs.');
-          const model = prepareVillager(actor, { fitted: true, garmentBody: donor, garments: [{ item, scene: await read(item.url) }],
-            corsetSource: { set, scene: await read(url) } });
+          if (!url) return skipMissingAsset(t, 'Build both Gothic corset LODs.');
+          const model = prepareVillager(actor, { fitted: true, garmentBody: donor, garments, corsetSource: { set, scene: await read(url) } });
           try {
-            applyVillagerLook(model, characterLook({ ...DEFAULT_CHARACTER, wardrobeTrial: trial, garments: { skirt } }));
+            applyVillagerLook(model, characterLook({ ...DEFAULT_CHARACTER, wardrobeTrial: trial, garments: { skirt, socks } }));
             const skin = wardrobeCoverageSurface(model.root.getObjectByName('fitting-room-body').geometry);
             try {
-              for (const [x, y, side] of probes) {
+              for (const [x, y, side, exposed = true] of probes) {
                 const ray = new Ray(new Vector3(x, y, side * .30), new Vector3(0, 0, -side));
-                const belly = full.raycastFirst(ray, DoubleSide);
-                assert(belly && skin.raycastFirst(ray, DoubleSide, belly.distance - .0001, belly.distance + .0001),
-                  `${kind} ${set} retains skin at the open ${side > 0 ? 'front' : 'back'} seam, y = ${y}`);
+                const hit = full.raycastFirst(ray, DoubleSide);
+                assert(hit, 'the body donor covers the sampled point');
+                const visible = skin.raycastFirst(ray, DoubleSide, hit.distance - .0001, hit.distance + .0001);
+                assert.equal(Boolean(visible), exposed, `${kind} ${set} / ${skirt} skin at x = ${x}, y = ${y}`);
               }
             } finally { skin.geometry.dispose(); }
           } finally { model.dispose(); }
