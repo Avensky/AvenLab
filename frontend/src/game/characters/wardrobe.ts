@@ -108,22 +108,32 @@ export function wardrobeOverEase(choice?: WardrobeSelection | null): OverSkirtEa
   return (ease === 1 || ease === 2) && resolveCharacterWardrobe(choice)?.waist === "over" ? ease : 0;
 }
 
-export function wardrobeModelUrl(choice: WardrobeChoice | undefined, kind: "garage" | "portrait") {
+function wardrobeTierUrls(id: string, directory: string, kind: "garage" | "portrait",
+  available: { garage: boolean; mobile: boolean } | undefined, includeAlternate: boolean) {
+  const preferred = kind === "portrait" ? "mobile" : "garage";
+  const alternate = preferred === "mobile" ? "garage" : "mobile";
+  const path = `/models/characters/${directory}/${id}`;
+  const urls: string[] = [];
+  if (available?.[preferred]) urls.push(`${path}.${preferred}.glb`);
+  if (available?.[alternate] && (includeAlternate || !available[preferred])) urls.push(`${path}.${alternate}.glb`);
+  return urls;
+}
+
+export function wardrobeModelUrls(choice: WardrobeChoice | undefined, kind: "garage" | "portrait") {
   const resolved = resolveWardrobe(choice);
-  return resolved && __WARDROBE_SET_IDS__.includes(resolved.set)
-    ? `/models/characters/wardrobe/${resolved.set}.${kind === "portrait" ? "mobile" : "garage"}.glb` : null;
+  return resolved ? wardrobeTierUrls(resolved.set, "wardrobe", kind, __BUNDLED_WARDROBE_LODS__[resolved.set], true) : [];
+}
+
+export function wardrobeModelUrl(choice: WardrobeChoice | undefined, kind: "garage" | "portrait") {
+  return wardrobeModelUrls(choice, kind)[0] ?? null;
 }
 
 export function corsetModelUrls(choice: WardrobeChoice | undefined, kind: "garage" | "portrait", { useStandalone = true } = {}) {
   const resolved = resolveWardrobe(choice, { includeRetired: true });
   if (!resolved) return [];
   const urls: string[] = [];
-  const preferred = kind === "portrait" ? "mobile" : "garage";
-  const alternate = preferred === "mobile" ? "garage" : "mobile";
   const add = (id: string, directory: string, available: { garage: boolean; mobile: boolean } | undefined, includeAlternate = false) => {
-    const path = `/models/characters/${directory}/${id}`;
-    if (available?.[preferred]) urls.push(`${path}.${preferred}.glb`);
-    if (available?.[alternate] && (includeAlternate || !available[preferred])) urls.push(`${path}.${alternate}.glb`);
+    urls.push(...wardrobeTierUrls(id, directory, kind, available, includeAlternate));
   };
   if (useStandalone) {
     const directory = "female/wardrobe/corsets";

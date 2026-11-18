@@ -171,9 +171,9 @@ a lower-body coverage mask. Identity, bag, face, hair, and color choices stay
 on the same character.
 
 Each complete set has `.garage.glb` and `.mobile.glb` bundles under
-`frontend/public/models/characters/wardrobe/`. Both tiers make the complete
-outfit available. Full-size garage previews prefer the Garage garment tier.
-Compact previews and portraits prefer Mobile. A missing or retired saved set
+`frontend/public/models/characters/wardrobe/`. Either installed tier makes the
+complete outfit available. Full-size garage previews prefer Garage and compact
+previews and portraits prefer Mobile. A missing or retired saved set
 falls back to the clothed base character. The Underbust Vest has a separate
 Over fit with room for a fitted top, an Original Cut option, and a Tucked fit.
 
@@ -386,7 +386,11 @@ node scripts/sample-wardrobe-emotes.mjs /path/to/raw/gothic-01.glb /path/to/pose
 
 ### Current fit review
 
-| Garment | Confirmed | Open review |
+The project owner approved Vesper’s Pack 7 Tops 01–05 and all five corset fits
+for the alpha on November 17, 2026. The approved corsets are the Laced Bodice,
+Sweetheart Corset, Ruffled Corset, Gothic Underbust Vest, and High Collar Corset.
+
+| Garment | Confirmed | Regression checks |
 | --- | --- | --- |
 | Pack 7 Top 03 | The lower armhole follows the torso, while the upper rim follows the shoulder. The body mask retains the skin visible through the moving opening. The long Village braid bends over the rear collar and the Village bonnet ties hang higher. | Raise both arms in Overhead heart, turn to the rear quarter, then check the braid and ties with the arms lowered. |
 | Laced Bodice | The tucked fit draws the hem inside the side turns of the Village belt. The skin mask retains the body behind the rear lacing and moving neckline. | Review the rear belt tip at an oblique angle and compare the cloth folds in a light and a dark dye. |
@@ -562,7 +566,7 @@ and Hardware colors.
 
 ## Pack 7 tops — visual review
 
-**Top 04 and shared underarm shading — provisional pass.** In a close rear
+**Top 04 and shared underarm shading.** In a close rear
 three-quarter view at the midpoint of Overhead heart, a short, angular shadow
 remains where Vesper's upper arm meets the ribs. The bare reference body shows
 the same crease. Keep the current shirt fit. Revisit the shared skin if the line

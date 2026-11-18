@@ -8,6 +8,7 @@ import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
 import { discoverWardrobeGarments } from "../scripts/discover-wardrobe-garments.mts";
+import { vesperActorUrls } from "../scripts/character-model-paths.mts";
 
 const rig = JSON.parse(await readFile(new URL("./fixtures/villager-female-rig.json", import.meta.url), "utf8"));
 
@@ -36,6 +37,26 @@ function testGlb({ name = "CLOTH_TOP_DEMO", jointOrder = rig.skins[0].joints, in
   file.writeUInt32LE(0x004e4942, 24 + paddedLength);
   return file;
 }
+
+test("Vesper loads the installed actor tiers with the full model still an LFS pointer", async t => {
+  const directory = await mkdtemp(join(tmpdir(), "avenlab-vesper-tiers-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const root = pathToFileURL(directory + "/");
+  const base = "models/characters/villagers/villager-female/villager-female";
+  const garage = "/" + base + ".garage.glb", portrait = "/" + base + ".portrait.glb";
+  const pointer = "version https://git-lfs.github.com/spec/v1\n";
+  await mkdir(new URL(".", new URL(base, root)), { recursive: true });
+  await writeFile(new URL(base + ".glb", root), pointer);
+  const actorUrls = () => vesperActorUrls(null, root);
+  assert.deepEqual(actorUrls(), { model: null, portrait: null });
+  await writeFile(new URL(base + ".garage.glb", root), testGlb());
+  await writeFile(new URL(base + ".portrait.glb", root), pointer);
+  assert.deepEqual(actorUrls(), { model: garage, portrait: garage });
+  await writeFile(new URL(base + ".portrait.glb", root), testGlb());
+  assert.deepEqual(actorUrls(), { model: garage, portrait });
+  await rm(new URL(base + ".garage.glb", root));
+  assert.deepEqual(actorUrls(), { model: portrait, portrait });
+});
 
 test("wardrobe discovery merges valid tiers and skips LFS placeholders, misplaced and curated assets", async t => {
   const publicRoot = await mkdtemp(join(tmpdir(), "avenlab-wardrobe-"));

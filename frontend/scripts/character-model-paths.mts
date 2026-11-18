@@ -65,9 +65,13 @@ export function hasCompatibleWardrobeRevision(revision: URL, original: URL) {
   });
 }
 
+function bundledVillagerPath(gender: "female" | "male") {
+  return `${characterPath}villagers/villager-${gender}/villager-${gender}`;
+}
+
 export function findVillagerModel(gender: "female" | "male") {
   const nestedNames = [`village-${gender}`, `villager-${gender}`];
-  const bundledBase = `${characterPath}villagers/villager-${gender}/villager-${gender}`;
+  const bundledBase = bundledVillagerPath(gender);
   const sources = [
     ...nestedNames.map(name => ({ root: sourceRoot, base: villagerPath + name })),
     { root: publicRoot, base: bundledBase },
@@ -90,6 +94,26 @@ export function findVillagerModel(gender: "female" | "male") {
     };
   }
   return null;
+}
+
+export function characterLod(asset: ReturnType<typeof findVillagerModel>, kind: "garage" | "portrait") {
+  if (!asset) return null;
+  return asset.bundledLod(kind) ?? (hasCharacterModel(asset.output(kind)) ? asset.url(kind) : null);
+}
+
+export function vesperActorUrls(asset: ReturnType<typeof findVillagerModel>, root = publicRoot) {
+  if (asset) {
+    const model = asset.sourceUrl ?? (hasCharacterModel(asset.output("full")) ? asset.url("full") : null);
+    return { model, portrait: characterLod(asset, "portrait") ?? model };
+  }
+  // A selective LFS checkout can contain the playable tiers without their full-resolution source.
+  const base = bundledVillagerPath("female");
+  const installed = (kind: "garage" | "portrait") => {
+    const path = `${base}.${kind}.glb`;
+    return hasCharacterModel(new URL(path, root)) ? `/${path}` : null;
+  };
+  const garage = installed("garage"), portrait = installed("portrait");
+  return { model: garage ?? portrait, portrait: portrait ?? garage };
 }
 
 const packedPortraitPath = characterPath + "portraits-generated/";
