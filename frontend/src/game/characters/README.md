@@ -562,7 +562,7 @@ remains where Vesper's upper arm meets the ribs. The bare reference body shows
 the same crease. Keep the current shirt fit. Revisit the shared skin if the line
 becomes visible during ordinary movement or at the usual fitting-room distance.
 
-**Top 05 — ready for visual review.** Check the white back panel between the
+**Top 05 — visual review passed.** Check the white back panel between the
 braid and waistband in idle, then raise both arms with Overhead heart. The
 previous horizontal opening was absent in both review renders. A faint fabric
 fold remains. The garage and portrait skin-mask checks found no missing
