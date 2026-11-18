@@ -144,6 +144,11 @@ function isTop03Armhole(point: Vector3) {
   return point.y > 1.25 && Math.abs(point.x) > innerEdge && point.z > -.092 && point.z < .073;
 }
 
+function isTop05SideOpening(point: Vector3) {
+  return Math.abs(point.x) > .102 && point.y > 1.226 && point.y < 1.265
+    && point.z > -.012 && point.z < .072;
+}
+
 function isStrapOpening(point: Vector3) {
   // Vesper bind space. The narrow strap roots and armholes move relative to
   // the body, so their cloth cannot guarantee coverage through an emote.
@@ -438,7 +443,7 @@ export function prepareWardrobeGarments(
       if ((replacesVillagerBody(item.slot) || coversRestoredSkin) && isFabric(mesh)) {
         const surface = bodySurface(mesh.geometry);
         if (surface) {
-          shapes.push({ surface, piece: item.piece, opening: item.id === "top-03" ? isTop03Armhole : undefined });
+          shapes.push({ surface, piece: item.piece, opening: item.id === "top-03" ? isTop03Armhole : item.id === "top-05" ? isTop05SideOpening : undefined });
           if (fitShortSkirt && !lining && corset?.fitSkirt && !corset.sweetheartSkin) shortSkirtSurfaces.push(surface);
           if (item.id === "village-skirt" && fitVillageWaist) {
             villageSkirtSurfaces.push(surface);

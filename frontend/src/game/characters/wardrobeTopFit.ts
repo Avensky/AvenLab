@@ -33,6 +33,39 @@ function anchorTop03Armholes(source: BufferGeometry, armJoints: boolean[]) {
   return fitted;
 }
 
+// A pleat in the imported rear panel doubles back across itself. Relax its
+// vertex heights along the cloth topology while pinning the rows around it.
+function smoothTop05Back(geometry: BufferGeometry) {
+  const pos = geometry.getAttribute("position"), index = geometry.getIndex();
+  if (!index) return;
+  const rows = new Map<number, Set<number>>();
+  for (let i = 0; i < index.count; i += 3) {
+    for (let corner = 0; corner < 3; corner++) {
+      const v = index.getX(i + corner), y = pos.getY(v);
+      if (pos.getZ(v) >= 0 || y <= 1.146 || y >= 1.18) continue;
+      let neighbors = rows.get(v);
+      if (!neighbors) rows.set(v, neighbors = new Set());
+      neighbors.add(index.getX(i + (corner + 1) % 3));
+      neighbors.add(index.getX(i + (corner + 2) % 3));
+    }
+  }
+  const heights = new Map<number, number>();
+  for (let pass = 0; pass < 20; pass++) {
+    for (const [v, neighbors] of rows) {
+      let sum = 0;
+      for (const other of neighbors) sum += pos.getY(other);
+      heights.set(v, (pos.getY(v) + sum / neighbors.size) * .5);
+    }
+    for (const [v, y] of heights) pos.setY(v, y);
+  }
+  const original = geometry.getAttribute("normal");
+  geometry.deleteAttribute("normal");
+  geometry.computeVertexNormals();
+  const smooth = geometry.getAttribute("normal");
+  for (const v of rows.keys()) original.setXYZ(v, smooth.getX(v), smooth.getY(v), smooth.getZ(v));
+  geometry.setAttribute("normal", original);
+}
+
 /** Ease only the Pack 7 cloth vertices that lie against the skin. */
 function buildWardrobeTopFit(body: BufferGeometry, id: string, skeleton?: Skeleton) {
   const position = body.getAttribute("position"), normal = body.getAttribute("normal"), index = body.getIndex()!;
@@ -74,6 +107,7 @@ function buildWardrobeTopFit(body: BufferGeometry, id: string, skeleton?: Skelet
       point.addScaledVector(direction, ease);
       fitted.getAttribute("position").setXYZ(vertex, point.x, point.y, point.z);
     }
+    if (id === "top-05") smoothTop05Back(fitted ??= source.clone());
     if (fitted) {
       fitted.computeBoundingBox();
       fitted.computeBoundingSphere();
@@ -83,10 +117,12 @@ function buildWardrobeTopFit(body: BufferGeometry, id: string, skeleton?: Skelet
 }
 
 type FitInputs = ReturnType<typeof wardrobeFitInputs>;
-type SavedTopFit = { inputs: FitInputs; position?: BufferAttribute; skinWeight?: BufferAttribute };
-const top03ByBody = new WeakMap<BufferGeometry, {
+type SavedTopFit = { inputs: FitInputs; position?: BufferAttribute; skinWeight?: BufferAttribute; normal?: BufferAttribute };
+type DonorFit = {
   inputs: FitInputs; jointNames: string; parts: WeakMap<BufferGeometry, SavedTopFit>;
-}>();
+};
+const top03ByBody = new WeakMap<BufferGeometry, DonorFit>();
+const top05ByBody = new WeakMap<BufferGeometry, DonorFit>();
 
 function restoreAttribute(geometry: BufferGeometry, name: string, saved: BufferAttribute) {
   const target = geometry.getAttribute(name);
@@ -103,14 +139,15 @@ function restoreAttribute(geometry: BufferGeometry, name: string, saved: BufferA
 
 export function prepareWardrobeTopFit(body: BufferGeometry, id: string, skeleton?: Skeleton) {
   if (!body.hasAttribute("position") || !body.hasAttribute("normal") || !body.getIndex()) return;
-  if (id !== "top-03") return buildWardrobeTopFit(body, id, skeleton);
+  const cache = id === "top-03" ? top03ByBody : id === "top-05" ? top05ByBody : undefined;
+  if (!cache) return buildWardrobeTopFit(body, id, skeleton);
 
   const inputs = wardrobeFitInputs(body);
   const jointNames = JSON.stringify(skeleton?.bones.map(bone => bone.name) ?? []);
-  let donor = top03ByBody.get(body);
+  let donor = cache.get(body);
   if (!donor || donor.jointNames !== jointNames || !sameWardrobeFitInputs(donor.inputs, inputs)) {
     donor = { inputs, jointNames, parts: new WeakMap() };
-    top03ByBody.set(body, donor);
+    cache.set(body, donor);
   }
   const { parts } = donor;
   let fit: ReturnType<typeof buildWardrobeTopFit> | undefined;
@@ -124,6 +161,7 @@ export function prepareWardrobeTopFit(body: BufferGeometry, id: string, skeleton
       const owned = source.clone();
       restoreAttribute(owned, "position", saved.position);
       if (saved.skinWeight) restoreAttribute(owned, "skinWeight", saved.skinWeight);
+      if (saved.normal) restoreAttribute(owned, "normal", saved.normal);
       owned.computeBoundingBox();
       owned.computeBoundingSphere();
       return owned;
@@ -131,7 +169,8 @@ export function prepareWardrobeTopFit(body: BufferGeometry, id: string, skeleton
     fit ??= buildWardrobeTopFit(body, id, skeleton);
     const fitted = fit(source);
     parts.set(source, { inputs, position: fitted?.getAttribute("position").clone(),
-      skinWeight: fitted?.getAttribute("skinWeight")?.clone() });
+      normal: id === "top-05" ? fitted?.getAttribute("normal").clone() : undefined,
+      skinWeight: id === "top-03" ? fitted?.getAttribute("skinWeight")?.clone() : undefined });
     return fitted;
   };
 }
