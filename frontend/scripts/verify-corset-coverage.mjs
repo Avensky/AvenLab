@@ -312,7 +312,7 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
 // holes instead: skin removed by the live outfit, visible on the complete body
 // from an external view, with neither cloth nor retained skin replacing it.
 export function auditCorsetSkinMask(root, skin, bindBody, visibleCloth, buildEmoteClips, findGaragePreviewEmote,
-  { minHeight = 1.20, extraPoses = [] } = {}) {
+  { minHeight = 1.20, extraPoses = [], extraViews = [] } = {}) {
   const vertices = bindBody.getAttribute('position').array;
   const original = bindBody.index.array;
   const retained = visibleIndices(skin);
@@ -342,7 +342,7 @@ export function auditCorsetSkinMask(root, skin, bindBody, visibleCloth, buildEmo
 
   assert(visibleCloth.length, 'mask audit needs visible opaque clothing');
   const poses = [['idle', 0], ['013', .45], ['heart-overhead', .50], ...extraPoses];
-  const views = [[0, 0, 1], [0, 0, -1], [.65, .2, -.73], [-.65, .2, -.73]].map(view => new Vector3(...view).normalize());
+  const views = [[0, 0, 1], [0, 0, -1], [.65, .2, -.73], [-.65, .2, -.73], ...extraViews].map(view => new Vector3(...view).normalize());
   const mixer = new AnimationMixer(root);
   const ray = new Ray();
   return poses.map(([pose, phase]) => {

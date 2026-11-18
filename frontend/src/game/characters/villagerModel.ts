@@ -1,5 +1,5 @@
 import {
-  Box3, MathUtils, Mesh, MeshStandardMaterial, SkinnedMesh, SphereGeometry, Vector3, type Object3D, type Skeleton,
+  type BufferGeometry, Box3, MathUtils, Mesh, MeshStandardMaterial, SkinnedMesh, SphereGeometry, Vector3, type Object3D, type Skeleton,
 } from "three";
 import { clone } from "three/addons/utils/SkeletonUtils.js";
 import { aimDriverJoint, driverArm } from "./garageEmotes";
@@ -15,6 +15,7 @@ import { prepareVillageShoes } from "./wardrobeShoes";
 import { prepareVillageBonnet } from "./villageBonnet";
 import { prepareWardrobeGarments, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
 import { prepareStandaloneCorset, type StandaloneCorsetSource } from "./standaloneCorset";
+import { smoothUnderarmSkin } from "./villagerUnderarm";
 import { applyCorsetDye } from "./corsetDye";
 import { getWardrobeGarment, wardrobeGarmentModelUrl, type WardrobeRemoval } from "./wardrobeGarments";
 import { getWardrobeActorBody, getWardrobeBodyDonor, isWardrobeBodyDonor } from "./wardrobeBody";
@@ -114,6 +115,21 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
   const faceGeometry = animateFace ? addVillagerFaceShapes(root, female) : [];
   const wardrobe = prepareWardrobe(root);
   const trialGarments = female ? prepareWardrobeGarments(root, garments, fullBody, detachedCorset, removedClothing) : undefined;
+  // Fitted outfits already prepare their full donor before cutting the skin mask.
+  const stockSkin: BufferGeometry[] = [];
+  if (!root.getObjectByName("fitting-room-body")) {
+    for (const part of [root.getObjectByName("BODY_OUTFIT_CUT"), root.getObjectByName("BODY_WARDROBE")]) {
+      part?.traverse(mesh => {
+        if (!(mesh instanceof SkinnedMesh) || mesh.material.name !== "MAT_SkinBody") return;
+        const donor = mesh.geometry;
+        if (!donor.boundingBox) donor.computeBoundingBox();
+        if (donor.boundingBox && (donor.boundingBox.min.y > 1.415 || donor.boundingBox.max.y < 1.18)) return;
+        mesh.geometry = donor.clone();
+        smoothUnderarmSkin(mesh.geometry, donor);
+        stockSkin.push(mesh.geometry);
+      });
+    }
+  }
   const applyFaceColors = prepareVillagerFaceColors(materials.values(), female);
   const faceAccessories = prepareVillagerFaceAccessories(root, female, wetEyes);
   for (const side of ["l", "r"] as const) {
@@ -160,6 +176,7 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
     longHair: root.getObjectByName("HAIR_HAIR20"),
     bow: root.getObjectByName("ACC_BOW"),
     dispose() {
+      stockSkin.forEach(geometry => geometry.dispose());
       trialGarments?.dispose();
       detachedCorset?.dispose();
       wardrobe.dispose();
@@ -244,7 +261,6 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
   const cropped = look.appearance.hair === "cropped" || Boolean(tuckedHair);
   const tucksHair = model.trialGarments?.tucksHair;
   if (model.hat) model.hat.visible = true;
-  model.bonnet?.setBowVisible(!look.removedClothing.includes("bonnet-bow"));
   if (model.longHair) model.longHair.visible = !cropped && !tucksHair;
   if (model.bow) model.bow.visible = !look.removedClothing.includes("bow")
     && (Boolean(look.appearance.accent) || look.outfit.id === "shop-crew");
@@ -254,4 +270,5 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
   }
   model.scalpCap?.material.color.set(look.hair);
   model.trialGarments?.apply(look);
+  if (model.hat?.visible) model.bonnet?.setBowVisible(!look.removedClothing.includes("bonnet-bow"));
 }

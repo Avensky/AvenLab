@@ -301,6 +301,13 @@ body positions unquantized because the face shaders use bind-space positions.
   along the narrow edges. Compare both sides at rest and through arm reaches.
   Check the top and rear crest as well as the visible front seam. Keep an
   authored keyhole open, including the skin visible through it.
+- **Check a shirt with the hair and headwear equipped.** For Top 03, isolate
+  arm motion from torso motion before altering the lower armhole. Then check
+  which body triangles are visible through it as the shoulder rises. Preserve
+  the collar folds by adjusting the braid at the nape and fitting the loose
+  bonnet ribbons below their attachment. Recheck the ribbons against all five
+  Pack 7 tops. Top 03 reuses fitted positions and skin weights on repeat equips
+  while each actor owns the geometry it renders.
 - **Check the waist with the skirt actually worn.** Compare Over and Tucked
   with the stock Village skirt and belt, the same pieces explicitly
   equipped, and the target Gothic skirt. The rear belt and skirt rim are
@@ -375,6 +382,7 @@ node scripts/sample-wardrobe-emotes.mjs /path/to/raw/gothic-01.glb /path/to/pose
 
 | Garment | Confirmed | Open review |
 | --- | --- | --- |
+| Pack 7 Top 03 | The lower armhole follows the torso, while the upper rim follows the shoulder. The body mask retains the skin visible through the moving opening. The long Village braid bends over the rear collar and the Village bonnet ties hang higher. | Raise both arms in Overhead heart, turn to the rear quarter, then check the braid and ties with the arms lowered. |
 | Laced Bodice | The tucked fit draws the hem inside the side turns of the Village belt. The skin mask retains the body behind the rear lacing and moving neckline. | Review the rear belt tip at an oblique angle and compare the cloth folds in a light and a dark dye. |
 | Ruffled | The waist and cup clearance checks passed on both tiers. With the Village skirt and belt, both Over and Tucked passed the torso mask probe in all three poses. | Check the upper back and neckline in game during Overhead heart. |
 | Underbust and bras | Both vest fits preserve skin at the outer cup as the arms rise. Each bra mask retains the skin under its moving neckline binding. | Review the vest with the bra removed and the Classic neckline during Overhead heart. |
@@ -545,3 +553,17 @@ a lower neckline and smaller cups. Both styles can be worn on their own or
 with the Gothic Underbust Vest. Choosing another top or corset clears the bra
 selection. The rebuilt vest has independent Main, Binding, Front panel, Lining
 and Hardware colors.
+
+## Pack 7 tops — visual review
+
+**Top 04 and shared underarm shading — provisional pass.** In a close rear
+three-quarter view at the midpoint of Overhead heart, a short, angular shadow
+remains where Vesper's upper arm meets the ribs. The bare reference body shows
+the same crease. Keep the current shirt fit. Revisit the shared skin if the line
+becomes visible during ordinary movement or at the usual fitting-room distance.
+
+**Top 05 — visual review passed.** Check the white back panel between the
+braid and waistband in idle, then raise both arms with Overhead heart. The
+previous horizontal opening was absent in both review renders. A faint fabric
+fold remains. The garage and portrait skin-mask checks found no missing
+exposed skin in five sampled poses per tier.
