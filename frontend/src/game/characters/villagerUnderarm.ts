@@ -1,4 +1,4 @@
-import { MathUtils, type BufferAttribute, type BufferGeometry } from "three";
+import { MathUtils, Vector3, type BufferAttribute, type BufferGeometry } from "three";
 
 import { sameWardrobeFitInputs, wardrobeFitInputs } from "./wardrobeSurface";
 
@@ -6,18 +6,21 @@ const fitted = new WeakMap<BufferGeometry, {
   inputs: ReturnType<typeof wardrobeFitInputs>;
   joints: BufferAttribute;
   weights: BufferAttribute;
+  normals: BufferAttribute;
 }>();
 
 /** Ease the transition between ribcage and upper arm without moving the resting skin. */
-export function smoothUnderarmWeights(body: BufferGeometry, donor: BufferGeometry) {
+export function smoothUnderarmSkin(body: BufferGeometry, donor: BufferGeometry) {
   const position = body.getAttribute("position"), weights = body.getAttribute("skinWeight");
   const joints = body.getAttribute("skinIndex"), faces = body.getIndex();
-  if (!faces || !weights || !joints) return;
+  const normals = body.getAttribute("normal");
+  if (!faces || !weights || !joints || !normals) return;
   const inputs = wardrobeFitInputs(donor);
   const cached = fitted.get(donor);
   if (cached && sameWardrobeFitInputs(inputs, cached.inputs)) {
     body.setAttribute("skinIndex", cached.joints.clone());
     body.setAttribute("skinWeight", cached.weights.clone());
+    body.setAttribute("normal", cached.normals.clone());
     return;
   }
   const nodes = new Map<string, number>();
@@ -62,10 +65,28 @@ export function smoothUnderarmWeights(body: BufferGeometry, donor: BufferGeometr
       return next;
     });
   }
+  // Average directions across welded UV seams, fading back to authored skin normals.
+  const normal = new Vector3();
+  let directions = neighbors.map(() => new Vector3());
+  for (let i = 0; i < vertexNode.length; i++) {
+    const node = vertexNode[i];
+    if (node >= 0) directions[node].add(normal.fromBufferAttribute(normals, i));
+  }
+  directions.forEach(direction => direction.normalize());
+  for (let pass = 0; pass < 10; pass++) {
+    directions = directions.map((direction, node) => {
+      if (!neighbors[node].size) return direction;
+      const average = new Vector3();
+      for (const neighbor of neighbors[node]) average.add(directions[neighbor]);
+      return direction.clone().lerp(average.normalize(), .65 * strength[node]).normalize();
+    });
+  }
   const ranked = influences.map(blend => [...blend].sort((a, b) => b[1] - a[1]).slice(0, 4));
   for (let i = 0; i < position.count; i++) {
     const node = vertexNode[i];
     if (node < 0 || !strength[node]) continue;
+    normal.fromBufferAttribute(normals, i).lerp(directions[node], strength[node]).normalize();
+    normals.setXYZ(i, normal.x, normal.y, normal.z);
     const blend = ranked[node], sum = blend.reduce((n, entry) => n + entry[1], 0);
     if (!sum) continue;
     for (let k = 0; k < 4; k++) {
@@ -73,5 +94,5 @@ export function smoothUnderarmWeights(body: BufferGeometry, donor: BufferGeometr
       weights.setComponent(i, k, (blend[k]?.[1] ?? 0) / sum);
     }
   }
-  fitted.set(donor, { inputs, joints: joints.clone(), weights: weights.clone() });
+  fitted.set(donor, { inputs, joints: joints.clone(), weights: weights.clone(), normals: normals.clone() });
 }
