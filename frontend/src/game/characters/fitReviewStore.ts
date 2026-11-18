@@ -23,6 +23,7 @@ export function fitReviewKey(owner: string | undefined, choice: CharacterChoice,
   ...(garments.length ? [garments] : []), ...(ease ? [ease] : []), ...(removed.length ? [{ removed }] : []),
   ...(w?.cut ? [{ cut: w.cut }] : []), ...(choice.bra !== undefined ? [{ bra: choice.bra }] : []),
   ...(choice.appearance?.bra_style === "push-up" && bra ? [{ braStyle: "push-up" }] : []),
+  ...(/^skirt-0[1-4]$/.test(choice.garments?.skirt ?? "") && !removed.includes("skirt") ? ["short-skirt-drape-2"] : []),
   ...(choice.garments?.top === "top-02" && !removed.includes("top") ? ["top-02-armhole-cut-1"] : []),
   ...((choice.garments?.top === "top-03" || choice.garments?.top === "top-04") && !removed.includes("top") ? [choice.garments.top === "top-04" ? "top-04-5" : "top-03-2"] : [])]);
 }
