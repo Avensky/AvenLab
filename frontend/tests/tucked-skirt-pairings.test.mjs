@@ -106,17 +106,22 @@ test('Gothic and Pack 7 skirts clear the bust and layer outside every tucked cor
               }
               model.root.updateMatrixWorld(true);
               model.detachedCorset.updateShoulders?.();
-              const metrics = auditPose(model, skirt, marks);
+              const highWaist = /^gothic-skirt-0[25]$/.test(item.id);
+              const metrics = auditPose(model, skirt, marks, undefined, highWaist ? donor.geometry : undefined);
               const { bustGap, shared, overlapAngles, exposed, worst, worstAngle, worstHeight } = metrics;
               const label = [tier, item.id, set, phase ? pose + '@' + phase : pose].join(' ');
               // Full Gothic bands need a continuous tuck. Short Pack 7 cuts
               // expose skin along parts of the rim, so check the actual overlap.
               const fullBand = item.id.startsWith('gothic-');
               const missingTuck = fullBand ? overlapAngles < 68 || metrics.maxGap > .008001 : overlapAngles < 12;
-              if (bustGap < (fullBand ? .001 : 0) || missingTuck || exposed > 0) failures.push(
+              // 02/05 keep a high corset-style waist. A raised back edge is not
+              // a cup collision: check the actual front skin on those cuts.
+              const hitsBust = highWaist ? metrics.cupContact !== false : bustGap < (fullBand ? .001 : 0);
+              if (hitsBust || missingTuck || exposed > 0) failures.push(
                 label + ': bust clearance ' + (bustGap * 1000).toFixed(1) + ' mm, ' + exposed + '/' + shared +
                 ' exterior rays over 1 mm, worst ' + (worst * 1000).toFixed(1) + ' mm at ' + worstAngle + '° / ' +
-                (worstHeight * 1000).toFixed() + ' mm, overlap at ' + overlapAngles + ' angles');
+                (worstHeight * 1000).toFixed() + ' mm, overlap at ' + overlapAngles + ' angles' +
+                (highWaist ? ', cup contact: ' + metrics.cupContact : ''));
               mixer.stopAllAction();
             }
             combinations++;

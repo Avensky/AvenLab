@@ -3,7 +3,7 @@ import type { CharacterLook } from "./characterCatalog";
 import type { XYZ } from "./garageEmotes";
 
 export function usesFittedAnimation(look: CharacterLook) {
-  const separates = look.garments?.top || look.garments?.skirt || look.garments?.dress;
+  const separates = look.garments?.top || look.garments?.skirt || look.garments?.dress || look.selectedSkirt;
   return look.appearance.animation_fit === "fitted" || (look.appearance.animation_fit !== "full" && (!look.female || Boolean(look.wardrobe || look.corset || separates)));
 }
 
@@ -24,6 +24,17 @@ export function skirtHandTarget(target: XYZ | undefined, skirtRoom: number): XYZ
   const clearance = MathUtils.smoothstep(-y, .38, .76);
   return [Math.sign(x) * MathUtils.lerp(Math.abs(x), Math.max(Math.abs(x), 2 + 4 * skirtRoom), clearance), y,
     MathUtils.lerp(z, Math.max(z, .30 + 1.5 * skirtRoom), clearance)];
+}
+
+/** Walking uses joint directions instead of wrist IK; keep its lowered forearms outside the thighs too. */
+export function skirtArmTarget(target: readonly [XYZ, XYZ] | undefined, skirtRoom: number): readonly [XYZ, XYZ] | undefined {
+  if (!target || target[0][1] > -.5 || target[1][1] > -.5 || target[1][2] < 0) return target;
+  const [upper, forearm] = target;
+  const side = Math.sign(upper[0]);
+  // Cross-body gestures have deliberate targets and should not become resting arms.
+  if (!side || Math.sign(forearm[0]) !== side) return target;
+  const across = Math.max(Math.abs(forearm[0]), (.64 + 4 * skirtRoom) * -forearm[1] / .96);
+  return [upper, [side * across, forearm[1], forearm[2]]];
 }
 
 /** Steer the low elbow down and back while IK keeps the wrist on its target. */

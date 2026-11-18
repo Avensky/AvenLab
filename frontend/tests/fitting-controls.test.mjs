@@ -126,6 +126,7 @@ test('every personality has playable varied emotes; fitted and full poses keep c
     const { prepareVillager } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
     const { fittedHandTarget, usesFittedAnimation } = await vite.ssrLoadModule('/src/game/characters/animationFit.ts');
     const { characterLook, DEFAULT_CHARACTER } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { setWardrobeRemoval } = await vite.ssrLoadModule('/src/game/characters/wardrobeGarments.ts');
     for (const personality of CHARACTER_PERSONALITIES) {
       assert(personality.emotes.length >= 4);
       for (const id of personality.emotes) assert(findGaragePreviewEmote(id, true), `${personality.id}: ${id} exists with or without a bag`);
@@ -134,6 +135,18 @@ test('every personality has playable varied emotes; fitted and full poses keep c
       assert.equal(new Set([0, .3, .6, .99].map(random => personalityEmote(personality.id, undefined, random))).size, 4);
     }
     assert.equal(usesFittedAnimation(characterLook(DEFAULT_CHARACTER)), false);
+    const separateSkirt = { ...DEFAULT_CHARACTER, garments: { skirt: 'skirt-02' } };
+    const removedSkirt = setWardrobeRemoval(separateSkirt, 'skirt', true);
+    assert.equal(characterLook(removedSkirt).garments, undefined, 'removal still hides the selected skirt');
+    for (const choice of [separateSkirt, removedSkirt, setWardrobeRemoval(removedSkirt, 'skirt', false)]) {
+      assert.equal(usesFittedAnimation(characterLook(choice)), true, 'Auto preserves the movement style while removing/restoring a skirt');
+      assert.equal(usesFittedAnimation(characterLook({ ...choice, appearance: { animation_fit: 'full' } })), false,
+        'explicit Full movement takes precedence');
+      assert.equal(usesFittedAnimation(characterLook({ ...choice, appearance: { animation_fit: 'fitted' } })), true,
+        'explicit Fitted movement takes precedence');
+    }
+    assert.equal(usesFittedAnimation(characterLook(setWardrobeRemoval(DEFAULT_CHARACTER, 'skirt', true))), false,
+      'removing the stock skirt preserves the stock Full movement');
     assert.equal(usesFittedAnimation(characterLook({ ...DEFAULT_CHARACTER, wardrobe: { set: 'gothic-01', shirt: 'none', waist: 'tucked' } })), true);
     assert(Math.abs(fittedHandTarget([1.5, -.8, .4])[0]) < 1.5);
     assert.deepEqual(fittedHandTarget([1.5, .2, .4]), [1.5, .2, .4], 'raised expressive poses remain unchanged');

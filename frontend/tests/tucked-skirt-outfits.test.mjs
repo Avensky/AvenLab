@@ -63,10 +63,13 @@ test('matched Gothic outfits clear the bust and cover the tucked corset on both 
           }
           model.root.updateMatrixWorld(true);
           model.detachedCorset?.updateShoulders?.();
-          const metrics = auditPose(model, skirt, marks, waistParts);
+          const highWaist = skirtId ? /^gothic-skirt-0[25]$/.test(skirtId) : /^gothic-0[25]$/.test(set);
+          const metrics = auditPose(model, skirt, marks, waistParts,
+            highWaist ? bundle.getObjectByName('BODY_WARDROBE').geometry : undefined);
           // The dipped waistband of a short skirt intentionally leaves skin between the layers.
           const dipped = skirtId?.startsWith('skirt-');
-          if (metrics.bustGap < (dipped ? .025 : .001) || metrics.overlapAngles < (dipped ? 3 : 60) || metrics.exposed
+          const hitsBust = highWaist ? metrics.cupContact !== false : metrics.bustGap < (dipped ? .025 : .001);
+          if (hitsBust || metrics.overlapAngles < (dipped ? 3 : 60) || metrics.exposed
             || (!dipped && metrics.maxGap > .008001)) {
             failures.push({ tier, set, fallback, skirtId, trial, pose, ...metrics });
           }

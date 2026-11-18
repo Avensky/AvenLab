@@ -11,15 +11,16 @@ const waistlines: Readonly<Record<string, number>> = {
   "gothic-skirt-04": 1.100,
   "gothic-skirt-05": 1.118,
 };
-// The first and fifth skirts need a few extra millimeters for their waistband
-// to stay below the bust while the pelvis turns during a step.
+// Keep the accepted movement allowance on Skirt 01.
 const subtleDrops: Readonly<Record<string, number>> = {
   "gothic-skirt-01": .022,
-  "gothic-skirt-05": .019,
 };
-// The tall separate Skirt 02 band needs a little more room below the 1.184 m
-// lower bust crease. Stop just below it instead of lowering to the natural waist.
-const underbustCeiling = 1.170;
+// These two styles keep their corset-like high waist just below the cups.
+// A high rear rim during a step does not determine the front waistband height.
+const highWaistCeilings: Readonly<Record<string, number>> = {
+  "gothic-skirt-02": 1.180,
+  "gothic-skirt-05": 1.182,
+};
 const drapeStart = .78;
 const hipStart = .90;
 const centerDepth = .025;
@@ -103,7 +104,8 @@ export function prepareGothicWaistline(body: MeshBVH, skirt: readonly MeshBVH[],
   const target = waistlines[id];
   if (!target || rim <= target + .0001) return () => undefined;
   const nudge = subtleDrops[id] ?? .015;
-  const clearanceDrop = id === "gothic-skirt-02" ? Math.max(nudge, rim - underbustCeiling) : nudge;
+  const ceiling = highWaistCeilings[id];
+  const clearanceDrop = ceiling === undefined ? nudge : Math.max(0, rim - ceiling);
   const drop = Math.min(rim - target, clearanceDrop);
   // Keep the height of the decorated top band. The shortening is distributed
   // over the upper drape, so the hem, ruffles and foot clearance are preserved.

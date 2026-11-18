@@ -19,6 +19,10 @@ export function fitReviewKey(owner: string | undefined, choice: CharacterChoice,
  const visible = visibleWardrobeGarments(choice);
  const gothicSkirt = !removed.includes("skirt") && !removed.includes("outer-skirt") && !visible?.dress &&
   (visible?.skirt ? /^gothic-skirt-0[1-5]$/.test(visible.skirt) : Boolean(resolveWardrobe(choice.wardrobe)));
+ const highGothicWaist = gothicSkirt && /^gothic-(?:skirt-)?0[25]$/.test(visible?.skirt ?? resolveWardrobe(choice.wardrobe)?.set ?? "");
+ // The other bundled skirts already have their own layer treatment.
+ const repairedSkirtLayers = gothicSkirt && (visible?.skirt ? /^gothic-skirt-0[135]$/.test(visible.skirt)
+  : resolveWardrobe(choice.wardrobe)?.set === "gothic-01");
  const shortSkirtTuck = /^skirt-0[1-4]$/.test(visible?.skirt ?? "") && w?.waist === "tucked"
   && !removed.includes("top") && !removed.includes("corset");
  const reviewedPiece = piece.slice(piece.lastIndexOf(":") + 1);
@@ -32,8 +36,12 @@ export function fitReviewKey(owner: string | undefined, choice: CharacterChoice,
   ...(reviewedPiece === "briefs" ? [choice.appearance?.briefs_style === "boxer-briefs" ? "boxer-briefs-1" : "v-cut-briefs-1"] : []),
   ...(reviewedPiece === "bra" && choice.appearance?.bra_style === "push-up" ? ["push-up-cups-2"] : []),
   ...(gothicSkirt ? ["gothic-skirt-waist-3-subtle"] : []),
+  ...(highGothicWaist ? ["gothic-skirt-02-05-high-waist-1"] : []),
+  ...(repairedSkirtLayers ? ["gothic-skirt-covered-layers-1"] : []),
+  ...(reviewedPiece === "bow" && !removed.includes("bow") ? ["neck-bow-2-settled"] : []),
   ...(shortSkirtTuck ? ["short-skirt-tuck-1-no-expansion"] : []),
   ...(/^skirt-0[1-4]$/.test(choice.garments?.skirt ?? "") && !removed.includes("skirt") ? ["short-skirt-drape-2"] : []),
+  ...(/^skirt-0[1-4]$/.test(visible?.skirt ?? "") ? ["short-skirt-fabric-1"] : []),
   ...(choice.garments?.top === "top-02" && !removed.includes("top") ? ["top-02-armhole-cut-1"] : []),
   ...((choice.garments?.top === "top-03" || choice.garments?.top === "top-04") && !removed.includes("top") ? [choice.garments.top === "top-04" ? "top-04-5" : "top-03-2"] : [])]);
 }

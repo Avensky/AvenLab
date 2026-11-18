@@ -121,6 +121,9 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
   const faceGeometry = animateFace ? addVillagerFaceShapes(root, female) : [];
   const wardrobe = prepareWardrobe(root);
   const trialGarments = female ? prepareWardrobeGarments(root, garments, fullBody, detachedCorset, removedClothing) : undefined;
+  // Vesper's bare thighs need the same minimum clearance as a slim skirt.
+  // Removing clothing must not bring the relaxed hands back through the body.
+  if (female && actorBody) root.userData.skirtHandRoom ??= 0;
   // Fitted outfits already prepare their full donor before cutting the skin mask.
   const stockSkin: BufferGeometry[] = [];
   if (!root.getObjectByName("fitting-room-body")) {

@@ -1,6 +1,7 @@
 import { DoubleSide, MathUtils, MeshStandardMaterial, SkinnedMesh, type BufferGeometry, type Object3D, type Vector3 } from "three";
 import { prepareSkirtCorsetFit } from "./gothicCorsetTuck";
 import { prepareGothicWaistline } from "./gothicSkirtFit";
+import { seatHandkerchiefSkirtPanels } from "./gothicSkirtPanels";
 import { wardrobeCoverageSurface } from "./wardrobeCoverage";
 import { hasAuthoredSweetheartFit } from "./sweetheartCorset";
 import { fitWardrobeSurface } from "./wardrobeSurface";
@@ -112,10 +113,12 @@ function fitRuffledWaist(root: Object3D, skirt: Object3D, fabric: MeshStandardMa
   };
 }
 
-function finishHighCollarSkirt(fabric: SkinnedMesh) {
-  const source = fabric.geometry;
+/** Keep the High Collar's laced waistband without its redundant short inner skirt. */
+export function highCollarSkirtWaistband(source: BufferGeometry, authored: BufferGeometry = source) {
   const index = source.getIndex();
-  const positions = source.getAttribute("position");
+  // A fitted waistband can dip below this authored separation height.
+  // Use the original positions to retain all of its faces after fitting.
+  const positions = authored.getAttribute("position");
   if (!index || !positions) return;
 
   // This material contains the laced waistband and a separate short skirt.
@@ -130,6 +133,13 @@ function finishHighCollarSkirt(fabric: SkinnedMesh) {
   const geometry = source.clone();
   geometry.setIndex(waistband);
   geometry.setDrawRange(0, waistband.length);
+  return geometry;
+}
+
+function finishHighCollarSkirt(fabric: SkinnedMesh) {
+  const source = fabric.geometry;
+  const geometry = highCollarSkirtWaistband(source);
+  if (!geometry) return;
   fabric.geometry = geometry;
   return () => {
     fabric.geometry = source;
@@ -223,11 +233,29 @@ export function fitBundledGothicWaist(root: Object3D, body: BufferGeometry, cors
     return [{ mesh, source, fitted }];
   });
   bodySurface.geometry.dispose();
+  // Seat the covered handkerchief layer only after the shared waist fit, so
+  // its corrected inner surface cannot change the accepted outer waistband.
+  let handkerchief: { mesh: SkinnedMesh; source: BufferGeometry; fitted: BufferGeometry } | undefined;
+  if (style === "01") {
+    const mesh = meshes.find(part => !Array.isArray(part.material) && part.material.name === "MAT_GOTHIC_01_Fabric_1");
+    const support = mesh && wardrobeCoverageSurface(body, [.60, 1.04]);
+    if (mesh && support) {
+      const source = mesh.geometry;
+      try {
+        const fitted = seatHandkerchiefSkirtPanels(meshes, support);
+        if (fitted) handkerchief = { mesh, source, fitted };
+      } finally { support.geometry.dispose(); }
+    }
+  }
   const tuckedPanels = tucked.map(panel => panel.mesh);
   const tuck = corset && prepareSkirtCorsetFit(corset, tuckedPanels, body, true);
   return {
     dispose() {
       tuck?.dispose();
+      if (handkerchief) {
+        handkerchief.mesh.geometry = handkerchief.source;
+        handkerchief.fitted.dispose();
+      }
       for (const { mesh, source, fitted } of changed) {
         mesh.geometry = source;
         fitted.dispose();

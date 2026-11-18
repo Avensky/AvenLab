@@ -230,6 +230,11 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     await open('outfits');
     assertPiece('corset');
     assert.equal(find('.dressing-categories').hidden, true);
+    const toolbar = find('.dressing-catalog-toolbar');
+    assert(toolbar.contains(find('[data-wardrobe-back]')), 'Back stays in the pinned catalog toolbar');
+    assert(toolbar.contains(find('.dressing-catalog-heading h3')), 'the current section stays with Back');
+    assert(toolbar.contains(find('[aria-label="Search Outfits"]')), 'search shares the pinned toolbar');
+    assert.equal(toolbar.nextElementSibling.querySelector('[data-remove-outfit]').textContent, 'Remove outfit');
     assert.equal(find('[data-wardrobe-item=gothic-04]'), null, 'installed retired sets are hidden from outfits');
     assert.deepEqual([...document.querySelectorAll('[data-wardrobe-item^=gothic-]')].map(button => button.dataset.wardrobeItem),
       ['gothic-02', 'gothic-03', 'gothic-05'], 'only the selected Gothic presets are listed in Outfits');
@@ -269,6 +274,11 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
         assert(card, `${item.id} is listed in ${category}`);
         assert.equal(card.querySelector('.dressing-item-name').textContent, item.label);
         assert.equal(card.hasAttribute('data-unavailable'), item.id === missingImport);
+        const status = item.piece === 'socks' ? 'passed' : item.piece === 'skirt' || item.piece === 'underskirt' ? 'near-pass' : 'development';
+        const grade = status === 'passed' ? 'Alpha Pass' : status === 'near-pass' ? 'Alpha — Nearly Passing' : 'Under Development';
+        assert.equal(card.dataset.alphaStatus, status, `${item.id} has the correct project alpha grade`);
+        assert.equal(card.querySelector('.dressing-alpha-badge').textContent, grade);
+        assert.equal(card.disabled, false, 'development and unavailable items remain inspectable');
         const availability = item.id === missingImport ? /Pack not installed/
           : item.id === revisedImport ? /Revised model/ : /Try-on/;
         assert.match(card.textContent, availability);
@@ -276,6 +286,18 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
       }
     }
     assert.equal(found.size, imports.length, 'all separate garments remain discoverable');
+    await open('footwear');
+    await click('.dressing-filter button:last-child');
+    assert(find('[data-wardrobe-item=socks-01]'), 'imported socks are available through the alpha filter');
+    assert.equal(find('.dressing-catalog .dressing-item[data-alpha-status=development]'), null, 'the alpha filter excludes unfinished shoes');
+    assert.equal(find('[data-wardrobe-item=remove-socks]').dataset.alphaStatus, undefined, 'removal controls are not graded as garments');
+    await open('bottoms');
+    assert(find('[data-wardrobe-item=gothic-skirt-02]'), 'nearly passing skirts remain available through the alpha filter');
+    assert.equal(find('[data-wardrobe-item=village-petticoat]').dataset.alphaStatus, 'near-pass');
+    await open('corsets');
+    assert.equal(find('.dressing-catalog .dressing-alpha-badge'), null, 'unfinished corsets are excluded from the alpha filter');
+    await click('.dressing-filter button:first-child');
+    assert(find('[data-wardrobe-item=gothic-05]'), 'all items restores development garments');
     for (const [category, piece] of [['footwear', 'shoes'], ['headwear', 'hat']]) {
       await open(category);
       assertPiece(piece);
@@ -337,10 +359,10 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     trials.length = changes.length = 0;
 
     await open('footwear');
-    await click('[aria-label="Item availability"] button:last-child');
-    assert.deepEqual([...document.querySelectorAll('[data-wardrobe-item]')].map(button => button.dataset.wardrobeItem),
-      ['remove-shoes', 'remove-socks', 'village-shoes']);
-    await click('[aria-label="Item availability"] button:first-child');
+    await click('[aria-label="Alpha readiness"] button:last-child');
+    assert.deepEqual(new Set([...document.querySelectorAll('[data-wardrobe-item]')].map(button => button.dataset.wardrobeItem)),
+      new Set(['remove-shoes', 'remove-socks', ...imports.filter(item => item.piece === 'socks').map(item => item.id)]));
+    await click('[aria-label="Alpha readiness"] button:first-child');
     await open('bows');
     const search = find('input[type=search]');
     await act(async () => {
@@ -360,7 +382,9 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     }
     assert.deepEqual(trials.at(-1).garments, { top: 'top-01', skirt: 'gothic-skirt-04', socks: 'socks-01', bow: 'bowtie-14' });
     const trialCount = trials.length;
+    await click('[aria-label="Alpha readiness"] button:last-child');
     await click('[data-wearable-quick-select=shirt]');
+    assert(find('[data-wardrobe-item=top-01]'), 'camera shortcuts reveal a worn development item even while alpha filtering is active');
     assert.equal(find('[data-inspected]').dataset.wardrobeItem, 'top-01', 'the shortcut opens the exact fitted top');
     await click('[data-wearable-quick-select=bow]');
     assert.equal(find('[data-inspected]').dataset.wardrobeItem, 'bowtie-14');
@@ -386,7 +410,7 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     assert.equal(changes.at(-1).garments, undefined, 'an outfit preset clears the trial pieces');
     assertPiece('corset');
     assert.equal(find('.dressing-details h2').textContent, 'High-collar corset');
-    assert.match(find('.dressing-details p').textContent, /fitted upper back/);
+    assert.match(find('.dressing-item-description').textContent, /fitted upper back/);
     assert.equal(find('.dressing-details dd').textContent, '0 credits');
     assert.equal(find('[data-dressing-piece=shirt]'), null);
     assert.equal(find('[data-dressing-piece=shorts]'), null);
@@ -458,6 +482,14 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     assert.equal(find(sleeveToggle).textContent.trim(), 'Restore sleeves');
     await click(sleeveToggle);
     assert.equal(trials.at(-1).removedClothing, undefined);
+    await open('corsets');
+    await click('.dressing-catalog [data-wardrobe-remove=sleeves]');
+    assert.deepEqual(trials.at(-1).removedClothing, ['sleeves']);
+    assert.equal(trials.at(-1).garments.dress, 'medieval-kaftan-01', 'corset-section sleeve controls preserve the equipped dress');
+    await open('tops');
+    assert.equal(find('.dressing-catalog [data-wardrobe-remove=sleeves]').textContent.trim(), 'Restore sleeves');
+    await click('.dressing-catalog [data-wardrobe-remove=sleeves]');
+    assert.equal(trials.at(-1).removedClothing, undefined);
     await open('outfits');
     await click('[aria-label="Medieval outfits"] [data-wardrobe-item=medieval-07]');
     assert.equal(changes.at(-1).outfit, 'medieval-07');
@@ -500,6 +532,13 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
 
     root = createRoot(find('#root'));
     await act(async () => root.render(h(Harness, { initial: DEFAULT_CHARACTER })));
+    await open('corsets');
+    await click('.dressing-catalog [data-wardrobe-remove=sleeves]');
+    assert(!find('[data-wearable-quick-select=sleeves]'));
+    assert(find('[data-wearable-quick-select=corset]'), 'removing stock sleeves keeps the bodice');
+    await open('tops');
+    await click('.dressing-catalog [data-wardrobe-remove=sleeves]');
+    assert(find('[data-wearable-quick-select=sleeves]'), 'Tops can restore the same sleeves');
     await open('bottoms');
     await click('[data-wardrobe-item=village-petticoat]');
     await click('[data-wardrobe-item=village-skirt]');
@@ -522,6 +561,7 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     assert.equal(legacy.garments.skirt, 'skirt-03', 'a saved Village-only removal leaves the imported skirt on');
     await open('tops');
     await click('[data-wardrobe-item=top-02]');
+    assert.equal(find('.dressing-catalog [data-wardrobe-remove=sleeves]'), null, 'a top without removable sleeves has no ineffective sleeve action');
     await click('[data-remove-try-on]');
     assert(find('[data-wearable-quick-select=bra]') && !find('[data-wearable-quick-select=corset]'));
     await click('[data-wardrobe-item=remove-top]');
@@ -534,6 +574,7 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     await click('[data-wardrobe-item=dockwear]');
     await open('tops');
     await click('[data-wardrobe-item=village-sleeves]');
+    assert.equal(find('.dressing-details [data-wardrobe-remove=sleeves]').textContent.trim(), 'Remove sleeves');
     await click('[data-remove-try-on]');
     assert.deepEqual(trials.at(-1).removedClothing, ['sleeves']);
     assert(!find('[data-wearable-quick-select=sleeves]'));

@@ -1,4 +1,4 @@
-import { fittedArmTarget, fittedElbowPole, fittedHandTarget, skirtHandTarget } from "./animationFit";
+import { fittedArmTarget, fittedElbowPole, fittedHandTarget, skirtArmTarget, skirtHandTarget } from "./animationFit";
 import {
   AnimationClip, Bone, BooleanKeyframeTrack, Euler, NumberKeyframeTrack, Quaternion, QuaternionKeyframeTrack, Vector3, VectorKeyframeTrack,
   type Object3D,
@@ -363,9 +363,11 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
       root.position.copy(basePosition);
       tilt(torso, pose.torso);
       tilt(head, pose.head);
-      arms(left, fitted ? fittedArmTarget(pose.left) : pose.left);
-      arms(right, fitted ? fittedArmTarget(pose.right) : pose.right);
       const freeHands = skirtRoom !== undefined && !emote.prop && !pose.joinIndexTips && !pose.elbowsBack;
+      const leftArm = fitted ? fittedArmTarget(pose.left) : pose.left;
+      const rightArm = fitted ? fittedArmTarget(pose.right) : pose.right;
+      arms(left, freeHands && !pose.leftPalm ? skirtArmTarget(leftArm, skirtRoom) : leftArm);
+      arms(right, freeHands && !pose.rightPalm && !pose.rightAtLips ? skirtArmTarget(rightArm, skirtRoom) : rightArm);
       const tuckPoseElbow = tuckElbow && !pose.joinIndexTips;
       let leftHand = fitted ? fittedHandTarget(pose.leftHand) : pose.leftHand;
       let rightHand = fitted ? fittedHandTarget(pose.rightHand) : pose.rightHand;
