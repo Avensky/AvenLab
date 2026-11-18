@@ -2352,6 +2352,82 @@ test('Ruffled Corset keeps the upper torso and rear waist inside both detail bud
   } finally { await vite.close(); }
 });
 
+test('High Collar cup and Vesper remain visible when a desktop outfit bundle fails', async t => {
+  const garage = '/' + bundledDir + 'gothic-05.garage.glb';
+  const mobile = '/' + bundledDir + 'gothic-05.mobile.glb';
+  const corset = '/' + garmentDir + 'corsets/gothic-high-collar.garage.glb';
+  const village = '/' + villagerDir + 'villager-female.portrait.glb';
+  const donor = '/' + bundledDir + 'gothic-02.mobile.glb';
+  const urls = [garage, mobile, corset, village, donor];
+  const inputs = await Promise.all(urls.map(url => readFile(new URL(url.slice(1), publicDir))));
+  if (inputs.some(isLfsPointer)) return skipMissingAsset(t, 'Pull the High Collar, outfit bundles, and Village models.');
+  const scenes = Object.fromEntries(await Promise.all(inputs.map(async (bytes, index) => [urls[index], await loadGeometry(bytes)])));
+  const vite = await createServer({
+    define: { __VILLAGER_PORTRAIT_URL__: JSON.stringify(village) },
+    server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error',
+  });
+  try {
+    const { villagerModelUrl, prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
+    const { resolveWardrobePreview } = await vite.ssrLoadModule('/src/game/characters/wardrobePreviewAssets.ts');
+    const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const look = characterLook({ ...DEFAULT_CHARACTER, wardrobe: { set: 'gothic-05', waist: 'tucked', shirt: 'none' } });
+    const preferredUrl = villagerModelUrl(look, 'garage', 'portrait');
+    assert.equal(preferredUrl, garage);
+    const resolve = (sources, previous) => resolveWardrobePreview({ preferredUrl, look, kind: 'garage', villageKind: 'portrait', sources, previous });
+
+    for (const [actor, failures] of [
+      [garage, {}], [mobile, { [garage]: null }], [mobile, { [garage]: scenes[corset] }],
+      [village, { [garage]: null, [mobile]: null }],
+    ]) {
+      const sources = {};
+      const requested = new Set();
+      let result = resolve(sources);
+      while (result.pendingUrls.length) {
+        for (const url of result.pendingUrls) {
+          assert(!requested.has(url), 'each failed load settles before the next candidate');
+          requested.add(url);
+          sources[url] = Object.hasOwn(failures, url) ? failures[url] : scenes[url] ?? null;
+        }
+        result = resolve(sources);
+      }
+      const preview = result.preview;
+      assert(preview?.scene === scenes[actor], 'a usable desktop outfit, alternate outfit, or Village actor renders on first load');
+      assert(preview.corsetScene === scenes[corset], 'each actor keeps the authored Garage corset');
+      const model = prepareVillager(preview.scene, {
+        fitted: true, garments: preview.garments, garmentBody: preview.garmentBody,
+        corsetSource: { scene: preview.corsetScene, set: preview.corsetSet },
+      });
+      try {
+        applyVillagerLook(model, look);
+        const visible = [];
+        model.root.traverseVisible(node => { if (node.isSkinnedMesh && node.geometry.drawRange.count > 0) visible.push(node); });
+        assert(visible.some(mesh => mesh.name === 'fitting-room-body'), 'the live body is visible');
+        assert(visible.some(mesh => mesh.material.name === 'Corset05_Main'), 'the High Collar fabric is visible');
+        assert(Number.isFinite(model.root.position.y), 'the dressed actor is inside the scene');
+      } finally { model.dispose(); }
+      assert(resolve(sources, preview).preview === preview, 'complete previews keep their rig on subsequent renders');
+      const pending = resolve({ [garage]: null, [corset]: scenes[corset] }, preview);
+      assert(pending.pendingUrls.includes(mobile) && pending.preview === preview, 'the last complete actor stays on screen while the alternate loads');
+    }
+
+    // A Garage-only install may have a complete actor in this same set's bundle but neither shared donor.
+    const trial = characterLook({ ...DEFAULT_CHARACTER, wardrobeTrial: { set: 'gothic-05', shirt: 'none', waist: 'over' } });
+    const sources = {
+      [village]: scenes[village], [corset]: scenes[corset],
+      ['/' + garmentDir + 'vesper-body.glb']: null, [donor]: null,
+    };
+    const resolveTrial = () => resolveWardrobePreview({
+      preferredUrl: villagerModelUrl(trial, 'garage', 'portrait'), look: trial, kind: 'garage', villageKind: 'portrait', sources,
+    });
+    assert(resolveTrial().pendingUrls.includes(garage), 'try-on requests the matching desktop bundle for a complete body');
+    sources[garage] = scenes[garage];
+    const result = resolveTrial();
+    assert.deepEqual(result.pendingUrls, []);
+    assert(result.preview?.scene === scenes[village] && result.preview.corsetScene === scenes[corset]);
+    assert(result.preview.garmentBody === scenes[garage].getObjectByName('BODY_WARDROBE'), 'the matched bundle supplies the missing fitting body');
+  } finally { await vite.close(); }
+});
+
 test('High Collar cup edges cover the inner bust on both waist fits and leave the keyhole open', async t => {
   const set = 'gothic-05';
   const paths = [bundledDir + 'gothic-02.mobile.glb', ...['garage', 'mobile'].flatMap(tier => [

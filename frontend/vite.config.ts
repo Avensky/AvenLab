@@ -8,7 +8,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 import { discoveredWardrobeCatalogFile, isWardrobeCatalogInput, wardrobeCatalogFile, wardrobeDirectory } from "./scripts/discover-wardrobe-garments.mts";
-import { findVillagerModel, hasCharacterModel, hasCompatibleWardrobeRevision, installedPackedVesperPortrait } from "./scripts/character-model-paths.mts";
+import { characterLod, findVillagerModel, hasCharacterModel, hasCompatibleWardrobeRevision, installedPackedVesperPortrait, vesperActorUrls } from "./scripts/character-model-paths.mts";
 const heroesPreviewManifest = new URL("./public/models/heroes-generated/previews.json", import.meta.url);
 const heroesVehiclePreviews = existsSync(heroesPreviewManifest)
   ? JSON.parse(readFileSync(heroesPreviewManifest, "utf8")) : {};
@@ -40,15 +40,9 @@ const bagModelUrl = [
   "/models/characters/props/bag-black-gold/bag-black-gold-garage.glb",
   "/models/characters/shop-bag.glb",
 ].find(url => hasCharacterModel(new URL(`./public${url}`, import.meta.url)));
-function characterLod(asset: ReturnType<typeof findVillagerModel>, kind: "garage" | "portrait") {
-  if (!asset) return null;
-  return asset.bundledLod(kind) ?? (hasCharacterModel(asset.output(kind)) ? asset.url(kind) : null);
-}
-
 const rook = findVillagerModel("male");
 const vesper = findVillagerModel("female");
-const vesperModelUrl = vesper?.sourceUrl ?? (vesper && hasCharacterModel(vesper.output("full")) ? vesper.url("full") : null);
-const authoredPortrait = characterLod(vesper, "portrait") ?? vesperModelUrl;
+const { model: vesperModelUrl, portrait: authoredPortrait } = vesperActorUrls(vesper);
 const packedPortrait = installedPackedVesperPortrait(vesper);
 
 export default defineConfig({
@@ -60,7 +54,7 @@ export default defineConfig({
     __STANDALONE_CORSET_LODS__: JSON.stringify(standaloneCorsetLods),
     __BUNDLED_WARDROBE_LODS__: JSON.stringify(bundledWardrobeLods),
     __WARDROBE_SET_IDS__: JSON.stringify(Object.keys(bundledWardrobeLods).filter(id =>
-      bundledWardrobeLods[id].garage && bundledWardrobeLods[id].mobile,
+      bundledWardrobeLods[id].garage || bundledWardrobeLods[id].mobile,
     )),
     __CHARACTER_BAG_URL__: JSON.stringify(bagModelUrl ?? null),
     __VILLAGER_MODEL_URL__: JSON.stringify(vesperModelUrl),

@@ -1,8 +1,8 @@
 import type { Object3D } from "three";
 import type { CharacterLook } from "./characterCatalog";
-import { getWardrobeActorBody, getWardrobeBodyDonor, WARDROBE_BODY_DONOR_URLS } from "./wardrobeBody";
+import { getWardrobeActorBody, getWardrobeBodyDonor, isWardrobeBodyDonor, WARDROBE_BODY_DONOR_URLS } from "./wardrobeBody";
 import { hasAuthoredLacedBodiceFit, hasBindableStandaloneCorset, rebuiltUnderbustPart } from "./standaloneCorset";
-import { corsetModelUrls, corsetRenderChoice, isRebuiltHighCollarUrl, isRebuiltLacedBodiceUrl, isRebuiltUnderbustUrl } from "./wardrobe";
+import { corsetModelUrls, corsetRenderChoice, isRebuiltHighCollarUrl, isRebuiltLacedBodiceUrl, isRebuiltUnderbustUrl, wardrobeModelUrls } from "./wardrobe";
 import { hasBindableWardrobeGarment, removalNeedsVillagerBody, replacesVillagerBody, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
 import { getWardrobeGarment, hasWardrobeRevisionMesh, wardrobeGarmentModelUrl } from "./wardrobeGarments";
 
@@ -19,6 +19,17 @@ export type WardrobePreview = {
   corsetScene?: Object3D;
   corsetSet?: string;
 };
+
+function isOutfitActor(scene: Object3D | null | undefined, bundledSet?: string) {
+  if (scene === undefined) return true; // Request this candidate before trying a lower tier.
+  if (!scene) return false;
+  const body = getWardrobeActorBody(scene);
+  if (!body || !isWardrobeBodyDonor(body, body.skeleton)) return false;
+  // A donor-only or garment-only GLB may decode successfully without containing Vesper.
+  if (!scene.getObjectByName("HEAD_FACE4")?.getObjectByProperty("type", "SkinnedMesh")
+    || !scene.getObjectByName("CLOTH_BOTTOM_SKIRT")?.getObjectByProperty("type", "SkinnedMesh")) return false;
+  return !bundledSet || hasBindableStandaloneCorset({ set: bundledSet, scene }, body.skeleton);
+}
 
 /** Resolve the next requests and the preview that can be displayed from the current sources. */
 export function resolveWardrobePreview({
@@ -38,7 +49,21 @@ export function resolveWardrobePreview({
   const originalVillage = kind !== villageKind && portrait && original !== portrait && sources[portrait] === null ? original : null;
   // The Village layers live inside the actor. Resolve both roles to the same loaded scene.
   const villageUrl = (asset: string) => asset === preferredPortrait ? originalVillage ?? portrait ?? asset : asset;
-  const url = villageUrl(preferredUrl);
+  const bundles = wardrobeModelUrls(look.wardrobe, kind);
+  let url = villageUrl(preferredUrl);
+  let stockActor: string | undefined;
+  if (bundles.includes(preferredUrl)) {
+    const bundle = bundles.find(asset => isOutfitActor(sources[asset], look.wardrobe?.set));
+    if (bundle) url = bundle;
+    else {
+      const authoredPortrait = preferredPortrait && __CHARACTER_MODEL_FALLBACKS__[preferredPortrait];
+      const stock = villageKind === "garage" ? [original, preferredPortrait, authoredPortrait]
+        : [preferredPortrait, authoredPortrait, kind === "garage" ? original : null];
+      stockActor = stock.find((asset): asset is string => Boolean(asset && isOutfitActor(sources[asset])));
+      if (!stockActor) return { scene: null, pendingUrls: [], unavailable: true, preview: previous };
+      url = stockActor;
+    }
+  }
   const villageAssetKind = originalVillage ? kind : villageKind;
   const scene = sources[url];
   const skeleton = scene ? getWardrobeActorBody(scene)?.skeleton : undefined;
@@ -59,7 +84,7 @@ export function resolveWardrobePreview({
     const item = getWardrobeGarment(id);
     if (!item) return [];
     const tier = item.villageNode ? villageAssetKind : kind;
-    const preferred = wardrobeGarmentModelUrl(item, tier);
+    const preferred = (item.villageNode && stockActor) || wardrobeGarmentModelUrl(item, tier);
     if (!preferred) return [];
     const loaded = sources[preferred];
     const brokenRevision = preferred === item.revisionUrl && loaded !== undefined
@@ -81,15 +106,24 @@ export function resolveWardrobePreview({
   const needsSeparateBody = needsBody && Boolean(skeleton) && !bundledBody && !(bundledCorset && loadedCorset === undefined);
   const fittingBodySource = sources[fittingBodyUrl];
   const fittingBody = needsSeparateBody ? compatibleBody(fittingBodySource) : undefined;
-  const bodyUrl = fittingBodySource !== undefined && !fittingBody
+  let bodyUrl: string = fittingBodySource !== undefined && !fittingBody
     ? legacyBodyUrl : fittingBodyUrl;
+  let garmentBody = bundledBody ?? (needsSeparateBody
+    ? (bodyUrl === fittingBodyUrl ? fittingBody : compatibleBody(sources[bodyUrl])) : undefined);
+  // A desktop-only install can have the complete High Collar outfit but neither common donor.
+  if (needsSeparateBody && !garmentBody && corsetUrl && isRebuiltHighCollarUrl(corsetUrl)
+    && bodyUrl === legacyBodyUrl && sources[legacyBodyUrl] !== undefined) {
+    const fallback = wardrobeModelUrls(corset, kind).find(asset => sources[asset] === undefined || compatibleBody(sources[asset]));
+    if (fallback) {
+      bodyUrl = fallback;
+      garmentBody = compatibleBody(sources[bodyUrl]);
+    }
+  }
   const urls = new Set([url, ...requested.map(item => item.url)]);
   if (needsSeparateBody) urls.add(bodyUrl);
   if (corsetUrl) urls.add(corsetUrl);
   const assetUrls = [...urls];
   const pendingUrls = assetUrls.filter(asset => sources[asset] === undefined);
-  const garmentBody = bundledBody ?? (needsSeparateBody
-    ? (bodyUrl === fittingBodyUrl ? fittingBody : compatibleBody(sources[bodyUrl])) : undefined);
   const unavailable = (corsetUrls.length > 0 && !corsetUrl) || requested.some(({ rejected }) => rejected)
     || assetUrls.some(asset => sources[asset] === null)
     || (needsBody && !garmentBody && (!skeleton || (needsSeparateBody && sources[bodyUrl] !== undefined)));
