@@ -107,9 +107,16 @@ function tuckedLacingHalfWidth(y: number) {
   return width * MathUtils.smoothstep(y, 1.091, 1.107);
 }
 
-export function showsTuckedLacingSkin(point: Vector3) {
+export function showsTuckedLacingSkin(point: Vector3, fittedSkirt = false) {
+  // A fitted waistband leaves both ends of the laced placket visible as the torso turns.
+  if (fittedSkirt && point.y > 1.06 && point.y < 1.145) {
+    const back = point.z < -.015 && Math.abs(point.x) < .052;
+    const front = point.z > .08 && Math.abs(point.x - lacingCenter) < .033;
+    if (back || front) return true;
+  }
+  const edge = fittedSkirt ? .019 : .014;
   return point.z > frontFacingStart && point.y > 1.087 && point.y < 1.257
-    && Math.abs(point.x - lacingCenter) < tuckedLacingHalfWidth(point.y) + .014;
+    && Math.abs(point.x - lacingCenter) < tuckedLacingHalfWidth(point.y) + edge;
 }
 
 function fitWaistFacing(body: BufferGeometry, over: boolean) {

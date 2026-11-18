@@ -25,6 +25,17 @@ test('manual fit checks stay specific to the player, waist fit, piece and pose; 
   assert(JSON.parse(key('p1',shortSkirt,'skirt')).includes('short-skirt-drape-2'));
   assert(!JSON.parse(key('p1',{...shortSkirt,removedClothing:['skirt']},'skirt')).includes('short-skirt-drape-2'));
   assert(!JSON.parse(trialKey).includes('short-skirt-drape-2'));
+  const revisedWaist = choice => JSON.parse(key('p1', choice, 'skirt')).includes('gothic-skirt-waist-2');
+  assert(revisedWaist(c), 'the complete outfit uses its revised skirt');
+  assert(revisedWaist(trial), 'a separate Gothic skirt uses its revised fit');
+  assert(!revisedWaist(shortSkirt), 'a short skirt replaces the Gothic skirt');
+  assert(!revisedWaist({ ...trial, removedClothing: ['outer-skirt'] }));
+  assert(!revisedWaist({ ...c, garments: { dress: 'dress-01' } }));
+  assert(!revisedWaist({ ...c, wardrobe: undefined, wardrobeTrial: c.wardrobe }), 'a separate corset leaves the stock skirt in place');
+  const tuckedShorts = choice => JSON.parse(key('p1', choice, 'skirt')).includes('short-skirt-tuck-1');
+  assert(tuckedShorts(shortSkirt));
+  assert(!tuckedShorts({ ...shortSkirt, wardrobe: { ...c.wardrobe, waist: 'over' } }));
+  assert(!tuckedShorts({ ...shortSkirt, removedClothing: ['corset'] }));
   const boxer = { ...c, appearance: { briefs_style: 'boxer-briefs' } };
   for (const subject of ['briefs', 'underwear-briefs:briefs']) {
     assert(JSON.parse(key('p1', c, subject)).includes('v-cut-briefs-1'));

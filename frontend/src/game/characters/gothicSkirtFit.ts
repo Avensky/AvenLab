@@ -1,48 +1,31 @@
-import { DoubleSide, MathUtils, Ray, Vector3, type BufferGeometry, type Skeleton } from "three";
+import { Box3, DoubleSide, MathUtils, Ray, type BufferGeometry, type Skeleton } from "three";
 import type { MeshBVH } from "three-mesh-bvh";
+import { warpWardrobeGeometry } from "./warpWardrobeGeometry";
 
-const waistStart = .965;
-const waistEnd = 1.235;
-const waistClearance = .009;
+// Highest point of each finished waistband in Vesper's bind space. Her
+// natural waist lies at 1.09–1.10 m and the lower bust crease starts at 1.184 m.
+const waistlines: Readonly<Record<string, number>> = {
+  "gothic-skirt-01": 1.115,
+  "gothic-skirt-02": 1.120,
+  "gothic-skirt-03": 1.110,
+  "gothic-skirt-04": 1.100,
+  "gothic-skirt-05": 1.118,
+};
+const drapeStart = .78;
+const hipStart = .90;
 const centerDepth = .025;
-const slices = 17;
-const directions = 32;
+const slices = 33;
+const directions = 64;
 
-function roundFrontPanel(source: BufferGeometry) {
-  const cloth = source.getAttribute("position");
-  const xTangent = new Vector3(), yTangent = new Vector3(), zTangent = new Vector3();
-  const point = new Vector3(), scratch = new Vector3(), normal = new Vector3();
-  const step = .0002;
-  let fitted: BufferGeometry | undefined;
-  const shape = (x: number, y: number, z: number, target: Vector3) => {
-    const front = MathUtils.smoothstep(z, .035, .118);
-    const outside = MathUtils.smoothstep(Math.abs(x), .06, .22);
-    const hem = 1 - MathUtils.smoothstep(y, .48, .66);
-    const round = front * outside * hem;
-    const panel = front * (1 - outside) * (1 - MathUtils.smoothstep(y, .61, .76));
-    return target.set(x - Math.sign(x) * .012 * round, y + .024 * round, z + .008 * panel);
-  };
-  for (let i = 0; i < cloth.count; i++) {
-    const x = cloth.getX(i), y = cloth.getY(i), z = cloth.getZ(i);
-    if (z <= .035 || y >= .76) continue;
-    shape(x, y, z, point);
-    if (point.x === x && point.y === y && point.z === z) continue;
-    fitted ??= source.clone();
-    fitted.getAttribute("position").setXYZ(i, point.x, point.y, point.z);
-    const normals = fitted.getAttribute("normal");
-    if (!normals) continue;
-    // Transform the authored normals with the same warp. The side and back
-    // panels keep their original normals, including the UV seam.
-    shape(x + step, y, z, xTangent).sub(shape(x - step, y, z, scratch));
-    shape(x, y + step, z, yTangent).sub(shape(x, y - step, z, scratch));
-    shape(x, y, z + step, zTangent).sub(shape(x, y, z - step, scratch));
-    normal.set(0, 0, 0).addScaledVector(scratch.crossVectors(yTangent, zTangent), normals.getX(i))
-      .addScaledVector(scratch.crossVectors(zTangent, xTangent), normals.getY(i))
-      .addScaledVector(scratch.crossVectors(xTangent, yTangent), normals.getZ(i)).normalize();
-    normals.setXYZ(i, normal.x, normal.y, normal.z);
-  }
-  return fitted;
-}
+const roundFrontPanel = warpWardrobeGeometry((x, y, z, point) => {
+  if (z <= .035 || y >= .76) return point.set(x, y, z);
+  const front = MathUtils.smoothstep(z, .035, .118);
+  const outside = MathUtils.smoothstep(Math.abs(x), .06, .22);
+  const hem = 1 - MathUtils.smoothstep(y, .48, .66);
+  const round = front * outside * hem;
+  const panel = front * (1 - outside) * (1 - MathUtils.smoothstep(y, .61, .76));
+  return point.set(x - Math.sign(x) * .012 * round, y + .024 * round, z + .008 * panel);
+});
 
 function fitLayeredHem(source: BufferGeometry, id: string, skeleton: Skeleton) {
   if (id !== "gothic-skirt-03" && id !== "gothic-skirt-05") return;
@@ -104,74 +87,93 @@ function fitLayeredHem(source: BufferGeometry, id: string, skeleton: Skeleton) {
   return fitted;
 }
 
-/** Use one waist adjustment for the fabric, trim, and fasteners. */
-export function prepareGothicSkirtFit(body: MeshBVH, skirt: readonly MeshBVH[], id: string, skeleton: Skeleton) {
+/** Grade a shared skirt shell and its details onto the waist, retaining the hemline. */
+export function prepareGothicWaistline(body: MeshBVH, skirt: readonly MeshBVH[], id: string) {
+  const bounds = new Box3();
+  const rim = Math.max(...skirt.map(surface => surface.getBoundingBox(bounds).max.y));
+  const target = waistlines[id];
+  if (!target || rim <= target + .0001) return () => undefined;
+  const drop = rim - target;
+  // Keep the height of the decorated top band. The shortening is distributed
+  // over the upper drape, so the hem, ruffles and foot clearance are preserved.
+  const lowerY = (y: number) => y - drop * MathUtils.smoothstep(y, drapeStart, rim - .09);
+  const angleStep = 2 * Math.PI / directions;
+  const rowStep = (rim - hipStart) / (slices - 1);
+  const skin = new Float32Array(slices * directions);
+  const offsets = new Float32Array(skin.length).fill(NaN);
+  const wideBack = id === "gothic-skirt-01" || id === "gothic-skirt-05";
   const ray = new Ray();
-  const rowHeight = (waistEnd - waistStart) / (slices - 1);
-  const step = 2 * Math.PI / directions;
-  const wideBackPanels = id === "gothic-skirt-01" || id === "gothic-skirt-05";
-  const getBodyRadius = () => body.raycastFirst(ray, DoubleSide, 0, .18)?.distance;
-  const inset = Array.from({ length: slices }, (_, row) => Array.from({ length: directions }, (_, column) => {
-    ray.origin.set(0, waistStart + row * rowHeight, centerDepth);
-    ray.direction.set(Math.cos(column * step), 0, Math.sin(column * step));
-    const skin = getBodyRadius();
-    if (skin === undefined) return;
-    let edge = Infinity;
-    for (const surface of skirt) {
-      const hit = surface.raycastFirst(ray, DoubleSide, skin, edge);
-      if (hit) edge = hit.distance;
+  for (let row = 0; row < slices; row++) {
+    const y = hipStart + row * rowStep;
+    for (let col = 0; col < directions; col++) {
+      const angle = col * angleStep;
+      const x = Math.cos(angle), z = Math.sin(angle);
+      ray.origin.set(.22 * x, lowerY(y), centerDepth + .22 * z);
+      ray.direction.set(-x, 0, -z);
+      const hit = body.raycastFirst(ray, DoubleSide, 0, .22);
+      if (!hit) continue;
+      const index = row * directions + col;
+      skin[index] = .22 - hit.distance;
+      ray.origin.set(0, y, centerDepth);
+      ray.direction.set(x, 0, z);
+      let inner = Infinity;
+      for (const surface of skirt) {
+        const hit = surface.raycastFirst(ray, DoubleSide, .035, inner);
+        if (hit) inner = hit.distance;
+      }
+      // Keep a little ease behind skirts with broad, sparsely cut back panels.
+      const rear = wideBack ? MathUtils.smoothstep(-z, .32, .83) : 0;
+      if (Number.isFinite(inner)) offsets[index] = MathUtils.clamp(skin[index] + .012 + .008 * rear - inner, -.045, .055);
     }
-    if (Number.isFinite(edge)) return MathUtils.clamp(edge - skin - waistClearance, 0, .036);
-  }));
-  // Smooth adjacent sections so an opening or a pleat cannot pull a neighboring seam out of shape.
-  const smoothed = inset.map((row, i) => row.map((_, j) => {
-    let sum = 0, total = 0;
+  }
+  // At the scalloped rim some radial sections miss the fabric. In those
+  // sections carry the nearest measured offset up from the panel below it.
+  for (let i = 0; i < offsets.length; i++) {
+    if (Number.isNaN(offsets[i])) offsets[i] = i < directions ? 0 : offsets[i - directions];
+  }
+  const smooth = offsets.map((_, i) => {
+    const row = Math.floor(i / directions), col = i % directions;
+    let value = 0;
     for (let dy = -1; dy <= 1; dy++) {
-      for (let da = -1; da <= 1; da++) {
-        const value = inset[i + dy]?.[(j + da + directions) % directions];
-        if (value === undefined) continue;
-        const weight = (2 - Math.abs(dy)) * (2 - Math.abs(da));
-        sum += value * weight;
-        total += weight;
+      const r = MathUtils.clamp(row + dy, 0, slices - 1);
+      for (let dx = -1; dx <= 1; dx++) {
+        const c = (col + dx + directions) % directions;
+        value += offsets[r * directions + c] * (2 - Math.abs(dx)) * (2 - Math.abs(dy));
       }
     }
-    return total ? sum / total : 0;
-  }));
+    return value / 16;
+  });
+  return warpWardrobeGeometry((x, y, z, point) => {
+    const newY = lowerY(y);
+    const depth = z - centerDepth, radius = Math.hypot(x, depth);
+    if (y <= hipStart || radius < .001) return point.set(x, newY, z);
+    const height = MathUtils.clamp((y - hipStart) / rowStep, 0, slices - 1);
+    const row = Math.min(Math.floor(height), slices - 2);
+    const angle = MathUtils.euclideanModulo(Math.atan2(depth, x) / angleStep, directions);
+    const col = Math.floor(angle), next = (col + 1) % directions;
+    function sample(field: Float32Array) {
+      const below = MathUtils.lerp(field[row * directions + col], field[row * directions + next], angle - col);
+      const above = MathUtils.lerp(field[(row + 1) * directions + col], field[(row + 1) * directions + next], angle - col);
+      return MathUtils.lerp(below, above, height - row);
+    }
+    const band = MathUtils.smoothstep(y, rim - .15, rim - .055);
+    const clearance = sample(skin) + .009;
+    const shellOffset = sample(smooth);
+    // A long flat panel needs room across its face as well as at its corner
+    // vertices. Carry outward panel clearance all the way down to the hip.
+    const offset = Math.max(shellOffset > 0 ? shellOffset : shellOffset * band, clearance - radius)
+      * MathUtils.smoothstep(y, hipStart, .96);
+    const scale = 1 + offset / radius;
+    return point.set(x * scale, newY, centerDepth + depth * scale);
+  });
+}
 
+export function prepareGothicSkirtFit(body: MeshBVH, skirt: readonly MeshBVH[], id: string, skeleton: Skeleton, authoredFit = false) {
+  const fitWaist = prepareGothicWaistline(body, skirt, id);
   return (source: BufferGeometry) => {
-    const cloth = source.getAttribute("position");
-    let fitted = id === "gothic-skirt-04" ? roundFrontPanel(source) : fitLayeredHem(source, id, skeleton);
-    for (let vertex = 0; vertex < cloth.count; vertex++) {
-      const y = cloth.getY(vertex);
-      if (y <= waistStart || y > waistEnd) continue;
-      const x = cloth.getX(vertex), z = cloth.getZ(vertex) - centerDepth;
-      const radius = Math.hypot(x, z);
-      if (!radius) continue;
-      ray.origin.set(0, y, centerDepth);
-      ray.direction.set(x / radius, 0, z / radius);
-      const skin = getBodyRadius();
-      if (skin === undefined || radius <= skin + waistClearance) continue;
-      const height = (y - waistStart) / rowHeight;
-      const row = Math.min(Math.floor(height), slices - 2);
-      const angle = MathUtils.euclideanModulo(Math.atan2(z, x) / step, directions);
-      const column = Math.floor(angle), next = (column + 1) % directions;
-      const lower = MathUtils.lerp(smoothed[row][column], smoothed[row][next], angle - column);
-      const upper = MathUtils.lerp(smoothed[row + 1][column], smoothed[row + 1][next], angle - column);
-      // The broad back panels on 01 and 05 span the spine with few vertices.
-      const back = wideBackPanels ? MathUtils.smoothstep(-z / radius, .36, .59) : 0;
-      const rearEase = id === "gothic-skirt-01" ? .006 * back * MathUtils.smoothstep(y, 1.119, 1.177) : 0;
-      // Keep space between overlapping layers even where the skin limits the shared adjustment.
-      const adjustment = Math.min(.80 * (radius - skin - waistClearance),
-        MathUtils.lerp(lower, upper, height - row) * MathUtils.smoothstep(y, waistStart, 1.10) * (1 - back)) - rearEase;
-      if (!adjustment) continue;
-      fitted ??= source.clone();
-      const scale = 1 - adjustment / radius;
-      fitted.getAttribute("position").setXYZ(vertex, x * scale, y, centerDepth + z * scale);
-    }
-    if (fitted) {
-      fitted.computeBoundingBox();
-      fitted.computeBoundingSphere();
-    }
-    return fitted;
+    const hem = authoredFit ? undefined : id === "gothic-skirt-04" ? roundFrontPanel(source) : fitLayeredHem(source, id, skeleton);
+    const fitted = fitWaist(hem ?? source);
+    if (fitted) hem?.dispose();
+    return fitted ?? hem;
   };
 }
