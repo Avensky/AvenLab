@@ -210,9 +210,10 @@ export function fitLacedBodice(root: Object3D, body: BufferGeometry) {
 
 /** Keep a skirt's waistband on its side of the bodice hem. */
 export function fitLacedBodiceToSkirt(root: Object3D, body: BufferGeometry, skirt: readonly MeshBVH[],
-  fit?: "village-tucked", reuse?: { adjustments?: Float32Array },
+  village?: { hasBelt: boolean }, reuse?: { adjustments?: Float32Array },
 ) {
-  const villageTuck = fit === "village-tucked";
+  const villageTuck = Boolean(village);
+  const tuckBeltSides = village?.hasBelt && root.userData.lacedBodiceStraps;
   const saved = villageTuck ? reuse?.adjustments : undefined;
   const sections = 72, rows = villageTuck ? 53 : 27, base = villageTuck ? 1.080 : 1.032, step = villageTuck ? .001 : .0055;
   // Every waistband ray holds its height, so triangles outside this band cannot contribute.
@@ -288,7 +289,7 @@ export function fitLacedBodiceToSkirt(root: Object3D, body: BufferGeometry, skir
       const source = mesh.geometry, position = source.getAttribute("position");
       let fitted: BufferGeometry | undefined;
       for (let i = 0; i < position.count; i++) {
-        const row = (position.getY(i) - base) / step;
+        const y = position.getY(i), row = (y - base) / step;
         if (row <= 0 || row >= rows - 1) continue;
         const x = position.getX(i), z = position.getZ(i) - waistCenter;
         const radius = Math.hypot(x, z);
@@ -298,11 +299,16 @@ export function fitLacedBodiceToSkirt(root: Object3D, body: BufferGeometry, skir
         const lower = MathUtils.lerp(adjustments[low * sections + left], adjustments[low * sections + right], section - left);
         const upper = MathUtils.lerp(adjustments[(low + 1) * sections + left], adjustments[(low + 1) * sections + right], section - left);
         const move = MathUtils.lerp(lower, upper, row - low);
-        if (!move) continue;
+        // At the side turn the separate Village belt rises above the skirt rim.
+        // Pull the tucked hem inside that turn, tapering before the front and back panels.
+        const sideTuck = tuckBeltSides ? .0035 * MathUtils.smoothstep(Math.abs(x), .065, .095)
+          * (1 - MathUtils.smoothstep(Math.abs(z), .012, .034))
+          * MathUtils.smoothstep(y, 1.080, 1.095) * (1 - MathUtils.smoothstep(y, 1.128, 1.132)) : 0;
+        if (!move && !sideTuck) continue;
         fitted ??= source.clone();
         const target = fitted.getAttribute("position");
         const scale = 1 + move / radius;
-        target.setX(i, x * scale);
+        target.setX(i, x * scale - Math.sign(x) * sideTuck);
         target.setZ(i, z * scale + waistCenter);
       }
       if (!fitted) continue;
@@ -324,7 +330,7 @@ export function fitLacedBodiceToSkirt(root: Object3D, body: BufferGeometry, skir
 
 /** Give the tucked hem room behind the Village skirt and its separate belt. */
 export function prepareLacedBodiceVillageWaist(skirts: readonly SkinnedMesh[], belts: readonly SkinnedMesh[],
-  beltSideRoom = 0) {
+  sweetheart: boolean) {
   const fit = (mesh: SkinnedMesh, belt: boolean) => {
     const source = mesh.geometry, fitted = source.clone(), position = fitted.getAttribute("position");
     for (let i = 0; i < position.count; i++) {
@@ -335,9 +341,10 @@ export function prepareLacedBodiceVillageWaist(skirts: readonly SkinnedMesh[], b
       const rear = -z / radius;
       const side = MathUtils.smoothstep(Math.abs(x) / radius, .27, .65);
       // Open the belt across the rear only. Keep its lower edge close to the skirt.
+      const rearArc = sweetheart ? MathUtils.smoothstep(rear, .05, .52) : MathUtils.smoothstep(rear, 0, .30);
       const room = belt
-        ? MathUtils.smoothstep(rear, .05, .52) * MathUtils.lerp(.0055, .012, MathUtils.smoothstep(y, 1.092, 1.117))
-          + beltSideRoom * side * MathUtils.smoothstep(y, 1.091, 1.121)
+        ? rearArc * MathUtils.lerp(.0055, .012, MathUtils.smoothstep(y, 1.092, 1.117))
+          + (sweetheart ? .0055 : 0) * side * MathUtils.smoothstep(y, 1.091, 1.121)
         : .0055 * MathUtils.smoothstep(rear, -.42, .25) * side * MathUtils.smoothstep(y, 1.052, 1.102);
       if (!room) continue;
       const scale = 1 + room / radius;

@@ -27,7 +27,7 @@ const required = [...new Set([
   ...variants.map(({ path }) => path),
   ...wardrobe.flatMap(({ id }) => tiers.map(tier => `${models}wardrobe/${id}.${tier}.glb`)),
   ...['', '.garage', '.portrait'].map(suffix => `${models}villagers/villager-female/villager-female${suffix}.glb`),
-  ...garments.filter(({ id }) => id === 'top-02' || id === 'skirt-02' || id.startsWith('gothic-skirt-'))
+  ...garments.filter(({ id }) => /^top-0[1-5]$/.test(id) || id === 'skirt-02' || id.startsWith('gothic-skirt-'))
     .flatMap(({ url, mobileUrl }) => [url, mobileUrl].filter(Boolean).map(path => path.slice(1))),
 ])].sort();
 
@@ -45,7 +45,7 @@ const realAssetTests = [
   'the authored Sweetheart', 'standalone wardrobe exports', 'standalone corsets and a selected skirt',
   'turning off wardrobe layers fits underwear', 'Gothic Skirt 04 and Top 02 replace stock pieces',
   'the rebuilt Gothic Underbust', 'wardrobe underwear reuses donor cuts', 'rebuilt Tucked hardware', 'rebuilt Laced Bodice',
-  'the Village skirt and belt cover', 'Ruffled Corset', 'Laced Bodice straps',
+  'the Village skirt and belt cover', 'Ruffled Corset', 'Laced Bodice straps', 'Top 03 keeps', 'Top 04 keeps', 'the Village bonnet',
 ];
 
 function runFrontendNode(args, strictAssets = false) {
@@ -93,8 +93,9 @@ async function runFullAudit() {
   const { auditWardrobeAssets, auditCurrentCorsetMasks } = await import('./audit-wardrobe-assets.mjs');
   const assetsPass = await auditWardrobeAssets(publicRoot, [...variants, ...generatedVariants]);
   const testsPass = runTests([`--test-name-pattern=${realAssetTests.join('|')}`, 'tests/wardrobe-garment-assets.test.mjs'], true);
+  const topFitPass = runTests(['tests/top03-armhole.test.mjs', 'tests/top05-fit.test.mjs'], true);
   const masksPass = await auditCurrentCorsetMasks(frontend, publicRoot);
-  return piecesPass && assetsPass && testsPass && masksPass;
+  return piecesPass && assetsPass && testsPass && topFitPass && masksPass;
 }
 
 const [mode, ...extra] = process.argv.slice(2);
