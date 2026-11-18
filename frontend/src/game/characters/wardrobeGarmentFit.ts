@@ -617,7 +617,7 @@ export function prepareWardrobeGarments(
     body.name = "fitting-room-body";
     body.material = original.material;
     body.geometry = full.clone();
-    if (group.getObjectByName("wardrobe-top-04")) smoothUnderarmSkin(body.geometry, full);
+    smoothUnderarmSkin(body.geometry, full, Boolean(group.getObjectByName("wardrobe-top-04")));
     body.geometry.setIndex(new BufferAttribute(new Uint32Array(full.getIndex()!.count), 1));
     group.add(body);
   }
