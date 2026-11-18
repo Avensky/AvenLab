@@ -121,12 +121,16 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
     for (const part of [root.getObjectByName("BODY_OUTFIT_CUT"), root.getObjectByName("BODY_WARDROBE")]) {
       part?.traverse(mesh => {
         if (!(mesh instanceof SkinnedMesh) || mesh.material.name !== "MAT_SkinBody") return;
-        const donor = mesh.geometry;
+        const maskedSource = wardrobe.sourceForMaskedGeometry(mesh.geometry);
+        const donor = maskedSource ?? mesh.geometry;
         if (!donor.boundingBox) donor.computeBoundingBox();
         if (donor.boundingBox && (donor.boundingBox.min.y > 1.415 || donor.boundingBox.max.y < 1.18)) return;
-        mesh.geometry = donor.clone();
+        // Masked outfits already own the geometry that receives waist and layer updates.
+        if (!maskedSource) {
+          mesh.geometry = donor.clone();
+          stockSkin.push(mesh.geometry);
+        }
         smoothUnderarmSkin(mesh.geometry, donor);
-        stockSkin.push(mesh.geometry);
       });
     }
   }

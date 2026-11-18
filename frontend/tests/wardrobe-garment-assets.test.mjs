@@ -469,6 +469,7 @@ test('the authored Sweetheart keeps chest and underarm skin in both waist fits',
             const corset = model.root.getObjectByName(`CLOTH_CORSET_${waist.toUpperCase()}`);
             assert(corset?.visible, `${label} ${waist} corset`);
             assert(body.visible, `${label} wears the full body donor`);
+            assert(Number.isFinite(body.geometry.drawRange.count), `${label} ${waist} applies the mask to the displayed body`);
             const visible = new Set();
             for (let i = 0; i < body.geometry.drawRange.count; i += 3) {
               visible.add(body.geometry.index.array.subarray(i, i + 3).join(','));

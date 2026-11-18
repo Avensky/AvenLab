@@ -201,6 +201,9 @@ export function prepareWardrobe(root: Object3D) {
   const overSkirt = prepareOverSkirtEase(root);
   let lastMode = -1;
   return {
+    sourceForMaskedGeometry(geometry: BufferGeometry) {
+      return masked.find(part => part.geometry === geometry)?.source;
+    },
     apply(choice?: WardrobeChoice, ease: OverSkirtEase = 0) {
       const selected = resolveWardrobe(choice, { includeRetired: true });
       if (!parts.length || !selected) return;
