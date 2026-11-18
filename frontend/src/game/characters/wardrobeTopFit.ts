@@ -2,16 +2,16 @@ import { BufferGeometry, MathUtils, Triangle, Vector3, type BufferAttribute, typ
 import { MeshBVH, type HitPointInfo } from "three-mesh-bvh";
 import { sameWardrobeFitInputs, wardrobeFitInputs } from "./wardrobeSurface.ts";
 
-// Preserve the original torso blend at the bottom of Top 03's armholes. The
+// Preserve the original torso blend at the bottom of the sleeveless tops' armholes. The
 // upper rim still follows the shoulders and the collar keeps its own rigging.
-function anchorTop03Armholes(source: BufferGeometry, armJoints: boolean[]) {
+function anchorLowerArmholes(source: BufferGeometry, armJoints: boolean[], wideRim: boolean) {
   const positions = source.getAttribute("position"), joints = source.getAttribute("skinIndex"), weights = source.getAttribute("skinWeight");
   if (!positions || !joints || !weights) return;
   let fitted: BufferGeometry | undefined;
   for (let vertex = 0; vertex < positions.count; vertex++) {
     const y = positions.getY(vertex);
-    const anchor = MathUtils.smoothstep(Math.abs(positions.getX(vertex)), .112, .123)
-      * MathUtils.smoothstep(y, 1.21, 1.25) * (1 - MathUtils.smoothstep(y, 1.325, 1.38));
+    const anchor = MathUtils.smoothstep(Math.abs(positions.getX(vertex)), wideRim ? .085 : .112, wideRim ? .125 : .123)
+      * MathUtils.smoothstep(y, 1.21, 1.25) * (1 - MathUtils.smoothstep(y, wideRim ? 1.255 : 1.325, wideRim ? 1.378 : 1.38));
     if (!anchor) continue;
 
     let arm = 0, torso = 0;
@@ -72,8 +72,8 @@ function buildWardrobeTopFit(body: BufferGeometry, id: string, skeleton?: Skelet
 
   const contact = .010;
   const shoulderFit = id === "top-02" || id === "top-03";
-  const armJoints = id === "top-03"
-    ? skeleton?.bones.map(bone => /^(clavicle|upperarm)(_|$)/.test(bone.name))
+  const armJoints = shoulderFit
+    ? skeleton?.bones.map(bone => id === "top-02" ? bone.name.startsWith("upperarm") : /^(clavicle|upperarm)(_|$)/.test(bone.name))
     : undefined;
   const surfaceGeometry = new BufferGeometry().setAttribute("position", position).setIndex(index.clone());
   const surface = new MeshBVH(surfaceGeometry);
@@ -85,7 +85,7 @@ function buildWardrobeTopFit(body: BufferGeometry, id: string, skeleton?: Skelet
   return (source: BufferGeometry) => {
     const cloth = source.getAttribute("position");
     if (!cloth) return;
-    let fitted = armJoints && anchorTop03Armholes(source, armJoints);
+    let fitted = armJoints && anchorLowerArmholes(source, armJoints, id === "top-02");
     for (let vertex = 0; vertex < cloth.count; vertex++) {
       point.fromBufferAttribute(cloth, vertex);
       if (!surface.closestPointToPoint(point, hit, 0, contact) || hit.distance >= contact) continue;

@@ -368,7 +368,7 @@ test('medieval hoods replace the bonnet while keeping the outfit and stored hair
   } finally { await vite.close(); }
 });
 
-for (const number of ['03', '04']) test(`Top ${number} keeps both armholes filled through raised-arm poses and masks its solid panels`, async t => {
+for (const number of ['02', '03', '04']) test(`Top ${number} keeps both armholes filled through raised-arm poses and masks its solid panels`, async t => {
   const item = catalog.find(({ id }) => id === `top-${number}`);
   const tiers = ['portrait', 'garage'];
   const paths = [item.url.slice(1), bundledDir + 'gothic-02.mobile.glb',
@@ -385,7 +385,7 @@ for (const number of ['03', '04']) test(`Top ${number} keeps both armholes fille
     center.set(0, 0, 0);
     for (const id of face) center.add(vertex.fromBufferAttribute(position, id));
     center.divideScalar(3);
-    if (Math.abs(center.x) >= .070 || center.y < 1.255 || center.y > 1.38) continue;
+    if (Math.abs(center.x) >= .070 || center.y < 1.255 || center.y > (number === '02' ? 1.31 : 1.38)) continue;
     if (center.z > .080) front.push(face.join(','));
     if (center.z < -.030) back.push(face.join(','));
   }
@@ -1032,7 +1032,23 @@ test('Gothic Skirt 04 and Top 02 replace stock pieces and animate together on bo
         const [fittedTop] = topGroup.children;
         const originalTop = topScene.getObjectByName(fittedTop.name).geometry;
         assert.deepEqual(fittedTop.geometry.attributes.uv.array, originalTop.attributes.uv.array);
-        assert.deepEqual(fittedTop.geometry.attributes.skinWeight.array, originalTop.attributes.skinWeight.array);
+        const weights = fittedTop.geometry.attributes.skinWeight, originalWeights = originalTop.attributes.skinWeight;
+        let adjustedRim = 0;
+        for (let i = 0; i < weights.count; i++) {
+          let sum = 0, changed = false;
+          for (let k = 0; k < 4; k++) {
+            const weight = weights.getComponent(i, k);
+            sum += weight;
+            changed ||= weight !== originalWeights.getComponent(i, k);
+          }
+          assert(Math.abs(sum - 1) < .0002);
+          if (changed) {
+            const pos = originalTop.attributes.position;
+            assert(Math.abs(pos.getX(i)) > .085 && pos.getY(i) > 1.21 && pos.getY(i) < 1.405);
+            adjustedRim++;
+          }
+        }
+        assert(adjustedRim > 0, 'both shoulders keep a localized armhole fit');
         let topAdjustment = 0;
         const authored = new Vector3(), fitted = new Vector3();
         for (let i = 0; i < originalTop.attributes.position.count; i++) {

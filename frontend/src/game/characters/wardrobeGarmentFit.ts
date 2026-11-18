@@ -157,7 +157,13 @@ function isTop05SideOpening(point: Vector3) {
     && point.z > -.012 && point.z < .072;
 }
 
-const shirtOpenings = new Map([["top-03", isTop03Armhole], ["top-04", isTop04Armhole], ["top-05", isTop05SideOpening]]);
+function isTop02Armhole(point: Vector3) {
+  const innerEdge = MathUtils.lerp(.089, .038, MathUtils.smoothstep(point.y, 1.30, 1.375));
+  const neckline = point.y > 1.33 && point.y < 1.35 && point.z > .056 && point.z < .079;
+  return neckline || (point.y > 1.245 && Math.abs(point.x) > innerEdge && point.z > -.092 && point.z < .080);
+}
+
+const shirtOpenings = new Map([["top-02", isTop02Armhole], ["top-03", isTop03Armhole], ["top-04", isTop04Armhole], ["top-05", isTop05SideOpening]]);
 
 function isStrapOpening(point: Vector3) {
   // Vesper bind space. The narrow strap roots and armholes move relative to
