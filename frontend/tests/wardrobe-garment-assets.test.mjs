@@ -368,7 +368,7 @@ test('medieval hoods replace the bonnet while keeping the outfit and stored hair
   } finally { await vite.close(); }
 });
 
-for (const number of ['02', '03', '04']) test(`Top ${number} keeps both armholes filled through raised-arm poses and masks its solid panels`, async t => {
+for (const number of ['01', '02', '03', '04', '05']) test(`Top ${number} keeps both armholes filled through raised-arm poses and masks its solid panels`, async t => {
   const item = catalog.find(({ id }) => id === `top-${number}`);
   const tiers = ['portrait', 'garage'];
   const paths = [item.url.slice(1), bundledDir + 'gothic-02.mobile.glb',
@@ -379,17 +379,20 @@ for (const number of ['02', '03', '04']) test(`Top ${number} keeps both armholes
   const garmentBody = donor.getObjectByName('BODY_WARDROBE');
   const { index, attributes: { position } } = garmentBody.geometry;
   const front = [], back = [];
+  const lowerPanel = number === '01' || number === '05';
+  const bottom = lowerPanel ? 1.155 : 1.255;
+  const upper = lowerPanel ? 1.21 : number === '02' ? 1.31 : 1.38;
   const center = new Vector3(), vertex = new Vector3();
   for (let i = 0; i < index.count; i += 3) {
     const face = index.array.subarray(i, i + 3);
     center.set(0, 0, 0);
     for (const id of face) center.add(vertex.fromBufferAttribute(position, id));
     center.divideScalar(3);
-    if (Math.abs(center.x) >= .070 || center.y < 1.255 || center.y > (number === '02' ? 1.31 : 1.38)) continue;
-    if (center.z > .080) front.push(face.join(','));
+    if (Math.abs(center.x) >= .070 || center.y < bottom || center.y > upper) continue;
+    if (center.z > (lowerPanel ? .025 : .080)) front.push(face.join(','));
     if (center.z < -.030) back.push(face.join(','));
   }
-  assert(front.length > 100 && back.length > 100, 'the donor has skin under both solid shirt panels');
+  assert(front.length > (lowerPanel ? 15 : 100) && back.length > (lowerPanel ? 15 : 100), 'the donor has skin under both solid shirt panels');
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
   try {
     const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
@@ -410,7 +413,7 @@ for (const number of ['02', '03', '04']) test(`Top ${number} keeps both armholes
         const kept = new Set();
         const { index, drawRange } = skin.geometry;
         for (let j = drawRange.start; j < drawRange.start + drawRange.count; j += 3) kept.add(index.array.subarray(j, j + 3).join(','));
-        for (const panel of [front, back]) assert(panel.every(face => !kept.has(face)), `${tiers[i]} masks the solid panels`);
+        for (const panel of [front, back]) assert(lowerPanel ? panel.some(face => !kept.has(face)) : panel.every(face => !kept.has(face)), `${tiers[i]} masks the solid panels`);
         const poses = auditCorsetSkinMask(model.root, skin, garmentBody.geometry, cloth, buildEmoteClips, findGaragePreviewEmote, {
           minHeight: 1.22, extraPoses: [['008', .5], ['002', .38]],
           extraViews: [[1, 0, 0], [-1, 0, 0], [1, -.25, .35], [-1, -.25, .35], [1, -.4, -.4], [-1, -.4, -.4]],

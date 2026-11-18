@@ -7,27 +7,30 @@ type UnderarmFit = {
   joints?: BufferAttribute;
   weights?: BufferAttribute;
   normals: BufferAttribute;
+  positions?: BufferAttribute;
 };
 const fittedSkin = new WeakMap<BufferGeometry, UnderarmFit>();
-const fittedTop04 = new WeakMap<BufferGeometry, UnderarmFit>();
+const fittedArm = new WeakMap<BufferGeometry, UnderarmFit>();
 
-/** Ease the transition between ribcage and upper arm without moving the resting skin. */
-export function smoothUnderarmSkin(body: BufferGeometry, donor: BufferGeometry, softenWeights = false) {
+/** Ease the transition between ribcage and upper arm by smoothing the shared body before applying clothing masks. */
+export function smoothUnderarmSkin(body: BufferGeometry, donor: BufferGeometry, softenFold = true) {
   const position = body.getAttribute("position"), weights = body.getAttribute("skinWeight");
   const joints = body.getAttribute("skinIndex"), faces = body.getIndex();
   const normals = body.getAttribute("normal");
   if (!faces || !weights || !joints || !normals) return;
   const inputs = wardrobeFitInputs(donor);
-  const fitted = softenWeights ? fittedTop04 : fittedSkin;
+  const fitted = softenFold ? fittedArm : fittedSkin;
   const cached = fitted.get(donor);
   if (cached && sameWardrobeFitInputs(inputs, cached.inputs)) {
     if (cached.joints && cached.weights) {
       body.setAttribute("skinIndex", cached.joints.clone());
       body.setAttribute("skinWeight", cached.weights.clone());
+      if (cached.positions) body.setAttribute("position", cached.positions.clone());
     }
     body.setAttribute("normal", cached.normals.clone());
     return;
   }
+  const rest: Vector3[] = [];
   const nodes = new Map<string, number>();
   const vertexNode = new Int32Array(position.count).fill(-1);
   const neighbors: Set<number>[] = [], strength: number[] = [];
@@ -44,7 +47,8 @@ export function smoothUnderarmSkin(body: BufferGeometry, donor: BufferGeometry, 
       neighbors.push(new Set());
       strength.push(MathUtils.smoothstep(Math.abs(x), .078, .103) * (1 - MathUtils.smoothstep(Math.abs(x), .19, .225))
         * MathUtils.smoothstep(y, 1.18, 1.23) * (1 - MathUtils.smoothstep(y, 1.36, 1.415)));
-      if (softenWeights) {
+      if (softenFold) {
+        rest.push(new Vector3(x, y, z));
         const blend = new Map<number, number>();
         for (let k = 0; k < 4; k++) {
           const w = weights.getComponent(i, k);
@@ -61,10 +65,10 @@ export function smoothUnderarmSkin(body: BufferGeometry, donor: BufferGeometry, 
       if (a >= 0 && b >= 0 && a !== b) { neighbors[a].add(b); neighbors[b].add(a); }
     }
   }
-  for (let pass = 0; softenWeights && pass < 12; pass++) {
+  for (let pass = 0; softenFold && pass < 36; pass++) {
     influences = influences.map((old, i) => {
       if (!neighbors[i].size) return old;
-      const alpha = .75 * strength[i], next = new Map<number, number>();
+      const alpha = .75 * strength[i] * MathUtils.smoothstep(rest[i].y, 1.264, 1.29), next = new Map<number, number>();
       for (const [joint, w] of old) next.set(joint, w * (1 - alpha));
       for (const neighbor of neighbors[i]) for (const [joint, w] of influences[neighbor]) {
         next.set(joint, (next.get(joint) ?? 0) + w * alpha / neighbors[i].size);
@@ -92,13 +96,29 @@ export function smoothUnderarmSkin(body: BufferGeometry, donor: BufferGeometry, 
     }
     [directions, nextDirections] = [nextDirections, directions];
   }
+  // Fair the small dimples at the fold across UV seams. Pin the surrounding
+  // arm and ribcage and limit the displacement to four millimetres.
+  let relaxed = rest.map(p => p.clone()), nextPositions = rest.map(p => p.clone());
+  for (let pass = 0; softenFold && pass < 8; pass++) {
+    for (const [node, adjacent] of neighbors.entries()) {
+      const next = nextPositions[node].copy(relaxed[node]);
+      if (!adjacent.size) continue;
+      average.set(0, 0, 0);
+      for (const neighbor of adjacent) average.add(relaxed[neighbor]);
+      next.lerp(average.divideScalar(adjacent.size), .55 * strength[node]);
+      next.sub(rest[node]).clampLength(0, .004 * strength[node] * MathUtils.smoothstep(rest[node].y, 1.275, 1.292)).add(rest[node]);
+    }
+    [relaxed, nextPositions] = [nextPositions, relaxed];
+  }
   const ranked = influences.map(blend => [...blend].sort((a, b) => b[1] - a[1]).slice(0, 4));
   for (let i = 0; i < position.count; i++) {
     const node = vertexNode[i];
     if (node < 0 || !strength[node]) continue;
     normal.fromBufferAttribute(normals, i).lerp(directions[node], strength[node]).normalize();
     normals.setXYZ(i, normal.x, normal.y, normal.z);
-    if (!softenWeights) continue;
+    if (!softenFold) continue;
+    const p = relaxed[node];
+    position.setXYZ(i, p.x, p.y, p.z);
     const blend = ranked[node], sum = blend.reduce((n, entry) => n + entry[1], 0);
     if (!sum) continue;
     for (let k = 0; k < 4; k++) {
@@ -107,5 +127,5 @@ export function smoothUnderarmSkin(body: BufferGeometry, donor: BufferGeometry, 
     }
   }
   fitted.set(donor, { inputs, normals: normals.clone(),
-    ...(softenWeights && { joints: joints.clone(), weights: weights.clone() }) });
+    ...(softenFold && { joints: joints.clone(), weights: weights.clone(), positions: position.clone() }) });
 }

@@ -138,11 +138,15 @@ function isUnderbustOpening(point: Vector3) {
     || underarm || (point.z < 0 && point.y > 1.215 && (point.y > 1.240 || Math.abs(point.x) < .10));
 }
 
+function isTop01Opening(point: Vector3) {
+  return isTop04Armhole(point) || (point.y > 1.306 && point.y < 1.405 && point.z > 0 && Math.abs(point.x) < .085);
+}
+
 function isTop03Armhole(point: Vector3) {
   // In Vesper's bind space the opening starts under the arm and curves inward
   // over the shoulder. Skin in this band can emerge when the arm moves.
-  const innerEdge = MathUtils.lerp(.088, .075, MathUtils.smoothstep(point.y, 1.32, 1.35));
-  return point.y > 1.25 && Math.abs(point.x) > innerEdge && point.z > -.092 && point.z < .073;
+  const innerEdge = MathUtils.lerp(.088, point.z > .011 && point.z < .063 ? .051 : .075, MathUtils.smoothstep(point.y, 1.32, 1.35));
+  return point.y > 1.238 && Math.abs(point.x) > innerEdge && point.z > -.092 && point.z < .073;
 }
 
 function isTop04Armhole(point: Vector3) {
@@ -153,17 +157,17 @@ function isTop04Armhole(point: Vector3) {
 }
 
 function isTop05SideOpening(point: Vector3) {
-  return Math.abs(point.x) > .102 && point.y > 1.226 && point.y < 1.265
-    && point.z > -.012 && point.z < .072;
+  return Math.abs(point.x) > .102 && point.y > 1.221 && point.y < 1.265
+    && point.z > -.036 && point.z < .072;
 }
 
 function isTop02Armhole(point: Vector3) {
   const innerEdge = MathUtils.lerp(.089, .038, MathUtils.smoothstep(point.y, 1.30, 1.375));
   const neckline = point.y > 1.33 && point.y < 1.35 && point.z > .056 && point.z < .079;
-  return neckline || (point.y > 1.245 && Math.abs(point.x) > innerEdge && point.z > -.092 && point.z < .080);
+  return neckline || (point.y > 1.238 && Math.abs(point.x) > innerEdge && point.z > -.092 && point.z < .080);
 }
 
-const shirtOpenings = new Map([["top-02", isTop02Armhole], ["top-03", isTop03Armhole], ["top-04", isTop04Armhole], ["top-05", isTop05SideOpening]]);
+const shirtOpenings = new Map([["top-01", isTop01Opening], ["top-02", isTop02Armhole], ["top-03", isTop03Armhole], ["top-04", isTop04Armhole], ["top-05", isTop05SideOpening]]);
 
 function isStrapOpening(point: Vector3) {
   // Vesper bind space. The narrow strap roots and armholes move relative to
@@ -623,7 +627,7 @@ export function prepareWardrobeGarments(
     body.name = "fitting-room-body";
     body.material = original.material;
     body.geometry = full.clone();
-    smoothUnderarmSkin(body.geometry, full, Boolean(group.getObjectByName("wardrobe-top-04")));
+    smoothUnderarmSkin(body.geometry, full, !corset && !stock.some(({ piece }) => piece === "corset" && !replacements.has(piece)));
     body.geometry.setIndex(new BufferAttribute(new Uint32Array(full.getIndex()!.count), 1));
     group.add(body);
   }
