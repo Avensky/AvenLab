@@ -218,6 +218,15 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
       assert.equal(preview.getState().camera, 'Selected item');
       assert.equal(preview.getState().selectedPiece, piece);
     };
+    await click('[data-camera-choice="Full body"]');
+    assert.equal(find('[data-inspected]').dataset.wardrobeItem, 'dockwear', 'reselecting the active camera reveals the worn outfit');
+    await click('[data-camera-choice="Face"]');
+    assert.equal(preview.getState().camera, 'Face');
+    assert.equal(find('[data-inspected]').dataset.wardrobeItem, 'village-bonnet');
+    await click('[data-camera-choice="Hands"]');
+    assert.equal(preview.getState().camera, 'Hands');
+    assert.equal(find('.dressing-details').hidden, true, 'an empty camera region never inspects an unrelated garment');
+    assert.equal(trials.length + changes.length, 0);
     await open('outfits');
     assertPiece('corset');
     assert.equal(find('.dressing-categories').hidden, true);
@@ -231,6 +240,9 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     await click('[data-wardrobe-item=gothic-02]');
     assert.equal(find('.dressing-details').hidden, false, 'unavailable cards can still be inspected');
     assert.equal(find('.dressing-details dd').textContent, 'Not listed');
+    assert.equal(find('.fit-review-toggle').getAttribute('aria-expanded'), 'false');
+    await click('.fit-review-toggle');
+    assert.equal(find('.fit-review-toggle').getAttribute('aria-expanded'), 'true');
     const note = find('[aria-label="Clipping / fit review"] textarea');
     assert(note, 'missing items can still have issue notes');
     await act(async () => {
@@ -307,9 +319,17 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     assertPiece('briefs');
     assert.deepEqual(trials.at(-1).removedClothing, ['top', 'corset', 'skirt']);
     assert.equal(find('.dressing-details .dressing-color-toggle').title, 'Briefs colors');
+    const briefsStyles = '[aria-label="Briefs style"] button';
+    assert.equal(find(`${briefsStyles}:first-child`).getAttribute('aria-pressed'), 'true');
+    await click(`${briefsStyles}:last-child`);
+    assert.equal(trials.at(-1).appearance.briefs_style, 'boxer-briefs');
+    assert.equal(find(`${briefsStyles}:last-child`).getAttribute('aria-pressed'), 'true');
     await click('.dressing-details .dressing-color-toggle');
     await click('.dressing-details [aria-label="Main color: White"]');
     assert.deepEqual(changes.at(-1).appearance.item_colors, { 'underwear:briefs': { color: '#ffffff' } });
+    assert.equal(changes.at(-1).appearance.briefs_style, 'boxer-briefs', 'boxer briefs share the base layer dye controls');
+    await click(`${briefsStyles}:first-child`);
+    assert.equal(trials.at(-1).appearance.briefs_style, undefined, 'switching back restores the legacy default');
     await click('[aria-label="Clear Underwear"]');
     assert.equal(trials.at(-1).removedClothing, undefined);
     assert.equal(trials.at(-1).outfit, DEFAULT_CHARACTER.outfit);
@@ -339,6 +359,12 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
       assert.equal(find('.dressing-details dd').textContent, 'Free try-on');
     }
     assert.deepEqual(trials.at(-1).garments, { top: 'top-01', skirt: 'gothic-skirt-04', socks: 'socks-01', bow: 'bowtie-14' });
+    const trialCount = trials.length;
+    await click('[data-wearable-quick-select=shirt]');
+    assert.equal(find('[data-inspected]').dataset.wardrobeItem, 'top-01', 'the shortcut opens the exact fitted top');
+    await click('[data-wearable-quick-select=bow]');
+    assert.equal(find('[data-inspected]').dataset.wardrobeItem, 'bowtie-14');
+    assert.equal(trials.length, trialCount, 'inspecting a worn item does not re-equip it');
     await click('[aria-label="Clear Bow ties"]');
     assert.deepEqual(trials.at(-1).garments, { top: 'top-01', skirt: 'gothic-skirt-04', socks: 'socks-01' }, 'removing a bow leaves the other trial pieces in place');
     assert.equal(changes.length, 0, 'trial pieces use the session preview callback');
@@ -350,7 +376,7 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     await open('tops');
     await click('[aria-label="Clear Tops"]');
     assert.deepEqual(trials.at(-1).garments, { socks: 'socks-01' });
-    assert.deepEqual(trials.at(-1).removedClothing, ['top'], 'clearing the section hides its bundled layer too');
+    assert.deepEqual(trials.at(-1).removedClothing, ['skirt', 'top'], 'clearing each section leaves its base layers exposed');
 
     await open('outfits');
     assert.equal(document.activeElement.dataset.wardrobeItem, 'dockwear', 'keyboard activation moves into the catalog');
@@ -365,6 +391,9 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     assert.equal(find('[data-dressing-piece=shirt]'), null);
     assert.equal(find('[data-dressing-piece=shorts]'), null);
     assert.equal(find('[aria-label="Shirt layer"]'), null);
+    await open('footwear');
+    await click('[data-wearable-quick-select=skirt]');
+    assert.equal(find('[data-inspected]').dataset.wardrobeItem, 'gothic-05', 'a bundled skirt opens its parent outfit');
     const changeCount = changes.length;
     await click('[data-dressing-piece=skirt]');
     assertPiece('skirt');
@@ -471,6 +500,38 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
 
     root = createRoot(find('#root'));
     await act(async () => root.render(h(Harness, { initial: DEFAULT_CHARACTER })));
+    await open('bottoms');
+    await click('[data-wardrobe-item=village-petticoat]');
+    await click('[data-wardrobe-item=village-skirt]');
+    await click('[data-remove-try-on]');
+    assert(!find('[data-wearable-quick-select=skirt]'));
+    assert(!find('[data-wearable-quick-select=underskirt]'));
+    assert(find('[data-wearable-quick-select=briefs]'));
+    await click('[data-wardrobe-item=remove-skirt]');
+    assert(find('[data-wearable-quick-select=skirt]') && find('[data-wearable-quick-select=underskirt]'));
+    await click('[data-wardrobe-item=skirt-01]');
+    await click('[data-remove-try-on]');
+    assert(find('[data-wearable-quick-select=briefs]') && !find('[data-wearable-quick-select=underskirt]'));
+    assert.equal(trials.at(-1).garments.skirt, 'skirt-01', 'Restore skirt remembers the imported skirt');
+    await click('[data-wardrobe-item=village-petticoat]');
+    assert(!find('[data-wearable-quick-select=skirt]') && !find('[data-wearable-quick-select=belt]'));
+    assert(find('[data-wearable-quick-select=underskirt]'), 'the petticoat can be worn on its own');
+    await click('[data-wardrobe-item=remove-skirt]');
+    assert.equal(characterLook(trials.at(-1)).garments.skirt, 'skirt-01', 'restoring remembers what was under review');
+    const legacy = characterLook({ ...DEFAULT_CHARACTER, garments: { skirt: 'skirt-03' }, removedClothing: ['village-skirt'] });
+    assert.equal(legacy.garments.skirt, 'skirt-03', 'a saved Village-only removal leaves the imported skirt on');
+    await open('tops');
+    await click('[data-wardrobe-item=top-02]');
+    await click('[data-remove-try-on]');
+    assert(find('[data-wearable-quick-select=bra]') && !find('[data-wearable-quick-select=corset]'));
+    await click('[data-wardrobe-item=remove-top]');
+    assert(find('[data-wearable-quick-select=shirt]') && !find('[data-wearable-quick-select=bra]'));
+    await open('corsets');
+    await click('[data-wardrobe-item=gothic-04]');
+    await click('[data-remove-try-on]');
+    assert(find('[data-wearable-quick-select=bra]') && !find('[data-wearable-quick-select=corset]'));
+    await open('outfits');
+    await click('[data-wardrobe-item=dockwear]');
     await open('tops');
     await click('[data-wardrobe-item=village-sleeves]');
     await click('[data-remove-try-on]');
@@ -538,6 +599,9 @@ test('dressing room keeps fitted presets and lets imported garments be tried on 
     await open('outfits');
     assertPiece('coat');
     await click(`[data-wardrobe-item="${rook.outfits[0].id}"]`);
+    await click('[data-camera-choice=Hands]');
+    assert.equal(preview.getState().camera, 'Hands');
+    assert.equal(find('[data-inspected]').dataset.wardrobeItem, rook.outfits[0].id, 'outfit gloves resolve to Rook’s equipped outfit');
     await click('[data-dressing-piece=pants]');
     assertPiece('pants');
   } finally {

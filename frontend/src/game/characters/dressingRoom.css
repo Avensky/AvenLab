@@ -8,7 +8,7 @@
 .character-page--editor.character-page--dressing {
   --dressing-rail: clamp(170px, 18vw, 240px);
   --dressing-catalog-rail: clamp(184px, 20vw, 270px);
-  --dressing-detail-rail: clamp(146px, 18vw, 232px);
+  --dressing-detail-rail: clamp(154px, 17vw, 208px);
   --dressing-left: var(--dressing-rail);
   --dressing-right: 0px;
   --dressing-camera-rail: clamp(26px, 3.3vw, 35px);
@@ -73,14 +73,14 @@
 }
 .character-page--editor.character-page--dressing > .dressing-preview-zoom { grid-column: 3; }
 .character-page--setup .dressing-preview-zoom { grid-area: 1 / 1; }
-.dressing-room-title small, .dressing-details header small {
+.dressing-room-title small {
   color: var(--app-accent);
   font-size: 9px;
   font-weight: 750;
-  letter-spacing: .1em;
+  letter-spacing: .12em;
   text-transform: uppercase;
 }
-.dressing-room-title small { letter-spacing: .12em; }
+
 .dressing-room-title h2 {
   margin: 0;
   font-size: clamp(14px, 2vw, 25px);
@@ -250,31 +250,48 @@
   clip-path: var(--dressing-control-shape);
   background: linear-gradient(135deg, var(--item-color) 50%, var(--item-accent) 50%);
 }
-.dressing-details { grid-area: 1 / 4 / -1 / 5; align-self: start; max-height: 100%; }
+.dressing-details { grid-area: 1 / 4 / -1 / 5; align-self: start; max-height: 100%; container-type: inline-size; }
 .dressing-details header { padding: 1px 3px 6px; border-bottom: 1px solid var(--app-line); }
 .dressing-details h2 {
-  margin: 2px 0 0;
-  font-size: clamp(13px, 1.3vw, 20px);
+  margin: 0;
+  font-size: clamp(13px, 1.15vw, 17px);
   font-style: italic;
   line-height: 1.1;
   overflow-wrap: anywhere;
 }
 .dressing-details p, .dressing-empty { margin: 7px 0; color: var(--app-muted); font-size: 11px; line-height: 1.35; }
 .dressing-details dl {
-  display: flex;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
   align-items: baseline;
-  justify-content: space-between;
-  gap: 4px;
-  margin: 7px 0;
-  padding: 4px 5px;
+  gap: 3px 8px;
+  margin: 6px 0;
+  padding: 5px 6px;
   border-inline-start: 2px solid var(--app-accent);
   background: var(--dressing-raised);
-  clip-path: var(--dressing-control-shape);
   font-size: 11px;
+  line-height: 1.25;
 }
 .dressing-details dt { color: var(--app-muted); }
-.dressing-details dd { margin: 0; font-weight: 750; }
-.dressing-item-id { overflow-wrap: anywhere; }
+.dressing-details dd { min-width: 0; margin: 0; font-weight: 650; overflow-wrap: anywhere; text-wrap: pretty; }
+@container (max-width: 134px) {
+  .dressing-details dl { grid-template-columns: minmax(0, 1fr); gap: 1px; }
+  .dressing-details dt:not(:first-child) { margin-top: 4px; }
+}
+.dressing-details .fit-review { margin: 7px 0 0; padding-top: 5px; }
+.dressing-details .fit-review h3 { margin: 0; }
+.dressing-details .fit-review-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 4px;
+  width: 100%;
+  padding: 4px 5px;
+  font-size: 11px;
+  white-space: normal;
+}
+.dressing-details .fit-review-toggle .fit-badge { padding: 0; }
 .dressing-toolbar {
   grid-area: 2 / 2;
   z-index: 2;
@@ -312,7 +329,7 @@
   .character-page--editor.character-page--dressing {
     --dressing-rail: clamp(116px, 26vw, 152px);
     --dressing-catalog-rail: clamp(124px, 28vw, 166px);
-    --dressing-detail-rail: clamp(98px, 24vw, 138px);
+    --dressing-detail-rail: clamp(108px, 25vw, 140px);
     padding: 5px;
     gap: 4px;
   }

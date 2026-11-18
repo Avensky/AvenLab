@@ -29,7 +29,7 @@ pub struct CharacterChoice {
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum WardrobeRemoval { Top, Corset, Skirt, Shoes, Socks, Hat, Bow, BonnetBow, Harness, Bracer, Dress, Sleeves, Belt, Underskirt, VillageSkirt, Coat }
+pub enum WardrobeRemoval { Top, Corset, Skirt, Shoes, Socks, Hat, Bow, BonnetBow, Harness, Bracer, Dress, Sleeves, Belt, Underskirt, VillageSkirt, OuterSkirt, Coat }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -119,6 +119,13 @@ enum BraStyle {
     PushUp,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum BriefsStyle {
+    Briefs,
+    BoxerBriefs,
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CharacterAppearance {
@@ -130,6 +137,8 @@ pub struct CharacterAppearance {
     animation_fit: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     bra_style: Option<BraStyle>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    briefs_style: Option<BriefsStyle>,
     hair: String,
     hair_color: String,
     skin: String,
@@ -264,7 +273,7 @@ impl CharacterChoice {
         }) && self.wardrobe.as_ref().is_none_or(|wardrobe| {
             self.id == "mara-vega" && wardrobe.has_valid_cut() && WARDROBE.iter().any(|set| set.id == wardrobe.set)
         }) && (self.bra.is_none() || self.id == "mara-vega") && self.has_valid_garments() && self.appearance.as_ref().is_none_or(|appearance| {
-            if appearance.bra_style.is_some() && self.id != "mara-vega" {
+            if (appearance.bra_style.is_some() || appearance.briefs_style.is_some()) && self.id != "mara-vega" {
                 return false;
             }
             if !appearance.personality.as_deref().is_none_or(|value| ["friendly", "playful", "shy", "tsundere", "stoic", "elegant", "racer", "scientist"].contains(&value))
@@ -338,6 +347,25 @@ mod wardrobe_tests {
             assert!(restored.is_available());
             assert!(!restored.is_equippable());
         }
+    }
+
+    #[test]
+    fn briefs_styles_round_trip_on_vesper_and_default_with_legacy_looks() {
+        let mut value = serde_json::to_value(choice(serde_json::Value::Null)).unwrap();
+        value["appearance"] = json!({"hair": "natural", "hair_color": "original", "skin": "original", "headwear": "hat", "color": "original"});
+        let legacy: CharacterChoice = serde_json::from_value(value.clone()).unwrap();
+        assert!(legacy.is_equippable());
+        assert!(serde_json::to_value(legacy).unwrap()["appearance"].get("briefs_style").is_none());
+        for style in ["briefs", "boxer-briefs"] {
+            value["appearance"]["briefs_style"] = json!(style);
+            let look: CharacterChoice = serde_json::from_value(value.clone()).unwrap();
+            assert!(look.is_equippable());
+            assert_eq!(serde_json::to_value(look).unwrap()["appearance"]["briefs_style"], style);
+        }
+        let rook = CAST.iter().find(|character| character.id == "jules-okafor").unwrap();
+        value["id"] = json!(rook.id);
+        value["outfit"] = json!(rook.outfits[0].id);
+        assert!(!serde_json::from_value::<CharacterChoice>(value).unwrap().is_available());
     }
 
     #[test]

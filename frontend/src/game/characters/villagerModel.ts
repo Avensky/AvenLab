@@ -12,6 +12,7 @@ import { corsetModelUrl, corsetRenderChoice, prepareWardrobe, wardrobeModelUrl }
 import { prepareWardrobeLining } from "./wardrobeLining";
 import { prepareWardrobeSkirt } from "./wardrobeSkirt";
 import { prepareVillageShoes } from "./wardrobeShoes";
+import { prepareNeckBows } from "./neckBowFit";
 import { prepareVillageBonnet } from "./villageBonnet";
 import { prepareWardrobeGarments, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
 import { prepareStandaloneCorset, type StandaloneCorsetSource } from "./standaloneCorset";
@@ -134,6 +135,7 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
       });
     }
   }
+  const neckBows = female ? prepareNeckBows(root, fullBody?.geometry ?? actorBody?.geometry) : undefined;
   const applyFaceColors = prepareVillagerFaceColors(materials.values(), female);
   const faceAccessories = prepareVillagerFaceAccessories(root, female, wetEyes);
   for (const side of ["l", "r"] as const) {
@@ -176,10 +178,11 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
   if (grounded) root.position.y = -new Box3().setFromObject(grounded, true).min.y;
   return {
     root, materials, pieceMaterials, crop, scalpCap, applyFaceColors, faceAccessories, wardrobe, trialGarments, detachedCorset,
-    hat, bonnet,
+    hat, bonnet, neckBows,
     longHair: root.getObjectByName("HAIR_HAIR20"),
     bow: root.getObjectByName("ACC_BOW"),
     dispose() {
+      neckBows?.dispose();
       stockSkin.forEach(geometry => geometry.dispose());
       trialGarments?.dispose();
       detachedCorset?.dispose();
@@ -274,5 +277,6 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
   }
   model.scalpCap?.material.color.set(look.hair);
   model.trialGarments?.apply(look);
+  model.neckBows?.apply();
   if (model.hat?.visible) model.bonnet?.setBowVisible(!look.removedClothing.includes("bonnet-bow"));
 }

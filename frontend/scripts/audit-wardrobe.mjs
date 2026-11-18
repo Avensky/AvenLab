@@ -27,7 +27,7 @@ const required = [...new Set([
   ...variants.map(({ path }) => path),
   ...wardrobe.flatMap(({ id }) => tiers.map(tier => `${models}wardrobe/${id}.${tier}.glb`)),
   ...['', '.garage', '.portrait'].map(suffix => `${models}villagers/villager-female/villager-female${suffix}.glb`),
-  ...garments.filter(({ id }) => /^top-0[1-5]$/.test(id) || /^skirt-0[1-4]$/.test(id) || id.startsWith('gothic-skirt-'))
+  ...garments.filter(({ id }) => /^top-0[1-5]$/.test(id) || /^skirt-0[1-4]$/.test(id) || id.startsWith('gothic-skirt-') || id === 'bowtie-01')
     .flatMap(({ url, mobileUrl }) => [url, mobileUrl].filter(Boolean).map(path => path.slice(1))),
 ])].sort();
 
@@ -44,9 +44,9 @@ const fullSuites = [
 const realAssetTests = [
   'the authored Sweetheart', 'standalone wardrobe exports', 'standalone corsets and a selected skirt',
   'turning off wardrobe layers fits underwear', 'Gothic Skirt 04 and Top 02 replace stock pieces',
-  'the rebuilt Gothic Underbust', 'wardrobe underwear reuses donor cuts', 'rebuilt Tucked hardware', 'rebuilt Laced Bodice',
+  'the rebuilt Gothic Underbust', 'standalone briefs follow a V', 'wardrobe underwear reuses donor cuts', 'rebuilt Tucked hardware', 'rebuilt Laced Bodice',
   'the Village skirt and belt cover', 'Ruffled Corset', 'High Collar cup', 'Laced Bodice straps', 'Top 03 keeps', 'Top 04 keeps', 'the Village bonnet',
-  'short skirts use',
+  'short skirts use', 'neck bows follow the worn neckline',
 ];
 
 function runFrontendNode(args, strictAssets = false) {

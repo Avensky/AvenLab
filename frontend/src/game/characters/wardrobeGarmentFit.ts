@@ -17,7 +17,7 @@ import { smoothUnderarmSkin } from "./villagerUnderarm";
 import { fitVillageBraidOverCollar } from "./villageBraid";
 import { prepareVillageShoes } from "./wardrobeShoes";
 import { prepareWardrobeCoverage, wardrobeCoverageSurface as bodySurface } from "./wardrobeCoverage";
-import { insideBraNeckline, prepareWardrobeUnderwear, type BraStyle } from "./wardrobeUnderwear";
+import { insideBraNeckline, insideBriefs, prepareWardrobeUnderwear, type BraStyle, type BriefsStyle } from "./wardrobeUnderwear";
 import { getWardrobeActorBody, isWardrobeBodyDonor, sharesWardrobeRig } from "./wardrobeBody";
 
 export type WardrobeGarmentSource = { item: NonNullable<ReturnType<typeof getWardrobeGarment>>; scene: Object3D; authoredFit?: boolean };
@@ -75,7 +75,7 @@ const coversTorso = new Set<ClothingPiece>(["corset", "shirt", "sleeves", "dress
 const MAX_SHARED_FITTED_MASKS = 8;
 
 type RestoredSkin = { upper: boolean; arms: boolean; skirt: boolean; feet: boolean; shortSkirt: boolean };
-type SkinCover = { surface: MeshBVH; piece: ClothingPiece; baseLayer?: true; opening?: (point: Vector3) => boolean };
+type SkinCover = { surface: MeshBVH; piece: ClothingPiece; opening?: (point: Vector3) => boolean };
 type TriangleCoverage = (center: Vector3, a: Vector3, b: Vector3, c: Vector3) => boolean;
 
 function captureSurface(geometry: BufferGeometry) {
@@ -212,7 +212,7 @@ function armVertices(body: SkinnedMesh, geometry: BufferGeometry) {
 
 // A zero byte means the outer clothing or original body cut already hides this triangle.
 const KEEP_SKIN = 1;
-const CHECK_BRA = 2;
+const CHECK_UNDERWEAR = 2;
 type BodyMaskCache = {
   masks: Map<string, Uint32Array>; key: string; limit: number;
   clothByWaist?: Map<string, Uint8Array>; waist: string;
@@ -228,7 +228,7 @@ function rememberMask<T>(masks: Map<string, T>, key: string, mask: T, limit: num
 
 function fitBodyMask(
   body: SkinnedMesh, original: SkinnedMesh, full: BufferGeometry, top: boolean, skirt: boolean,
-  restored: RestoredSkin, clothes: SkinCover[], coveredBra: TriangleCoverage | undefined,
+  restored: RestoredSkin, clothes: SkinCover[], coveredUnderwear: TriangleCoverage | undefined,
   checkTopEdges: boolean, lacedBodice: "tucked" | "over" | undefined,
   strapOpening: ((point: Vector3) => boolean) | undefined, ruffledSourceFit: boolean, cache?: BodyMaskCache,
 ) {
@@ -260,9 +260,9 @@ function fitBodyMask(
       const state = previousCloth[i / 3];
       if (!state) continue;
       const ai = index.getX(i), bi = index.getX(i + 1), ci = index.getX(i + 2);
-      if (state === CHECK_BRA && coveredBra) {
+      if (state === CHECK_UNDERWEAR && coveredUnderwear) {
         sampleTriangle(ai, bi, ci);
-        if (coveredBra(point, a, b, c)) continue;
+        if (coveredUnderwear(point, a, b, c)) continue;
       }
       fittedIndex.array[visible++] = ai;
       fittedIndex.array[visible++] = bi;
@@ -286,7 +286,7 @@ function fitBodyMask(
     ? prepareWardrobeCoverage(clothes.filter(({ piece }) => piece !== "corset"
       && (strapOpening !== isHighCollarOpening || coversTorso.has(piece))).map(({ surface }) => surface))
     : undefined;
-  const torsoClothes = restored.upper ? clothes.filter(({ piece, baseLayer }) => baseLayer || coversTorso.has(piece)) : clothes;
+  const torsoClothes = restored.upper ? clothes.filter(({ piece }) => coversTorso.has(piece)) : clothes;
   const coveredTorso = restored.upper
     ? prepareWardrobeCoverage(torsoClothes.map(({ surface }) => surface))
     : covered;
@@ -336,8 +336,8 @@ function fitBodyMask(
     const openWaist = restored.shortSkirt && !top && point.y > 1.035 && point.y < 1.14;
     const canMask = !openLacing && !openWaist && replaced;
     if (canMask && isCovered(point, a, b, c, restoredSkin || (upperBody && checkTopEdges))) continue;
-    if (cloth) cloth[i / 3] = canMask ? CHECK_BRA : KEEP_SKIN;
-    if (canMask && coveredBra?.(point, a, b, c)) continue;
+    if (cloth) cloth[i / 3] = canMask ? CHECK_UNDERWEAR : KEEP_SKIN;
+    if (canMask && coveredUnderwear?.(point, a, b, c)) continue;
     fittedIndex.array[visible++] = ai;
     fittedIndex.array[visible++] = bi;
     fittedIndex.array[visible++] = ci;
@@ -637,10 +637,7 @@ export function prepareWardrobeGarments(
     braShapes.set(bra, { surfaces, covers });
     return covers;
   }
-  if (underwear) {
-    group.add(underwear.group);
-    for (const surface of underwearSurfaces(underwear.briefs)) shapes.push({ surface, piece: "briefs", baseLayer: true });
-  }
+  if (underwear) group.add(underwear.group);
   if (body && full) {
     body.name = "fitting-room-body";
     body.material = original.material;
@@ -649,17 +646,18 @@ export function prepareWardrobeGarments(
     body.geometry.setIndex(new BufferAttribute(new Uint32Array(full.getIndex()!.count), 1));
     group.add(body);
   }
-  // Actor-local masks fit all selectable waist and bra combinations. Shared
+  // Actor-local masks fit all selectable waist and underwear combinations. Shared
   // Laced masks keep their separate bound across actors.
   const maskLimit = fittedMasks ? MAX_SHARED_FITTED_MASKS
-    : WARDROBE_WAIST_OPTIONS.length * (underwear?.bra ? 3 : 1);
-  if (fixedBody && body && (corset || underwear?.bra)) fittedMasks ??= new Map();
-  // The visible outer clothing is independent of the selected bra on this actor.
-  const clothByWaist = fixedBody && underwear?.bra ? new Map<string, Uint8Array>() : undefined;
+    : WARDROBE_WAIST_OPTIONS.length * (underwear?.bra ? 3 : 1) * (underwear?.briefs ? 2 : 1);
+  if (fixedBody && body && (corset || underwear)) fittedMasks ??= new Map();
+  // The same outer clothing can be reused across underwear styles.
+  const clothByWaist = fixedBody && underwear ? new Map<string, Uint8Array>() : undefined;
   if (skirt) root.userData.skirtHandRoom = MathUtils.clamp((skirtRadius ?? .23) - .23, 0, .12);
   root.add(group);
   let maskedWaist: string | undefined;
   let maskedBra: BraStyle | undefined;
+  let maskedBriefs: BriefsStyle | undefined;
   let socksFitted = false;
   return {
     tucksHair,
@@ -671,6 +669,7 @@ export function prepareWardrobeGarments(
       const showBra = Boolean(underwear?.bra) && (look.bra ?? (restored.upper && !corset));
       const braStyle = showBra ? look.appearance.bra_style ?? "classic" : undefined;
       const activeBra = underwear?.setBraStyle(braStyle);
+      const briefsStyle = underwear?.setBriefsStyle(look.appearance.briefs_style ?? "briefs");
       corset?.apply(corsetWaist, look.overEase);
       villageTuckedWaist?.apply(corsetWaist === "tucked");
       if (villageBelt) villageBelt.mesh.geometry = corsetWaist === "tucked" ? villageBelt.tucked : villageBelt.original;
@@ -695,8 +694,8 @@ export function prepareWardrobeGarments(
         for (const { geometry } of skirt) geometry.dispose();
         socksFitted = true;
       }
-      if (body && full && (maskedWaist !== waist || maskedBra !== braStyle)) {
-        const maskKey = `${waist}:${braStyle ?? "off"}`;
+      if (body && full && (maskedWaist !== waist || maskedBra !== braStyle || maskedBriefs !== briefsStyle)) {
+        const maskKey = `${waist}:${braStyle ?? "off"}:${briefsStyle ?? "off"}`;
         let surfaces = fittedShapes.get(waist);
         if ((corset || restoresBody || villageBodySwap) && !surfaces && !fittedMasks?.has(maskKey)) {
           const fittedSurfaces: SkinCover[] = [];
@@ -723,12 +722,17 @@ export function prepareWardrobeGarments(
         const fit = corset?.group.getObjectByName(corsetWaist === "tucked" ? "CLOTH_CORSET_TUCKED" : "CLOTH_CORSET_OVER");
         const strapOpening = corset?.authoredLacedBodice ? isAuthoredLacedBodiceOpening
           : fit?.userData.preserveShoulderSkin === true ? isHighCollarOpening : undefined;
+        const braCovers = activeBraCoverage(activeBra);
+        const underwearCovers: TriangleCoverage | undefined = briefsStyle ? (center, a, b, c) =>
+          (center.y < 1.05 && insideBriefs(briefsStyle, a) && insideBriefs(briefsStyle, b) && insideBriefs(briefsStyle, c))
+          || Boolean(braCovers?.(center, a, b, c)) : braCovers;
         fitBodyMask(body, original, full, top, skirt, restored, visibleShapes,
-          activeBraCoverage(activeBra), checkTopEdges, corset?.group.userData.lacedBodiceStraps ? corsetWaist : undefined,
+          underwearCovers, checkTopEdges, corset?.group.userData.lacedBodiceStraps ? corsetWaist : undefined,
           strapOpening, ruffledTucked?.userData.ruffledSourceFit === true,
           fittedMasks && { masks: fittedMasks, key: maskKey, limit: maskLimit, clothByWaist, waist });
         maskedWaist = waist;
         maskedBra = braStyle;
+        maskedBriefs = briefsStyle;
       }
       if (body) original.visible = false;
       underwear?.applyColors(piece => underwearColors(look, piece));

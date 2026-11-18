@@ -91,13 +91,13 @@ export function corsetRenderChoice(look: {
   garments?: { top?: string; dress?: string; skirt?: string };
   removedClothing: readonly string[];
 }) {
+  if (look.removedClothing.includes("top") || look.removedClothing.includes("corset")) return;
   if (look.corset) return look.corset;
   if (look.wardrobe?.set === RUFFLED_WARDROBE_SET && look.garments?.skirt === "village-skirt"
-    && !look.garments.top && !look.garments.dress && !look.removedClothing.includes("corset")) return look.wardrobe;
+    && !look.garments.top && !look.garments.dress) return look.wardrobe;
   if (look.wardrobe?.set === LACED_BODICE_WARDROBE_SET && !look.garments?.top && !look.garments?.dress
-    && !look.removedClothing.includes("corset") && hasRebuiltLacedBodice()) return look.wardrobe;
-  if (look.wardrobe?.set === HIGH_COLLAR_WARDROBE_SET && !look.garments?.top && !look.garments?.dress
-    && !look.removedClothing.includes("corset")) {
+    && hasRebuiltLacedBodice()) return look.wardrobe;
+  if (look.wardrobe?.set === HIGH_COLLAR_WARDROBE_SET && !look.garments?.top && !look.garments?.dress) {
     const lods = __STANDALONE_CORSET_LODS__[REBUILT_HIGH_COLLAR_ASSET];
     if (lods?.garage || lods?.mobile) return look.wardrobe;
   }

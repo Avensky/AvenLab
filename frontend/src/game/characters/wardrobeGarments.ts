@@ -22,34 +22,50 @@ export type WardrobeGarmentSlot = keyof typeof wardrobeGarmentReplacements;
 export type WardrobeGarmentChoice = Partial<Record<WardrobeGarmentSlot, string>>;
 export const wardrobeRemovalPieces = {
   dress: ["dress", "sleeves"],
-  sleeves: ["sleeves"], belt: ["belt"], underskirt: ["underskirt"], "village-skirt": ["skirt"], coat: ["coat"],
-  top: ["shirt", "sleeves"], corset: ["corset"], skirt: ["skirt", "underskirt", "shorts", "belt"],
+  sleeves: ["sleeves"], belt: ["belt"], underskirt: ["underskirt"], "village-skirt": ["skirt"], "outer-skirt": ["skirt", "shorts", "belt"], coat: ["coat"],
+  top: ["shirt", "corset", "sleeves"], corset: ["corset"], skirt: ["skirt", "underskirt", "shorts", "belt"],
   shoes: ["shoes"], socks: ["socks"], hat: ["hat"], bow: ["bow"], harness: ["harness"], bracer: ["bracer"], "bonnet-bow": [],
 } satisfies Record<string, ClothingPiece[]>;
 export type WardrobeRemoval = keyof typeof wardrobeRemovalPieces;
 const noRemovedClothing: readonly WardrobeRemoval[] = [];
 
-export function removedWardrobeLayers(choice?: Pick<CharacterChoice, "id" | "removedClothing"> | null): readonly WardrobeRemoval[] {
-  return choice?.id === "mara-vega" ? choice.removedClothing ?? noRemovedClothing : noRemovedClothing;
+type WardrobeLayerChoice = Pick<CharacterChoice, "id" | "outfit" | "wardrobe" | "wardrobeTrial" | "removedClothing" | "garments">;
+
+export function removedWardrobeLayers(choice?: WardrobeLayerChoice | null): readonly WardrobeRemoval[] {
+  const removed = choice?.id === "mara-vega" ? choice.removedClothing : undefined;
+  if (!removed?.includes("village-skirt")) return removed ?? noRemovedClothing;
+  const garments = choice?.garments;
+  const outfitDress = !choice?.wardrobe && !choice?.wardrobeTrial && !garments?.top && !garments?.skirt && !removed.includes("dress")
+    && getWardrobeGarment(choice?.outfit)?.outfit;
+  if (garments?.dress || (garments?.skirt && garments.skirt !== "village-skirt")
+    || (choice?.wardrobe && !garments?.skirt) || outfitDress) {
+    return removed.filter(slot => slot !== "village-skirt");
+  }
+  return [...new Set(removed.map(slot => slot === "village-skirt" ? "skirt" : slot))];
 }
 
-export function visibleWardrobeGarments(choice?: Pick<CharacterChoice, "id" | "removedClothing" | "garments"> | null) {
+export function visibleWardrobeGarments(choice?: WardrobeLayerChoice | null) {
   const garments = choice?.garments;
   const removed = removedWardrobeLayers(choice);
   if (!garments || !removed.length) return garments;
   const entries = Object.entries(garments);
   const visible = entries.filter(([slot, id]) => !removed.some(layer => layer === slot
-    || (layer === "corset" && id === "village-bodice") || (layer === "village-skirt" && id === "village-skirt")));
+    || (layer === "corset" && id === "village-bodice") || (layer === "skirt" && slot === "underskirt")
+    || (layer === "outer-skirt" && slot === "skirt")
+    || ((layer === "top" || layer === "skirt" || layer === "outer-skirt") && slot === "dress")));
   if (visible.length === entries.length) return garments;
   return visible.length ? Object.fromEntries(visible) as WardrobeGarmentChoice : undefined;
 }
 
 export function setWardrobeRemoval(choice: CharacterChoice, slot: WardrobeRemoval, remove: boolean): CharacterChoice {
+  if (slot === "village-skirt") slot = "skirt";
   const removed = removedWardrobeLayers(choice);
-  if (removed.includes(slot) === remove) return choice;
-  const next = remove ? [...removed, slot] : removed.filter(item => item !== slot);
+  const other = removed.filter(item => item !== slot && !(slot === "skirt" && item === "outer-skirt"));
+  if (remove ? removed.includes(slot) : other.length === removed.length) return choice;
+  const next = remove ? [...other, slot] : other;
   return { ...choice, removedClothing: next.length ? next : undefined,
-    ...(!remove && (slot === "top" || slot === "corset" || slot === "dress") && { bra: undefined }) };
+    ...((slot === "top" || slot === "corset") && { bra: remove ? true : undefined }),
+    ...(!remove && slot === "dress" && { bra: undefined }) };
 }
 export type WardrobeGarment = {
   id: string; label: string; section: string; category: string; slot: WardrobeGarmentSlot;
@@ -111,9 +127,11 @@ export function setWardrobeGarment(choice: CharacterChoice, slot: WardrobeGarmen
     } else if (slot === "top" || slot === "skirt") delete garments.dress;
   } else delete garments[slot];
   const replacesBodice = (id || choice.garments?.[slot]) && (slot === "top" || slot === "dress");
-  const removed = choice.removedClothing?.filter(layer => !id || (layer !== slot
-    && (slot !== "dress" || (layer !== "top" && layer !== "corset" && layer !== "skirt"))
-    && !(id === "village-bodice" && layer === "corset") && !(id === "village-skirt" && layer === "village-skirt")));
+  const removed = [...new Set(removedWardrobeLayers(choice)
+    .filter(layer => !id || (layer !== slot && !(slot === "skirt" && layer === "outer-skirt")
+      && (slot !== "dress" || (layer !== "top" && layer !== "corset" && layer !== "skirt" && layer !== "outer-skirt"))
+      && !(id === "village-bodice" && layer === "corset")))
+    .map(layer => id && slot === "underskirt" && layer === "skirt" ? "outer-skirt" : layer))];
   return { ...choice, garments: Object.keys(garments).length ? garments : undefined,
     removedClothing: removed?.length ? removed : undefined, wardrobeTrial: replacesBodice ? undefined : choice.wardrobeTrial,
     ...(id && (slot === "top" || slot === "dress") && { bra: undefined }),

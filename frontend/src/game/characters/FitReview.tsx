@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { CharacterChoice } from "./characterCatalog";
 import { useSocialStore } from "../../store/social/socialStore";
 import { FIT_CHECKS, fitReviewKey, fitReviewStatus, useFitReviewStore } from "./fitReviewStore";
@@ -18,8 +18,8 @@ export function FitBadge({ choice, piece = "outfit", pose, itemId }: { choice: C
   return <span className={`fit-badge fit-badge--${status}`} aria-label={`Fit ${status}`}>{statuses[status]}</span>;
 }
 
-export function FitReview({ choice, piece, pose = "standing", poseLabel = pose, subject }: {
-  choice: CharacterChoice; piece?: ClothingPiece; pose?: string; poseLabel?: string; subject: Subject;
+export function FitReview({ choice, piece, pose = "standing", poseLabel = pose, subject, compact = false, note: fitNote }: {
+  choice: CharacterChoice; piece?: ClothingPiece; pose?: string; poseLabel?: string; subject: Subject; compact?: boolean; note?: string;
 }) {
   const owner = useSocialStore(s => s.view?.profile.id ?? s.profileOwner ?? undefined);
   const legacyPiece = piece ?? "outfit";
@@ -28,6 +28,8 @@ export function FitReview({ choice, piece, pose = "standing", poseLabel = pose, 
   const legacyKey = fitReviewKey(owner, choice, legacyPiece, pose);
   const { reviews, check, note, reset } = useFitReviewStore();
   const review = reviews[key] ?? (piece ? reviews[legacyKey] : undefined);
+  const [expanded, setExpanded] = useState(false);
+  const fieldsId = useId();
   const [report, setReport] = useState<{ key: string; text: string; message: string }>();
   const wardrobe = choice.removedClothing?.includes("corset") ? undefined : resolveCharacterWardrobe(choice);
   const fit = WARDROBE_WAIST_OPTIONS.find(option => option.waist === wardrobe?.waist && option.ease === wardrobeOverEase(choice));
@@ -60,31 +62,38 @@ export function FitReview({ choice, piece, pose = "standing", poseLabel = pose, 
     }
   }
 
+  const badge = <span className={`fit-badge fit-badge--${status}`}>{statuses[status]}</span>;
   return <section className="fit-review" aria-label={`${issueType} review`}>
-    <h3>{issueType} review <span className={`fit-badge fit-badge--${status}`}>{statuses[status]}</span></h3>
-    <p>{piece ? clothingPieceLabel(piece) : subject.label} · {fit?.label ?? "Original outfit"} · {poseLabel}</p>
-    <div className="fit-checks" data-controller-row>{FIT_CHECKS.map(item => <label key={item}>
-      <input type="checkbox" checked={Boolean(review?.checks[item])}
-        onChange={event => check(key, item, event.target.checked, review)} />{checkLabels[item]}
-    </label>)}</div>
-    <label className="fit-review-notes" data-controller-row>Issue notes
-      <textarea className="menu-control" placeholder={subject.kind === "emote" ? "What happened, and what should the emote do?" : "Where does the garment clip, and in which pose?"}
-        maxLength={500} value={review?.issue ?? ""} onChange={event => note(key, event.target.value, review)} />
-    </label>
-    {combinations.length > 1 && <small>{count}/{combinations.length} waist fits checked.</small>}
-    <div className="fit-review-actions" data-controller-row>
-      <button type="button" className="menu-control" disabled={!review?.issue.trim()} onClick={() => void copyTicket()}>
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><path d="M5 3h8v10H5z M3 11H2V1h8v1 M7 6h4M7 9h4" /></svg>
-        Copy ticket draft
-      </button>
-      <button type="button" className="menu-control" disabled={!review} onClick={() => {
-        if (key !== legacyKey && reviews[legacyKey]) {
-          reset(key, true);
-        } else reset(key);
-        setReport(undefined);
-      }}>Clear review</button>
+    {compact ? <h3 data-controller-row>
+      <button type="button" className="menu-control fit-review-toggle" aria-expanded={expanded} aria-controls={fieldsId}
+        onClick={() => setExpanded(!expanded)}>Fit review {badge}</button>
+    </h3> : <h3>{issueType} review {badge}</h3>}
+    <div id={fieldsId} hidden={compact && !expanded}>
+      {fitNote && <p>{fitNote}</p>}
+      <p>{piece ? clothingPieceLabel(piece) : subject.label} · {fit?.label ?? "Original outfit"} · {poseLabel}</p>
+      <div className="fit-checks" data-controller-row>{FIT_CHECKS.map(item => <label key={item}>
+        <input type="checkbox" checked={Boolean(review?.checks[item])}
+          onChange={event => check(key, item, event.target.checked, review)} />{checkLabels[item]}
+      </label>)}</div>
+      <label className="fit-review-notes" data-controller-row>Issue notes
+        <textarea className="menu-control" placeholder={subject.kind === "emote" ? "What happened, and what should the emote do?" : "Where does the garment clip, and in which pose?"}
+          maxLength={500} value={review?.issue ?? ""} onChange={event => note(key, event.target.value, review)} />
+      </label>
+      {combinations.length > 1 && <small>{count}/{combinations.length} waist fits checked.</small>}
+      <div className="fit-review-actions" data-controller-row>
+        <button type="button" className="menu-control" disabled={!review?.issue.trim()} onClick={() => void copyTicket()}>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><path d="M5 3h8v10H5z M3 11H2V1h8v1 M7 6h4M7 9h4" /></svg>
+          Copy ticket draft
+        </button>
+        <button type="button" className="menu-control" disabled={!review} onClick={() => {
+          if (key !== legacyKey && reviews[legacyKey]) {
+            reset(key, true);
+          } else reset(key);
+          setReport(undefined);
+        }}>Clear review</button>
+      </div>
+      {report?.key === key && <p role="status">{report.message}</p>}
+      {report?.key === key && report.text && <textarea className="menu-control" readOnly aria-label="Ticket draft" value={report.text} onFocus={event => event.target.select()} />}
     </div>
-    {report?.key === key && <p role="status">{report.message}</p>}
-    {report?.key === key && report.text && <textarea className="menu-control" readOnly aria-label="Ticket draft" value={report.text} onFocus={event => event.target.select()} />}
   </section>;
 }
