@@ -41,6 +41,15 @@ test('manual fit checks stay specific to the player, waist fit, piece and pose; 
       'only the two corrected high-waisted skirts invalidate their earlier review');
   }
   assert(!highWaist({ ...c, removedClothing: ['skirt'] }));
+  const repairedLayers = choice => JSON.parse(key('p1', choice, 'skirt')).includes('gothic-skirt-covered-layers-1');
+  for (const number of ['01', '02', '03', '04', '05']) {
+    assert.equal(repairedLayers({ ...c, garments: { skirt: 'gothic-skirt-' + number } }), ['01', '03', '05'].includes(number),
+      'the three repaired separate skirts need a fresh layer review');
+    assert.equal(repairedLayers({ ...c, wardrobe: { ...c.wardrobe, set: 'gothic-' + number } }), number === '01',
+      'only the changed bundled Handkerchief skirt needs a fresh layer review');
+  }
+  assert(!repairedLayers({ ...c, garments: { skirt: 'gothic-skirt-03' }, removedClothing: ['skirt'] }));
+  assert(!repairedLayers({ ...c, wardrobe: { ...c.wardrobe, set: 'gothic-01' }, garments: { dress: 'dress-01' } }));
   assert(JSON.parse(key('p1', { ...c, garments: { bow: 'bowtie-01' } }, 'bowtie-01:bow')).includes('neck-bow-2-settled'));
   assert(!JSON.parse(key('p1', { ...c, removedClothing: ['bow'] }, 'bowtie-01:bow')).includes('neck-bow-2-settled'));
   const tuckedShorts = choice => JSON.parse(key('p1', choice, 'skirt')).includes('short-skirt-tuck-1-no-expansion');

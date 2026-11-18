@@ -20,6 +20,9 @@ export function fitReviewKey(owner: string | undefined, choice: CharacterChoice,
  const gothicSkirt = !removed.includes("skirt") && !removed.includes("outer-skirt") && !visible?.dress &&
   (visible?.skirt ? /^gothic-skirt-0[1-5]$/.test(visible.skirt) : Boolean(resolveWardrobe(choice.wardrobe)));
  const highGothicWaist = gothicSkirt && /^gothic-(?:skirt-)?0[25]$/.test(visible?.skirt ?? resolveWardrobe(choice.wardrobe)?.set ?? "");
+ // The other bundled skirts already have their own layer treatment.
+ const repairedSkirtLayers = gothicSkirt && (visible?.skirt ? /^gothic-skirt-0[135]$/.test(visible.skirt)
+  : resolveWardrobe(choice.wardrobe)?.set === "gothic-01");
  const shortSkirtTuck = /^skirt-0[1-4]$/.test(visible?.skirt ?? "") && w?.waist === "tucked"
   && !removed.includes("top") && !removed.includes("corset");
  const reviewedPiece = piece.slice(piece.lastIndexOf(":") + 1);
@@ -34,6 +37,7 @@ export function fitReviewKey(owner: string | undefined, choice: CharacterChoice,
   ...(reviewedPiece === "bra" && choice.appearance?.bra_style === "push-up" ? ["push-up-cups-2"] : []),
   ...(gothicSkirt ? ["gothic-skirt-waist-3-subtle"] : []),
   ...(highGothicWaist ? ["gothic-skirt-02-05-high-waist-1"] : []),
+  ...(repairedSkirtLayers ? ["gothic-skirt-covered-layers-1"] : []),
   ...(reviewedPiece === "bow" && !removed.includes("bow") ? ["neck-bow-2-settled"] : []),
   ...(shortSkirtTuck ? ["short-skirt-tuck-1-no-expansion"] : []),
   ...(/^skirt-0[1-4]$/.test(choice.garments?.skirt ?? "") && !removed.includes("skirt") ? ["short-skirt-drape-2"] : []),

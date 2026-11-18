@@ -4,6 +4,8 @@ import type { CharacterLook } from "./characterCatalog";
 import { clothingColors, clothingPieceFor, skirtUsesUnderwear, underwearColors, type ClothingPiece } from "./clothingPieces";
 import { prepareSkirtCorsetFit } from "./gothicCorsetTuck";
 import { prepareGothicSkirtFit } from "./gothicSkirtFit";
+import { seatRuffledSkirtLining } from "./gothicSkirtLayers";
+import { seatHandkerchiefSkirtPanels } from "./gothicSkirtPanels";
 import { isLacedShoulder, prepareLacedBodiceVillageWaist, showsTuckedLacingSkin } from "./lacedStrapFit";
 import { isShortSkirt, prepareShortSkirtFit } from "./shortSkirtFit";
 import { rebuildShortSkirtFabricNormals, shortSkirtWeave } from "./shortSkirtFabric";
@@ -498,6 +500,15 @@ export function prepareWardrobeGarments(
           fittedGarments.push(waistband);
         }
       }
+    }
+    if (skirtBody) {
+      const lining = item.id === "gothic-skirt-01" ? seatHandkerchiefSkirtPanels(garmentMeshes, skirtBody)
+        : item.id === "gothic-skirt-03" ? seatRuffledSkirtLining(garmentMeshes, skirtBody) : undefined;
+      if (lining) fittedGarments.push(lining);
+    }
+    // Build coverage from the completed layers, including any inner-panel fit.
+    for (const mesh of garmentMeshes) {
+      const lining = mesh.userData.wardrobeRole === "shorts";
       const coversRestoredSkin = restoresBody && (coversSkin.has(item.piece) || (restored.arms && item.piece === "coat"));
       // The short skirt can swing clear of either thigh. Its shell can fit
       // corset hems and hardware, but cannot reliably occlude skin in motion.

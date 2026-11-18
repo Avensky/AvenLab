@@ -3138,6 +3138,7 @@ test('each Gothic skirt closes its waistband gap and clears the animated torso',
     const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
     const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
     const { buildEmoteClips, findGaragePreviewEmote } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
+    const { handkerchiefSkirtPanelLayers } = await vite.ssrLoadModule('/src/game/characters/gothicSkirtPanels.ts');
     for (const [index, item] of skirts.entries()) {
       const scene = skirtScenes[index];
       const fittedHem = item.id === 'gothic-skirt-03' || item.id === 'gothic-skirt-05';
@@ -3151,9 +3152,18 @@ test('each Gothic skirt closes its waistband gap and clears the animated torso',
         let taperedTips = 0;
         for (const mesh of children) {
           const source = scene.getObjectByName(mesh.name).geometry;
+          const handkerchief = item.id === 'gothic-skirt-01' && mesh.material.name === 'MAT_GOTHIC_01_Fabric_1'
+            ? handkerchiefSkirtPanelLayers(source) : undefined;
           const { position: cloth, uv, skinWeight, skinIndex } = mesh.geometry.attributes;
           const original = source.attributes.position;
-          assert.deepEqual(mesh.geometry.index.array, source.index.array, item.id);
+          if (item.id === 'gothic-skirt-05' && mesh.material.name === 'MAT_GOTHIC_05_Fabric_0') {
+            const waistband = [];
+            for (let face = 0; face < source.index.count; face += 3) {
+              const triangle = [source.index.getX(face), source.index.getX(face + 1), source.index.getX(face + 2)];
+              if (triangle.every(vertex => original.getY(vertex) > 1)) waistband.push(...triangle);
+            }
+            assert.deepEqual(Array.from(mesh.geometry.index.array), waistband, '05 keeps exactly the authored waistband faces');
+          } else assert.deepEqual(mesh.geometry.index.array, source.index.array, item.id);
           assert.deepEqual(uv.array, source.attributes.uv.array, item.id);
           for (let i = 0; i < original.count; i++) {
             if (!fittedHem || original.getY(i) >= .91) {
@@ -3179,6 +3189,20 @@ test('each Gothic skirt closes its waistband gap and clears the animated torso',
                 `${item.id} keeps the upper-skirt drop subtle (${drop} m)`);
             }
             if (original.getY(i) >= .90) continue;
+            if (handkerchief?.inner[i] && original.getY(i) > .60) {
+              const before = Math.hypot(original.getX(i), original.getZ(i) - .025);
+              const after = Math.hypot(cloth.getX(i), cloth.getZ(i) - .025);
+              assert(before - after >= -1e-6 && before - after <= .012001,
+                'only the covered inner handkerchief panel seats inward by at most 12 mm');
+              continue;
+            }
+            if (item.id === 'gothic-skirt-03' && mesh.material.name === 'MAT_GOTHIC_03_Trim_1' && original.getY(i) > .78) {
+              const before = Math.hypot(original.getX(i), original.getZ(i) - .025);
+              const after = Math.hypot(cloth.getX(i), cloth.getZ(i) - .025);
+              assert(before - after >= -.021001 && before - after <= .040001,
+                'the covered Ruffled lining combines its accepted stride room with a bounded inward layer fit');
+              continue;
+            }
             if (fittedHem && original.getY(i) < .84) {
               assert(Math.hypot(cloth.getX(i) - original.getX(i), cloth.getZ(i) - original.getZ(i)) <= .032001,
                 `${item.id} keeps the hem adjustment local`);
@@ -3287,10 +3311,15 @@ test('each Gothic skirt closes its waistband gap and clears the animated torso',
               if (!faces.length) continue;
               const cloth = new BufferGeometry().setAttribute('position', posedCloth).setIndex(faces);
               try {
+                let contact;
                 const intersects = surface.bvhcast(new MeshBVH(cloth), identity, {
-                  intersectsTriangles: (skin, fabric) => skin.intersectsTriangle(fabric),
+                  intersectsTriangles: (skin, fabric) => {
+                    if (!skin.intersectsTriangle(fabric)) return false;
+                    contact = { skin: [skin.a.toArray(), skin.b.toArray(), skin.c.toArray()], fabric: [fabric.a.toArray(), fabric.b.toArray(), fabric.c.toArray()] };
+                    return true;
+                  },
                 });
-                assert(!intersects, `${item.id} waistband faces clear the torso in ${emote}`);
+                assert(!intersects, `${item.id} ${part.material.name} waistband faces clear the torso in ${emote}: ${JSON.stringify(contact)}`);
               } finally {
                 cloth.dispose();
               }
