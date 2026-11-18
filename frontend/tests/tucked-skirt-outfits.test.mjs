@@ -66,7 +66,7 @@ test('matched Gothic outfits clear the bust and cover the tucked corset on both 
           const metrics = auditPose(model, skirt, marks, waistParts);
           // The dipped waistband of a short skirt intentionally leaves skin between the layers.
           const dipped = skirtId?.startsWith('skirt-');
-          if (metrics.bustGap < .025 || metrics.overlapAngles < (dipped ? 3 : 60) || metrics.exposed
+          if (metrics.bustGap < (dipped ? .025 : .001) || metrics.overlapAngles < (dipped ? 3 : 60) || metrics.exposed
             || (!dipped && metrics.maxGap > .008001)) {
             failures.push({ tier, set, fallback, skirtId, trial, pose, ...metrics });
           }

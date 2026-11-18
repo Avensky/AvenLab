@@ -25,7 +25,7 @@ test('manual fit checks stay specific to the player, waist fit, piece and pose; 
   assert(JSON.parse(key('p1',shortSkirt,'skirt')).includes('short-skirt-drape-2'));
   assert(!JSON.parse(key('p1',{...shortSkirt,removedClothing:['skirt']},'skirt')).includes('short-skirt-drape-2'));
   assert(!JSON.parse(trialKey).includes('short-skirt-drape-2'));
-  const revisedWaist = choice => JSON.parse(key('p1', choice, 'skirt')).includes('gothic-skirt-waist-2-no-expansion');
+  const revisedWaist = choice => JSON.parse(key('p1', choice, 'skirt')).includes('gothic-skirt-waist-3-subtle');
   assert(revisedWaist(c), 'the complete outfit uses its revised skirt');
   assert(revisedWaist(trial), 'a separate Gothic skirt uses its revised fit');
   assert(!revisedWaist(shortSkirt), 'a short skirt replaces the Gothic skirt');

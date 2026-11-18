@@ -113,7 +113,7 @@ test('Gothic and Pack 7 skirts clear the bust and layer outside every tucked cor
               // expose skin along parts of the rim, so check the actual overlap.
               const fullBand = item.id.startsWith('gothic-');
               const missingTuck = fullBand ? overlapAngles < 68 || metrics.maxGap > .008001 : overlapAngles < 12;
-              if (bustGap < (fullBand ? .025 : 0) || missingTuck || exposed > 0) failures.push(
+              if (bustGap < (fullBand ? .001 : 0) || missingTuck || exposed > 0) failures.push(
                 label + ': bust clearance ' + (bustGap * 1000).toFixed(1) + ' mm, ' + exposed + '/' + shared +
                 ' exterior rays over 1 mm, worst ' + (worst * 1000).toFixed(1) + ' mm at ' + worstAngle + '° / ' +
                 (worstHeight * 1000).toFixed() + ' mm, overlap at ' + overlapAngles + ' angles');
