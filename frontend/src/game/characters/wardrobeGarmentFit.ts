@@ -17,6 +17,7 @@ import { prepareVillageBonnet } from "./villageBonnet";
 import { smoothUnderarmSkin } from "./villagerUnderarm";
 import { fitVillageBraidOverCollar } from "./villageBraid";
 import { prepareVillageShoes } from "./wardrobeShoes";
+import { highCollarSkirtWaistband } from "./wardrobeSkirt";
 import { prepareWardrobeCoverage, wardrobeCoverageSurface as bodySurface } from "./wardrobeCoverage";
 import { insideBraNeckline, insideBriefs, prepareWardrobeUnderwear, type BraStyle, type BriefsStyle } from "./wardrobeUnderwear";
 import { getWardrobeActorBody, isWardrobeBodyDonor, sharesWardrobeRig } from "./wardrobeBody";
@@ -481,11 +482,21 @@ export function prepareWardrobeGarments(
     for (const mesh of garmentMeshes) {
       const lining = mesh.userData.wardrobeRole === "shorts";
       const fit = fitTop ?? fitSkirt ?? fitSocks ?? (lining ? undefined : fitShortSkirt);
-      const fitted = fit?.(mesh.geometry);
+      const source = mesh.geometry;
+      const fitted = fit?.(source);
       if (fitted) {
         if (fitShortSkirt && mesh.userData.wardrobePart === "fabric") rebuildShortSkirtFabricNormals(mesh.geometry, fitted);
         mesh.geometry = fitted;
         fittedGarments.push(fitted);
+      }
+      // Match the bundled High Collar's layer cleanup after fitting, so the
+      // approved waist and long-skirt coordinates keep the same fit samples.
+      if (item.id === "gothic-skirt-05" && !Array.isArray(mesh.material) && mesh.material.name === "MAT_GOTHIC_05_Fabric_0") {
+        const waistband = highCollarSkirtWaistband(mesh.geometry, source);
+        if (waistband) {
+          mesh.geometry = waistband;
+          fittedGarments.push(waistband);
+        }
       }
       const coversRestoredSkin = restoresBody && (coversSkin.has(item.piece) || (restored.arms && item.piece === "coat"));
       // The short skirt can swing clear of either thigh. Its shell can fit

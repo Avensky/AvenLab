@@ -112,10 +112,12 @@ function fitRuffledWaist(root: Object3D, skirt: Object3D, fabric: MeshStandardMa
   };
 }
 
-function finishHighCollarSkirt(fabric: SkinnedMesh) {
-  const source = fabric.geometry;
+/** Keep the High Collar's laced waistband without its redundant short inner skirt. */
+export function highCollarSkirtWaistband(source: BufferGeometry, authored: BufferGeometry = source) {
   const index = source.getIndex();
-  const positions = source.getAttribute("position");
+  // A fitted waistband can dip below this authored separation height.
+  // Use the original positions to retain all of its faces after fitting.
+  const positions = authored.getAttribute("position");
   if (!index || !positions) return;
 
   // This material contains the laced waistband and a separate short skirt.
@@ -130,6 +132,13 @@ function finishHighCollarSkirt(fabric: SkinnedMesh) {
   const geometry = source.clone();
   geometry.setIndex(waistband);
   geometry.setDrawRange(0, waistband.length);
+  return geometry;
+}
+
+function finishHighCollarSkirt(fabric: SkinnedMesh) {
+  const source = fabric.geometry;
+  const geometry = highCollarSkirtWaistband(source);
+  if (!geometry) return;
   fabric.geometry = geometry;
   return () => {
     fabric.geometry = source;
