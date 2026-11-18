@@ -244,7 +244,6 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
   const cropped = look.appearance.hair === "cropped" || Boolean(tuckedHair);
   const tucksHair = model.trialGarments?.tucksHair;
   if (model.hat) model.hat.visible = true;
-  model.bonnet?.setBowVisible(!look.removedClothing.includes("bonnet-bow"));
   if (model.longHair) model.longHair.visible = !cropped && !tucksHair;
   if (model.bow) model.bow.visible = !look.removedClothing.includes("bow")
     && (Boolean(look.appearance.accent) || look.outfit.id === "shop-crew");
@@ -254,4 +253,5 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
   }
   model.scalpCap?.material.color.set(look.hair);
   model.trialGarments?.apply(look);
+  if (model.hat?.visible) model.bonnet?.setBowVisible(!look.removedClothing.includes("bonnet-bow"));
 }
