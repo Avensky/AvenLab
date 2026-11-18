@@ -58,10 +58,15 @@ function extendHem(parts: readonly SkinnedMesh[], skirts: readonly SkinnedMesh[]
 }
 
 /** Seat any remaining protruding cloth and hardware inside the fitted skirt. */
-function seatHem(parts: readonly SkinnedMesh[], skirts: readonly SkinnedMesh[], skin: Float32Array, measure: GarmentProfiler, followFolds: boolean) {
+function seatHem(parts: readonly SkinnedMesh[], skirts: readonly SkinnedMesh[], skin: Float32Array, measure: GarmentProfiler, followFolds: boolean, body: BufferGeometry) {
   const skirt = measure(skirts);
   if (!skirt.found) return;
   const surfaces = followFolds ? skirts.flatMap(mesh => wardrobeCoverageSurface(mesh.geometry) ?? []) : [];
+  const highestRim = Math.max(...skirt.upper);
+  // High-waist styles reach the cups. Their smooth seam transition can extend
+  // above the ordinary profile; retain the real skin floor across that boundary.
+  const upperBody = followFolds && highestRim > top - .025 ? wardrobeCoverageSurface(body) : undefined;
+  const fitTop = upperBody ? Math.max(top, highestRim + .040) : top;
   const ray = new Ray();
   const turnCos = Math.cos(angularStep), turnSin = Math.sin(angularStep);
   const exactRadius = (x: number, depth: number, y: number) => {
@@ -78,7 +83,7 @@ function seatHem(parts: readonly SkinnedMesh[], skirts: readonly SkinnedMesh[], 
   try {
     return fitParts(parts, warpWardrobeGeometry((x, y, z, point) => {
       point.set(x, y, z);
-      if (y >= top) return point;
+      if (y >= fitTop) return point;
       const depth = z - centerZ, radius = Math.hypot(x, depth);
       if (!radius) return point;
       const angle = MathUtils.euclideanModulo(Math.atan2(depth, x) / angularStep, columns);
@@ -104,19 +109,31 @@ function seatHem(parts: readonly SkinnedMesh[], skirts: readonly SkinnedMesh[], 
       }
       // Compress relief progressively under the fabric. At the visible seam
       // retain the contour of the body as the tucked panel comes back into view.
-      const bodyRadius = sample(angle, y, skin);
-      const limit = Math.max(band - .009, bodyRadius + .001);
+      let bodyRadius = sample(angle, y, skin);
+      const upperBlend = upperBody ? MathUtils.smoothstep(y, top - step, top) : 0;
+      if (upperBody && upperBlend) {
+        ray.origin.set(0, y, centerZ);
+        ray.direction.set(x / radius, 0, depth / radius);
+        const hit = upperBody.raycastFirst(ray, DoubleSide, 0, .28);
+        if (hit) bodyRadius = MathUtils.lerp(bodyRadius, hit.distance, upperBlend);
+      }
+      const seam = MathUtils.smoothstep(y, crest - .006, crest + .006);
+      // Tall bands cover broad corset triangles. Give their hidden corners a
+      // little more room to interpolate inside the rim, retaining the skin floor.
+      const inset = .009 + (upperBody ? .002 * (1 - seam) : 0);
+      const limit = Math.max(band - inset, bodyRadius + .001);
       if (radius <= limit) return point;
       const excess = radius - limit;
       // A broad corset triangle can cross the rim between its seated vertices.
       // Keep less relief under Gothic cloth, recovering above the visible seam.
-      const relief = followFolds ? MathUtils.lerp(.001, .002, MathUtils.smoothstep(y, crest - .006, crest + .006)) : .002;
+      const relief = followFolds ? MathUtils.lerp(.001, .002, seam) : .002;
       const compression = excess - relief * (1 - Math.exp(-excess / relief));
       const scale = 1 - blend * compression / radius;
       return point.set(x * scale, y, centerZ + depth * scale);
     }));
   } finally {
     for (const surface of surfaces) surface.geometry.dispose();
+    upperBody?.geometry.dispose();
   }
 }
 
@@ -131,7 +148,7 @@ export function prepareSkirtCorsetFit(
   const restoreHem = extend ? extendHem(parts, fabric, skin, measure) : undefined;
   // Fit the tucked corset to the existing waistband. Expanding the skirt here
   // makes its belt bulge and stretches the fabric whenever a corset is selected.
-  const restoreTuck = seatHem(parts, fabric, skin, measure, extend);
+  const restoreTuck = seatHem(parts, fabric, skin, measure, extend, body);
   return {
     dispose() {
       restoreTuck?.();

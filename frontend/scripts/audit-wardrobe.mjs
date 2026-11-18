@@ -96,9 +96,10 @@ async function runFullAudit() {
   const assetsPass = await auditWardrobeAssets(publicRoot, [...variants, ...generatedVariants]);
   const testsPass = runTests([`--test-name-pattern=${realAssetTests.join('|')}`, 'tests/wardrobe-garment-assets.test.mjs'], true);
   const topFitPass = runTests(['tests/top03-armhole.test.mjs', 'tests/top05-fit.test.mjs'], true);
-  const skirtPairsPass = runTests(['tests/tucked-skirt-pairings.test.mjs', 'tests/tucked-skirt-outfits.test.mjs'], true);
+  const skirtFitsPass = runTests(['tests/tucked-skirt-pairings.test.mjs', 'tests/tucked-skirt-outfits.test.mjs',
+    'tests/short-skirt-fabric.test.mjs', 'tests/wardrobe-hand-clearance.test.mjs'], true);
   const masksPass = await auditCurrentCorsetMasks(frontend, publicRoot);
-  return characterLodsPass && piecesPass && assetsPass && testsPass && topFitPass && skirtPairsPass && masksPass;
+  return characterLodsPass && piecesPass && assetsPass && testsPass && topFitPass && skirtFitsPass && masksPass;
 }
 
 const [mode, ...extra] = process.argv.slice(2);

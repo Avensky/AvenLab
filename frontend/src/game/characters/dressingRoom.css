@@ -127,6 +127,15 @@
   scrollbar-color: var(--app-line) transparent;
 }
 .dressing-categories, .dressing-catalog { flex: 1; }
+.dressing-catalog { scroll-padding-block-start: 5rem; }
+.dressing-catalog-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--app-line);
+  background: var(--app-panel);
+}
 .dressing-catalog-heading { display: flex; align-items: center; gap: 5px; margin: 0 0 4px; }
 .dressing-catalog-heading h3 { margin: 0; font-size: 12px; font-style: italic; line-height: 1.15; overflow-wrap: anywhere; }
 .dressing-group-label { margin: 8px 4px 3px; font-size: 8px; text-transform: uppercase; letter-spacing: .09em; color: var(--app-muted); }
@@ -232,6 +241,14 @@
 .dressing-item--remove .dressing-item-art > svg { width: 25px; height: 25px; stroke-width: 2; }
 .dressing-item-copy { display: grid; gap: 2px; min-width: 0; padding: 4px 6px; }
 .dressing-item-name { font-size: 11px; font-weight: 750; line-height: 1.15; overflow-wrap: anywhere; }
+.dressing-alpha-badge { color: var(--app-muted); font-size: 9px; font-weight: 650; line-height: 1.2; overflow-wrap: anywhere; }
+.dressing-alpha-badge[data-alpha-status="near-pass"] { color: #e5c38d; }
+.dressing-alpha-badge[data-alpha-status="passed"] { color: #81d6aa; }
+.character-page--dressing .dressing-item[data-alpha-status="development"] {
+  background: color-mix(in srgb, var(--app-panel) 88%, var(--app-muted));
+  color: var(--app-muted);
+}
+.dressing-item[data-alpha-status="development"] .dressing-item-art { filter: grayscale(1); opacity: .65; }
 .dressing-item small { color: var(--app-muted); font-size: 9px; line-height: 1.15; overflow-wrap: anywhere; }
 .character-page--dressing .dressing-item[aria-pressed="true"] { box-shadow: inset 2px 0 var(--app-accent); }
 .character-page--dressing .dressing-item[data-inspected] {
@@ -260,6 +277,7 @@
   overflow-wrap: anywhere;
 }
 .dressing-details p, .dressing-empty { margin: 7px 0; color: var(--app-muted); font-size: 11px; line-height: 1.35; }
+.dressing-alpha-summary { display: grid; gap: 3px; }
 .dressing-details dl {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);

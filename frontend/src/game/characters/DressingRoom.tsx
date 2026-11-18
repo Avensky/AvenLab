@@ -73,8 +73,22 @@ type Item = {
   selected?: boolean; detail?: string; unavailable?: "Pack not installed";
   color?: string; accent?: string; focus?: WardrobeFocus; choose?: () => void; remove?: () => void; clear?: (choice: CharacterChoice) => CharacterChoice; trial?: boolean;
   pieces?: "outfit" | readonly ClothingPiece[]; included?: boolean; set?: string; layer?: ClothingLayer;
-  underwear?: UnderwearPiece;
+  underwear?: UnderwearPiece; alphaStatus?: AlphaStatus;
 };
+const ALPHA_STATUSES = {
+  "near-pass": { label: "Alpha — Nearly Passing", description: "The fit is close to passing for alpha; final visual review remains." },
+  passed: { label: "Alpha Pass", description: "Passing for alpha for now." },
+  development: { label: "Under Development", description: "Available for fitting while development continues." },
+} as const;
+type AlphaStatus = keyof typeof ALPHA_STATUSES;
+
+function alphaStatus(pieces: Item["pieces"]): AlphaStatus | undefined {
+  if (!pieces || pieces.length === 0) return undefined;
+  if (pieces === "outfit") return "development";
+  if (pieces.every(piece => piece === "socks")) return "passed";
+  if (pieces.every(piece => piece === "skirt" || piece === "underskirt")) return "near-pass";
+  return "development";
+}
 
 const OUTFIT_DESCRIPTIONS: Record<string, string> = {
   dockwear: "Vesper’s village outfit pairs a fitted bodice with a full skirt, petticoat and bonnet.",
@@ -107,7 +121,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [inspectedId, setInspectedId] = useState<string>();
   const [search, setSearch] = useState("");
-  const [readyOnly, setReadyOnly] = useState(false);
+  const [alphaOnly, setAlphaOnly] = useState(false);
   const [layer, setLayer] = useState<ClothingLayer>("Inner");
   const catalogId = useId(), detailsId = useId();
   const catalogRef = useRef<HTMLElement>(null);
@@ -123,7 +137,8 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
   const sleevesRemoved = removedClothing.includes("sleeves");
   const stockSleeves = pieces.includes("sleeves")
     || (sleevesRemoved && wornClothing(setWardrobeRemoval(choice, "sleeves", false)).includes("sleeves"));
-  const sleeveSource = getWardrobeGarment(garments?.dress)?.detachableSleeves ? garments?.dress : stockSleeves ? outfit.id : undefined;
+  const sleeveSource = getWardrobeGarment(garments?.dress)?.detachableSleeves ? garments?.dress
+    : stockSleeves ? choice.garments?.sleeves ?? outfit.id : undefined;
   const sleeveToggle = <button type="button" className="menu-control" data-wardrobe-remove="sleeves"
     onClick={() => onTryOn(setWardrobeRemoval(choice, "sleeves", !sleevesRemoved))}>
     {sleevesRemoved ? "Restore sleeves" : "Remove sleeves"}
@@ -363,10 +378,11 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
         ? next => setWardrobeRemoval(next, slot, true) : undefined,
     });
   }
+  for (const item of Object.values(allItems).flat()) item.alphaStatus = alphaStatus(item.pieces);
   allItems.layers = Object.values(allItems).flat().filter(item => item.layer);
   const categoryItems = catalogOpen ? allItems[category].filter(item => category !== "layers" || item.layer === layer) : [];
   const query = search.trim().toLocaleLowerCase();
-  const items = categoryItems.filter(item => (!readyOnly || (!item.unavailable && !item.trial) || item.selected)
+  const items = categoryItems.filter(item => (!alphaOnly || !item.alphaStatus || (!item.unavailable && item.alphaStatus !== "development"))
     && (!query || `${item.label} ${item.section}`.toLocaleLowerCase().includes(query)));
   const sections = [...new Set(items.map(item => item.section))];
   const inspected = catalogOpen ? allItems[category].find(item => item.id === inspectedId) : undefined;
@@ -378,6 +394,8 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
 
   const reviewPieces = inspected?.pieces === "outfit" ? itemPieces : inspected?.pieces ?? [];
   const reviewPiece = reviewPieces.includes(piece) ? piece : reviewPieces[0];
+  const inspectedSleeves = sleeveSource && (inspected?.id === sleeveSource || (inspected?.selected && inspected.pieces !== "outfit"
+    && inspected.pieces?.some(piece => piece === "corset" || piece === "shirt" || piece === "sleeves")));
 
   function clearedSection(section: string) {
     return categoryItems.reduce((next, item) => item.section === section ? item.clear?.(next) ?? next : next, choice);
@@ -410,7 +428,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
   function revealCameraItem(category: Category, item: Item) {
     shortcutTarget.current = item.id;
     showCatalog(category, item);
-    if (item.unavailable || (item.trial && !item.selected)) setReadyOnly(false);
+    if (item.unavailable || item.alphaStatus === "development") setAlphaOnly(false);
     // The same shortcut can bring an already inspected card back into view.
     const current = catalogRef.current?.querySelector<HTMLButtonElement>("[data-inspected]");
     if (current?.dataset.wardrobeItem === item.id) current.scrollIntoView?.({ block: "nearest", inline: "nearest" });
@@ -470,10 +488,13 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
         </div>)}
       </nav>
       <section ref={catalogRef} className="dressing-catalog" id={catalogId} aria-label={currentCategory.label} hidden={!catalogOpen}>
-        <header className="dressing-catalog-heading" data-controller-row>
-          <MenuBackButton data-wardrobe-back label="Back to wardrobe categories" onClick={closeCatalog} />
-          <h3>{currentCategory.label}</h3>
-        </header>
+        <div className="dressing-catalog-toolbar">
+          <header className="dressing-catalog-heading" data-controller-row>
+            <MenuBackButton data-wardrobe-back label="Back to wardrobe categories" onClick={closeCatalog} />
+            <h3>{currentCategory.label}</h3>
+          </header>
+          {catalogOpen && category !== "saved" && <div className="dressing-search" data-controller-row><input type="search" aria-label={`Search ${currentCategory.label}`} placeholder="Find an item…" value={search} onChange={event => setSearch(event.target.value)} /></div>}
+        </div>
         {category === "saved" ? <SavedOutfits choice={choice} onTryOn={onLoad} onEndPreview={onEndPreview} clearPreview /> : catalogOpen && <>
         {category === "outfits" && female && <div className="dressing-layer-options" data-controller-row>
           <button type="button" className="menu-control" data-remove-outfit disabled={outfitRemoved} onClick={removeOutfit}>Remove outfit</button>
@@ -486,13 +507,14 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
           <div className="dressing-layer-options" role="group" aria-label="Underwear preview" data-controller-row>
             <button type="button" className="menu-control" data-wardrobe-remove="top" disabled={!pieces.some(piece =>
               ["corset", "shirt", "dress", "armor"].includes(piece))} onClick={() => revealUnderwear("bra")}>Remove tops</button>
-            {(sleeveSource || sleevesRemoved) && sleeveToggle}
+            {sleeveSource && sleeveToggle}
             <button type="button" className="menu-control" data-wardrobe-remove="bottom" disabled={pieces.includes("briefs") && !pieces.includes("underskirt")} onClick={() => revealUnderwear("briefs")}>Remove skirt / pants</button>
           </div>}
-        <div className="dressing-search" data-controller-row><input type="search" aria-label={`Search ${currentCategory.label}`} placeholder="Find an item…" value={search} onChange={event => setSearch(event.target.value)} /></div>
-        <div className="dressing-filter" role="group" aria-label="Item availability" data-controller-row>
-          <button type="button" className="menu-control" aria-pressed={!readyOnly} onClick={() => setReadyOnly(false)}>All items</button>
-          <button type="button" className="menu-control" aria-pressed={readyOnly} onClick={() => setReadyOnly(true)}>Ready to wear</button>
+        {(category === "corsets" || category === "tops") && sleeveSource &&
+          <div className="dressing-layer-options" role="group" aria-label="Sleeve controls" data-controller-row>{sleeveToggle}</div>}
+        <div className="dressing-filter" role="group" aria-label="Alpha readiness" data-controller-row>
+          <button type="button" className="menu-control" aria-pressed={!alphaOnly} onClick={() => setAlphaOnly(false)}>All items</button>
+          <button type="button" className="menu-control" aria-pressed={alphaOnly} onClick={() => setAlphaOnly(true)}>Alpha items</button>
         </div>
         {sections.map(section => {
           const cleared = clearedSection(section);
@@ -502,7 +524,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
               <button type="button" className="dressing-section-clear menu-control" data-clear-section
                 aria-label={`Clear ${section}`} disabled={cleared === choice} onClick={event => {
                   const firstItem = event.currentTarget.closest("section")?.querySelector<HTMLButtonElement>("[data-wardrobe-item]:not([data-unavailable])");
-                  const target = readyOnly || query ? catalogRef.current?.querySelector("[data-wardrobe-back]") : firstItem;
+                  const target = alphaOnly || query ? catalogRef.current?.querySelector("[data-wardrobe-back]") : firstItem;
                   if (target instanceof HTMLElement) target.focus({ preventScroll: true });
                   clearSection(cleared);
                 }}>Clear</button>
@@ -510,6 +532,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
             <div className="dressing-items" data-controller-row data-controller-columns="1">
               {items.filter(item => item.section === section).map(item => <button key={item.id} type="button" data-wardrobe-item={item.id}
                 data-inspected={inspected?.id === item.id || undefined} data-unavailable={item.unavailable ? true : undefined}
+                data-alpha-status={item.alphaStatus}
                 className={`dressing-item menu-control${item.icon === "remove" ? " dressing-item--remove" : ""}`} aria-pressed={item.selected ?? false}
                 aria-controls={item.icon === "remove" ? undefined : detailsId} onClick={() => {
                   setInspectedId(item.icon === "remove" ? undefined : item.id);
@@ -521,16 +544,17 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
                 </span>
                 <span className="dressing-item-copy">
                   <span className="dressing-item-name">{item.label}</span>
+                  {item.alphaStatus && <span className="dressing-alpha-badge" data-alpha-status={item.alphaStatus}>{ALPHA_STATUSES[item.alphaStatus].label}</span>}
                   {item.set && !item.unavailable && (!item.trial || item.selected) && <FitBadge choice={item.trial ? choice : {
                     ...choice, wardrobe: resolveWardrobe({ set: item.set, shirt: "none", waist: waistForSet(item.set) }), garments: undefined, wardrobeTrial: undefined, wardrobeEase: undefined,
                   }} piece="corset" itemId={item.id} />}
-                  {item.icon !== "remove" && <small>{item.unavailable ?? (item.selected ? (item.trial ? "Trying on" : "Wearing") : item.detail ?? "Ready to wear")}</small>}
+                  {item.icon !== "remove" && <small>{item.unavailable ?? (item.selected ? (item.trial ? "Trying on" : "Wearing") : item.detail ?? "Available to try on")}</small>}
                 </span>
               </button>)}
             </div>
           </section>;
         })}
-        {!items.length && <p className="dressing-empty" role="status">{query ? "No items match your search." : readyOnly ? "No separate pieces are ready in this category yet." : "No separate pieces for this character yet."}</p>}
+        {!items.length && <p className="dressing-empty" role="status">{query ? "No items match your search." : alphaOnly ? "No alpha items in this category yet." : "No separate pieces for this character yet."}</p>}
         </>}
       </section>
     </aside>
@@ -551,7 +575,8 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
     <aside className="dressing-details" id={detailsId} aria-label="Item details" hidden={!inspected}>
       {inspected && <>
         <header><h2>{inspected.label}</h2></header>
-        {inspected.description && <p>{inspected.description}</p>}
+        {inspected.alphaStatus && <p className="dressing-alpha-summary"><span className="dressing-alpha-badge" data-alpha-status={inspected.alphaStatus}>{ALPHA_STATUSES[inspected.alphaStatus].label}</span><span>{ALPHA_STATUSES[inspected.alphaStatus].description}</span></p>}
+        {inspected.description && <p className="dressing-item-description">{inspected.description}</p>}
         {underbustOver && !hasUnderbustCut(corset.cut) &&
           <p className="dressing-note" role="status">This vest cut is missing. Pull the wardrobe models with Git LFS and restart AvenLab.</p>}
         <dl><dt>Price</dt><dd>{inspected.unavailable ? "Not listed" : inspected.trial ? "Free try-on" : inspected.included ? "Included" : "0 credits"}</dd>
@@ -562,7 +587,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
           <button type="button" className="menu-control" data-remove-try-on onClick={() => {
             inspected.remove?.();
             inspectWardrobe(categoryFocus[category]);
-            catalogRef.current?.querySelector<HTMLButtonElement>(readyOnly ? "[data-wardrobe-back]" : "[data-inspected]")?.focus();
+            catalogRef.current?.querySelector<HTMLButtonElement>(alphaOnly ? "[data-wardrobe-back]" : "[data-inspected]")?.focus();
           }}>{inspected.focus === "shirt" || inspected.focus === "armor" ? "Remove top" : inspected.focus === "corset" ? "Remove corset" : inspected.focus === "skirt" ? "Remove skirt" : inspected.included ? "Remove piece" : inspected.focus === "dress" || inspected.pieces === "outfit" ? "Remove dress" : "Clear try-on"}</button>
         </div>}
         {(underwearColor === "bra" || underbust) && <div data-controller-row>
@@ -581,7 +606,7 @@ export function DressingRoom({ choice, onChange, onEquip = onChange, onTryOn, on
             aria-pressed={(appearance.briefs_style ?? "briefs") === style} onClick={() => {
               onTryOn({ ...choice, appearance: { ...appearance, briefs_style: style === "briefs" ? undefined : style } });
             }}>{style === "briefs" ? "V-cut briefs" : "Short boxer briefs"}</button>), 2)}
-        {inspected.id === sleeveSource && <div data-controller-row>{sleeveToggle}</div>}
+        {inspectedSleeves && <div data-controller-row>{sleeveToggle}</div>}
         {underwearColor && <ClothingColorToolbar choice={choice} piece={underwearColor} onChange={onColors} />}
         {inspected.pieces === "outfit" && itemPieces.length > 0 && controls("Outfit pieces", itemPieces.map(item => <button key={item} type="button" className="menu-control"
           data-dressing-piece={item} aria-pressed={camera === "Selected item" && selectedPiece === item} onClick={() => selectWornPiece(item)}>

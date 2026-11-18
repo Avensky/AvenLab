@@ -6,7 +6,7 @@ import { prepareSkirtCorsetFit } from "./gothicCorsetTuck";
 import { prepareGothicSkirtFit } from "./gothicSkirtFit";
 import { isLacedShoulder, prepareLacedBodiceVillageWaist, showsTuckedLacingSkin } from "./lacedStrapFit";
 import { isShortSkirt, prepareShortSkirtFit } from "./shortSkirtFit";
-import { shortSkirtWeave } from "./shortSkirtFabric";
+import { rebuildShortSkirtFabricNormals, shortSkirtWeave } from "./shortSkirtFabric";
 import { prepareSockSkirtFit } from "./sockSkirtFit";
 import { prepareShoelessSockFit } from "./wardrobeSocksFit";
 import type { StandaloneCorset } from "./standaloneCorset";
@@ -483,6 +483,7 @@ export function prepareWardrobeGarments(
       const fit = fitTop ?? fitSkirt ?? fitSocks ?? (lining ? undefined : fitShortSkirt);
       const fitted = fit?.(mesh.geometry);
       if (fitted) {
+        if (fitShortSkirt && mesh.userData.wardrobePart === "fabric") rebuildShortSkirtFabricNormals(mesh.geometry, fitted);
         mesh.geometry = fitted;
         fittedGarments.push(fitted);
       }

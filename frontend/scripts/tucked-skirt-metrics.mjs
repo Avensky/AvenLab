@@ -63,7 +63,38 @@ function posedSurface(group, worldToTorso) {
   return { surface: new MeshBVH(geometry), crest };
 }
 
-export function auditPose(model, skirt, marks, corset = model.detachedCorset.group) {
+// A high waistband can rise at the back while clearing the cups at the front.
+// Test the actual posed lower-cup skin instead of comparing those unrelated heights.
+function intersectsCups(skin, anatomy, marks, transform, skirt) {
+  const source = anatomy.attributes.position, index = anatomy.index;
+  const low = Math.min(...marks.map(mark => mark.point.y)) - .02;
+  const high = Math.max(...marks.map(mark => mark.point.y)) + .10;
+  const width = Math.max(...marks.map(mark => Math.abs(mark.point.x))) + .05;
+  const faces = [], used = new Set();
+  for (let i = 0; i < index.count; i += 3) {
+    const triangle = [index.getX(i), index.getX(i + 1), index.getX(i + 2)];
+    const y = triangle.reduce((sum, vertex) => sum + source.getY(vertex), 0) / 3;
+    const x = triangle.reduce((sum, vertex) => sum + source.getX(vertex), 0) / 3;
+    const z = triangle.reduce((sum, vertex) => sum + source.getZ(vertex), 0) / 3;
+    if (y < low || y > high || Math.abs(x) > width || z < .04) continue;
+    faces.push(...triangle);
+    for (const vertex of triangle) used.add(vertex);
+  }
+  assert(faces.length > 0, 'the intact donor supplies lower-cup skin');
+  const position = new Float32BufferAttribute(new Float32Array(source.count * 3), 3);
+  for (const vertex of used) {
+    skin.getVertexPosition(vertex, point).applyMatrix4(transform);
+    position.setXYZ(vertex, point.x, point.y, point.z);
+  }
+  const geometry = new BufferGeometry().setAttribute('position', position).setIndex(faces);
+  try {
+    return new MeshBVH(geometry).bvhcast(skirt, new Matrix4(), {
+      intersectsTriangles: (cup, cloth) => cup.intersectsTriangle(cloth),
+    });
+  } finally { geometry.dispose(); }
+}
+
+export function auditPose(model, skirt, marks, corset = model.detachedCorset.group, anatomy) {
   const skin = model.root.getObjectByName('fitting-room-body') ?? model.root.getObjectByName('BODY_WARDROBE');
   const spine = skin.skeleton.bones.findIndex(bone => bone.name === 'spine_01');
   assert(spine >= 0);
@@ -124,7 +155,8 @@ export function auditPose(model, skirt, marks, corset = model.detachedCorset.gro
       const outer = band.surface.raycastFirst(ray, DoubleSide, 0, .42);
       if (outer) compare(outer.distance - (.42 - radius), (Math.atan2(x, z) * 180 / Math.PI + 360) % 360, height);
     }
-    return { bustGap: underbust - band.crest, shared, overlapAngles: overlapAngles.size, exposed, worst, worstAngle, worstHeight, maxGap };
+    const cupContact = anatomy ? intersectsCups(skin, anatomy, marks, transform, band.surface) : undefined;
+    return { bustGap: underbust - band.crest, cupContact, shared, overlapAngles: overlapAngles.size, exposed, worst, worstAngle, worstHeight, maxGap };
   } finally {
     band.surface.geometry.dispose();
     bodice.surface.geometry.dispose();

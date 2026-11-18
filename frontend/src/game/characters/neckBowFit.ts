@@ -85,7 +85,8 @@ function foldDepth(clearance: number) {
 }
 
 function settledBow(body: ReturnType<typeof neckSurface>, cloth: ReturnType<typeof neckSurface>, village: boolean) {
-  const knotOffset = lerp(-.014, .008, smoothstep(cloth.neckline, 1.31, 1.45));
+  // A standing collar supports the authored attachment without lifting the knot.
+  const knotOffset = lerp(-.014, 0, smoothstep(cloth.neckline, 1.31, 1.45));
   return warpWardrobeGeometry((x, y, z, target) => {
     if (village) {
       // The Village export pins this accessory to the right hip. Turn its

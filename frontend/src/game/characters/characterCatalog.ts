@@ -102,6 +102,8 @@ export function characterLook(choice: CharacterChoice | null | undefined) {
     wardrobe, outfitRemovals,
     corset: showCorset ? resolveWardrobe(choice?.wardrobeTrial, { includeRetired: true }) : undefined,
     overEase: showCorset ? wardrobeOverEase(choice) : 0 as const,
+    // Keep Auto's movement style stable while a separately selected skirt is hidden for fitting.
+    selectedSkirt: character.id === VILLAGER_ID ? choice?.garments?.skirt : undefined,
     garments: wearsOutfitGarment ? { ...trials, dress: outfitGarment.id } : trials,
     fabric: /^#[\da-f]{6}$/i.test(appearance.color) ? appearance.color : color("color") ?? outfit.jacket,
     trim: appearance.accent ?? outfit.trim,

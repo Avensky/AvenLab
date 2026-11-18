@@ -3129,9 +3129,9 @@ test('each Gothic skirt closes its waistband gap and clears the animated torso',
     if (triangle.every(isTorso)) torsoFaces.push(...triangle);
   }
   const waistMaterial = ['Fabric_1', 'Trim_1', 'Trim_1', 'Fabric_0', 'Fabric_0'];
-  // Keep each change to a small nudge, with enough room for a walking pose.
-  // Only Skirt 02's tall front band needs more to clear the bust.
-  const maximumDrops = [.022, .048, .015, .015, .019];
+  // 02/05 retain their high waistband just under the cups. The other three
+  // skirts keep their accepted nudge and their original geometry checks.
+  const maximumDrops = [.022, .038, .015, .015, .014];
   const identity = new Matrix4();
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
   try {
@@ -3205,6 +3205,9 @@ test('each Gothic skirt closes its waistband gap and clears the animated torso',
         assert(originalRim - rim > .001 && originalRim - rim <= maximumDrops[index] + 1e-6,
           `${item.id} lowers its own waistband only slightly (${originalRim - rim} m)`);
         assert(rim < 1.184, `${item.id} keeps its waistband below the lower bust`);
+        if (item.id === 'gothic-skirt-02' || item.id === 'gothic-skirt-05') {
+          assert(rim >= 1.180 - 1e-6, `${item.id} retains its high waistband just under the cups`);
+        }
         const front = Array.from({ length: cloth.count }, (_, i) => i)
           .filter(i => cloth.getZ(i) - .042 > Math.abs(cloth.getX(i)));
         const crest = Math.max(...front.map(i => cloth.getY(i)));
@@ -3483,6 +3486,9 @@ test('neck bows follow the worn neckline and the Village neck bow follows the up
         const mesh = model.root.getObjectByName('wardrobe-' + bow.id).children[0];
         const source = bowScene.getObjectByName(mesh.name).geometry;
         const position = mesh.geometry.getAttribute('position'), rest = source.getAttribute('position');
+        for (let i = 0; i < position.count; i++) {
+          assert(position.getY(i) <= rest.getY(i) + 1e-6, 'the supported bow never lifts above its authored attachment');
+        }
         let tip = 0;
         for (let i = 0; i < position.count; i++) if (rest.getY(i) < rest.getY(tip)) tip = i;
         assert(position.getY(tip) < rest.getY(tip) - .008, 'the ribbon settles down from its original tip');
@@ -3496,7 +3502,8 @@ test('neck bows follow the worn neckline and the Village neck bow follows the up
         assert.equal(mesh.geometry, first, 'unchanged clothing reuses the bow fit');
       } finally { model.dispose(); }
     }
-    assert(tipHeights[1] > tipHeights[0] + .012, 'a standing collar raises the bow attachment');
+    assert(tipHeights[1] > tipHeights[0] + .006 && tipHeights[1] < tipHeights[0] + .014,
+      'the standing collar supports the bow without the previous upward lift');
     const village = getWardrobeGarment('village-bow');
     const model = prepareVillager(actor, { fitted: true, garments: [{ item: village, scene: actor }], garmentBody });
     try {
