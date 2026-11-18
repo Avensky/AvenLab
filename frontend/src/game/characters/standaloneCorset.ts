@@ -1,6 +1,7 @@
 import { Group, Matrix4, Mesh, SkinnedMesh, type Material, type Object3D, type Skeleton } from "three";
 import { fitLacedBodiceToSkirt } from "./lacedStrapFit";
 import { prepareHighCollarShoulders } from "./highCollarShoulders";
+import { fitHighCollarBust } from "./highCollarBust";
 import { prepareWardrobeLining } from "./wardrobeLining";
 import { bindWardrobeGarmentMesh } from "./wardrobeGarmentFit";
 import { LACED_BODICE_WARDROBE_SET, prepareWardrobe, UNDERBUST_WARDROBE_SET, type WardrobeChoice } from "./wardrobe";
@@ -109,6 +110,11 @@ export function prepareStandaloneCorset(source: StandaloneCorsetSource, skeleton
     const tucked = tuckedSource && bindCorsetPart(tuckedSource, skeleton);
     const over = overSource && bindCorsetPart(overSource, skeleton);
     if (!tucked || !over) return;
+    if (authoredHighCollar) {
+      for (const fit of [tucked, over]) fit.traverse(mesh => {
+        if (mesh instanceof SkinnedMesh) mesh.geometry = fitHighCollarBust(mesh.geometry);
+      });
+    }
     group.add(tucked, over, body);
   }
   const updateShoulders = authoredHighCollar ? prepareHighCollarShoulders(group, skeleton) : undefined;

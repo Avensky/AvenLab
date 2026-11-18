@@ -2352,6 +2352,72 @@ test('Ruffled Corset keeps the upper torso and rear waist inside both detail bud
   } finally { await vite.close(); }
 });
 
+test('High Collar cup edges cover the inner bust on both waist fits and leave the keyhole open', async t => {
+  const set = 'gothic-05';
+  const paths = [bundledDir + 'gothic-02.mobile.glb', ...['garage', 'mobile'].flatMap(tier => [
+    villagerDir + `villager-female.${tier === 'garage' ? 'garage' : 'portrait'}.glb`,
+    garmentDir + `corsets/gothic-high-collar.${tier}.glb`,
+  ])];
+  const inputs = await Promise.all(paths.map(path => readFile(new URL(path, publicDir))));
+  if (inputs.some(isLfsPointer)) return skipMissingAsset(t, 'Pull the High Collar and fitting-room models.');
+  const [bundle, garage, high, portrait, low] = await Promise.all(inputs.map(loadGeometry));
+  const donor = bundle.getObjectByName('BODY_WARDROBE');
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  const bindSkin = new MeshBVH(donor.geometry, { indirect: true });
+  try {
+    const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
+    const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { buildEmoteClips, findGaragePreviewEmote } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
+    const front = new Vector3(0, 0, -1);
+    // Track the inner margins of both pigmented areas on the complete donor, including skin masked at runtime.
+    const samples = [-.094, -.084, 0, .084, .094].flatMap(x => [1.255, 1.258].map(y => {
+      const hit = bindSkin.raycastFirst(new Ray(new Vector3(x, y, .4), front), DoubleSide);
+      assert(hit, 'the unmasked donor includes the sampled skin');
+      return { x, y, face: hit.face, weights: hit.barycoord };
+    }));
+    for (const [tier, base, scene] of [['Garage', garage, high], ['Mobile', portrait, low]]) {
+      const model = prepareVillager(base, { fitted: true, garmentBody: donor, corsetSource: { set, scene } });
+      try {
+        const skin = model.root.getObjectByName('fitting-room-body');
+        const mixer = new AnimationMixer(model.root);
+        for (const waist of ['tucked', 'over']) {
+          applyVillagerLook(model, characterLook({ ...DEFAULT_CHARACTER, wardrobeTrial: { set, waist, shirt: 'none' } }));
+          const garment = model.detachedCorset.group.getObjectByName(`CLOTH_CORSET_${waist.toUpperCase()}`);
+          const cup = garment.getObjectsByProperty('isSkinnedMesh', true)
+            .filter(mesh => ['Corset05_Main', 'Corset05_Trim'].includes(mesh.material.name));
+          assert(garment.visible && cup.length > 0, 'the selected cup fabric is visible');
+          for (const [pose, phase] of [['idle', 0], ['002', .38], ['008', .5], ['heart-overhead', .5]]) {
+            let action;
+            if (pose !== 'idle') {
+              const [clip] = buildEmoteClips(model.root, [findGaragePreviewEmote(pose, false)]);
+              action = mixer.clipAction(clip).play();
+              mixer.setTime(clip.duration * phase);
+            }
+            model.root.updateMatrixWorld(true);
+            model.detachedCorset.updateShoulders?.();
+            const surfaces = cup.map(posedSurface);
+            try {
+              for (const { x, y, face, weights } of samples) {
+                const point = new Vector3();
+                for (const [index, weight] of [[face.a, weights.x], [face.b, weights.y], [face.c, weights.z]]) {
+                  point.addScaledVector(skin.getVertexPosition(index, new Vector3()), weight);
+                }
+                point.applyMatrix4(skin.matrixWorld).z += .1;
+                const ray = new Ray(point, front);
+                const covered = surfaces.some(surface => surface.raycastFirst(ray, DoubleSide, 0, .1));
+                assert.equal(covered, x !== 0, `${tier} ${waist}, pose ${pose}, skin at ${x}, ${y}`);
+              }
+            } finally {
+              surfaces.forEach(surface => surface.geometry.dispose());
+              action?.stop();
+            }
+          }
+        }
+      } finally { model.dispose(); }
+    }
+  } finally { await vite.close(); }
+});
+
 test('Ruffled Corset and High Collar apply independent dyes on Garage and Mobile materials', async t => {
   const specs = [
     { set: 'gothic-03', asset: 'gothic-03', dyes: { color: '#123456', panel: '#654321', laces: '#abcdef' },
