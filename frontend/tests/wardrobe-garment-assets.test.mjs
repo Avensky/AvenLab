@@ -1760,10 +1760,10 @@ test('rebuilt Tucked hardware clears the fitted skirt waist', async t => {
     const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
     const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
     const { getWardrobeGarment, wardrobeGarmentModelUrl } = await vite.ssrLoadModule('/src/game/characters/wardrobeGarments.ts');
+    const { wardrobeCoverageSurface } = await vite.ssrLoadModule('/src/game/characters/wardrobeCoverage.ts');
     const set = 'gothic-04';
-    for (const [number, middle, lower] of [
-      ['01', false, false], ['02', false, false], ['03', true, false], ['04', true, true], ['05', false, false],
-    ]) {
+    const identity = new Matrix4();
+    for (const number of ['01', '02', '03', '04', '05']) {
       const skirt = `gothic-skirt-${number}`;
       const item = getWardrobeGarment(skirt);
       const url = wardrobeGarmentModelUrl(item, 'garage');
@@ -1784,8 +1784,22 @@ test('rebuilt Tucked hardware clears the fitted skirt waist', async t => {
         const tags = [...buckles].filter(([, mesh]) => mesh.material.userData.tuckedLowerHardware).map(([name]) => name).sort();
         assert.deepEqual(tags, ['Material2307089', 'Material2308903']);
         assert.equal(buckles.get('Material2303515')?.visible, true, `${skirt} keeps the upper buckle`);
-        assert.equal(buckles.get('Material2307089')?.visible, middle, `${skirt} middle buckle`);
-        assert.equal(buckles.get('Material2308903')?.visible, lower, `${skirt} lower buckle`);
+        const panels = [];
+        model.root.getObjectByName(`wardrobe-${skirt}`).traverseVisible(mesh => {
+          if (!mesh.isSkinnedMesh || mesh.material.transparent || /hardware/i.test(mesh.material.name)) return;
+          const surface = wardrobeCoverageSurface(mesh.geometry);
+          if (surface) panels.push(surface);
+        });
+        try {
+          assert(panels.length > 0);
+          for (const name of tags) {
+            const buckle = buckles.get(name);
+            const crossesPanel = panels.some(panel => panel.intersectsGeometry(buckle.geometry, identity));
+            assert.equal(buckle.visible, !crossesPanel, `${skirt} retains each buckle that clears the fitted waistband`);
+          }
+        } finally {
+          for (const panel of panels) panel.geometry.dispose();
+        }
       } finally {
         model.dispose();
       }
@@ -1986,6 +2000,55 @@ test('rebuilt Laced Bodice keeps its authored mesh and dyes five groups independ
     }
     tex.dispose();
     donorSkin.geometry.dispose();
+  } finally { await vite.close(); }
+});
+
+test('the lowered Gothic waist keeps skin behind the tucked bodice openings', async t => {
+  const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
+  try {
+    const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
+    const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { corsetModelUrl } = await vite.ssrLoadModule('/src/game/characters/wardrobe.ts');
+    const { wardrobeCoverageSurface } = await vite.ssrLoadModule('/src/game/characters/wardrobeCoverage.ts');
+    const cases = [
+      { set: 'gothic-01', skirt: 'gothic-skirt-04', probes: [[.038, 1.180, 1], [.037, 1.140, 1], [-.006, 1.093, -1]] },
+      { set: 'gothic-03', skirt: 'gothic-skirt-03', probes: [[.022, 1.127, -1]] },
+    ];
+    const read = async path => {
+      const bytes = await readFile(new URL(path.replace(/^\//, ''), publicDir));
+      if (isLfsPointer(bytes)) throw new Error('Git LFS pointer');
+      return loadGeometry(bytes);
+    };
+    const donor = (await read(garmentDir + 'vesper-body.glb')).getObjectByName('BODY_WARDROBE');
+    const full = wardrobeCoverageSurface(donor.geometry);
+    try {
+      for (const kind of ['garage', 'portrait']) {
+        const actor = await read(villagerDir + `villager-female.${kind}.glb`);
+        for (const { set, skirt, probes } of cases) {
+          const item = catalog.find(item => item.id === skirt);
+          const trial = { set, waist: 'tucked', shirt: 'none' };
+          const url = corsetModelUrl(trial, kind);
+          if (!url) return skipMissingAsset(t, 'Build the Laced Bodice and Ruffled corset LODs.');
+          const model = prepareVillager(actor, { fitted: true, garmentBody: donor, garments: [{ item, scene: await read(item.url) }],
+            corsetSource: { set, scene: await read(url) } });
+          try {
+            applyVillagerLook(model, characterLook({ ...DEFAULT_CHARACTER, wardrobeTrial: trial, garments: { skirt } }));
+            const skin = wardrobeCoverageSurface(model.root.getObjectByName('fitting-room-body').geometry);
+            try {
+              for (const [x, y, side] of probes) {
+                const ray = new Ray(new Vector3(x, y, side * .30), new Vector3(0, 0, -side));
+                const belly = full.raycastFirst(ray, DoubleSide);
+                assert(belly && skin.raycastFirst(ray, DoubleSide, belly.distance - .0001, belly.distance + .0001),
+                  `${kind} ${set} retains skin at the open ${side > 0 ? 'front' : 'back'} seam, y = ${y}`);
+              }
+            } finally { skin.geometry.dispose(); }
+          } finally { model.dispose(); }
+        }
+      }
+    } finally { full.geometry.dispose(); }
+  } catch (error) {
+    if (error.code === 'ENOENT' || error.message === 'Git LFS pointer') return skipMissingAsset(t, 'Materialize both wardrobe tiers.');
+    throw error;
   } finally { await vite.close(); }
 });
 
@@ -3061,6 +3124,7 @@ test('each Gothic skirt closes its waistband gap and clears the animated torso',
     if (triangle.every(isTorso)) torsoFaces.push(...triangle);
   }
   const waistMaterial = ['Fabric_1', 'Trim_1', 'Trim_1', 'Fabric_0', 'Fabric_0'];
+  const targetRims = [1.115, 1.120, 1.110, 1.100, 1.118];
   const identity = new Matrix4();
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
   try {
@@ -3101,8 +3165,9 @@ test('each Gothic skirt closes its waistband gap and clears the animated torso',
               if (lift > .010) roundedCorners++;
               continue;
             }
-            assert.equal(cloth.getY(i), original.getY(i), item.id);
-            if (original.getY(i) >= .965) continue;
+            if (original.getY(i) <= .78) assert.equal(cloth.getY(i), original.getY(i), `${item.id} preserves the hem`);
+            else assert(cloth.getY(i) <= original.getY(i) + 1e-6, `${item.id} lowers the upper skirt`);
+            if (original.getY(i) >= .90) continue;
             if (fittedHem && original.getY(i) < .84) {
               assert(Math.hypot(cloth.getX(i) - original.getX(i), cloth.getZ(i) - original.getZ(i)) <= .032001,
                 `${item.id} keeps the hem adjustment local`);
@@ -3118,13 +3183,49 @@ test('each Gothic skirt closes its waistband gap and clears the animated torso',
         if (fittedHem) assert(taperedTips > 10, `${item.id} draws in its widest lower tips`);
         const mesh = children.find(part => part.material.name.endsWith(waistMaterial[index]));
         const cloth = mesh.geometry.attributes.position;
-        const original = scene.getObjectByName(mesh.name).geometry.attributes.position;
+        const rim = Math.max(...children.map(part => {
+          const positions = part.geometry.attributes.position;
+          return Math.max(...Array.from({ length: positions.count }, (_, i) => positions.getY(i)));
+        }));
+        assert(Math.abs(rim - targetRims[index]) < .0001, `${item.id} sets the entire waistband to the natural waist (${rim})`);
         const front = Array.from({ length: cloth.count }, (_, i) => i)
           .filter(i => cloth.getZ(i) - .042 > Math.abs(cloth.getX(i)));
         const crest = Math.max(...front.map(i => cloth.getY(i)));
         const waist = front.filter(i => cloth.getY(i) > crest - .026);
         const median = list => list.sort((a, b) => a - b)[Math.floor(list.length / 2)];
-        assert(median(waist.map(i => original.getZ(i) - cloth.getZ(i))) > .009, `${item.id} brings the front band closer`);
+        const bindBody = new MeshBVH(garmentBody.geometry.clone());
+        const waistGaps = waist.map(i => {
+          const x = cloth.getX(i), y = cloth.getY(i), depth = cloth.getZ(i) - .025;
+          const ray = new Ray(new Vector3(0, y, .025), new Vector3(x, 0, depth).normalize());
+          const skin = bindBody.raycastFirst(ray, DoubleSide, 0, .21);
+          return skin ? Math.hypot(x, depth) - skin.distance : Infinity;
+        });
+        bindBody.geometry.dispose();
+        const waistEase = median(waistGaps);
+        assert(waistEase >= .005 && waistEase < .035, `${item.id} seats the lowered front band against the body (${waistEase} m)`);
+        if (item.revisionUrl) {
+          // Exercise the authored-geometry path even before an optional replacement is installed.
+          const revision = prepareVillager(garage, { fitted: true, garments: [{ item, scene, authoredFit: true }], garmentBody });
+          try {
+            let highest = -Infinity;
+            for (const mesh of revision.root.getObjectByName(`wardrobe-${item.id}`).children) {
+              const author = scene.getObjectByName(mesh.name).geometry.attributes;
+              const fitted = mesh.geometry.attributes;
+              assert.deepEqual(fitted.skinWeight.array, author.skinWeight.array, 'the revision supplies its own drape weights');
+              for (let i = 0; i < fitted.position.count; i++) {
+                highest = Math.max(highest, fitted.position.getY(i));
+                if (author.position.getY(i) > .78) continue;
+                for (const axis of [0, 1, 2]) {
+                  assert.equal(fitted.position.getComponent(i, axis), author.position.getComponent(i, axis),
+                    'the revision supplies its own hemline');
+                }
+              }
+            }
+            assert(Math.abs(highest - targetRims[index]) < .0001, `${item.id} also lowers the authored waistband`);
+          } finally {
+            revision.dispose();
+          }
+        }
         const mixer = new AnimationMixer(root);
         for (const [emote, phase] of [['001', .49], ['heart-overhead', .49], ['walk-casual', .39]]) {
           const [clip] = buildEmoteClips(root, [findGaragePreviewEmote(emote, false)]);

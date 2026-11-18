@@ -32,6 +32,22 @@ function triangleKeys(index) {
  for(let i=0;i<index.count;i+=3)triangles.push(`${index.getX(i)},${index.getX(i+1)},${index.getX(i+2)}`);
  return triangles;
 }
+function checkTuckedAttribute(source, target, attribute) {
+ const before=source.attributes[attribute],after=target.attributes[attribute];
+ assert.equal(after.count,before.count);
+ for(let i=0;i<before.count;i++){
+  const y=source.attributes.position.getY(i);
+  if(y>=1.0&&y<1.17){
+   if(attribute==='position'){
+    const drop=before.getY(i)-after.getY(i);
+    assert(drop>=-1e-6&&drop<=.011,'Sweetheart extends only its lower hem into the skirt');
+    assert(Math.hypot(before.getX(i)-after.getX(i),before.getZ(i)-after.getZ(i))<=.018,'the Sweetheart hem stays close to its authored shell');
+   }else if(before.getX(i)!==after.getX(i)||before.getY(i)!==after.getY(i)||before.getZ(i)!==after.getZ(i)){
+    assert(Math.abs(Math.hypot(after.getX(i),after.getY(i),after.getZ(i))-1)<.002,'the fitted hem keeps unit normals');
+   }
+  }else for(let c=0;c<before.itemSize;c++)assert.equal(after.getComponent(i,c),before.getComponent(i,c),`tuck preserves ${attribute} outside the waistband`);
+ }
+}
 function verifyVestShell(source, target, splitLining, body) {
  const original=source.geometry.attributes.position, fitted=target.geometry.attributes.position;
  const trim=source.material.name==='MAT_CORSET_04_00.001', fabric=source.material.name==='MAT_CORSET_04_05.001';
@@ -116,7 +132,17 @@ try{
    assert.deepEqual(fabric.map(part=>part.material.name),['MAT_GOTHIC_02_Fabric_0'],'Sweetheart v2 keeps the authored skirt rim');
    const source=scene.getObjectByName(fabric[0].name).geometry;
    assert.deepEqual(fabric[0].geometry.index.array,source.index.array,'Sweetheart v2 skirt keeps its authored triangles');
-   assert.deepEqual(fabric[0].geometry.attributes.position.array,source.attributes.position.array,'Sweetheart v2 skirt keeps its authored positions');
+   const tucked=fabric[0].geometry.attributes.position,before=source.attributes.position;
+   for(let i=0;i<tucked.count;i++){
+    assert.equal(tucked.getY(i),before.getY(i),'the authored Sweetheart rim keeps its height');
+    const room=Math.hypot(tucked.getX(i)-before.getX(i),tucked.getZ(i)-before.getZ(i));
+    assert(room<=(before.getY(i)>=1.0?.009:0),'Sweetheart adds only local waistband room');
+   }
+   for(const waist of ['over','tucked']){
+    applyVillagerLook(model,assetLook({...DEFAULT_CHARACTER,wardrobe:{set,shirt:'none',waist}}));
+    const expected=waist==='over'?before:tucked;
+    assert.deepEqual(fabric[0].geometry.attributes.position.array,expected.array,`Sweetheart restores its ${waist} waistband`);
+   }
   }else if(n===2){
    const skirt=model.root.getObjectByName('CLOTH_BOTTOM_SKIRT');
    const materials=[];
@@ -159,6 +185,10 @@ try{
      if(authoredSweetheart){
       assert.deepEqual(geometry.index.array,source.geometry.index.array,'Sweetheart keeps its authored shell and cutouts');
       for(const attribute of ['position','normal','uv','skinIndex','skinWeight']){
+       if(name==='CLOTH_CORSET_TUCKED'&&(attribute==='position'||attribute==='normal')){
+        checkTuckedAttribute(source.geometry,geometry,attribute);
+        continue;
+       }
        assert.deepEqual(geometry.getAttribute(attribute)?.array,source.geometry.getAttribute(attribute)?.array,
         `Sweetheart keeps authored ${attribute}`);
       }
@@ -200,6 +230,10 @@ try{
       }
       continue;
      }
+     if(n===5&&name==='CLOTH_CORSET_TUCKED'&&attribute==='normal'){
+      checkTuckedAttribute(source.geometry,target.geometry,attribute);
+      continue;
+     }
      if(n===5&&['position','skinIndex','skinWeight'].includes(attribute))continue;
      assert.deepEqual(target.geometry.getAttribute(attribute)?.array,source.geometry.getAttribute(attribute)?.array,`${set} ${lod} ${source.name} ${attribute} stays authored`);
     }
@@ -238,6 +272,11 @@ try{
       }
       for(const attr of ['position','skinIndex','skinWeight']){
        const before=source.geometry.attributes[attr],after=target.geometry.attributes[attr];
+       if(name==='CLOTH_CORSET_TUCKED'&&attr==='position'&&y>=1.0&&y<1.17){
+        const drop=y-after.getY(i);
+        assert(drop>=-1e-6&&drop<=.05&&Math.hypot(after.getX(i)-before.getX(i),after.getZ(i)-z)<.012,'High Collar fits only the lower hem under the skirt');
+        continue;
+       }
        for(let c=0;c<before.itemSize;c++)assert.equal(after.getComponent(i,c),before.getComponent(i,c),'High Collar refit stays local to the shoulders');
       }
      }
