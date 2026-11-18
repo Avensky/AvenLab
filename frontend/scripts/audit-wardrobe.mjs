@@ -39,7 +39,7 @@ const fastSuites = [
 const fullSuites = [
   ...fastSuites, 'tests/fitting-controls.test.mjs', 'tests/fitting-room-mirror.test.mjs',
   'tests/fitting-orbit-pointer.test.mjs', 'tests/character-portrait-cadence.test.mjs',
-  'tests/menu-preview-lifecycle.test.mjs',
+  'tests/menu-preview-lifecycle.test.mjs', 'tests/portrait-geometry.test.mjs',
 ];
 const realAssetTests = [
   'the authored Sweetheart', 'standalone wardrobe exports', 'standalone corsets and a selected skirt',
@@ -88,6 +88,7 @@ async function runFullAudit() {
     return false;
   }
   console.log(`Wardrobe audit found all ${required.length} required GLB inputs.`);
+  const characterLodsPass = runFrontendNode(['scripts/build-character-lods.mjs']);
   const piecesPass = runFrontendNode(['scripts/build-wardrobe-pieces.mjs']);
   if (!piecesPass) console.error('FAIL generated wardrobe pieces: scripts/build-wardrobe-pieces.mjs failed.');
   const { auditWardrobeAssets, auditCurrentCorsetMasks } = await import('./audit-wardrobe-assets.mjs');
@@ -95,7 +96,7 @@ async function runFullAudit() {
   const testsPass = runTests([`--test-name-pattern=${realAssetTests.join('|')}`, 'tests/wardrobe-garment-assets.test.mjs'], true);
   const topFitPass = runTests(['tests/top03-armhole.test.mjs', 'tests/top05-fit.test.mjs'], true);
   const masksPass = await auditCurrentCorsetMasks(frontend, publicRoot);
-  return piecesPass && assetsPass && testsPass && topFitPass && masksPass;
+  return characterLodsPass && piecesPass && assetsPass && testsPass && topFitPass && masksPass;
 }
 
 const [mode, ...extra] = process.argv.slice(2);

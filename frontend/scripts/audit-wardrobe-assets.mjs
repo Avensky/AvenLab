@@ -9,6 +9,7 @@ import { MeshoptDecoder } from 'meshoptimizer';
 import sharp from 'sharp';
 import { createServer } from 'vite';
 import { loadWardrobeGeometry } from './load-wardrobe-geometry.mjs';
+import { installedPackedVesperPortrait } from './character-model-paths.mts';
 import { auditCorsetSkinMask } from './verify-corset-coverage.mjs';
 
 export async function auditWardrobeAssets(publicRoot, variants) {
@@ -111,6 +112,7 @@ export async function auditCurrentCorsetMasks(frontend, publicRoot) {
     const villageFolder = '/models/characters/villagers/villager-female';
     const bundleFolder = '/models/characters/wardrobe';
     const fittedFolder = '/models/characters/female/wardrobe/corsets';
+    const villagePortrait = installedPackedVesperPortrait() ?? `${villageFolder}/villager-female.portrait.glb`;
     const donor = (await sceneFor(`${bundleFolder}/gothic-02.mobile.glb`)).getObjectByName('BODY_WARDROBE');
     assert(donor?.isSkinnedMesh, 'Sweetheart Mobile provides the complete fitting body');
     const scenarios = [];
@@ -147,11 +149,11 @@ export async function auditCurrentCorsetMasks(frontend, publicRoot) {
           const look = characterLook({ ...DEFAULT_CHARACTER, ...outfit, garments: equipped,
             ...(bra === false && { bra: false }),
             ...(bra && { bra: true, appearance: { ...appearance, bra_style: bra } }) });
-          const expectedBase = matched ? `${bundleFolder}/${set}.${tier}.glb` : `${villageFolder}/villager-female.portrait.glb`;
+          const expectedBase = matched ? `${bundleFolder}/${set}.${tier}.glb` : villagePortrait;
           const baseUrl = villagerModelUrl(look, kind, 'portrait');
           assert.equal(baseUrl, expectedBase, 'correct actor and skirt URL');
           // Exercise both Village actor meshes for the independently fitted underwear.
-          const actor = await sceneFor(set ? baseUrl : `${villageFolder}/villager-female.${kind}.glb`);
+          const actor = await sceneFor(!set && kind === 'garage' ? `${villageFolder}/villager-female.garage.glb` : baseUrl);
           const urls = corsetModelUrls(corsetRenderChoice(look), kind);
           assert.equal(urls[0], asset && `${fittedFolder}/${asset}.${tier}.glb`, 'correct primary corset asset');
           if (asset === 'gothic-high-collar') assert.equal(urls[1], `${fittedFolder}/${asset}.${alternate}.glb`, 'alternate High Collar tier');

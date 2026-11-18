@@ -10,10 +10,16 @@ Male, Female, or Nonbinary independently of the equipped model. The server saves
 edits automatically, and the editor keeps pending changes through a reconnect to
 the same profile.
 
-Vesper's garage normally uses `villager-female.portrait.glb`, which keeps the
-original geometry and rig with smaller textures. The desktop preview can fall
-back to `villager-female.glb`. Garment detail is selected independently of the
-base character. The selected car loads over a simple stage first. Once the car
+Heroes, the fitting room, and the portrait worker use a losslessly packed
+copy of Vesper's bundled `villager-female.portrait.glb`. The character LOD
+build generates it from the installed asset and includes the source hash in
+its URL. It compresses vertex and index buffers, keeping triangle order,
+skinning inputs, and all 19 embedded WebP images. The packed model is 3.88 MB
+and the source is 5.50 MB. Actual transfer size depends on HTTP compression.
+The authored portrait is the fallback if the packed model is unavailable.
+
+Garment detail is selected independently of the base character. The selected
+car loads over a simple stage first. Once the car
 is on screen, the garage shell and driver can load. A circular reflective
 turntable accentuates the vehicle. The platform follows the display rotation,
 and Reduced Motion stops automatic rotation. If the character file is missing or unreadable,

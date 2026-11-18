@@ -33,3 +33,4 @@ dist-ssr
 
 # Generated from installed full-detail vehicle assets before dev/build.
 /public/models/heroes-generated/
+/public/models/characters/portraits-generated/
