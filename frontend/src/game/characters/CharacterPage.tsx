@@ -225,6 +225,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
 
   function hasFittingPreview(next: CharacterChoice) {
     return loadedOutfit || next.garments || next.wardrobeTrial || next.wardrobeEase || next.removedClothing?.length || next.bra !== undefined
+      || (next.appearance?.briefs_style ?? "briefs") !== (choice.appearance?.briefs_style ?? "briefs")
       || UNDERWEAR_PIECES.some(piece => {
         const key = clothingColorKey(next, piece);
         const preview = next.appearance?.item_colors?.[key];
@@ -409,7 +410,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
   const cameraSelect = insideCar
     ? <FittingCameraSelect views={COCKPIT_CAMERAS} view={camera === "Whole car" ? "Whole car" : "Full body"}
       viewLabels={{ "Full body": "Driver", "Whole car": "Whole vehicle" }} onViewChange={changeCamera} />
-    : <FittingCameraSelect choice={fitting ? undefined : previewChoice} views={cameraViews} vertical={fitting}
+    : <FittingCameraSelect choice={previewChoice} views={cameraViews}
       view={!vehiclePreview && camera === "Whole car" ? "Full body" : camera} onViewChange={changeCamera} />;
   const setZoom = (value: number) => useCharacterPreviewStore.setState({ zoom: value });
   const previewZoom = !insideCar && <div className="dressing-preview-zoom" data-controller-row>
@@ -465,7 +466,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
         aria-label={`Preview of ${character.name}`} />
       {fitting && <DressingRoom choice={previewChoice} onChange={editPreviewAppearance} onEquip={equipOutfit} onTryOn={tryOn} onLoad={loadOutfit}
         onEndPreview={loadedOutfit ? endOutfitPreview : undefined} cameraTools={cameraTools}
-        cameraViews={cameraSelect} onColors={saveClothingColors} />}
+        onColors={saveClothingColors} />}
       {tab === "identity" && <section className="character-controls menu-panel-frame character-identity-style" aria-label="Identity appearance">
         <h2>Features</h2>
         {IDENTITY_STYLE.map(([section, fields]) => <fieldset key={section}>

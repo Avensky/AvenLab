@@ -1,4 +1,5 @@
 import type { PieceColors } from "./clothingPieces";
+import type { BriefsStyle } from "./wardrobeUnderwear";
 import type { AnimationFit, CharacterPersonality } from "./characterPersonality";
 import catalog from "../../../../packages/wardrobe-catalog/characters.json";
 import appearanceOptions from "../../../../packages/wardrobe-catalog/character-appearance.json";
@@ -14,6 +15,7 @@ export type CharacterAppearance = Record<Exclude<CharacterStyleField, FaceField>
   & Partial<Record<FaceField, string>> & {
     accent?: string; item_colors?: Record<string, PieceColors>; personality?: CharacterPersonality; animation_fit?: AnimationFit;
     bra_style?: "push-up";
+    briefs_style?: BriefsStyle;
   };
 
 export const OUTFIT_THEMES = [
@@ -79,17 +81,21 @@ export function characterLook(choice: CharacterChoice | null | undefined) {
   const wardrobe = character.id === VILLAGER_ID ? resolveWardrobe(choice?.wardrobe) : undefined;
   const trials = character.id === VILLAGER_ID ? visibleWardrobeGarments(choice) : undefined;
   const outfitGarment = character.id === VILLAGER_ID ? getWardrobeGarment(outfit.id) : undefined;
-  const removed = removedWardrobeLayers(choice);
+  const savedRemovals = removedWardrobeLayers(choice);
+  // The actor hides its bundled bottom layers in both cases. A separately
+  // re-equipped petticoat arrives via the visible garments above.
+  const removed = savedRemovals.includes("outer-skirt")
+    ? [...new Set(savedRemovals.map(slot => slot === "outer-skirt" ? "skirt" : slot))] : savedRemovals;
   const usesOutfitGarment = outfitGarment?.outfit && !wardrobe && !choice?.wardrobeTrial
-    && !trials?.top && !trials?.skirt && !trials?.dress && wardrobeGarmentModelUrl(outfitGarment, "garage");
-  const wearsOutfitGarment = usesOutfitGarment && !removed.includes("dress");
+    && !choice?.garments?.top && !choice?.garments?.skirt && !choice?.garments?.dress && wardrobeGarmentModelUrl(outfitGarment, "garage");
+  const wearsOutfitGarment = usesOutfitGarment && !removed.some(slot => slot === "dress" || slot === "top" || slot === "skirt");
   const outfitRemovals: readonly WardrobeRemoval[] = !usesOutfitGarment ? NO_OUTFIT_REMOVALS
     : outfitGarment.outfit?.barefoot ? SLEEPWEAR_REMOVALS : OUTFIT_REMOVALS;
   const removedClothing = !outfitRemovals.length ? removed : !removed.length ? outfitRemovals
     : [...new Set([...removed, ...outfitRemovals])];
   // Older saved try-ons could combine a detached corset with an explicit top.
   // The explicit selection takes that slot, while the bundled skirt stays in use.
-  const showCorset = character.id === VILLAGER_ID && !hasSeparateWardrobeTop(choice) && !removedClothing.includes("corset");
+  const showCorset = character.id === VILLAGER_ID && !hasSeparateWardrobeTop(choice) && !removedClothing.includes("corset") && !removedClothing.includes("top");
   return {
     character, outfit, appearance, female, removedClothing,
     bra: character.id === VILLAGER_ID ? choice?.bra : undefined,

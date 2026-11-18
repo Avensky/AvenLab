@@ -25,6 +25,24 @@ test('manual fit checks stay specific to the player, waist fit, piece and pose; 
   assert(JSON.parse(key('p1',shortSkirt,'skirt')).includes('short-skirt-drape-2'));
   assert(!JSON.parse(key('p1',{...shortSkirt,removedClothing:['skirt']},'skirt')).includes('short-skirt-drape-2'));
   assert(!JSON.parse(trialKey).includes('short-skirt-drape-2'));
+  const revisedWaist = choice => JSON.parse(key('p1', choice, 'skirt')).includes('gothic-skirt-waist-2');
+  assert(revisedWaist(c), 'the complete outfit uses its revised skirt');
+  assert(revisedWaist(trial), 'a separate Gothic skirt uses its revised fit');
+  assert(!revisedWaist(shortSkirt), 'a short skirt replaces the Gothic skirt');
+  assert(!revisedWaist({ ...trial, removedClothing: ['outer-skirt'] }));
+  assert(!revisedWaist({ ...c, garments: { dress: 'dress-01' } }));
+  assert(!revisedWaist({ ...c, wardrobe: undefined, wardrobeTrial: c.wardrobe }), 'a separate corset leaves the stock skirt in place');
+  const tuckedShorts = choice => JSON.parse(key('p1', choice, 'skirt')).includes('short-skirt-tuck-1');
+  assert(tuckedShorts(shortSkirt));
+  assert(!tuckedShorts({ ...shortSkirt, wardrobe: { ...c.wardrobe, waist: 'over' } }));
+  assert(!tuckedShorts({ ...shortSkirt, removedClothing: ['corset'] }));
+  const boxer = { ...c, appearance: { briefs_style: 'boxer-briefs' } };
+  for (const subject of ['briefs', 'underwear-briefs:briefs']) {
+    assert(JSON.parse(key('p1', c, subject)).includes('v-cut-briefs-1'));
+    assert(JSON.parse(key('p1', boxer, subject)).includes('boxer-briefs-1'));
+  }
+  assert.equal(key('p1', boxer, 'gothic-05:corset'), key('p1', c, 'gothic-05:corset'));
+  assert(JSON.parse(key('p1', { ...c, bra: true, appearance: { bra_style: 'push-up' } }, 'underwear-bra:bra')).includes('push-up-cups-2'));
   for(const b of [key('p2',c,'corset','013'),key('p1',c,'skirt','013'),key('p1',c,'corset','standing'),key('p1',{...c,wardrobe:{...c.wardrobe,waist:'over'}},'corset','013')])assert.equal(status(store.getState().reviews[b]),'untested');
   store.getState().note(a,'Strap clipping');assert.equal(status(store.getState().reviews[a]),'issue');
   await store.persist.rehydrate();assert.equal(store.getState().reviews[a].issue,'Strap clipping');

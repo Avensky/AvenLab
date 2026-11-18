@@ -29,10 +29,11 @@ export type PreviewCameraSelectProps<View extends string> = {
   label?: string;
   viewLabels?: Partial<Record<View, string>>;
   vertical?: boolean;
+  allowReselect?: boolean;
 };
 
 export function PreviewCameraSelect<View extends string>({
-  views, view, onViewChange, label = "Preview camera", viewLabels, vertical = false, showDriverIcon = false, children,
+  views, view, onViewChange, label = "Preview camera", viewLabels, vertical = false, allowReselect = false, showDriverIcon = false, children,
 }: PreviewCameraSelectProps<View> & { showDriverIcon?: boolean; children?: ReactNode }) {
   return <div className="fitting-camera-select" role="group" aria-label={label}>
     <div className="fitting-camera-choices" role="group" aria-label="Views" data-controller-row data-controller-columns={vertical ? 1 : 7}>
@@ -42,7 +43,7 @@ export function PreviewCameraSelect<View extends string>({
           : item === "Full body" && showDriverIcon ? <MenuIcon name="cockpit" />
           : <PreviewCameraChoiceIcon path={VIEW_ICONS[item] ?? FRAME} />;
         return <PreviewToolButton key={item} label={name} data-camera-choice={item}
-          aria-pressed={view === item} onClick={() => { if (view !== item) onViewChange(item); }}>{icon}</PreviewToolButton>;
+          aria-pressed={view === item} onClick={() => { if (allowReselect || view !== item) onViewChange(item); }}>{icon}</PreviewToolButton>;
       })}
     </div>
     {children}

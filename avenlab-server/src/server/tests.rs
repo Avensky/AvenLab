@@ -659,8 +659,8 @@ async fn character_outfits_save_validated_fitting_room_combinations_to_the_ownin
         "wardrobe": {"set": "gothic-05", "waist": "tucked", "shirt": "none"},
         "wardrobeTrial": {"set": "gothic-04", "waist": "over", "shirt": "none"},
         "wardrobeEase": 2,
-        "garments": {"top": "top-02", "skirt": "gothic-skirt-04", "bow": "bowtie-03", "socks": "socks-01"},
-        "removedClothing": ["shoes", "bonnet-bow"],
+        "garments": {"top": "top-02", "skirt": "gothic-skirt-04", "underskirt": "village-petticoat", "bow": "bowtie-03", "socks": "socks-01"},
+        "removedClothing": ["shoes", "bonnet-bow", "outer-skirt"],
         "appearance": {"hair": "cropped", "hair_color": "copper", "skin": "warm", "headwear": "hat", "color": "original",
             "item_colors": {"top-02:shirt": {"color": "#123456"}, "gothic-skirt-04:skirt": {"accent": "#abcdef"},
                 "gothic-03:corset": {"panel": "#123456", "laces": "#abcdef"},
@@ -728,12 +728,16 @@ async fn character_outfits_save_validated_fitting_room_combinations_to_the_ownin
         "appearance": {
             "hair": "natural", "hair_color": "original", "skin": "original",
             "headwear": "hat", "color": "original", "bra_style": "push-up",
-            "item_colors": {"underwear:bra": {"color": "#224488"}},
+            "briefs_style": "boxer-briefs",
+            "item_colors": {"underwear:bra": {"color": "#224488"}, "underwear:briefs": {"accent": "#bbccdd"}},
         },
     });
     let mut invalid_style = push_up.clone();
     invalid_style["appearance"]["bra_style"] = json!("unknown");
     assert!(s.handle(&player, save("Push-up", &invalid_style)).await.is_err());
+    let mut invalid_briefs = push_up.clone();
+    invalid_briefs["appearance"]["briefs_style"] = json!("unknown");
+    assert!(s.handle(&player, save("Push-up", &invalid_briefs)).await.is_err());
     let with_bra = s.handle(&player, save("Push-up", &push_up)).await.unwrap();
     assert_eq!(with_bra["character_outfits"]["Push-up"], push_up);
     let remove = json!({"action": "character_outfit_delete", "name": "Gothic layers"});

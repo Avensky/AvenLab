@@ -10,14 +10,15 @@ import { cockpitWardrobe } from "./cockpitWardrobe";
 import { clothingColors, clothingPieceFor, type ClothingPiece } from "./clothingPieces";
 import { corsetModelUrl, corsetRenderChoice, prepareWardrobe, wardrobeModelUrl } from "./wardrobe";
 import { prepareWardrobeLining } from "./wardrobeLining";
-import { prepareWardrobeSkirt } from "./wardrobeSkirt";
+import { fitBundledGothicWaist, prepareWardrobeSkirt } from "./wardrobeSkirt";
 import { prepareVillageShoes } from "./wardrobeShoes";
+import { prepareNeckBows } from "./neckBowFit";
 import { prepareVillageBonnet } from "./villageBonnet";
 import { prepareWardrobeGarments, type WardrobeGarmentSource } from "./wardrobeGarmentFit";
 import { prepareStandaloneCorset, type StandaloneCorsetSource } from "./standaloneCorset";
 import { smoothUnderarmSkin } from "./villagerUnderarm";
 import { applyCorsetDye } from "./corsetDye";
-import { getWardrobeGarment, wardrobeGarmentModelUrl, type WardrobeRemoval } from "./wardrobeGarments";
+import { getWardrobeGarment, wardrobeGarmentModelUrl, wardrobeRemovalPieces, wardrobeReplacedPieces, type WardrobeRemoval } from "./wardrobeGarments";
 import { getWardrobeActorBody, getWardrobeBodyDonor, isWardrobeBodyDonor } from "./wardrobeBody";
 
 export function villagerModelUrl(look: CharacterLook, kind: "garage" | "portrait" = "garage", villageKind = kind) {
@@ -75,6 +76,11 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
     ?? (isWardrobeBodyDonor(garmentBody, actorBody.skeleton) ? garmentBody : undefined));
   const detachedCorset = female && corsetSource && actorBody
     ? prepareStandaloneCorset(corsetSource, actorBody.skeleton, fullBody) : undefined;
+  const replaced = new Set<ClothingPiece>([
+    ...garments.flatMap(({ item }) => wardrobeReplacedPieces(item)), ...removedClothing.flatMap(slot => wardrobeRemovalPieces[slot]),
+  ]);
+  const bundledWaist = fullBody && !replaced.has("skirt")
+    ? fitBundledGothicWaist(root, fullBody.geometry, detachedCorset?.group ?? (!replaced.has("corset") ? root : undefined)) : undefined;
   const materials = new Map<MeshStandardMaterial, MeshStandardMaterial>();
   const pieceMaterials = new Map<ClothingPiece, Map<MeshStandardMaterial, MeshStandardMaterial>>();
   root.userData.fittedClothing = fitted;
@@ -134,6 +140,7 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
       });
     }
   }
+  const neckBows = female ? prepareNeckBows(root, fullBody?.geometry ?? actorBody?.geometry) : undefined;
   const applyFaceColors = prepareVillagerFaceColors(materials.values(), female);
   const faceAccessories = prepareVillagerFaceAccessories(root, female, wetEyes);
   for (const side of ["l", "r"] as const) {
@@ -176,16 +183,18 @@ export function prepareVillager(scene: Object3D, { female = true, animateFace = 
   if (grounded) root.position.y = -new Box3().setFromObject(grounded, true).min.y;
   return {
     root, materials, pieceMaterials, crop, scalpCap, applyFaceColors, faceAccessories, wardrobe, trialGarments, detachedCorset,
-    hat, bonnet,
+    hat, bonnet, neckBows, bundledWaist,
     longHair: root.getObjectByName("HAIR_HAIR20"),
     bow: root.getObjectByName("ACC_BOW"),
     dispose() {
+      neckBows?.dispose();
       stockSkin.forEach(geometry => geometry.dispose());
       trialGarments?.dispose();
-      detachedCorset?.dispose();
       wardrobe.dispose();
-      disposeLining?.();
+      bundledWaist?.dispose();
+      detachedCorset?.dispose();
       disposeSkirt?.();
+      disposeLining?.();
       disposeShoes?.();
       bonnet?.dispose();
       faceGeometry.forEach(geometry => geometry.dispose());
@@ -205,6 +214,7 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
   const savedWardrobe = look.wardrobe && model.detachedCorset && look.corset
     ? { ...look.wardrobe, waist: look.corset.waist } : look.wardrobe;
   model.wardrobe.apply(savedWardrobe, model.detachedCorset ? 0 : look.overEase);
+  model.bundledWaist?.apply((look.corset?.waist ?? savedWardrobe?.waist ?? "tucked") === "tucked");
   model.applyFaceColors(look);
   model.faceAccessories.setGlasses(look.appearance.glasses);
   model.faceAccessories.setColors(clothingColors(look, "glasses"));
@@ -274,5 +284,6 @@ export function applyVillagerLook(model: ReturnType<typeof prepareVillager>, loo
   }
   model.scalpCap?.material.color.set(look.hair);
   model.trialGarments?.apply(look);
+  model.neckBows?.apply();
   if (model.hat?.visible) model.bonnet?.setBowVisible(!look.removedClothing.includes("bonnet-bow"));
 }

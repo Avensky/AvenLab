@@ -21,17 +21,45 @@ function cupOffset(x: number, y: number, z: number, target: Vector3) {
   return target.set(inward, 0, forward);
 }
 
+// A zero tangent gives the normal-map shader an undefined frame. Even a few
+// non-finite HDR pixels spread across the entire desktop view in the bloom pass.
+function repairCollarTangents(geometry: BufferGeometry, missing: number[]) {
+  const authored = geometry.getAttribute("tangent");
+  const normals = geometry.getAttribute("normal");
+  if (!authored || !normals || !geometry.index || !geometry.getAttribute("uv")) return;
+  const direction = new Vector3(), normal = new Vector3();
+  geometry.deleteAttribute("tangent");
+  geometry.computeTangents();
+  const recovered = geometry.getAttribute("tangent");
+  for (const i of missing) {
+    direction.fromBufferAttribute(recovered, i);
+    if (direction.lengthSq() < .000001) {
+      // Seam and binding triangles with collapsed UVs have no texture axis.
+      // Use a stable orthogonal frame on those vertices to preserve the fabric normal.
+      normal.fromBufferAttribute(normals, i);
+      if (Math.abs(normal.y) < .9) direction.set(0, 1, 0);
+      else direction.set(1, 0, 0);
+      direction.cross(normal).normalize();
+    }
+    authored.setXYZW(i, direction.x, direction.y, direction.z, recovered.getW(i) < 0 ? -1 : 1);
+  }
+  geometry.setAttribute("tangent", authored);
+}
+
 /** Draw the two inner cup edges together in the authored High Collar's bind space. */
 export function fitHighCollarBust(source: BufferGeometry) {
   const cached = fittedCups.get(source);
   if (cached) return cached;
   const positions = source.getAttribute("position");
+  const tangents = source.getAttribute("tangent");
+  const missingTangents: number[] = [];
   const shift = new Vector3(), sample = new Vector3(), direction = new Vector3();
   const dx = new Vector3(), dy = new Vector3(), dz = new Vector3();
   const deformation = new Matrix3(), normalMatrix = new Matrix3();
   const step = .0001;
   let fitted: BufferGeometry | undefined;
   for (let i = 0; i < positions.count; i++) {
+    if (tangents && direction.fromBufferAttribute(tangents, i).lengthSq() < .000001) missingTangents.push(i);
     const x = positions.getX(i), y = positions.getY(i), z = positions.getZ(i);
     cupOffset(x, y, z, shift);
     if (!shift.x) continue;
@@ -54,6 +82,11 @@ export function fitHighCollarBust(source: BufferGeometry) {
       direction.fromBufferAttribute(tangent, i).applyMatrix3(deformation).normalize();
       tangent.setXYZ(i, direction.x, direction.y, direction.z);
     }
+  }
+  // Some parts lie outside the cup adjustment but share the defective export.
+  if (missingTangents.length) {
+    fitted ??= source.clone();
+    repairCollarTangents(fitted, missingTangents);
   }
   if (fitted) {
     fitted.computeBoundingBox();

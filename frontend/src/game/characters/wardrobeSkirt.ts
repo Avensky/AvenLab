@@ -1,4 +1,7 @@
 import { DoubleSide, MathUtils, MeshStandardMaterial, SkinnedMesh, type BufferGeometry, type Object3D, type Vector3 } from "three";
+import { prepareSkirtCorsetFit } from "./gothicCorsetTuck";
+import { prepareGothicWaistline } from "./gothicSkirtFit";
+import { wardrobeCoverageSurface } from "./wardrobeCoverage";
 import { hasAuthoredSweetheartFit } from "./sweetheartCorset";
 import { fitWardrobeSurface } from "./wardrobeSurface";
 
@@ -188,5 +191,48 @@ export function prepareWardrobeSkirt(root: Object3D) {
     geometry.dispose();
     disposeTrim?.();
     if (disposeWaist) disposeWaist();
+  };
+}
+
+/** Matched outfits have their own skirt meshes and, on the Ruffled set, a taller Over-only trim. */
+export function fitBundledGothicWaist(root: Object3D, body: BufferGeometry, corset?: Object3D) {
+  const skirt = root.getObjectByName("CLOTH_BOTTOM_SKIRT");
+  if (skirt?.userData.wardrobeRole !== "bottom") return;
+  const meshes = skirt.getObjectsByProperty("isSkinnedMesh", true) as SkinnedMesh[];
+  const materials = meshes.flatMap(mesh => Array.isArray(mesh.material) ? mesh.material : [mesh.material]);
+  const style = materials.map(material => /^MAT_GOTHIC_(0[1-5])_/.exec(material.name)?.[1]).find(Boolean);
+  if (!style) return;
+  const bodySurface = wardrobeCoverageSurface(body, [.84, 1.25]);
+  if (!bodySurface) return;
+  const panels = meshes.flatMap(mesh => {
+    const surface = wardrobeCoverageSurface(mesh.geometry);
+    const role: string = mesh.userData.wardrobeRole ?? "";
+    return surface ? [{ mesh, surface, overOnly: role.endsWith("-over"), tuckedOnly: role.endsWith("-tucked") }] : [];
+  });
+  const tucked = panels.filter(panel => !panel.overOnly);
+  const id = `gothic-skirt-${style}`;
+  const fitWaist = prepareGothicWaistline(bodySurface, tucked.map(panel => panel.surface), id);
+  const fitOver = panels.some(panel => panel.overOnly) ? prepareGothicWaistline(bodySurface,
+    panels.filter(panel => !panel.tuckedOnly).map(panel => panel.surface), id) : fitWaist;
+  const changed = panels.flatMap(({ mesh, surface, overOnly }) => {
+    const source = mesh.geometry;
+    const fitted = (overOnly ? fitOver : fitWaist)(source);
+    surface.geometry.dispose();
+    if (!fitted) return [];
+    mesh.geometry = fitted;
+    return [{ mesh, source, fitted }];
+  });
+  bodySurface.geometry.dispose();
+  const tuckedPanels = tucked.map(panel => panel.mesh);
+  const tuck = corset && prepareSkirtCorsetFit(corset, tuckedPanels, tuckedPanels, body, true);
+  return {
+    apply(active: boolean) { tuck?.apply(active); },
+    dispose() {
+      tuck?.dispose();
+      for (const { mesh, source, fitted } of changed) {
+        mesh.geometry = source;
+        fitted.dispose();
+      }
+    },
   };
 }

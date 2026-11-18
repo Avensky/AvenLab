@@ -32,10 +32,11 @@ test('saved outfits preserve a tuned look through a confirmed save, reconnect, a
       ...equipped,
       wardrobeTrial: { set: 'gothic-04', waist: 'over', shirt: 'none' },
       wardrobeEase: 2,
-      garments: { skirt: 'gothic-skirt-04', bow: 'bowtie-01', socks: 'socks-01' },
-      removedClothing: ['bow'],
+      garments: { skirt: 'gothic-skirt-04', underskirt: 'village-petticoat', bow: 'bowtie-01', socks: 'socks-01' },
+      removedClothing: ['bow', 'outer-skirt'],
       appearance: {
         hair: 'cropped', hair_color: 'original', skin: 'original', headwear: 'hat', color: 'original',
+        briefs_style: 'boxer-briefs',
         item_colors: { 'gothic-04:corset': { color: '#473652', accent: '#c77baa' } },
       },
     };
@@ -93,7 +94,8 @@ test('saved outfits preserve a tuned look through a confirmed save, reconnect, a
     await act(async () => client.receiveSocialResult({ request_id: sent[0].request_id, ok: true, data: confirmed }));
     await act(async () => receive(oldProgression));
     const harborPractice = document.querySelector('[aria-label="Try on Harbor practice"]').textContent;
-    assert.match(harborPractice, /Underbust.*Gothic Skirt 04.*Wide over/);
+    assert.match(harborPractice, /Underbust.*Village petticoat.*Wide over/);
+    assert.doesNotMatch(harborPractice, /Gothic Skirt/, 'the saved outer skirt stays off');
     assert.doesNotMatch(harborPractice, /Bow tie/);
     assert.deepEqual(useSocialStore.getState().view.profile.progression.character, equipped);
 

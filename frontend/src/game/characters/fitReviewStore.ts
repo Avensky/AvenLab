@@ -1,8 +1,8 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { CharacterChoice } from "./characterCatalog";
-import { hasTuckedUnderbust, resolveCharacterWardrobe, UNDERBUST_WARDROBE_SET, wardrobeOverEase } from "./wardrobe";
-import { removedWardrobeLayers } from "./wardrobeGarments";
+import { hasTuckedUnderbust, resolveCharacterWardrobe, resolveWardrobe, UNDERBUST_WARDROBE_SET, wardrobeOverEase } from "./wardrobe";
+import { removedWardrobeLayers, visibleWardrobeGarments } from "./wardrobeGarments";
 export const FIT_REVISION = "wardrobe-10";
 const setFitRevisions: Record<string, string> = { "gothic-01": "wardrobe-19", "gothic-02": "wardrobe-15", "gothic-04": "wardrobe-16", "gothic-05": "wardrobe-15" };
 export const FIT_CHECKS = ["front", "back", "movement"] as const;
@@ -16,6 +16,12 @@ export function fitReviewKey(owner: string | undefined, choice: CharacterChoice,
   : w?.set === UNDERBUST_WARDROBE_SET && (w.waist === "over" || hasTuckedUnderbust()) ? "wardrobe-19"
   : w?.set === "gothic-03" && w.waist === "tucked" ? FIT_REVISION : (w && setFitRevisions[w.set]) ?? "wardrobe-6";
  const garments = Object.entries(choice.garments ?? {}).sort(([a], [b]) => a.localeCompare(b));
+ const visible = visibleWardrobeGarments(choice);
+ const gothicSkirt = !removed.includes("skirt") && !removed.includes("outer-skirt") && !visible?.dress &&
+  (visible?.skirt ? /^gothic-skirt-0[1-5]$/.test(visible.skirt) : Boolean(resolveWardrobe(choice.wardrobe)));
+ const shortSkirtTuck = /^skirt-0[1-4]$/.test(visible?.skirt ?? "") && w?.waist === "tucked"
+  && !removed.includes("top") && !removed.includes("corset");
+ const reviewedPiece = piece.slice(piece.lastIndexOf(":") + 1);
  const base = choice.wardrobeTrial ? ["separates", choice.wardrobe?.set ?? choice.outfit, choice.wardrobe?.waist ?? "original"] : [];
  const ease = wardrobeOverEase(choice);
  return JSON.stringify([revision, owner ?? "local", choice.id, w?.set ?? choice.outfit, w?.shirt ?? "original", w?.waist ?? "original",
@@ -23,6 +29,10 @@ export function fitReviewKey(owner: string | undefined, choice: CharacterChoice,
   ...(garments.length ? [garments] : []), ...(ease ? [ease] : []), ...(removed.length ? [{ removed }] : []),
   ...(w?.cut ? [{ cut: w.cut }] : []), ...(choice.bra !== undefined ? [{ bra: choice.bra }] : []),
   ...(choice.appearance?.bra_style === "push-up" && bra ? [{ braStyle: "push-up" }] : []),
+  ...(reviewedPiece === "briefs" ? [choice.appearance?.briefs_style === "boxer-briefs" ? "boxer-briefs-1" : "v-cut-briefs-1"] : []),
+  ...(reviewedPiece === "bra" && choice.appearance?.bra_style === "push-up" ? ["push-up-cups-2"] : []),
+  ...(gothicSkirt ? ["gothic-skirt-waist-2"] : []),
+  ...(shortSkirtTuck ? ["short-skirt-tuck-1"] : []),
   ...(/^skirt-0[1-4]$/.test(choice.garments?.skirt ?? "") && !removed.includes("skirt") ? ["short-skirt-drape-2"] : []),
   ...(choice.garments?.top === "top-02" && !removed.includes("top") ? ["top-02-armhole-cut-1"] : []),
   ...((choice.garments?.top === "top-03" || choice.garments?.top === "top-04") && !removed.includes("top") ? [choice.garments.top === "top-04" ? "top-04-5" : "top-03-2"] : [])]);

@@ -587,6 +587,10 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(drafts.at(-1).id, 'mara-vega');
     await click('#character-editor-tab-appearance');
     await browseWardrobe('underwear');
+    await click('[data-wardrobe-item=underwear-briefs]');
+    await click('[aria-label="Briefs style"] button:last-child');
+    assert.equal(drafts.at(-1).appearance.briefs_style, 'boxer-briefs');
+    assert.equal(drafts.at(-1).removedClothing, undefined, 'choosing underwear preserves the outer layers');
     await click('[data-wardrobe-remove=bottom]');
     assert.deepEqual(drafts.at(-1).removedClothing, ['skirt']);
     await click('.dressing-details [aria-label="Open clothing colors"]');
@@ -595,6 +599,7 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('[aria-label="Clear Underwear"]');
     assert.equal(drafts.at(-1).removedClothing, undefined);
     assert.equal(drafts.at(-1).appearance.item_colors['underwear:briefs'].accent, '#ff2d95', 'clearing the preview leaves its separate color available to save');
+    assert.equal(drafts.at(-1).appearance.briefs_style, 'boxer-briefs', 'restoring the skirt keeps the chosen cut');
     await browseWardrobe('bottoms');
     await click('[data-wardrobe-item=gothic-skirt-04]');
     await browseWardrobe('tops');
