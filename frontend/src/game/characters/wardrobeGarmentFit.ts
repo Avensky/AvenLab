@@ -12,6 +12,7 @@ import { wardrobeGarmentReplacements, wardrobeRemovalPieces, wardrobeReplacedPie
 import { prepareWardrobeTopFit } from "./wardrobeTopFit";
 import { WARDROBE_WAIST_OPTIONS } from "./wardrobe";
 import { prepareVillageBonnet } from "./villageBonnet";
+import { smoothUnderarmWeights } from "./villagerUnderarm";
 import { fitVillageBraidOverCollar } from "./villageBraid";
 import { prepareVillageShoes } from "./wardrobeShoes";
 import { prepareWardrobeCoverage, wardrobeCoverageSurface as bodySurface } from "./wardrobeCoverage";
@@ -615,7 +616,9 @@ export function prepareWardrobeGarments(
   if (body && full) {
     body.name = "fitting-room-body";
     body.material = original.material;
-    body.geometry = full.clone().setIndex(new BufferAttribute(new Uint32Array(full.getIndex()!.count), 1));
+    body.geometry = full.clone();
+    if (group.getObjectByName("wardrobe-top-04")) smoothUnderarmWeights(body.geometry, full);
+    body.geometry.setIndex(new BufferAttribute(new Uint32Array(full.getIndex()!.count), 1));
     group.add(body);
   }
   // Actor-local masks fit all selectable waist and bra combinations. Shared
