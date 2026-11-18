@@ -977,7 +977,7 @@ test('materialized loose garments can share the live female skeleton and skin we
   }
 });
 
-function verifyTopShoulderContact(top, body) {
+function verifyTopShoulderOpening(top, body) {
   const positions = new Float32Array(top.geometry.attributes.position.count * 3);
   const point = new Vector3();
   for (let i = 0; i < positions.length / 3; i++) {
@@ -990,8 +990,8 @@ function verifyTopShoulderContact(top, body) {
     const normal = b.clone().sub(a).cross(c.clone().sub(a)).normalize();
     const center = a.add(b).add(c).multiplyScalar(1 / 3).lerp(b, .62);
     const ray = new Ray(center.addScaledVector(normal, .032), normal.negate());
-    assert((surface.raycastFirst(ray, DoubleSide)?.distance ?? Infinity) < .0323,
-      'Top 02 keeps both shoulder edges outside the skin in the overhead pose');
+    assert((surface.raycastFirst(ray, DoubleSide)?.distance ?? Infinity) > .0323,
+      'both shoulder points lie in the exposed armhole in the overhead pose');
   }
 }
 
@@ -1031,32 +1031,22 @@ test('Gothic Skirt 04 and Top 02 replace stock pieces and animate together on bo
         }
         const [fittedTop] = topGroup.children;
         const originalTop = topScene.getObjectByName(fittedTop.name).geometry;
-        assert.deepEqual(fittedTop.geometry.attributes.uv.array, originalTop.attributes.uv.array);
-        const weights = fittedTop.geometry.attributes.skinWeight, originalWeights = originalTop.attributes.skinWeight;
-        let adjustedRim = 0;
-        for (let i = 0; i < weights.count; i++) {
-          let sum = 0, changed = false;
-          for (let k = 0; k < 4; k++) {
-            const weight = weights.getComponent(i, k);
-            sum += weight;
-            changed ||= weight !== originalWeights.getComponent(i, k);
+        const attributes = fittedTop.geometry.attributes;
+        const sourceUV = originalTop.attributes.uv;
+        const uvKey = (uv, i) => uv.getX(i) + ',' + uv.getY(i);
+        const authoredUVs = new Set(Array.from({length: sourceUV.count}, (_, i) => uvKey(sourceUV, i)));
+        let preservedUVs = 0;
+        for (let i = 0; i < attributes.position.count; i++) {
+          const pos = attributes.position;
+          if (pos.getY(i) > 1.32 && pos.getY(i) < 1.39 && pos.getZ(i) < 0) {
+            assert(Math.abs(pos.getX(i)) < .118, 'the rear rim stays inside the traced cut');
           }
+          if (authoredUVs.has(uvKey(attributes.uv, i))) preservedUVs++;
+          let sum = 0;
+          for (let k = 0; k < 4; k++) sum += attributes.skinWeight.getComponent(i, k);
           assert(Math.abs(sum - 1) < .0002);
-          if (changed) {
-            const pos = originalTop.attributes.position;
-            assert(Math.abs(pos.getX(i)) > .085 && pos.getY(i) > 1.21 && pos.getY(i) < 1.405);
-            adjustedRim++;
-          }
         }
-        assert(adjustedRim > 0, 'both shoulders keep a localized armhole fit');
-        let topAdjustment = 0;
-        const authored = new Vector3(), fitted = new Vector3();
-        for (let i = 0; i < originalTop.attributes.position.count; i++) {
-          authored.fromBufferAttribute(originalTop.attributes.position, i);
-          fitted.fromBufferAttribute(fittedTop.geometry.attributes.position, i);
-          topAdjustment = Math.max(topAdjustment, authored.distanceTo(fitted));
-        }
-        assert(topAdjustment > .001 && topAdjustment <= .00401, 'the fit stays within 4 mm of the authored top');
+        assert(preservedUVs > .85 * attributes.uv.count, 'the retained fabric uses the original UV map');
         const skinFaces = body.geometry.index.array.subarray(0, body.geometry.drawRange.count);
         const visibleFace = (a, b, c) => {
           for (let i = 0; i < skinFaces.length; i += 3) {
@@ -1085,7 +1075,7 @@ test('Gothic Skirt 04 and Top 02 replace stock pieces and animate together on bo
         mixer.clipAction(overhead).play();
         mixer.setTime(overhead.duration * .5);
         root.updateMatrixWorld(true);
-        verifyTopShoulderContact(fittedTop, body);
+        verifyTopShoulderOpening(fittedTop, body);
         mixer.stopAllAction();
       } finally {
         model.dispose();
