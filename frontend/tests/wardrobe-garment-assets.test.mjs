@@ -3117,21 +3117,36 @@ test('each Gothic skirt closes its waistband gap and clears the animated torso',
   }
 });
 
+// Measure the visible cloth at a given height across the skirt, including its authored folds.
+function skirtDepths(surface, height, side, halfWidth = .19) {
+  const depths = [];
+  const ray = new Ray(new Vector3(), new Vector3(0, 0, -side));
+  for (let column = -Math.round(halfWidth * 100); column <= Math.round(halfWidth * 100); column++) {
+    ray.origin.set(column / 100, height, .6 * side);
+    const hit = surface.raycastFirst(ray, DoubleSide);
+    if (hit && hit.distance < .6) depths.push(.6 - hit.distance);
+  }
+  assert(depths.length > 5, 'the cross-section hits a broad cloth panel');
+  return depths.sort((a, b) => a - b);
+}
+
 test('short skirts use their refined silhouettes on the Vesper rig at both detail tiers', async t => {
   const skirts = catalog.filter(item => /^skirt-0[1-4]$/.test(item.id));
-  const bodyPaths = [garmentDir + 'vesper-body.glb', villagerDir + 'villager-female.garage.glb'];
+  const bodyPaths = [garmentDir + 'vesper-body.glb', villagerDir + 'villager-female.garage.glb', villagerDir + 'villager-female.portrait.glb'];
   const skirtPaths = skirts.flatMap(item => [item.url, item.mobileUrl]).map(url => url.slice(1));
   const files = await Promise.all([...bodyPaths, ...skirtPaths].map(path => readFile(new URL(path, publicDir))));
-  if (files.some(isLfsPointer)) return t.skip('Run git lfs pull to materialize the fitting-room models.');
-  const [donor, garage, ...sources] = await Promise.all(files.map(loadGeometry));
+  if (files.some(isLfsPointer)) return skipMissingAsset(t, 'Run git lfs pull to materialize the fitting-room models.');
+  const [donor, garage, portrait, ...sources] = await Promise.all(files.map(loadGeometry));
   const garmentBody = donor.getObjectByName('BODY_WARDROBE');
   const vite = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
   try {
     const { prepareVillager, applyVillagerLook } = await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
     const { DEFAULT_CHARACTER, characterLook } = await vite.ssrLoadModule('/src/game/characters/characterCatalog.ts');
+    const { buildEmoteClips, findGaragePreviewEmote } = await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
+    const { clothingPieceFor } = await vite.ssrLoadModule('/src/game/characters/clothingPieces.ts');
     for (const [index, scene] of sources.entries()) {
       const item = skirts[Math.floor(index / 2)];
-      const model = prepareVillager(garage, { fitted: true, garments: [{ item, scene }], garmentBody });
+      const model = prepareVillager(index % 2 ? portrait : garage, { fitted: true, garments: [{ item, scene }], garmentBody });
       try {
         applyVillagerLook(model, characterLook({ ...DEFAULT_CHARACTER, garments: { skirt: item.id } }));
         const { children } = model.root.getObjectByName(`wardrobe-${item.id}`);
@@ -3143,6 +3158,11 @@ test('short skirts use their refined silhouettes on the Vesper rig at both detai
         } else assert.equal(lining, undefined);
         const fabric = children.find(mesh => mesh.userData.wardrobePart === 'fabric');
         const source = scene.getObjectByName(fabric.name).geometry;
+        if (item.id === 'skirt-02') {
+          assert(fabric.material.map?.generateMipmaps, 'the wrap fabric has filterable surface detail at both tiers');
+          assert(children.filter(mesh => mesh !== fabric).every(mesh => mesh.material.map !== fabric.material.map),
+            'the weave stays on the fabric and off the fastening, lining, and trim');
+        }
         const before = source.getAttribute('position');
         const after = fabric.geometry.getAttribute('position');
         assert.notEqual(after, before, item.id);
@@ -3153,26 +3173,61 @@ test('short skirts use their refined silhouettes on the Vesper rig at both detai
             (_, i) => attribute.getComponent(Math.floor(i / attribute.itemSize), i % attribute.itemSize));
           assert.deepEqual(values(a), values(b), `${item.id} preserves ${name}`);
         }
-        let rearEase = 0, rearDrape = 0, rearPeak = 0, frontVolume = 0, hipTaper = 0;
         for (let i = 0; i < before.count; i++) {
-          const x = before.getX(i), y = before.getY(i), z = before.getZ(i);
-          const dx = after.getX(i) - x, dz = after.getZ(i) - z;
-          assert.equal(after.getY(i), y, 'the authored hem heights remain intact');
-          if (item.id === 'skirt-01' && y > 1.06 && z < -.015) rearEase = Math.max(rearEase, -dz);
-          if (item.id === 'skirt-02' && z < -.075) {
-            if (y > .85 && y < .91) rearDrape = Math.max(rearDrape, -dz);
-            if (y > .92 && y < .96) rearPeak = Math.max(rearPeak, dz);
-          }
-          if (wrap) assert.equal(dx, 0, 'wrap widths remain intact');
-          else {
-            if (z < -.025) assert.equal(dz, 0, 'the pleated rear profile remains intact');
-            if (z > .12 && y > .88 && y < 1.02) frontVolume = Math.max(frontVolume, dz);
-            if (Math.abs(x) > .16 && y > .88 && y < 1.02) hipTaper = Math.max(hipTaper, Math.abs(x) - Math.abs(after.getX(i)));
+          assert.equal(after.getY(i), before.getY(i), 'the authored hem heights remain intact');
+          if (!wrap && before.getY(i) < 1.035 && before.getZ(i) < -.025) {
+            assert.equal(after.getX(i), before.getX(i), `${item.id} preserves the approved rear width`);
+            assert.equal(after.getZ(i), before.getZ(i), `${item.id} preserves the approved rear folds`);
           }
         }
-        if (item.id === 'skirt-01') assert(rearEase > .009, 'the wrap waistband has more rear room');
-        else if (item.id === 'skirt-02') assert(rearDrape > .007 && rearPeak > .009, 'the pointed rear blends into the lower drape');
-        else assert(frontVolume > .011 && hipTaper > .006, 'the front gains volume while the hips narrow');
+        const band = children.find(mesh => mesh.userData.wardrobePart === 'trim');
+        const bandSource = scene.getObjectByName(band.name).geometry.attributes.position;
+        const bandFit = band.geometry.attributes.position;
+        let seated = 0;
+        for (let i = 0; i < bandSource.count; i++) {
+          if (bandSource.getY(i) < 1.061) continue;
+          const radius = attribute => Math.hypot(attribute.getX(i), attribute.getZ(i) - .025);
+          const inset = radius(bandSource) - radius(bandFit);
+          assert(inset >= -.00001 && inset < .005, 'the upper trim is drawn toward the waist by at most 5 mm');
+          if (inset > .0005) seated++;
+        }
+        assert(seated > 0, `${item.id} takes up room in the upper waistband`);
+        const authored = new MeshBVH(source.clone()), fitted = new MeshBVH(fabric.geometry.clone());
+        try {
+          const [upper, middle, lower] = [.99, .91, .83].map(y => skirtDepths(fitted, y, 1).at(-1));
+          assert(upper < skirtDepths(authored, .99, 1).at(-1) - .004, `${item.id} brings the upper front in`);
+          assert(middle > upper + .002 && lower > middle + .002,
+            `${item.id} drapes gradually outward below the hip (${[upper, middle, lower].map(m => (m * 1000).toFixed(1))} mm)`);
+          if (wrap) {
+            const seat = skirtDepths(fitted, .95, -1).at(-1);
+            assert(seat < skirtDepths(authored, .95, -1).at(-1) - .007, `${item.id} follows the seat more closely`);
+          }
+          if (item.id === 'skirt-02') {
+            const [seat, below] = [.89, .83].map(y => {
+              const depths = skirtDepths(fitted, y, -1, .11);
+              return depths[Math.floor(depths.length / 2)];
+            });
+            assert(seat < below + .002, 'the rear cloth flows below the seat without a local bulge');
+          }
+        } finally {
+          authored.geometry.dispose();
+          fitted.geometry.dispose();
+        }
+        const skin = model.root.getObjectByName('fitting-room-body');
+        assert(skin?.visible && skin.geometry.drawRange.count > 0);
+        const clothing = [];
+        model.root.traverseVisible(mesh => {
+          if (mesh.isSkinnedMesh && mesh.geometry.index && clothingPieceFor(mesh)
+            && mesh.material.visible && !mesh.material.transparent && !mesh.material.alphaTest) clothing.push(mesh);
+        });
+        const poses = auditCorsetSkinMask(model.root, skin, garmentBody.geometry, clothing, buildEmoteClips, findGaragePreviewEmote, {
+          minHeight: .30, maxHeight: 1.17, halfWidth: .22,
+          extraPoses: [['walk-casual', .30], ['walk-casual', .64]],
+          extraViews: [[1, 0, 0], [-1, 0, 0], [0, .9, 1], [0, -.7, 1], [0, .9, -1], [0, -.7, -1]],
+        });
+        for (const { pose, phase, uncovered } of poses) {
+          assert.equal(uncovered, 0, `${item.id} ${index % 2 ? 'Mobile' : 'Garage'} ${pose}@${phase} exposes no holes at the waist or legs`);
+        }
       } finally {
         model.dispose();
       }

@@ -312,7 +312,7 @@ export function verifyCorsetCoverage(root, label, style, buildEmoteClips, findGa
 // holes instead: skin removed by the live outfit, visible on the complete body
 // from an external view, with neither cloth nor retained skin replacing it.
 export function auditCorsetSkinMask(root, skin, bindBody, visibleCloth, buildEmoteClips, findGaragePreviewEmote,
-  { minHeight = 1.20, extraPoses = [], extraViews = [] } = {}) {
+  { minHeight = 1.20, maxHeight = 1.43, halfWidth = .168, extraPoses = [], extraViews = [] } = {}) {
   const vertices = bindBody.getAttribute('position').array;
   const original = bindBody.index.array;
   const retained = visibleIndices(skin);
@@ -333,7 +333,7 @@ export function auditCorsetSkinMask(root, skin, bindBody, visibleCloth, buildEmo
     if (keep.has(key(original, i))) continue;
     const indices = original.subarray(i, i + 3);
     triangle(vertices, indices);
-    if (center.y >= minHeight && center.y <= 1.43 && Math.abs(center.x) <= .168) {
+    if (center.y >= minHeight && center.y <= maxHeight && Math.abs(center.x) <= halfWidth) {
       // Classify in bind space so the same upper-back faces keep their label in motion.
       const upperBack = center.y > 1.24 && center.z < -.020 && normal.z < -.25;
       masked.push({ indices, upperBack });
