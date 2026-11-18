@@ -45,7 +45,7 @@ const realAssetTests = [
   'the authored Sweetheart', 'standalone wardrobe exports', 'standalone corsets and a selected skirt',
   'turning off wardrobe layers fits underwear', 'Gothic Skirt 04 and Top 02 replace stock pieces',
   'the rebuilt Gothic Underbust', 'wardrobe underwear reuses donor cuts', 'rebuilt Tucked hardware', 'rebuilt Laced Bodice',
-  'the Village skirt and belt cover', 'Ruffled Corset', 'Laced Bodice straps', 'Top 03 keeps', 'the Village bonnet',
+  'the Village skirt and belt cover', 'Ruffled Corset', 'Laced Bodice straps', 'Top 03 keeps', 'Top 04 keeps', 'the Village bonnet',
 ];
 
 function runFrontendNode(args, strictAssets = false) {

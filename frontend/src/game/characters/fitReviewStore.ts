@@ -23,7 +23,7 @@ export function fitReviewKey(owner: string | undefined, choice: CharacterChoice,
   ...(garments.length ? [garments] : []), ...(ease ? [ease] : []), ...(removed.length ? [{ removed }] : []),
   ...(w?.cut ? [{ cut: w.cut }] : []), ...(choice.bra !== undefined ? [{ bra: choice.bra }] : []),
   ...(choice.appearance?.bra_style === "push-up" && bra ? [{ braStyle: "push-up" }] : []),
-  ...(choice.garments?.top === "top-03" && !removed.includes("top") ? ["top-03-2"] : [])]);
+  ...((choice.garments?.top === "top-03" || choice.garments?.top === "top-04") && !removed.includes("top") ? [choice.garments.top + "-2"] : [])]);
 }
 export function fitReviewStatus(review?: Review) { return review?.issue.trim() ? "issue" : FIT_CHECKS.every(check => review?.checks[check]) ? "passed" : FIT_CHECKS.some(check => review?.checks[check]) ? "partial" : "untested"; }
 export const useFitReviewStore = create(persist<{

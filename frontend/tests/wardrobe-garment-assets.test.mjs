@@ -368,13 +368,13 @@ test('medieval hoods replace the bonnet while keeping the outfit and stored hair
   } finally { await vite.close(); }
 });
 
-test('Top 03 keeps both armholes filled through raised-arm poses and masks its solid panels', async t => {
-  const item = catalog.find(({ id }) => id === 'top-03');
+for (const number of ['03', '04']) test(`Top ${number} keeps both armholes filled through raised-arm poses and masks its solid panels`, async t => {
+  const item = catalog.find(({ id }) => id === `top-${number}`);
   const tiers = ['portrait', 'garage'];
   const paths = [item.url.slice(1), bundledDir + 'gothic-02.mobile.glb',
     ...tiers.map(tier => villagerDir + `villager-female.${tier}.glb`)];
   const files = await Promise.all(paths.map(path => readFile(new URL(path, publicDir))));
-  if (files.some(isLfsPointer)) return skipMissingAsset(t, 'Materialize Top 03 and the Villager and Vesper body models.');
+  if (files.some(isLfsPointer)) return skipMissingAsset(t, `Materialize Top ${number} and the Villager and Vesper body models.`);
   const [top, donor, ...actors] = await Promise.all(files.map(loadGeometry));
   const garmentBody = donor.getObjectByName('BODY_WARDROBE');
   const { index, attributes: { position } } = garmentBody.geometry;

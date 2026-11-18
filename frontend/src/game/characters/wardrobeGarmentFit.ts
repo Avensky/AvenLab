@@ -144,10 +144,19 @@ function isTop03Armhole(point: Vector3) {
   return point.y > 1.25 && Math.abs(point.x) > innerEdge && point.z > -.092 && point.z < .073;
 }
 
+function isTop04Armhole(point: Vector3) {
+  // Preserve the moving armhole and the skin immediately beneath the standing collar.
+  const armhole = point.y > 1.22 && point.y < 1.4 && Math.abs(point.x) > .078;
+  const collar = point.y >= 1.4 && point.y < 1.45;
+  return armhole || collar;
+}
+
 function isTop05SideOpening(point: Vector3) {
   return Math.abs(point.x) > .102 && point.y > 1.226 && point.y < 1.265
     && point.z > -.012 && point.z < .072;
 }
+
+const shirtOpenings = new Map([["top-03", isTop03Armhole], ["top-04", isTop04Armhole], ["top-05", isTop05SideOpening]]);
 
 function isStrapOpening(point: Vector3) {
   // Vesper bind space. The narrow strap roots and armholes move relative to
@@ -443,7 +452,7 @@ export function prepareWardrobeGarments(
       if ((replacesVillagerBody(item.slot) || coversRestoredSkin) && isFabric(mesh)) {
         const surface = bodySurface(mesh.geometry);
         if (surface) {
-          shapes.push({ surface, piece: item.piece, opening: item.id === "top-03" ? isTop03Armhole : item.id === "top-05" ? isTop05SideOpening : undefined });
+          shapes.push({ surface, piece: item.piece, opening: shirtOpenings.get(item.id) });
           if (fitShortSkirt && !lining && corset?.fitSkirt && !corset.sweetheartSkin) shortSkirtSurfaces.push(surface);
           if (item.id === "village-skirt" && fitVillageWaist) {
             villageSkirtSurfaces.push(surface);
