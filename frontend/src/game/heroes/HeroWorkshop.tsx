@@ -54,6 +54,8 @@ const MARINE_LAMPS = [
 
 /** Vehicle styling and the stock-relative performance page share one studio
  * chrome. Appearance edits save to the authenticated player's vehicle loadout. */
+export { HeroLoadoutSync } from "./HeroLoadoutSync";
+
 export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  onCharacterViewChange?:(tab:CharacterTab|null)=>void;
  onCharacterPreviewChange?:(choice:CharacterChoice|null)=>void;
