@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BatchedMesh, BoxGeometry, DirectionalLight, Frustum, Group, Matrix4, Mesh, MeshPhysicalMaterial, OrthographicCamera, PerspectiveCamera, PointLight, SpotLight } from 'three';
+import { readFileSync } from 'node:fs';
+import { BatchedMesh, BoxGeometry, DirectionalLight, DoubleSide, Frustum, Group, Matrix4, Mesh, MeshPhysicalMaterial, OrthographicCamera, PerspectiveCamera, PointLight, SpotLight } from 'three';
 import { createCityInstances } from '../src/world/cityInstances.ts';
 import { collectCityShadowFrusta } from '../src/world/cityShadows.ts';
 import { warmCityMesh } from '../src/world/cityDrawBatches.ts';
@@ -103,6 +104,84 @@ test('shadow volumes follow visible directional/spot/point lights and reuse frus
  spot.castShadow=false;collectCityShadowFrusta(scene,result);assert.equal(result.length,1);
 });
 
+test('fallback caster bounds follow packed instances when lights, placements and shadow settings change', () => {
+  const f = fixture({multiDraw: false}, false);
+  const mesh = f.asset.batches[0].mesh;
+  const player = frustumAt(), light = frustumAt(1000);
+  const near = placement(0, -10), far = placement(1000, -10);
+  f.asset.update([near], player, false);
+  f.asset.update([near], player, true, [light]);
+  assert.equal(mesh.frustumCulled, true);
+  assert.equal(player.intersectsObject(mesh), true);
+  assert.equal(light.intersectsObject(mesh), false);
+  const sphere = mesh.boundingSphere;
+  f.asset.update([near, far], player, true, [light]);
+  assert.equal(mesh.boundingSphere, sphere);
+  assert.equal(mesh.count, 2);
+  assert.equal(light.intersectsObject(mesh), true);
+  f.asset.update([near, far], player, true, []);
+  assert.equal(mesh.count, 1);
+  assert.equal(light.intersectsObject(mesh), false);
+  f.asset.update([far], player, true, [light]);
+  assert.equal(mesh.count, 1, 'offscreen caster remains packed for the light');
+  assert.equal(player.intersectsObject(mesh), false);
+  assert.equal(light.intersectsObject(mesh), true);
+  // Repack while shadows are off, then re-enable with unchanged membership.
+  f.asset.update([near], player, false);
+  f.asset.update([near], player, true, [light]);
+  assert.equal(player.intersectsObject(mesh), true);
+  assert.equal(light.intersectsObject(mesh), false);
+  f.dispose();
+});
+
+test('only the authored two-sided road decals opt into one blended pass on Fast and Balanced', () => {
+  const cityPath = '/models/chuncks/chunck_0,0_2x2_roads.glb';
+  const source = new Group(), geometry = new BoxGeometry();
+  const roadPaint = new MeshPhysicalMaterial({transparent: true, opacity: .6, side: DoubleSide, depthWrite: false});
+  roadPaint.name = 'MarkingRoad.001';
+  const other = roadPaint.clone();
+  other.name = 'shop window';
+  source.add(new Mesh(geometry, roadPaint), new Mesh(geometry, other));
+  for (const fast of [true, false]) {
+    for (const assetPath of [cityPath, '/custom/roads.glb']) {
+      const asset = createCityInstances(source, 1, fast, undefined, {assetPath, multiDraw: true});
+      asset.objects.forEach(asset.prepareMesh);
+      const [decal, window] = asset.meshes.map(mesh => mesh.material);
+      assert.equal(decal.forceSinglePass, assetPath === cityPath);
+      assert.equal(window.forceSinglePass, false);
+      assert.equal(decal.side, DoubleSide);
+      assert.equal(decal.opacity, .6);
+      assert.equal(decal.depthWrite, false);
+      assert.equal(decal.transparent, true);
+      assert.deepEqual(asset.prepareDrawBatches(), []);
+      asset.dispose();
+    }
+  }
+  assert.equal(roadPaint.forceSinglePass, false);
+  geometry.dispose(); roadPaint.dispose(); other.dispose();
+});
+
+test('single-pass road materials still reference flat blended decals in both shipped texture tiers', t => {
+  for (const size of [512, 1024]) {
+    const path = new URL(`../public/models/chuncks/chunck_0,0_2x2_roads_textures${size}.glb`, import.meta.url);
+    const bytes = readFileSync(path);
+    if (bytes.subarray(0, 7).toString() === 'version') return t.skip('Materialize the city road GLBs with Git LFS');
+    assert.equal(bytes.subarray(0, 4).toString(), 'glTF');
+    const gltf = JSON.parse(bytes.subarray(20, 20 + bytes.readUInt32LE(12)).toString());
+    const names = new Set();
+    for (const mesh of gltf.meshes) for (const primitive of mesh.primitives) {
+      const material = gltf.materials[primitive.material];
+      if (!/^MarkingRoad\.00[123]$/.test(material.name)) continue;
+      assert.equal(material.alphaMode, 'BLEND');
+      assert.equal(material.doubleSided, true);
+      const bounds = gltf.accessors[primitive.attributes.POSITION];
+      assert.equal(bounds.min[1], bounds.max[1], material.name);
+      names.add(material.name);
+    }
+    assert.deepEqual([...names].sort(), ['MarkingRoad.001', 'MarkingRoad.002', 'MarkingRoad.003']);
+  }
+});
+
 test('batch warmup never leaves a phantom identity instance visible and disposes only owned GPU buffers',()=>{
  const f=fixture({multiDraw:true}),{asset}=f;asset.prepareDrawBatches().forEach(job=>job());
  const packed=asset.meshes[0];let disposed=0,sourceDisposals=0;
@@ -111,4 +190,18 @@ test('batch warmup never leaves a phantom identity instance visible and disposes
  asset.update([placement(0,-10,'proxy')],new Frustum(),false);assert.equal(packed.getVisibleAt(0),false);
  asset.dispose();assert.equal(disposed,1);assert.equal(sourceDisposals,0);
  f.disposeSource();
+});
+
+test('empty material batches do not render and shared batches stay visible for active sibling parts',()=>{
+ const f=fixture({multiDraw:true},false),{asset}=f;
+ asset.prepareDrawBatches().forEach(job=>job());
+ assert.equal(asset.meshes.length,1);
+ const shared=asset.meshes[0];
+ asset.update([placement(0,-10,'proxy')],frustumAt(),false);
+ assert.equal(shared.visible,false,'all proxy placements disable the shared draw');
+ asset.update([placement(0,-10,'full')],frustumAt(),false);
+ assert.equal(shared.visible,true,'visible placements enable the shared draw');
+ asset.update([placement(1000,-10,'full')],frustumAt(),false);
+ assert.equal(shared.visible,false,'frustum-culling the last placement disables the shared draw');
+ f.dispose();
 });

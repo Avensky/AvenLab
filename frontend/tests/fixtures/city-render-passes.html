@@ -1,0 +1,119 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>AvenLab city render passes</title>
+<canvas width="480" height="270"></canvas>
+<pre id="result">Loading city assets…</pre>
+<script type="module">
+import {
+  Color, DirectionalLight, Frustum, HemisphereLight, Matrix4,
+  PerspectiveCamera, Scene, WebGLRenderer,
+} from "three";
+import { measureCityPreparation, trackVertexBuffers } from "./city-preparation.mjs";
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { createCityInstances } from "../../src/world/cityInstances.ts";
+import { collectCityShadowFrusta } from "../../src/world/cityShadows.ts";
+import { cityTextureAsset } from "../../src/world/cityLod.ts";
+import { cityWallScene } from "../../src/world/facades/cityWallScene.ts";
+import { skyReflectionMap, worldSkyLighting } from "../../src/world/worldSkyLighting.ts";
+
+async function capture() {
+  const query = new URLSearchParams(location.search);
+  const shadows = query.get("shadows") !== "0";
+  const detailed = query.get("reflections") !== "0";
+  const quality = query.get("quality") === "balanced" ? "balanced" : "fast";
+  const renderer = new WebGLRenderer({ canvas: document.querySelector("canvas"), antialias: false });
+  const multiDraw = query.get("multiDraw") === "1";
+  if (multiDraw && !renderer.extensions.has("WEBGL_multi_draw")) throw new Error("Native multi-draw unavailable");
+  renderer.shadowMap.enabled = shadows;
+  renderer.info.autoReset = false;
+  const scene = new Scene(), camera = new PerspectiveCamera(60, 480 / 270, 0.1, 500);
+  const view = query.get("view") === "road-end" ? "road-end" : "junction";
+  if (view === "road-end") {
+    camera.position.set(0, 30, 224);
+    camera.lookAt(0, 0, 185);
+  } else {
+    camera.position.set(0, 6, 24);
+    camera.lookAt(4, 4, -25);
+  }
+  camera.updateMatrixWorld();
+  const sky = worldSkyLighting("foggy_day");
+  scene.background = new Color(sky.horizon);
+  scene.environment = skyReflectionMap("foggy_day", detailed);
+  scene.environmentIntensity = 0.72;
+  const sun = new DirectionalLight(sky.keyColor, sky.keyIntensity);
+  sun.position.set(-120, 180, -80);
+  sun.castShadow = shadows;
+  scene.add(sun, sun.target, new HemisphereLight(sky.skyLight, sky.groundLight, sky.ambient));
+  const frustum = new Frustum().setFromProjectionMatrix(new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+  const lights = shadows ? collectCityShadowFrusta(scene, []) : [];
+  const draco = new DRACOLoader().setDecoderPath("/draco/");
+  const loader = new GLTFLoader().setDRACOLoader(draco);
+  const prepare = query.get("prepare") === "1";
+  const preparation = {};
+  const loadStartedAt = performance.now();
+  for (const id of ["blocks_centered", "roads"]) {
+    const assetPath = "/models/chuncks/chunck_0,0_2x2_" + id + ".glb";
+    const loadStarted = performance.now();
+    const imported = await loader.loadAsync(cityTextureAsset(assetPath, quality));
+    const reduced = prepare && id === "blocks_centered"
+      ? cityWallScene((await loader.loadAsync("/models/chuncks/chunck_0,0_2x2_blocks_centered_reduced.glb")).scene)
+      : undefined;
+    const loadDecodeMs = performance.now() - loadStarted;
+    const asset = createCityInstances(cityWallScene(imported.scene), 1, quality === "fast", reduced,
+      { multiDraw, castShadow: id !== "roads", assetPath });
+    if (prepare) {
+      preparation[id] = { loadDecodeMs, ...await measureCityPreparation(asset, renderer, camera, scene, shadows) };
+    } else {
+      asset.objects.forEach(asset.prepareMesh);
+      asset.prepareDrawBatches().forEach(job => job());
+    }
+    scene.add(asset.group);
+    const visual = { position: [0, id === "roads" ? 1.445989914 : 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] };
+    asset.update([{ chunk: { origin: [0, 0, 0] }, visual }], frustum, shadows, lights);
+  }
+  draco.dispose();
+  const context = renderer.getContext(), pixel = new Uint8Array(4);
+  const liveBuffers = prepare ? trackVertexBuffers(renderer) : null;
+  const first = performance.now();
+  renderer.render(scene, camera);
+  if (prepare) context.readPixels(0, 0, 1, 1, context.RGBA, context.UNSIGNED_BYTE, pixel);
+  else context.finish();
+  const firstVisibleMs = performance.now() - first;
+  const loadToFirstVisibleMs = performance.now() - loadStartedAt;
+  liveBuffers?.stop();
+  const warmedFrames = [];
+  if (prepare) {
+    for (let i = 0; i < 5; i++) {
+      const start = performance.now();
+      renderer.render(scene, camera);
+      context.readPixels(0, 0, 1, 1, context.RGBA, context.UNSIGNED_BYTE, pixel);
+      warmedFrames.push(performance.now() - start);
+    }
+    warmedFrames.sort((a, b) => a - b);
+  }
+  renderer.info.reset();
+  const passes = {};
+  const draw = renderer.renderBufferDirect.bind(renderer);
+  renderer.renderBufferDirect = (passCamera, passScene, geometry, material, mesh, group) => {
+    const key = material.isMeshDepthMaterial || material.isMeshDistanceMaterial ? "shadow"
+      : material.transmission > 0 ? "transmissive" : material.transparent ? "transparent" : "opaque";
+    const totals = passes[key] ??= { calls: 0, triangles: 0 };
+    const before = { ...renderer.info.render };
+    draw(passCamera, passScene, geometry, material, mesh, group);
+    totals.calls += renderer.info.render.calls - before.calls;
+    totals.triangles += renderer.info.render.triangles - before.triangles;
+  };
+  renderer.render(scene, camera);
+  const gl = renderer.getContext();
+  const rgba = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
+  gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, rgba);
+  const digest = await globalThis.crypto?.subtle?.digest("SHA-256", rgba);
+  const rgbaSHA256 = digest ? Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("") : null;
+  return { ...(prepare ? { preparation, loadToFirstVisibleMs, firstVisibleMs, firstVisibleBuffers: liveBuffers.totals, warmedMedianMs: warmedFrames[2] } : {}),
+    view, quality, multiDraw, shadows, detailed, passes, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, rgbaSHA256 };
+}
+capture().then(result => {
+  document.querySelector("#result").textContent = JSON.stringify(result, null, 2);
+}).catch(error => { document.querySelector("#result").textContent = String(error); console.error(error); });
+</script>
