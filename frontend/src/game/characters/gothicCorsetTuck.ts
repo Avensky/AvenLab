@@ -134,7 +134,7 @@ function seatHem(parts: readonly SkinnedMesh[], skirts: readonly SkinnedMesh[], 
       const compression = excess - relief * (1 - Math.exp(-excess / relief));
       const scale = 1 - blend * compression / radius;
       return point.set(x * scale, y, centerZ + depth * scale);
-    }));
+    }, undefined, { reuseExactPositions: followFolds }));
   } finally {
     for (const surface of surfaces) surface.geometry.dispose();
     upperBody?.geometry.dispose();

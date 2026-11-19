@@ -9,6 +9,10 @@ The [next performance audit](../../performance/audits/2026-11-18/README.md)
 reviews runtime `25988e1` and adds evidence/priorities without changing production
 behavior. Its A3-01–06 grid tracks the next performance changes separately from
 the already implemented passes.
+The [third performance pass](../../performance/README.md#third-pass-exact-fitting-reuse--2026-11-18)
+implements A3-01: bounded exact fitting reuse lowers the actual desktop High
+Collar cold-preparation median by 30.1% against `25de3c1`, with accepted geometry
+preserved. A3-02–06 and browser/device launch checks remain open.
 
 ## Decisions to preserve
 
@@ -38,15 +42,16 @@ recheck their current heads before integration.
 | --- | --- | --- |
 | Performance | `perf/wardrobe-cache-and-gameplay-lods` | Reduce measured CPU, rendering, loading, and memory costs while preserving accepted appearance and behavior. Coordinate changes to character preparation and shared data before integration. |
 | Hair | `feat/hero-hair` | Hair assets and their character integration. Inspected ref: `0e81afe`. Coordinate stable asset IDs, appearance colors, and headwear compatibility with the existing character/LOD contracts. |
-| Poses | `feature/character-pose-pack` | Poses and pose/animation transitions, [draft PR #37](https://github.com/Avensky/AvenLab/pull/37), inspected head `c726345`. Coordinate rig, held-pose transitions, animation cleanup, and resource-lifecycle interfaces with character preparation. |
+| Poses | `feature/character-pose-pack` | Poses and pose/animation transitions, [draft PR #37](https://github.com/Avensky/AvenLab/pull/37), inspected head `283d019`. Coordinate rig, held-pose transitions, animation cleanup, and resource-lifecycle interfaces with character preparation. |
 
-At the inspected performance (`25988e1`) and pose (`c726345`) heads, the published
+At the inspected performance (`25de3c1`) and pose (`283d019`) heads, the published
 diffs share `frontend/src/game/preview/VehiclePreviewModel.tsx`: preserve both
 post-rig static batching and the pose branch's seat-side door/mirror targeting.
 The audit's scripts/reports/README paths do not overlap the pose diff. That branch
 also reparents exterior handles under door pivots, so repeat protected-control,
 door-entry, mirror and batch-count checks after integration; the previous vehicle
-counts are not automatically the combined result. Repeat held-pose/transition,
+counts are not automatically the combined result. The subsequent local fitting
+reuse changes do not overlap that pose diff. Repeat held-pose/transition,
 skirt hand-clearance, fit-cache and source ownership checks as well. Its added
 pose catalog and cockpit work are not included in the `25988e1` performance audit.
 
@@ -89,7 +94,7 @@ visual approval. Unassigned work remains open.
 | COLOR-03 | Better curated color combinations with consistent group assignment. Current two-color themes exist; expanded palettes need review. **Open.** | Gate | Keep | Gate | Curated combinations work on the supported clothing groups, have clear names and selected state, and preview correctly across light/dark fabric. Applying a palette preserves unsupported or intentionally untouched groups. |
 | UI-01 | Wider, clearer details pane with color controls retained inside. **Open.** | Gate | Keep | Gate | Desktop details use the available width without crowding the character. Mobile uses an intentional sheet/panel arrangement, readable labels, and no horizontal overflow. Verify portrait, landscape, keyboard, touch, and controller navigation. |
 | UI-02 | Useful, contextual details actions and a cleaner mobile hierarchy. **Open.** | Gate | Keep | Gate | Equip/remove, applicable sleeve/layer controls, reset group/piece, compare with original, and save/apply/cancel behavior are easy to find. Show only meaningful actions; preserve the selected item and scroll position. |
-| PERF-01 | Remove discarded fitting work; cache exact reusable fits; share temporary coverage queries; correct preview resource lifecycle. CPU/equivalence-tested. High Collar cold preparation improves 10–11% in the second pass but remains about one second in the full-tier fixture. Audit A3-01 identifies exact repeated point/Jacobian work; implementation remains open. | Gate | Keep | Gate | Cold and repeat selections are measured separately, recording actor and clothing tiers independently; accepted geometry stays identical; bounded caches cannot share mutable/disposed results; development replay prepares one model per committed fit. |
+| PERF-01 | Exact fit caching, shared coverage queries, preview resource lifecycle, and A3-01 bounded local point/Jacobian reuse are CPU/equivalence-tested. Actual desktop High Collar cold preparation is 1,083.21 → 757.04 ms (30.1% lower) in the third pass; further cold/warm costs and device checks remain open. | Gate | Keep | Gate | Cold and repeat selections are measured separately, recording actor and clothing tiers independently; accepted geometry stays identical; bounded caches cannot share mutable/disposed results; temporary memos are variant/source-local; development replay prepares one model per committed fit. |
 | PERF-02 | Cheap gameplay driver LOD with recognizable broad appearance. Implemented and geometry/update-tested; renderer/GPU review pending. | Gate | Keep | Gate | Occupied supported vehicles display the correct body/hair/hat/main colors, empty/static props remain empty, and fleet draw cost is bounded. Test close approach, culling hysteresis, color changes, removal, and cabin clipping on target hardware. |
 | PERF-03 | Group compatible vehicle segments without breaking behavior. BRZ stays at 259 → 143 ranges; exact UV sharing reduces derived buffers from 33.7 MB to 16.1 MB. Original assets are preserved. Cold derivation/offline exports and GPU review remain open. | Gate | Gate | Gate | Measure actual render-range reductions and unchanged triangles/transforms. Doors, wheel/caliper rigs, steering, lights, glass, paint, and animations still work. Source GLB/Blender assets are unchanged. |
 | PERF-04 | Set texture, loaded-source, and frame-time budgets for exposed assets. **Open:** audit A3-03 confirms mobile texture mismatches/retained source caches; A3-04–06 track capture coverage, shared scene work, and demand wake. | Scope | Gate | Gate | Repeated wardrobe browsing and fleet gameplay stay within documented memory/frame budgets on a named desktop and mobile baseline. Preview context and complete frame-pass counters are verified. Record GPU/browser results; metadata or CPU geometry timing alone cannot close this gate. |
@@ -200,6 +205,10 @@ the entire game.
   remain tracked under PERF-04. The latest audit distinguishes unavailable LFS
   tier evidence from absent mobile declarations and proves identical underbust
   image payloads across garage/mobile exports.
+- Exact point/Jacobian reuse now removes 33.9% of the desktop High Collar cold
+  rays with a temporary per-geometry table. Its 3,892,168-byte maximum buffer
+  allocation is not a measured heap peak. Cold preparation remains substantial;
+  no warm-selection speedup or browser FPS improvement is claimed.
 - Paused previews already use demand mode; covered previews use `never`, and the
   compact clock stops while paused/covered. Active reflection reuse, OS/application
   Reduced Motion consistency, camera/animation/loading wake-up, and the harbor

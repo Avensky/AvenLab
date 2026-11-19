@@ -64,9 +64,12 @@ The focused suites passed eight tests with no skips. The twelve fixture looks ab
 
 This change preserves the accepted fitting result, including existing regular-skirt/corset contact failures and remaining fabric/close-up visual issues. It does not rebuild skirt textures, change skirt 02/05 placement, or alter animation clearance. The central readiness grid tracks those work items separately. GPU performance, rendered appearance, and visual fit still require their browser/device gates; these CPU and geometry checks do not establish those passes.
 
-Repeated exact positions at split vertices may permit sharing the expensive warp/Jacobian calculation while still transforming each authored normal/tangent independently. The audit below supplies duplicate-rate evidence. A runtime memo still needs bounded storage, ownership and variant rules, measured benefit, and equivalence checks; it is not implemented here.
+Repeated exact positions at split vertices permit sharing the expensive warp/Jacobian calculation while still transforming each authored normal/tangent independently. The historical audit below supplies duplicate-rate evidence; the following implementation section records the bounded local reuse and its measured benefit.
 
 ## Preparation audit at `25988e1`
+
+This is the historical audit snapshot. Its first recommendation is implemented
+by the local memo described below; the other follow-ups remain open.
 
 [`audit-character-preparation.mjs`](../../../scripts/audit-character-preparation.mjs) counts preparation work through in-memory diagnostics without editing runtime sources. Reproduce the [recorded count report](../../../../performance/reports/character-preparation-2026-11-18.json) from `frontend/`:
 
@@ -91,3 +94,62 @@ The report includes the audit-tool/fixture hashes, individual counting-module ha
 3. **Warm copy and verification work.** The default desktop High Collar repeat clones 20 geometries covering 9,697,130 input bytes, hashes 3,694,484 input bytes and confirms the same number by exact comparison, and still performs 37,629 skirt-shape evaluations plus 10,560 rays. Profile these costs before changing clone or verification rules; model ownership, disposal, skinning and mutable shading data remain requirements.
 
 Further generic BVH reuse is a lower priority for the High Collar case: only one exact repeated BVH input appears cold and none warm. Counts include first-encounter setup within the stated case order; existing module/source caches remain in-process, so the first-use clone counts are not equivalent to the warmed cache-cold timing intervals in earlier reports. Hair and pose contracts are unchanged by this audit.
+
+## Exact reuse during one geometry warp
+
+`warpWardrobeGeometry(shape, selected?, { reuseExactPositions: true })` uses
+`wardrobeWarpMemo.ts` to reuse exact point results and the three post-subtraction
+derivative vectors. The sole production opt-in is `seatHem` with `followFolds`.
+Profile-only tucking, other warp callers, and the persistent fit-cache budget
+retain their existing behavior.
+
+The opt-in contract is strict: the callback must fully write and return its
+target, be deterministic for exact XYZ while supporting data stays fixed, and
+not mutate the source. It must not depend on invocation count or prior target
+contents. Each returned `warp(source)` call creates its own table, so another
+part, a changed source array, a different variant, or a later invocation cannot
+reuse stale data. `seatHem`'s supporting profile arrays and coverage BVHs remain
+fixed during that call; its ray is overwritten scratch state.
+
+The table stores 15 Float64 values per entry: input XYZ, output XYZ, and nine
+derivative components. Hash collisions are checked with exact values, including
+signed zero. Each vertex still reads and transforms its own normal and tangent
+in the original arithmetic order; tangent handedness, UVs, skin data, source
+geometry, and result ownership are preserved. Intermediate values are never
+rounded into Float32 before shading calculations.
+
+At most 30,000 entries and 16 probes are permitted. Typed arrays consume at most
+3,892,168 bytes per table, including its 24-byte scratch key. Native standard
+BufferAttribute/InterleavedBufferAttribute position getters are supported;
+custom getters, Float16 decoding, unsupported item size/count, nonfinite keys
+or point results, and exhausted admission/probe budgets compute normally.
+Nonfinite derivatives are recomputed rather than stored. A valid cached point
+can later acquire a Jacobian when required. No table is retained by a fitted
+model or the persistent cache. This is a per-table buffer limit, not a measured
+heap peak; unreferenced buffers may await garbage collection.
+
+### Evidence and remaining work
+
+Against published `25de3c1`, the actual desktop Gothic 05 + High Collar case
+reduces median cold preparation from **1,083.21 to 757.04 ms (30.1%)**. Its warm
+medians are 45.36 and 45.08 ms. The four accepted Gothic 02/05 tier cases reduce
+cold medians by 27.5–36.0%. Small warm/control differences are not claimed as
+improvements; portrait Gothic 05 warm is 39.70 → 42.62 ms in this single run.
+The [performance README](../../../../performance/README.md#third-pass-exact-fitting-reuse--2026-11-18)
+and [raw timing report](../../../../performance/reports/wardrobe-warp-reuse-timing-2026-11-18.json)
+provide input scope, alternating order, distributions and reproduction commands.
+
+Actual desktop cold rays fall from 505,709 to 334,417. That fit uses five temporary
+tables, with 6,044,997 cumulative buffer bytes and a largest table of 2,870,202
+bytes; all recorded inputs fit without admission/probe fallback. Warm cases
+allocate no table. The updated count tool observes vertices before lookup and
+counts actual executed shape calls, cache hits, fallback and table allocation;
+it does not infer a timing benefit from those counters.
+
+Eleven focused warp tests plus twelve existing fitting/coverage/layer/panel
+tests pass. The all-fixture baseline comparison retains accepted raw signatures
+and additional morph/transform/binding/hand-room digests; input source buffers
+remain unchanged. TypeScript and the production build pass. Original fixtures,
+assets, skirt heights and animation policies are unchanged. Remaining cold work,
+warm clone/fingerprint traffic, renderer/device validation, known regular-skirt
+contact issues, and future shared-source texture budgets remain open.

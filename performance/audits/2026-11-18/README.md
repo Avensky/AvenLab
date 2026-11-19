@@ -6,6 +6,11 @@ Date uses America/Los_Angeles. This audit adds repeatable inspection tools,
 evidence, and priorities. It does not change production runtime code, source
 assets, fitted positions, animation behavior, or cache budgets.
 
+Follow-up: A3-01 is implemented and CPU/equivalence-tested in the
+[third performance pass](../../README.md#third-pass-exact-fitting-reuse--2026-11-18),
+compared against `25de3c1`. The findings below retain the original audit snapshot;
+A3-02–06 remain open.
+
 The largest newly verified startup target is the eagerly imported collision
 catalog. The most direct CPU follow-up is exact repeated point/Jacobian reuse in
 cold fitting. Texture tiers and source ownership need their own budget before

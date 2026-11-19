@@ -2,6 +2,111 @@
 
 These CSV files are recorded experiments, not configuration. Keep labels, car/map/route/quality/range and warmup comparable. UI changes in this update have deterministic render/sampling checks, not a target-machine FPS claim. Use docs/performance-recording.md to capture a new baseline.
 
+## Third pass: exact fitting reuse — 2026-11-18
+
+Audit item **A3-01 is implemented and CPU/equivalence-tested** on
+`perf/wardrobe-cache-and-gameplay-lods`, [draft PR #36](https://github.com/Avensky/AvenLab/pull/36).
+The comparison baseline is the previous published head,
+`25de3c118f5966283fff088921e7af392085d487`. The remaining startup, texture,
+capture, and scene-work items in the [audit grid](audits/2026-11-18/README.md)
+remain open.
+
+### Measured cold preparation
+
+| Configuration | Baseline median | This pass | Reduction |
+| --- | ---: | ---: | ---: |
+| Actual desktop / Gothic skirt 05 + High Collar | 1,083.21 ms | 757.04 ms | 30.1% |
+| Garage fixture / Gothic skirt 05 + High Collar | 921.87 ms | 661.38 ms | 28.3% |
+| Portrait fixture / Gothic skirt 05 + High Collar | 589.25 ms | 377.28 ms | 36.0% |
+| Garage fixture / Gothic skirt 02 + corset 02 | 394.18 ms | 285.91 ms | 27.5% |
+| Portrait fixture / Gothic skirt 02 + corset 02 | 271.67 ms | 195.59 ms | 28.0% |
+
+These measure synchronous `prepareVillager` CPU time on Node 24.22.3 / AMD EPYC
+9V74 with preloaded geometry. Two warmup cold/warm pairs per environment precede
+eight measured pairs; baseline/current order alternates. Only the fit cache is
+cleared for a cold sample; module/source/JIT state remains warm. Unlike earlier
+reports, this harness uses the conventional median (mean of the two middle
+values). Source snapshots, loaded module hashes, installed dependency identities,
+raw ordered samples, min/max/mean, first-application time, and total time are in
+the [timing report](reports/wardrobe-warp-reuse-timing-2026-11-18.json).
+Other audit, test, and build jobs from this workstream were stopped during the run.
+
+The actual desktop case resolves the portrait base actor with garage clothing
+through the production resolver. Its baseline cold range is 1,016.10–1,177.10 ms,
+versus 680.10–805.77 ms with reuse. The accepted garage fixtures retain their
+historical garage actor. These results do not measure download/decode, animation
+setup, browser interactions, GPU work, or FPS.
+
+Warm desktop medians are 45.36 → 45.08 ms. Across the measured cases, warm median
+changes range from −1.12 to +2.92 ms; portrait Gothic 05 is 39.70 → 42.62 ms in
+this run. No warm improvement is claimed, and the single run does not establish
+whether the small differences are repeatable. The regular-skirt control is
+84.49 → 77.55 ms cold and the affected low-duplication Gothic 03 case is
+238.96 → 238.31 ms; neither is counted as an optimization benefit.
+
+### What changed and its cost
+
+`seatHem` opts into exact position/Jacobian reuse only when following Gothic
+folds. The generic warp still defaults to ordinary calculations. One temporary
+lookup belongs to one source-geometry invocation; supporting profiles/BVHs stay
+fixed during that synchronous operation. It reuses the warped point and local
+derivative vectors while transforming each vertex's own authored normal and
+tangent in the original arithmetic order. Stored intermediate values remain
+Float64; source geometry and fitted-model ownership remain unchanged.
+
+Keys distinguish signed zero and verify exact XYZ values after hashing. Custom
+position getters, Float16 decoding, unsupported layouts, nonfinite values, full
+tables, and long collision chains retain the original calculation path. Each
+table is bounded to 30,000 entries and 16 probes, with at most **3,892,168 bytes
+of typed-array storage** including hash scratch. There is no cross-model or
+cross-invocation reuse, and the existing 12-entry / 16 MiB fit cache is unchanged.
+
+The [untimed count report](reports/wardrobe-warp-reuse-counts-2026-11-18.json)
+confirms actual desktop Gothic 05 cold rays fall from **505,709 to 334,417**,
+exactly 171,292 fewer. Gothic 02 garage falls from **577,329 to 372,377**. All
+audited inputs fit without memo admission/probe fallback. Warm cases allocate
+no memo tables. The desktop Gothic 05 fit allocates 6,044,997 table-buffer bytes
+cumulatively across its parts; its largest single table is 2,870,202 bytes.
+These are allocation counts, not measured process peak memory: tables become
+unreachable after each geometry call, but garbage collection can run later.
+
+### Validation and remaining limits
+
+- **23 targeted tests pass, zero failures/skips**: eleven new warp equivalence,
+  split-shading, precision, lifetime, layout, nonfinite, and budget checks plus
+  twelve existing fit-cache/coverage/Gothic layer/panel checks.
+- A separate [full verification report](reports/wardrobe-warp-reuse-verification-2026-11-18.json)
+  covers all twelve accepted fixtures plus the production desktop case. Accepted
+  attribute/index/group/draw-range signatures match, as do additional baseline
+  digests for morph buffers, transforms, bind matrices, ordered skeleton names and inverse bind matrices, and
+  skirt-specific hand-room data. All 17 loaded GLB source buffers remain unchanged.
+- The count audit retains all 48 accepted cold/warm/pressure matches and two
+  separately checked desktop matches. The timing run validates every measured
+  output as well. No original fixture was rewritten to accept a changed fit.
+- Frontend TypeScript and the production build pass. Existing eager-builder
+  import warnings and the sparse-checkout image warning remain. No Rust, protocol,
+  hair, pose, vehicle, or source-asset changes are included in this pass.
+
+Cold desktop preparation still takes roughly 0.76 seconds on this CPU. Warm
+cloning/fingerprint work, off-thread/offline preparation, source/texture budgets,
+preview recording, final device/visual checks, and the existing regular-skirt
+contact failures remain open. Hair and pose work continues independently; the
+pose head inspected during this pass is `283d019`, with no overlap in these
+fitting/runtime/tool/test files. Existing vehicle-preview integration checks
+still apply when the branches are combined.
+
+Reproduce from `frontend/`, with required assets materialized:
+
+```sh
+node scripts/benchmark-exact-warp-reuse.mjs --baseline 25de3c1 --verify-only --cases all --output /tmp/warp-verification.json
+node scripts/benchmark-exact-warp-reuse.mjs --baseline 25de3c1 --samples 8 --cases garage:gothic-skirt-02+gothic-02,garage:gothic-skirt-05+gothic-05,portrait:gothic-skirt-02+gothic-02,portrait:gothic-skirt-05+gothic-05,garage:skirt-03+gothic-05,garage:gothic-skirt-03+gothic-03 --output /tmp/warp-timing.json
+node scripts/audit-character-preparation.mjs --mode counts --include-default-desktop --output /tmp/warp-counts.json
+AVENLAB_WARDROBE_REQUIRE_ASSETS=1 node --test --test-concurrency=1 tests/wardrobe-warp-reuse.test.mjs tests/wardrobe-fit-cache.test.mjs tests/wardrobe-coverage-union.test.mjs tests/gothic-skirt-layers.test.mjs tests/gothic-handkerchief-panels.test.mjs
+```
+
+Keep timings isolated from builds, tests, and instrumented counting. The benchmark
+always adds the actual desktop case and preserves the accepted fixture set.
+
 ## Next audit: startup data, fitting work, and asset budgets — 2026-11-18
 
 The [complete audit and ordered fix grid](audits/2026-11-18/README.md) inspect

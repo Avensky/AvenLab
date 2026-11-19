@@ -77,6 +77,10 @@ class Audit {
     const stage = this.stages[`${this.phase}:${owner}`] ??= {};
     stage[key] = (stage[key] ?? 0) + amount;
   }
+  maximum(key, value, owner = this.stack.at(-1) ?? 'unattributed') {
+    const stage = this.stages[`${this.phase}:${owner}`] ??= {};
+    stage[key] = Math.max(stage[key] ?? 0, value);
+  }
   call(name, args, compute) {
     const owner = name === 'profile' ? `profile.${args[1] ? 'body' : 'cloth'}` : name;
     this.stack.push(owner); this.increment('calls');
@@ -99,6 +103,18 @@ class Audit {
       if (name === 'fingerprint') this.increment('fingerprintBytesRead', result.buffers.reduce((n, b) => n + b.byteLength, 0));
       if (name === 'equalBytes') this.increment(result ? 'confirmedEqualBytesRead' : 'unequalBufferComparisons', result ? args[0].byteLength : 1);
       if (name === 'captureShape') this.increment('deformationSnapshotBytes', result.fields.reduce((n, f) => n + f.values.byteLength, 0));
+      if (name === 'createWardrobeWarpMemo' && result) {
+        this.increment('memoBuilds');
+        this.increment('memoBufferBytesAllocated', result.bufferBytes);
+        this.maximum('largestMemoBufferBytes', result.bufferBytes);
+        this.maximum('largestMemoCapacity', result.capacity);
+        const audit = this;
+        return { ...result,
+          find(...args) { const entry = result.find(...args); audit.increment(entry >= 0 ? 'memoPointHits' : 'memoPointMisses'); return entry; },
+          remember(...args) { const entry = result.remember(...args); audit.increment(entry >= 0 ? 'memoPointAdmissions' : 'memoPointFallbacks'); return entry; },
+          readJacobian(...args) { const hit = result.readJacobian(...args); audit.increment(hit ? 'memoJacobianHits' : 'memoJacobianMisses'); return hit; },
+        };
+      }
       return result;
     } finally { this.stack.pop(); }
   }
@@ -190,6 +206,7 @@ const functions = {
   wardrobeCoverage: ['wardrobeCoverageSurface'], wardrobeCoverageUnion: ['wardrobeCoverageUnion'],
   gothicCorsetTuck: ['prepareSkirtCorsetFit', 'extendHem', 'seatHem'], skirtWaistProfile: ['profile'],
   wardrobeFitCache: ['fingerprint', 'equalBytes', 'captureShape', 'restoreShape'],
+  wardrobeWarpMemo: ['createWardrobeWarpMemo'],
 };
 function replaceRequired(code, from, to) {
   if (!code.includes(from)) throw Error('Audit instrumentation no longer matches runtime: ' + from);
@@ -207,7 +224,10 @@ function instrument(code, id) {
   if (name === 'warpWardrobeGeometry') {
     code = replaceRequired(code, '  return (source: BufferGeometry) => {',
       '  const __probe = globalThis.__avenCharacterPreparationAudit?.warp();\n  const __shape = shape;\n  shape = (...args) => { __probe?.shape(); return __shape(...args); };\n  return (source: BufferGeometry) => {\n    __probe?.source(source);');
-    code = replaceRequired(code, '      shape(x, y, z, point);', '      __probe?.point(x, y, z);\n      shape(x, y, z, point);');
+    // Observe every selected point before lookup; shape() counts only calculations
+    // actually executed, including cache misses and normal finite-difference work.
+    const pointRead = '      const x = position.getX(vertex), y = position.getY(vertex), z = position.getZ(vertex);';
+    code = replaceRequired(code, pointRead, pointRead + '\n      __probe?.point(x, y, z);');
     code = replaceRequired(code, '      fitted ??= source.clone();', '      __probe?.changed();\n      fitted ??= source.clone();');
     code = replaceRequired(code, '      if (!normals) continue;', '      if (!normals) continue;\n      __probe?.normal();');
     code = replaceRequired(code, '    return fitted;', '    __probe?.end();\n    return fitted;');
@@ -311,8 +331,13 @@ function distribution(values) {
     max: sorted.at(-1), mean: sorted.reduce((a, b) => a + b, 0) / sorted.length, values };
 }
 
+const runtimeSourceChanges = [...new Set([
+  ...execFileSync('git', ['diff', '--name-only', 'HEAD', '--', 'frontend/src'], { cwd: repo, encoding: 'utf8' }).trim().split('\n'),
+  ...execFileSync('git', ['ls-files', '--others', '--exclude-standard', '--', 'frontend/src'], { cwd: repo, encoding: 'utf8' }).trim().split('\n'),
+])].filter(path => /\.(tsx?|jsx?|json)$/.test(path)).sort();
 const report = { metadata: {
   head: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim(),
+  runtimeSourceChanges,
   mode, node: process.version, cpu: os.cpus()[0]?.model, acceptedGeometryCommit: approved.acceptedCommit,
   auditToolSha256: createHash('sha256').update(await readFile(fileURLToPath(import.meta.url))).digest('hex'),
   acceptedFixtureSha256: createHash('sha256').update(approvedText).digest('hex'),
@@ -321,7 +346,7 @@ const report = { metadata: {
   warmDefinition: 'Immediate repeat of the preceding cold look; all existing caches remain available.',
   scope: mode === 'counts' ? 'Untimed, instrumented Node CPU work counts; copy bytes are cumulative traffic, not retained/peak memory. Exact duplicate keys distinguish signed zero, exclude nonfinite/unsupported input getters, and are scoped to each warp closure; bounded tracking flags truncation. Repeatable rays are potential avoided work, not measured time savings. No GPU/FPS claims.'
     : 'Uninstrumented synchronous Node CPU preparation and first application; identical preloaded GLB geometry; cache-cold versus immediate repeat. Warmup and signature checks excluded from intervals. No GPU/FPS claims.',
-  sourceHashes, sourceHashScope: 'Individually hashes transformed counting modules; HEAD identifies other runtime code. Asset hashes identify full loaded GLB files; the CPU loader excludes texture decoding.',
+  sourceHashes, sourceHashScope: 'Individually hashes transformed counting modules; HEAD plus runtimeSourceChanges identifies the working source state. Asset hashes identify full loaded GLB files; the CPU loader excludes texture decoding. Memo buffers are cumulative allocations/largest single table, not measured peak heap.',
   fixtureScope: 'The accepted garage fixtures explicitly use garage base actors; normal desktop GarageDriver uses a portrait base actor with garage garment/corset tiers. These fixture timings/counts are not a browser-route benchmark. The optional default desktop case is separately resolved through the current production resolver.',
   assetInputs, selectedCases: scenarios.map(c => c.id), pressureCycles, includeDefaultDesktop,
 }, cases: [], cachePressure: [], defaultDesktop: [] };
@@ -342,9 +367,9 @@ try {
       const model = cleanApi.prepareVillager(cleanFixture.actor, cleanFixture.options);
       try {
         cleanApi.applyVillagerLook(model, cleanFixture.look);
-        desktopOracle = { kind: 'Current runtime, separate Vite module context with no diagnostic transforms or prototype hooks',
-          head: report.metadata.head, sha256: geometryDigest(model.root), inputs: cleanFixture.inputs,
-          acceptance: 'Current-code instrumentation oracle only; not added to the accepted 0e81afe fixture set or a visual approval.' };
+        desktopOracle = { kind: 'Current working runtime, separate Vite module context with no diagnostic transforms or prototype hooks',
+          head: report.metadata.head, runtimeSourceChanges, sha256: geometryDigest(model.root), inputs: cleanFixture.inputs,
+          acceptance: 'Current working-code instrumentation oracle only; use source hashes/changes for provenance. Not added to the accepted 0e81afe fixture set or a visual approval.' };
       } finally { model.dispose(); }
     } finally { await cleanServer.close(); }
   }
