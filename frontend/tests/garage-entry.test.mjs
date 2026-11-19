@@ -126,6 +126,10 @@ test('the door opens independently, entry keeps planted shoes stable, and seated
     assert(cockpitTakesForWheel(true, true).some(take => take.id === 'drive-race-start'));
     const race = phase => sampleCockpitMotion('drive-race-start', phase);
     assert(race(.20).lookYaw > .4 && race(.20).focus > .85, 'looks toward the rival');
+    assert.equal(race(.25).clutch, 1, 'the clutch is down before the lever moves');
+    assert(race(.29).firstGearGate > 0 && race(.29).firstGearForward === 0, 'selects the left gate before pushing forward');
+    assert(race(.36).firstGearForward === 1 && race(.36).clutch === 1, 'first gear engages with the clutch down');
+    assert(race(.44).clutch < 1 && race(.44).clutch > 0 && race(.44).throttle > 0, 'throttle and clutch release overlap');
     assert.equal(race(.49).throttle, 1);
     assert.equal(race(.49).lookYaw, 0, 'eyes return to the road for the throttle beat');
     assert.equal(race(.69).throttle + race(.69).brake, 0, 'foot transfers before the brake depresses');
@@ -140,11 +144,20 @@ test('the door opens independently, entry keeps planted shoes stable, and seated
       stand.position.set(1.2, .023, -.17);
       const cabin = prepareGarageCockpit(car, [], undefined, GARAGE_STATIONS.brz)(driver, motion);
       const stage = car.getObjectByName('garage-drive-pedals');
+      const shifter = car.getObjectByName('garage-preview-shifter');
+      const knob = shifter.children[0].children[1];
+      const neutral = knob.getWorldPosition(new Vector3());
       const gas = stage.getObjectByName('garage-pedal-throttle');
       const brake = stage.getObjectByName('garage-pedal-brake');
       const clutchPedal = stage.getObjectByName('garage-pedal-clutch');
       const shoe = driver.getObjectByName('ball_r');
       const error = pedal => shoe.getWorldPosition(new Vector3()).distanceTo(pedal.children[1].localToWorld(new Vector3(0, 0, -.010)));
+      cabin.sample('drive-race-start', .356);
+      const selected = knob.getWorldPosition(new Vector3());
+      assert(selected.x > neutral.x + .03 && selected.z > neutral.z + .03);
+      assert(clutchPedal.rotation.x < -.35 && gas.rotation.x < .02);
+      const grip = driver.getObjectByName('middle_01_r').getWorldPosition(new Vector3());
+      assert(grip.distanceTo(selected) < .09, `${gender} shift hand contact (${grip.distanceTo(selected)})`);
       cabin.sample('drive-race-start', .49);
       assert(gas.rotation.x > .25 && brake.rotation.x === 0);
       assert(error(gas) < .048, `${gender} throttle contact (${error(gas)})`);
@@ -157,6 +170,7 @@ test('the door opens independently, entry keeps planted shoes stable, and seated
       assert.equal(brake.rotation.x + gas.rotation.x + clutchPedal.rotation.x, 0);
       cabin.stop();
       assert(!car.getObjectByName('garage-drive-pedals'));
+      assert(!car.getObjectByName('garage-preview-shifter'));
     }
     const drift = phase => sampleCockpitMotion('drive-drift', phase);
     assert(drift(.25).handControl === 'shift' && drift(.25).clutch === 1);

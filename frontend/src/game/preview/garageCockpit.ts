@@ -6,6 +6,7 @@ import type { DriveOutPose } from "./garageDriveMotion";
 import type { VehiclePartHinge } from "./vehiclePartRig";
 import { GARAGE_STATIONS, garageControlTargets, garageStationCamera, type GarageStation } from "./garageStations";
 
+import { createGarageShifter } from "./garageShifter";
 import { createGaragePedalRig } from "./garagePedalRig";
 import { cockpitWardrobe } from "../characters/cockpitWardrobe";
 import { createGarageHorn } from "../../audio/garageHorn";
@@ -41,15 +42,17 @@ export function sampleCockpitMotion(id: TakeId | null, phase: number) {
   const steeringTest = id === "199" ? 1 : id === "200" ? -1 : 0;
   const drift = id === "drive-drift";
   const raceStart = id === "drive-race-start";
-  const throttleBeat = pulse(.36, .43, .57, .64);
+  const firstGearGate = raceStart ? ease(.265, .305) : 0;
+  const firstGearForward = raceStart ? ease(.305, .355) : 0;
+  const throttleBeat = .24 * pulse(.35, .395, .42, .49) + pulse(.42, .49, .57, .64);
   const brakeBeat = pulse(.72, .77, .88, .96);
-  const handControl: HandControl | undefined = drift ? phase < .42 ? "shift" : "handbrake"
+  const handControl: HandControl | undefined = raceStart ? "shift" : drift ? phase < .42 ? "shift" : "handbrake"
     : id ? TAKE_HAND_CONTROLS[id] : undefined;
-  const reachControl = !handControl ? 0 : !drift ? pulse(.12, .31, .67, .91)
+  const reachControl = raceStart ? pulse(.17, .265, .36, .46) : !handControl ? 0 : !drift ? pulse(.12, .31, .67, .91)
     : handControl === "shift" ? pulse(.05, .17, .29, .41) : pulse(.43, .55, .65, .76);
-  const actuate = !handControl ? 0 : !drift ? pulse(.34, .47, .53, .65)
+  const actuate = raceStart ? firstGearForward : !handControl ? 0 : !drift ? pulse(.34, .47, .53, .65)
     : handControl === "shift" ? pulse(.17, .23, .27, .31) : pulse(.55, .60, .64, .68);
-  const clutch = id === "drive-clutch" ? pulse(.18, .32, .59, .79)
+  const clutch = raceStart ? pulse(.13, .225, .395, .53) + pulse(.79, .88, .96, 1) : id === "drive-clutch" ? pulse(.18, .32, .59, .79)
     : drift ? pulse(.055, .15, .29, .38) : 0;
   const throttle = raceStart ? throttleBeat : id === "drive-gas" ? pulse(.20, .42, .64, .88)
     : drift ? pulse(.34, .41, .43, .49) + pulse(.66, .76, .86, .98) : 0;
@@ -77,7 +80,7 @@ export function sampleCockpitMotion(id: TakeId | null, phase: number) {
     : id === "drive-brake" ? pulse(.07, .19, .87, 1) : brake;
   const stare = pulse(.05, .22, .90, 1);
   const brakeNod = .27 * pulse(.73, .80, .83, .93) - .045 * pulse(.88, .93, .95, 1);
-  return { brakeFoot, handControl, reachControl, actuate, clutch, throttle, horn, travel, heading, across: (1 - Math.cos(heading)) / curve, along: Math.sin(heading) / curve, steering, brake,
+  return { brakeFoot, firstGearGate, firstGearForward, handControl, reachControl, actuate, clutch, throttle, horn, travel, heading, across: (1 - Math.cos(heading)) / curve, along: Math.sin(heading) / curve, steering, brake,
     lookYaw: raceStart ? .46 * pulse(.05, .17, .24, .34) : steeringTest ? steering * .66 : sideCheck + farMirror + steering * .24 - gesture * .12,
     lookPitch: raceStart ? -.085 * throttle + brakeNod : steeringTest ? 0 : nod + reachControl * .10,
     focus: raceStart ? stare : focus * (1 - gesture * .65),
@@ -248,6 +251,7 @@ export function prepareGarageCockpit(
     const rest = [head, ...(torso ? [torso] : []), ...arms.flatMap(({ shoulder, elbow, hand, rig }) =>
       [shoulder, elbow, hand, ...(rig?.fingers.map(({ joint }) => joint) ?? [])]), ...legs.flatMap(({ hip, knee, foot }) => [hip, knee, foot])].map(localRest);
     const pedalRig = road?.drivingSet && pedals ? createGaragePedalRig(car, pedals, road.drivingSet) : undefined;
+    const shifter = pedalRig && controls ? createGarageShifter(car, controls.shift) : undefined;
     const expression = (["smile", "brow"] as const).flatMap((shape, channel) => driverFaceTargets(driver, shape)
       .map(({ mesh, index }) => ({ weights: mesh.morphTargetInfluences!, index, rest: mesh.morphTargetInfluences![index],
         focus: RACE_FACE[channel], greeting: channel === 0 ? .55 : .21 })));
@@ -298,8 +302,11 @@ export function prepareGarageCockpit(
         parked = !drive && id === null;
         const pose = sampleCockpitMotion(id, phase);
         const raceStart = Boolean(pedalRig && id === "drive-race-start");
-        const pedalsShot = raceStart && phase >= .34 && phase < .64;
-        camera.userData.drivingSetShot = raceStart ? (pedalsShot ? "pedals" : phase < .34 ? "stare" : "brake") : undefined;
+        const shiftShot = raceStart && phase >= .235 && phase < .375;
+        const pedalsShot = raceStart && phase >= .375 && phase < .64;
+        camera.userData.drivingSetShot = raceStart ? (shiftShot ? "shift" : pedalsShot ? "pedals" : phase < .235 ? "stare" : "brake") : undefined;
+        const shiftKnob = shifter?.sample(pose.firstGearGate,
+          raceStart ? pose.firstGearForward : pose.handControl === "shift" ? pose.actuate * (id === "drive-shift-down" ? -1 : 1) : 0);
         horn.setPressed(Boolean(road && pose.horn));
         if (!road) {
           camera.position.copy(shotTarget);
@@ -319,6 +326,10 @@ export function prepareGarageCockpit(
           if (raceStart && !pedalsShot) {
             camera.position.set(seat.x, seat.y + headHeight + .035, seat.z + .058);
             eye.set(seat.x - Math.sign(seat.x) * .36, seat.y + headHeight + .09, seat.z + .57);
+          }
+          if (shiftShot && shiftKnob) {
+            camera.position.copy(shiftKnob);
+            eye.set(seat.x - Math.sign(seat.x) * .47, shiftKnob.y + .28, shiftKnob.z + .22);
           }
           if (pedalRig && (pedalsShot || id === "drive-gas" || id === "drive-brake")) {
             const brakeSide = id === "drive-brake" ? pose.brakeFoot : 0;
@@ -490,8 +501,8 @@ export function prepareGarageCockpit(
           if (controlWeight && control && controls) {
             const target = control === "horn"
               ? hornPad.clone().addScaledVector(axis, MathUtils.lerp(.057, .026, pose.actuate))
-              : controls[control].clone();
-            if (control === "shift") target.z += pose.actuate * (id === "drive-shift-down" ? -.045 : .045);
+              : control === "shift" && shiftKnob ? shiftKnob.clone() : controls[control].clone();
+            if (control === "shift" && !shiftKnob) target.z += pose.actuate * (id === "drive-shift-down" ? -.045 : .045);
             if (control === "handbrake" && !road?.parkingBrake) target.y += pose.actuate * .065;
             controlDirection = control === "horn" ? up.clone() : new Vector3(0, -.28, .96);
             controlNormal = control === "horn" ? axis.clone().negate() : new Vector3(-side, -.35, 0).normalize();
@@ -569,6 +580,7 @@ export function prepareGarageCockpit(
       stop() {
         horn.stop();
         pedalRig?.dispose();
+        shifter?.dispose();
         wardrobe.stop();
         rest.forEach(restore);
         restore(driverRest);

@@ -71,9 +71,10 @@ as equipped.
 
 In the BRZ cockpit, select **Race start · Stare-down, throttle and brake**
 from Driver gestures. The driver looks toward the neighboring lane, returns
-her gaze to the road, presses the throttle, and moves her right foot onto
-the brake. The shot cuts from her face to the pedals and back for the
-braking dip and recovery. The set plays in the cockpit preview.
+her gaze to the road, presses the clutch, selects first gear, and feeds in
+throttle as the clutch comes up. The shot cuts from her face to the shifter
+and pedals, then back for the braking dip and recovery. The preview shifter
+follows a left-then-forward gate and supplies the target for her hand. The set plays in the cockpit preview.
 
 The steering grip follows the measured BRZ rim. The source GLB has an empty
 pedal node, so the cockpit creates three lightweight movable pedal plates
