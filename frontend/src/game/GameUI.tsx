@@ -8,7 +8,7 @@ import {TeamLineup} from "./stats/TeamLineup";
 import {HeroAbilities} from "./heroes/HeroAbilities";
 import {openHeroGuide} from "../store/hud/heroGuideStore";
 import { CombatHUD } from "../combat/CombatHUD";
-import { HeroWorkshop, HeroLoadoutSync } from "./heroes/HeroWorkshop";
+import { HeroLoadoutSync } from "./heroes/HeroLoadoutSync";
 import type { CharacterChoice } from "./characters/characterCatalog";
 import type { CharacterTab } from "./characters/CharacterPage";
 import { useAlphaFlow } from "./alpha/useAlphaFlow";
@@ -37,10 +37,12 @@ import { VehicleMenu } from "./menus/VehicleMenu";
 import { Cameras } from "../effects";
 import { PerformanceOverlay } from "../performance/PerformanceOverlay";
 import { useRenderSettingsStore } from "../store/presentation/renderSettingsStore";
-import { HeroSelection } from "./alpha/HeroSelection";
 import { ModeSelection } from "./alpha/ModeSelection";
 import { useBuilderStore } from "../worldBuilder/state/builderStore";
 import { QueueScreen } from "./alpha/QueueScreen";
+
+const HeroWorkshop = lazy(() => import("./heroes/HeroWorkshop").then(module => ({ default: module.HeroWorkshop })));
+const HeroSelection = lazy(() => import("./alpha/HeroSelection").then(module => ({ default: module.HeroSelection })));
 
 const WorldBuilderPanel = lazy(() =>
   import("../worldBuilder/panels/WorldBuilderPanel").then((m) => ({
@@ -110,7 +112,9 @@ export function GameUI() {
       <HeroLoadoutSync />
       <MinimapSessionLifecycle />
       <CtfMissionLifecycle />
-      {screen === "heroes" && <HeroWorkshop key={heroOwner} onCharacterViewChange={setCharacterTab} onCharacterPreviewChange={setCharacterDraft} />}
+      {screen === "heroes" && <Suspense fallback={<div role="status" className="menu-loading">Opening Heroes…</div>}>
+        <HeroWorkshop key={heroOwner} onCharacterViewChange={setCharacterTab} onCharacterPreviewChange={setCharacterDraft} />
+      </Suspense>}
       {/* Requires Canvas */}
       {needsCanvas && (
         <FullCanvas

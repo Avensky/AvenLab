@@ -3,6 +3,7 @@ import {NitrousExhaust} from './NitrousExhaust';
 import {ExteriorMarkers} from "./ExteriorMarkers";
 import { useConnectionView, useMotionView } from "../store/session/networkViews";
 import { RemoteFleet, VehicleExterior } from "./RemoteFleet";
+import { GameplayDrivers } from "./GameplayDrivers";
 import { vehicleAsset } from "../worldBuilder/vehicles/vehicleCatalog";
 import { useUIStore } from "../store/menus/uiStore";
 import { useSelectionStore } from "../store/selection/selectionStore";
@@ -175,6 +176,8 @@ export const VehicleRoster = memo(function VehicleRoster() {
   const entities = useMotionView(selectRoster);
   const lampsEnabled=useRenderSettingsStore(s=>s.vehicleLights);
   const lampCars=useMemo(()=>entities.filter(e=>['glb','hybrid'].includes(overrides[e.id]??mode)),[entities,overrides,mode]);
+  const occupiedCars=useMemo(()=>overlay === "vehicle_select"
+    ? lampCars.filter(car=>car.id!==local) : lampCars,[lampCars,overlay,local]);
 
   const driver = lampCars.find(car=>car.id===local);
   const {regular,remote}=useMemo(()=>{
@@ -190,6 +193,7 @@ export const VehicleRoster = memo(function VehicleRoster() {
       {lampCars.length>0 && <><ExteriorMarkers cars={lampCars}/><NitrousExhaust cars={lampCars}/></>}
       {lampsEnabled && driver && <RoadHeadlights car={driver}/>}
       {!!remote.length && <RemoteFleet cars={remote}/>}
+      {!!occupiedCars.length && <GameplayDrivers cars={occupiedCars}/>}
       {regular.map((entity) => (
         <NetworkVehicle
           key={entity.id}

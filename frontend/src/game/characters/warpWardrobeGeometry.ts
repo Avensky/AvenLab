@@ -3,13 +3,15 @@ import { Vector3, type BufferGeometry } from "three";
 const sampleStep = .0002;
 
 /** Deform a skinned garment in bind space, including its authored normals and tangents. */
-export function warpWardrobeGeometry(shape: (x: number, y: number, z: number, target: Vector3) => Vector3) {
+export function warpWardrobeGeometry(shape: (x: number, y: number, z: number, target: Vector3) => Vector3,
+  selected?: ArrayLike<number>) {
   const point = new Vector3(), scratch = new Vector3(), normal = new Vector3();
   const dx = new Vector3(), dy = new Vector3(), dz = new Vector3(), tangent = new Vector3();
   return (source: BufferGeometry) => {
     const position = source.getAttribute("position");
     let fitted: BufferGeometry | undefined;
     for (let vertex = 0; vertex < position.count; vertex++) {
+      if (selected && !selected[vertex]) continue;
       const x = position.getX(vertex), y = position.getY(vertex), z = position.getZ(vertex);
       shape(x, y, z, point);
       if (point.x === x && point.y === y && point.z === z) continue;

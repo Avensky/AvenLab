@@ -1,4 +1,6 @@
-/** Versioned self-contained snapshot tuples (v1 legacy, v2 tire effects). Field order matches snapshot_wire.rs.
+import { isDriverAppearance } from '../game/characters/driverAppearance.ts';
+
+/** Versioned self-contained snapshot tuples (v1 legacy, v2 tire effects, v3 drivers). Field order matches snapshot_wire.rs.
  * Normalize once at the network boundary; all gameplay/HUD stores keep one shape.
  * Full tuples need no previous state; snapshotDecoder restores deltas first.
  */
@@ -21,14 +23,16 @@ function unpack(keys: readonly string[], value: unknown): Row {
 export function decodeCompactSnapshot(message: unknown): Row | null {
   try {
     const wire = message as Row;
-    if (wire?.type !== 'snapshot_compact' || ![1,2].includes(wire.version) || !Number.isSafeInteger(wire.world_id)) return null;
+    if (wire?.type !== 'snapshot_compact' || ![1,2,3].includes(wire.version) || !Number.isSafeInteger(wire.world_id)) return null;
     const data = unpack(['tick','simulation_time_s','tick_dt_s','entities','match_state','asset_health','server_timing'], wire.data);
     if(data.server_timing?.drawbridge) {
       const {drawbridge,...timing}=data.server_timing;data.drawbridge=drawbridge;data.server_timing=timing;
     }
     if (!Array.isArray(data.entities) || data.entities.length > 96) return null;
     data.entities = data.entities.map((value: unknown) => {
-      const entity = unpack(fields.entity, value);
+      const entity = unpack(wire.version >= 3 ? [...fields.entity, 'driver'] : fields.entity, value);
+      if (entity.driver === null) delete entity.driver;
+      else if (entity.driver !== undefined && !isDriverAppearance(entity.driver)) throw new Error('Invalid driver appearance');
       if (!Number.isInteger(entity.flags) || entity.flags<0 || entity.flags>63 ||
           !Number.isInteger(entity.wheel_mask) || entity.wheel_mask<0 || entity.wheel_mask>0xffffffff) throw new Error('Invalid bitmask');
       const flags=entity.flags, wheelMask=entity.wheel_mask;
@@ -46,7 +50,7 @@ export function decodeCompactSnapshot(message: unknown): Row | null {
       if (entity.wheels !== null) {
         if (!Array.isArray(entity.wheels) || entity.wheels.length > 32) throw new Error('Invalid wheels');
         entity.wheels = entity.wheels.map((wheel: unknown,index:number) => {
-          const keys=wire.version===2?[...fields.wheel,'tire_contact']:fields.wheel;
+          const keys=wire.version>=2?[...fields.wheel,'tire_contact']:fields.wheel;
           return {...unpack(keys,wheel),grounded:Boolean((wheelMask>>>index)&1)};
         });
       }

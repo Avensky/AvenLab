@@ -161,6 +161,8 @@ export interface PhysicsEntitySnapshot {
   /** Canonical selected model id, such as ae86, brz, camaro, or supra. */
   vehicle_id?: string | null;
   appearance?: import("../../vehicles/cosmetics/heroLoadouts").HeroAppearance;
+  /** Absent means no visible occupant; this is the cheap gameplay appearance. */
+  driver?: import("../../game/characters/driverAppearance").DriverAppearance;
   team?: Team;
   room_id: number;
 

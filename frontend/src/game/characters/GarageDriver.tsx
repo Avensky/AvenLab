@@ -17,6 +17,7 @@ import type { GarageCockpit } from "../preview/garageCockpit";
 import { PreviewLoadingStatus } from "../preview/PreviewLoadingSeal";
 import { isCompactPreview } from "../preview/previewBudget";
 import { failCockpitPreview, useCharacterPreviewStore } from "./characterPreviewStore";
+import { useCommittedResource } from "./useCommittedResource";
 import type { WardrobeRemoval } from "./wardrobeGarments";
 import { resolveWardrobePreview, type WardrobeAssetSources, type WardrobeAssetTier, type WardrobePreview } from "./wardrobePreviewAssets";
 
@@ -88,12 +89,17 @@ function ReadyVillager({ preview, bag, previewPacks, leanFit, mirrorFit, victory
   // Appearance edits can recreate the removal array without changing the rig.
   const removalKey = [...look.removedClothing].sort().join(",");
   const removedClothing = useMemo(() => removalKey ? removalKey.split(",") as WardrobeRemoval[] : [], [removalKey]);
-  const model = useMemo(() => prepareVillager(scene, {
+  const model = useCommittedResource(() => prepareVillager(scene, {
     female: look.female, animateFace: true, bag: femaleWithBag, wetEyes, fitted, garments, garmentBody, removedClothing,
     corsetSource: corsetScene && corsetSet ? { set: corsetSet, scene: corsetScene } : undefined,
   }), [scene, look.female, removedClothing, femaleWithBag, wetEyes, fitted, garments, garmentBody, corsetScene, corsetSet]);
+  return model ? <PreparedVillager model={model} look={look} bag={bag} previewPacks={previewPacks}
+    leanFit={leanFit} mirrorFit={mirrorFit} victory={victory} cockpit={cockpit} paused={paused} upright={upright} /> : null;
+}
+
+function PreparedVillager({ model, look, bag, previewPacks, leanFit, mirrorFit, victory, cockpit, paused, upright }:
+  VillagerPlayback & { model: ReturnType<typeof prepareVillager>; look: CharacterLook }) {
   const invalidate = useThree(s => s.invalidate);
-  useEffect(() => model.dispose, [model]);
   useLayoutEffect(() => {
     applyVillagerLook(model, look);
     invalidate();

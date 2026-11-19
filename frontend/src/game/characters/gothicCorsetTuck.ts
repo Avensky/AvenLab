@@ -2,6 +2,9 @@ import { DoubleSide, MathUtils, Ray, SkinnedMesh, type BufferGeometry, type Obje
 import { angularStep, centerZ, columns, createGarmentProfiler, type GarmentProfiler, meridian, profile, sample, step, top } from "./skirtWaistProfile";
 import { wardrobeCoverageSurface } from "./wardrobeCoverage";
 import { warpWardrobeGeometry } from "./warpWardrobeGeometry";
+import { wardrobeFitCache } from "./wardrobeFitCache";
+
+const corsetTuckFit = {};
 
 function tuckedParts(root: Object3D) {
   const parts: SkinnedMesh[] = [];
@@ -143,16 +146,26 @@ export function prepareSkirtCorsetFit(
   if (!fabric.length) return;
   const parts = tuckedParts(root);
   if (!parts.length) return;
-  const measure = createGarmentProfiler();
-  const skin = profile([body], true).radius;
-  const restoreHem = extend ? extendHem(parts, fabric, skin, measure) : undefined;
-  // Fit the tucked corset to the existing waistband. Expanding the skirt here
-  // makes its belt bulge and stretches the fabric whenever a corset is selected.
-  const restoreTuck = seatHem(parts, fabric, skin, measure, extend, body);
+  const sources = parts.map(part => part.geometry);
+  const fitted = wardrobeFitCache.fit(corsetTuckFit, String(extend), sources, [...fabric.map(mesh => mesh.geometry), body], () => {
+    const measure = createGarmentProfiler();
+    const skin = profile([body], true).radius;
+    let restoreHem: ReturnType<typeof extendHem>, restoreTuck: ReturnType<typeof seatHem>;
+    try {
+      restoreHem = extend ? extendHem(parts, fabric, skin, measure) : undefined;
+      // Keep the accepted fit and clone its final result before releasing the
+      // temporary extended/tucked geometries. Each model owns its final clone.
+      restoreTuck = seatHem(parts, fabric, skin, measure, extend, body);
+      return parts.map((part, i) => part.geometry === sources[i] ? undefined : part.geometry.clone());
+    } finally { restoreTuck?.(); restoreHem?.(); }
+  });
+  for (let i = 0; i < parts.length; i++) if (fitted[i]) parts[i].geometry = fitted[i]!;
   return {
     dispose() {
-      restoreTuck?.();
-      restoreHem?.();
+      for (let i = 0; i < parts.length; i++) {
+        parts[i].geometry = sources[i];
+        fitted[i]?.dispose();
+      }
     },
   };
 }

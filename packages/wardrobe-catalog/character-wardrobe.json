@@ -1,7 +1,7 @@
 [
-  { "id": "gothic-01", "name": "Laced bodice", "extraDyeFields": ["panel", "laces", "hardware", "closure", "finish"] },
-  { "id": "gothic-02", "name": "Sweetheart corset", "extraDyeFields": ["laces", "panel", "hardware", "closure"] },
-  { "id": "gothic-03", "name": "Ruffled corset", "extraDyeFields": ["panel", "laces"] },
-  { "id": "gothic-04", "name": "Underbust vest", "retired": true, "extraDyeFields": ["panel", "lining", "hardware"] },
-  { "id": "gothic-05", "name": "High-collar corset", "extraDyeFields": ["panel", "laces", "lining", "hardware"] }
+  { "id": "gothic-01", "name": "Laced bodice", "gameplayColors": { "top": "#797471", "bottom": "#ddd8d1" }, "extraDyeFields": ["panel", "laces", "hardware", "closure", "finish"] },
+  { "id": "gothic-02", "name": "Sweetheart corset", "gameplayColors": { "top": "#29282d", "bottom": "#ddd8d1" }, "extraDyeFields": ["laces", "panel", "hardware", "closure"] },
+  { "id": "gothic-03", "name": "Ruffled corset", "gameplayColors": { "top": "#acb181", "bottom": "#ddd8d1" }, "extraDyeFields": ["panel", "laces"] },
+  { "id": "gothic-04", "name": "Underbust vest", "retired": true, "gameplayColors": { "top": "#30282a", "bottom": "#ddd8d1" }, "extraDyeFields": ["panel", "lining", "hardware"] },
+  { "id": "gothic-05", "name": "High-collar corset", "gameplayColors": { "top": "#292731", "bottom": "#ddd8d1" }, "extraDyeFields": ["panel", "laces", "lining", "hardware"] }
 ]
