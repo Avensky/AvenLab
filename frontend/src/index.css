@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* Installed 3D assets contain no CSS classes. */
+@source not "../public/models/**/*.glb";
+@source not "../public/models/**/*.blend";
 
 html,
 body,
