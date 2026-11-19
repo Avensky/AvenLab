@@ -1,7 +1,7 @@
 import {
   BufferAttribute, BufferGeometry, Float32BufferAttribute, Material, Mesh,
   MeshPhysicalMaterial, MeshStandardMaterial, Object3D, PropertyBinding, StaticDrawUsage,
-  type AnimationClip,
+  type AnimationClip, type InterleavedBufferAttribute,
 } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
@@ -99,9 +99,58 @@ function compatibleMesh(object: Object3D): object is StaticMesh {
     geometry.drawRange.start === 0 && geometry.drawRange.count >= count);
 }
 
-function transformedGeometry(mesh: Mesh) {
+type VertexAttribute = BufferAttribute | InterleavedBufferAttribute;
+
+function attributeBits(attribute: VertexAttribute) {
+  const { buffer, byteOffset, byteLength, BYTES_PER_ELEMENT: bytes } = attribute.array;
+  // Explicit constructors retain ArrayBufferLike support, including shared
+  // source storage, without narrowing the buffer to ArrayBuffer by a cast.
+  if (bytes === 1) return new Uint8Array(buffer, byteOffset, byteLength);
+  if (bytes === 2) return new Uint16Array(buffer, byteOffset, byteLength / 2);
+  if (bytes === 4) return new Uint32Array(buffer, byteOffset, byteLength / 4);
+  return new BigUint64Array(buffer, byteOffset, byteLength / 8);
+}
+
+function sameUVAttribute(a: VertexAttribute, b: VertexAttribute) {
+  if (a === b) return true;
+  const usageA = "usage" in a ? a.usage : a.data.usage;
+  const usageB = "usage" in b ? b.usage : b.data.usage;
+  const gpuA = "gpuType" in a ? a.gpuType : undefined;
+  const gpuB = "gpuType" in b ? b.gpuType : undefined;
+  if (a.constructor !== b.constructor || a.array.constructor !== b.array.constructor ||
+      a.count !== b.count || a.itemSize !== b.itemSize || a.normalized !== b.normalized ||
+      gpuA !== gpuB || usageA !== usageB) return false;
+
+  // Compare stored bits, not rounded floats or a sampled hash. In particular,
+  // signed zero and distinct NaN payloads must not be silently equated. Views
+  // also avoid allocating/deinterleaving a copy just to recognize a duplicate.
+  const rawA = attributeBits(a), rawB = attributeBits(b);
+  const strideA = "data" in a ? a.data.stride : a.itemSize;
+  const strideB = "data" in b ? b.data.stride : b.itemSize;
+  const offsetA = "offset" in a ? a.offset : 0;
+  const offsetB = "offset" in b ? b.offset : 0;
+  for (let vertex = 0; vertex < a.count; vertex++) for (let component = 0; component < a.itemSize; component++) {
+    if (rawA[vertex * strideA + offsetA + component] !== rawB[vertex * strideB + offsetB + component]) return false;
+  }
+  return true;
+}
+
+function duplicateUVChannels(meshes: readonly Mesh[]) {
+  const aliases = new Map<string, string>(), canonical: string[] = [];
+  for (const name of Object.keys(meshes[0].geometry.attributes)) {
+    if (!/^(?:uv\d*|texcoord_\d+)$/.test(name)) continue;
+    const original = canonical.find(candidate => meshes.every(mesh =>
+      sameUVAttribute(mesh.geometry.getAttribute(name), mesh.geometry.getAttribute(candidate))));
+    if (original) aliases.set(name, original);
+    else canonical.push(name);
+  }
+  return aliases;
+}
+
+function transformedGeometry(mesh: Mesh, uvAliases: ReadonlyMap<string, string>) {
   const geometry = new BufferGeometry();
   for (const name of Object.keys(mesh.geometry.attributes)) {
+    if (uvAliases.has(name)) continue;
     const source = mesh.geometry.getAttribute(name);
     if (!["position", "normal", "tangent"].includes(name)) {
       // mergeGeometries copies these untouched attributes into its result.
@@ -147,11 +196,16 @@ function acquireGeometry(meshes: readonly Mesh[]) {
   const key = geometryKey(meshes);
   let entry = geometries.get(key);
   if (!entry) {
-    const parts = meshes.map(transformedGeometry);
+    const uvAliases = duplicateUVChannels(meshes);
+    const parts = meshes.map(mesh => transformedGeometry(mesh, uvAliases));
     let geometry: BufferGeometry | null;
     try { geometry = mergeGeometries(parts, false); }
     finally { for (const part of parts) part.dispose(); }
     if (!geometry) return null;
+    // The canonical attribute is owned by the merged geometry. Retain every
+    // channel name with the same values, sharing the BufferAttribute itself so
+    // the renderer also reuses its upload. Never alias a source-owned buffer.
+    for (const [name, original] of uvAliases) geometry.setAttribute(name, geometry.getAttribute(original));
     geometry.computeBoundingBox(); geometry.computeBoundingSphere();
     entry = { geometry, users: 0 };
     geometries.set(key, entry);
@@ -171,6 +225,7 @@ export type StaticVehicleBatchStats = {
   batches: number;
   /** Opaque base-pass draw ranges removed, excluding shadows/reflections. */
   savedDrawRanges: number;
+  /** Unique derived attribute/index buffer storage referenced by this root. */
   geometryBytes: number;
 };
 
@@ -182,6 +237,7 @@ export type StaticVehicleBatchStats = {
 export function batchStaticVehicleMeshes(root: Object3D, options: BatchOptions = {}) {
   const stats: StaticVehicleBatchStats = { sourceMeshes: 0, batches: 0, savedDrawRanges: 0, geometryBytes: 0 };
   const releases: Array<() => void> = [];
+  const storage = new Set<ArrayBufferLike>();
   const parentOrders = new Map<Object3D, Object3D[]>();
   const protectedObjects = animationTargets(root, options.animations ?? []);
   const names = new Set((options.protectedNames ?? []).map(name => name.toLowerCase()));
@@ -224,8 +280,11 @@ export function batchStaticVehicleMeshes(root: Object3D, options: BatchOptions =
     for (const source of sources) parent.remove(source);
     parent.add(batch);
     stats.sourceMeshes += sources.length; stats.batches++; stats.savedDrawRanges += sources.length - 1;
-    stats.geometryBytes += owned.geometry.index?.array.byteLength ?? 0;
-    for (const attribute of Object.values(owned.geometry.attributes)) stats.geometryBytes += attribute.array.byteLength;
+    for (const attribute of [...Object.values(owned.geometry.attributes), owned.geometry.index]) {
+      if (!attribute || storage.has(attribute.array.buffer)) continue;
+      storage.add(attribute.array.buffer);
+      stats.geometryBytes += attribute.array.buffer.byteLength;
+    }
     releases.push(() => {
       batch.removeFromParent();
       for (const source of sources) parent.add(source);

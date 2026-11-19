@@ -2,6 +2,126 @@
 
 These CSV files are recorded experiments, not configuration. Keep labels, car/map/route/quality/range and warmup comparable. UI changes in this update have deterministic render/sampling checks, not a target-machine FPS claim. Use docs/performance-recording.md to capture a new baseline.
 
+## Second pass: shared buffers and repeated queries — 2026-11-18
+
+This continues `perf/wardrobe-cache-and-gameplay-lods` and [draft PR #36](https://github.com/Avensky/AvenLab/pull/36).
+The comparison baseline is the prior published branch head,
+`a0468bde66c13a61fc61355da764bc7f90693d3e`. Performance, hair, and poses are the
+three parallel workstreams; [branch responsibilities](../docs/readiness/README.md#three-branch-coordination)
+and shared boundaries are recorded in the readiness README. This pass changes
+vehicle buffer preparation, cold skirt/corset queries, and world damage selection.
+
+### Measured results
+
+| Measurement | Previous performance implementation | This pass | Observed change |
+| --- | ---: | ---: | --- |
+| BRZ unique derived geometry buffers | 33,701,266 bytes | 16,125,666 bytes | 17,575,600 bytes / 52.2% less storage |
+| BRZ cold batch preparation | 105.44 ms | 69.90 ms | 33.7% lower median CPU time |
+| Gothic skirt 05 + corset 05, garage cold preparation | 1,109.67 ms | 996.83 ms | 10.2% lower median CPU time |
+| Gothic skirt 05 + corset 05, portrait cold preparation | 832.04 ms | 740.15 ms | 11.0% lower median CPU time |
+| Shared damage-map scans in the deterministic fixture | 360 scans / 90,000 entry visits | 2 scans / 500 entry visits | Same 360 selector calls and results |
+
+Timing comparisons use Node v24.22.3 on the same AMD EPYC 9V74 CPU and identical
+installed assets, with other test/build/probe jobs paused. Both timing reports
+contain eight measured samples per case and their min/max/mean. The reported
+median is the upper middle value for an even sample count. These are CPU and
+buffer measurements; browser frame time, GPU uploads, and VRAM remain unmeasured.
+
+### Vehicle UV sharing
+
+All eight UV streams are byte-identical in each of the 18 BRZ batches. The batcher
+now checks exact stored bits and compatible attribute formats before copying
+streams, then retains every channel name on one shared, derived BufferAttribute.
+It preserves differing values, normalized formats, GPU types, component sizes,
+and usage boundaries. Interleaved offsets/strides and signed-zero bits are checked.
+Source buffers remain independent; live equivalent vehicle instances keep the
+existing immutable shared-geometry ownership contract.
+
+The new [comparison harness](../frontend/scripts/benchmark-vehicle-batches.mjs)
+restores only the baseline batcher and uses the same material/door/steering/hinge
+preparation on both sides. It alternates four unmeasured warmup pairs and eight
+measured pairs. Each cold run releases the prior derived geometry; the second
+instance measures reuse while the first is alive. An independent, untimed census
+counts unique allocations for **both** versions, so savings do not depend on the
+changed `stats.geometryBytes` accounting. Exact output signatures include every
+attribute/index byte, transforms, draw ranges, groups, and mesh state.
+
+BRZ remains at 143 prepared ranges and 204,815 triangles. Its median second-instance
+preparation is 2.12 ms. AE86 remains at 46 ranges with no eligible batches or
+derived allocation; both implementations take about 0.12 ms in the new harness.
+Both real-asset signatures and original GLB hashes match. See the
+[raw comparison](reports/vehicle-uv-sharing-2026-11-18.json) and
+[vehicle ownership notes](../frontend/src/vehicles/tools/README.md).
+
+### Cold fitting queries
+
+Eligible cold corset fits use one temporary BVH over the active skirt triangles.
+The same nearest-distance query now searches that union once; fit equations,
+ray origins/directions, double-sided handling, and near/far intervals are unchanged.
+Unsupported layouts or inputs exceeding 64 parts / a conservative 2 MiB packed
+buffer-and-construction allowance keep the existing separate-surface path. The
+union owns its copied buffers and is released after the synchronous fit. No new
+persistent cache was added.
+
+An untimed check of the **final bounded implementation** confirms that both High
+Collar cases combine four surfaces into one, with 8,693 vertices and 10,758 triangles.
+Their allowance calculation is 1,696,524 bytes; the returned position/index/packed
+BVH buffers total 338,916 bytes. Full prepared-model hashes still match accepted
+fixtures. See [path/budget evidence](reports/wardrobe-union-path-2026-11-18.json).
+
+The [full twelve-case timing report](reports/wardrobe-union-2026-11-18.json)
+separates cold preparation, warm preparation, and first look application. The
+High Collar warm medians are 57.06 ms in garage and 42.76 ms in portrait. Several
+other outfits change little; small differences in unaffected/control paths do not
+establish an optimization gain. The garage cold case still takes about one second
+on this CPU. Exact duplicate-position/Jacobian reuse or worker/offline preparation
+remain future work requiring separate equivalence and ownership checks.
+
+### Shared world damage selection
+
+Authored-world chunks share a weak cache of the sorted destroyed-ID key, keyed by
+the immutable `asset_health` object. Compact unchanged maps reuse that result;
+damage, repairs, replacements, fresh legacy JSON maps, and world resets still
+derive the appropriate key. Malformed scalar health fields retain their previous
+empty-result behavior. The snapshot type documents immutable map replacement.
+
+The [deterministic operation-count fixture](reports/destroyed-asset-scans-2026-11-18.json)
+uses the production decoder, two keyframes, 30 packets per keyframe, six consumers,
+and 250 health entries. It reduces enumeration/allocation work; the previous
+string selector already suppressed React renders when the destroyed set stayed
+unchanged. New keyframes and changed-since-baseline packets with fresh maps still
+need scans. Weak keys allow abandoned map objects to be collected.
+See the [world README](../frontend/src/world/README.md).
+
+### Validation and remaining work
+
+- The combined targeted run passed **51 tests, zero failures and zero skips**,
+  with required wardrobe assets enabled. It covers all 12 accepted cold/warm
+  geometry signatures, coverage boundaries/fallback/ownership, real vehicle
+  UV/material/rig behavior, immutable damage updates, protocol delivery, and
+  staged vehicle loading.
+- Frontend TypeScript checking and the production Vite build passed. The build
+  used the installed assets/configuration with public-file copying disabled;
+  existing large-chunk and eager/dynamic world-builder import warnings remain.
+  Source review found no blocking ownership or cache regressions in the three
+  changes. `git diff --check` also passed.
+- The original 27 regular-skirt/corset baseline failures and three vehicle
+  material-policy assertion disagreements remain open. This pass preserves
+  accepted geometry and does not mark those issues resolved.
+- Browser visuals, actual frame time/GPU memory, cold preparation offloading,
+  loaded-source/texture retention, and missing mobile tiers remain open. Cargo
+  tests for the first pass's server changes are still required before merge;
+  this second pass does not change Rust or the wire schema.
+
+Reproduce from `frontend/` after installing the required source assets:
+
+```sh
+node scripts/benchmark-vehicle-batches.mjs --baseline a0468bd --samples 8 --output /tmp/vehicle-uv-sharing.json
+node scripts/benchmark-wardrobe-fit.mjs --baseline a0468bd --samples 8 --output /tmp/wardrobe-union.json
+AVENLAB_WARDROBE_REQUIRE_ASSETS=1 node --test --test-concurrency=1 tests/wardrobe-coverage-union.test.mjs tests/wardrobe-fit-cache.test.mjs tests/gothic-skirt-layers.test.mjs tests/gothic-handkerchief-panels.test.mjs tests/static-vehicle-batches.test.mjs tests/destroyed-assets.test.mjs tests/compact-snapshot.test.mjs tests/snapshot-delivery.test.mjs tests/network-snapshot-delivery.test.mjs tests/heroes-vehicle-loading.test.mjs
+./node_modules/.bin/tsc -p tsconfig.app.json --noEmit
+```
+
 ## Fitting and gameplay LOD pass — 2026-11-18
 
 Base: accepted merge `0e81afeab830870989492bc69d52dfac17c0a23c`.

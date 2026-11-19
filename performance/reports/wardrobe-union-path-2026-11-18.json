@@ -1,0 +1,58 @@
+{
+  "head": "a0468bde66c13a61fc61355da764bc7f90693d3e",
+  "helperPath": "frontend/src/game/characters/wardrobeCoverageUnion.ts",
+  "helperSha256": "1e5aa1ca8f9da4a192d65a16dd97b5cadcf3195aef38ce874a2f3921c2465241",
+  "scope": "Two untimed cold fits with an in-memory wrapper around the final bounded helper. Other correctness tests may run concurrently. No elapsed-time or FPS claims.",
+  "cases": [
+    {
+      "id": "garage:gothic-skirt-05+gothic-05",
+      "raycastCalls": 505709,
+      "calls": [
+        {
+          "inputParts": 4,
+          "activeParts": 4,
+          "vertices": 8693,
+          "indices": 32274,
+          "triangles": 10758,
+          "estimatedRawAllowanceBytes": 1696524,
+          "rawAllowanceLimitBytes": 2097152,
+          "inputPartLimit": 64,
+          "returnedSurfaces": 1,
+          "unionSelected": true,
+          "ownsPositionBuffer": true,
+          "returnedPositionBytes": 104316,
+          "returnedIndexBytes": 129096,
+          "returnedPackedBvhBytes": 105504
+        }
+      ],
+      "geometrySha256": "15975a829eca52df5985f3711092e4bf665e9e52fc945d72a15078ad0f9dc714",
+      "acceptedGeometrySha256": "15975a829eca52df5985f3711092e4bf665e9e52fc945d72a15078ad0f9dc714",
+      "acceptedGeometryMatch": true
+    },
+    {
+      "id": "portrait:gothic-skirt-05+gothic-05",
+      "raycastCalls": 342680,
+      "calls": [
+        {
+          "inputParts": 4,
+          "activeParts": 4,
+          "vertices": 8693,
+          "indices": 32274,
+          "triangles": 10758,
+          "estimatedRawAllowanceBytes": 1696524,
+          "rawAllowanceLimitBytes": 2097152,
+          "inputPartLimit": 64,
+          "returnedSurfaces": 1,
+          "unionSelected": true,
+          "ownsPositionBuffer": true,
+          "returnedPositionBytes": 104316,
+          "returnedIndexBytes": 129096,
+          "returnedPackedBvhBytes": 105504
+        }
+      ],
+      "geometrySha256": "7de22a68d971de1f10b3da7e844eadf358e1fe4c9e5eb7663d04e65d1050fb95",
+      "acceptedGeometrySha256": "7de22a68d971de1f10b3da7e844eadf358e1fe4c9e5eb7663d04e65d1050fb95",
+      "acceptedGeometryMatch": true
+    }
+  ]
+}

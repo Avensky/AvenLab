@@ -35,7 +35,8 @@ export interface CtfFlagEvent {
 }
 export interface PhysicsSnapshot {
   match_state?: CtfMatchState | null;
-  asset_health?: Record<string,number>;
+  /** Immutable packet data; changed damage maps replace the previous object. */
+  asset_health?: Readonly<Record<string,number>>;
   drawbridge?: {start_tick:number;start_angle:number;target_angle:number;next_available_tick?:number;broken:string|null};
   match_clock?: {
     remaining_s: number;

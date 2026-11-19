@@ -26,10 +26,15 @@ Rust and browser/target-device validation remain open; the PR is not merged or d
 
 ## Three-branch coordination
 
-Three concurrent work branches are planned. Their names and responsibilities are
-still to be supplied; keep branch ownership explicit when assigning work. The
-current performance PR remains its own reviewable change until that mapping is
-agreed.
+The three workstreams are **performance, hair, and poses**. Keep each one's work
+and validation in its own branch; the hair and pose branch names are still to be
+supplied.
+
+| Workstream | Branch | Responsibility and shared boundaries |
+| --- | --- | --- |
+| Performance | `perf/wardrobe-cache-and-gameplay-lods` | Reduce measured CPU, rendering, loading, and memory costs while preserving accepted appearance and behavior. Coordinate changes to character preparation and shared data before integration. |
+| Hair | Name pending | Hair assets and their character integration. Coordinate stable asset IDs, appearance colors, and headwear compatibility with the existing character/LOD contracts. |
+| Poses | Name pending | Poses and pose/animation transitions. Coordinate rig, animation, and resource-lifecycle interfaces with character preparation. |
 
 - Use a separate worktree for each active branch so unfinished changes remain
   isolated. Record each branch's purpose, base commit, owning README, and dependent
@@ -70,9 +75,9 @@ visual approval. Unassigned work remains open.
 | COLOR-03 | Better curated color combinations with consistent group assignment. Current two-color themes exist; expanded palettes need review. **Open.** | Gate | Keep | Gate | Curated combinations work on the supported clothing groups, have clear names and selected state, and preview correctly across light/dark fabric. Applying a palette preserves unsupported or intentionally untouched groups. |
 | UI-01 | Wider, clearer details pane with color controls retained inside. **Open.** | Gate | Keep | Gate | Desktop details use the available width without crowding the character. Mobile uses an intentional sheet/panel arrangement, readable labels, and no horizontal overflow. Verify portrait, landscape, keyboard, touch, and controller navigation. |
 | UI-02 | Useful, contextual details actions and a cleaner mobile hierarchy. **Open.** | Gate | Keep | Gate | Equip/remove, applicable sleeve/layer controls, reset group/piece, compare with original, and save/apply/cancel behavior are easy to find. Show only meaningful actions; preserve the selected item and scroll position. |
-| PERF-01 | Remove discarded fitting work; cache exact reusable fits; correct preview resource lifecycle. Implemented and CPU/equivalence-tested; cold fitting remains open. | Gate | Keep | Gate | Cold and repeat selections are measured separately; accepted geometry stays identical; bounded caches cannot share mutable/disposed results; development replay prepares one model per committed fit. |
+| PERF-01 | Remove discarded fitting work; cache exact reusable fits; share temporary coverage queries; correct preview resource lifecycle. CPU/equivalence-tested. High Collar cold preparation improves 10–11% in the second pass but remains about one second in garage. | Gate | Keep | Gate | Cold and repeat selections are measured separately; accepted geometry stays identical; bounded caches cannot share mutable/disposed results; development replay prepares one model per committed fit. |
 | PERF-02 | Cheap gameplay driver LOD with recognizable broad appearance. Implemented and geometry/update-tested; renderer/GPU review pending. | Gate | Keep | Gate | Occupied supported vehicles display the correct body/hair/hat/main colors, empty/static props remain empty, and fleet draw cost is bounded. Test close approach, culling hysteresis, color changes, removal, and cabin clipping on target hardware. |
-| PERF-03 | Group compatible vehicle segments without breaking behavior. BRZ measured at 259 → 143 ranges; source assets preserved. Cold derivation/memory and GPU review remain open. | Gate | Gate | Gate | Measure actual render-range reductions and unchanged triangles/transforms. Doors, wheel/caliper rigs, steering, lights, glass, paint, and animations still work. Source GLB/Blender assets are unchanged. |
+| PERF-03 | Group compatible vehicle segments without breaking behavior. BRZ stays at 259 → 143 ranges; exact UV sharing reduces derived buffers from 33.7 MB to 16.1 MB. Original assets are preserved. Cold derivation/offline exports and GPU review remain open. | Gate | Gate | Gate | Measure actual render-range reductions and unchanged triangles/transforms. Doors, wheel/caliper rigs, steering, lights, glass, paint, and animations still work. Source GLB/Blender assets are unchanged. |
 | PERF-04 | Set texture, loaded-source, and frame-time budgets for exposed assets. **Open:** wardrobe source GLTF/texture retention and mobile texture budgets still need work. | Scope | Gate | Gate | Repeated wardrobe browsing and fleet gameplay stay within documented memory/frame budgets on a named desktop and mobile baseline. Record GPU/browser results; CPU geometry timing alone cannot close this gate. |
 | PERF-05 | Real lazy boundaries and a production startup budget. Hero selection/workshop splitting reduces initial gzip JS by 1.7%; remaining eager paths are open. | Gate | Gate | Gate | Bundle manifests show optional screens outside the initial static closure. The game entry does not import research/editor-only modules. Loading and return navigation retain correct state. |
 | DATA-01 | One appearance schema across profile save, full preview, and gameplay LOD. Reduced driver contract added; group schema/migrations remain open. | Gate | Gate | Gate | Old saves load safely, the server validates supported fields, reconnect/equip updates are correct, and compact snapshot v1/v2 compatibility plus v3 driver fixtures pass. Draft/Under Development items cannot become unsupported live loadouts. |
@@ -192,5 +197,6 @@ what was measured/tested, and what is still open**. Record commands and input
 assets with numerical results in [performance notes](../../performance/README.md).
 Do not convert a pending visual check into “done” based only on a successful build.
 When a gate is completed, include the commit/PR and evidence rather than deleting
-the history. The immediate next product work is COLOR-01–03 and UI-01–02 after the
-performance branch has completed its own validation.
+the history. COLOR-01–03 and UI-01–02 remain product follow-ups. Hair and pose work
+proceed on their own branches while the performance branch continues measured
+optimization and completes its validation.

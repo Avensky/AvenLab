@@ -1,6 +1,7 @@
 import { DoubleSide, MathUtils, Ray, SkinnedMesh, type BufferGeometry, type Object3D } from "three";
 import { angularStep, centerZ, columns, createGarmentProfiler, type GarmentProfiler, meridian, profile, sample, step, top } from "./skirtWaistProfile";
 import { wardrobeCoverageSurface } from "./wardrobeCoverage";
+import { wardrobeCoverageUnion } from "./wardrobeCoverageUnion";
 import { warpWardrobeGeometry } from "./warpWardrobeGeometry";
 import { wardrobeFitCache } from "./wardrobeFitCache";
 
@@ -64,7 +65,7 @@ function extendHem(parts: readonly SkinnedMesh[], skirts: readonly SkinnedMesh[]
 function seatHem(parts: readonly SkinnedMesh[], skirts: readonly SkinnedMesh[], skin: Float32Array, measure: GarmentProfiler, followFolds: boolean, body: BufferGeometry) {
   const skirt = measure(skirts);
   if (!skirt.found) return;
-  const surfaces = followFolds ? skirts.flatMap(mesh => wardrobeCoverageSurface(mesh.geometry) ?? []) : [];
+  const surfaces = followFolds ? wardrobeCoverageUnion(skirts.map(mesh => mesh.geometry)) : [];
   const highestRim = Math.max(...skirt.upper);
   // High-waist styles reach the cups. Their smooth seam transition can extend
   // above the ordinary profile; retain the real skin floor across that boundary.

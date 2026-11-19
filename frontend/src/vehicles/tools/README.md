@@ -64,6 +64,31 @@ zero-user batch cache. Derived buffers add some resident geometry memory while
 the originals remain cached; this is a draw-call optimization, not triangle
 reduction or texture compression.
 
+### Exact UV storage sharing
+
+Before copying a batch's UV streams, the helper compares UV-family attributes
+across every source segment. Channels can share storage only when attribute
+class, component storage type, item size, count, normalization, GPU type and
+usage match, and every stored component has exactly the same bits. The check
+honors interleaved offsets and strides; it does not use tolerances, sampling or
+hash collisions. Distinct signed zeros remain distinct. Position, normal and
+tangent streams are not candidates for this optimization.
+
+Each channel name remains on the derived geometry. Identical channels reference
+the same **derived BufferAttribute**, so they share its CPU storage and renderer
+upload. This never aliases a source-owned attribute or array. Changed source
+buffer versions create a different cached result; existing derived geometry does
+not change when a source buffer is edited. Equivalent live instances retain the
+existing immutable shared-geometry contract. Any future writable per-instance UV
+edit must first make its own geometry/attribute copies, including separating any
+channel aliases that it intends to edit independently.
+
+`stats.geometryBytes` counts unique underlying attribute/index allocations
+referenced by all batches under that root, including when several material
+batches reuse one geometry. It does not sum the same allocation once per UV
+name, and it does not mean newly allocated bytes on a live cache hit or measured
+VRAM.
+
 ### Reproduce and validate
 
 From `frontend/`:
@@ -82,16 +107,16 @@ are mocked by `scripts/load-vehicle-geometry.mjs`; no texture-quality or GPU
 rendering claim follows from this headless audit. Draw ranges refer to the base
 pass; shadows and reflection passes can multiply actual GPU calls.
 
-### Measured installed assets (2026-11-19)
+### Measured installed assets (2026-11-18, America/Los_Angeles)
 
 Measured after material preparation and the garage's door/steering/hinge setup:
 
-| Asset | Before → after base-pass ranges | Reduction | Triangles retained | Derived geometry buffers | Cold derivation |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| BRZ | 259 → 143 | 116 / 44.8% | 204,815 | 33,701,266 bytes | 147 ms |
-| AE86 | 46 → 46 | 0 | 706,225 | 0 | 0.23 ms |
-| Camaro | Unavailable LFS source | Unmeasured | Unmeasured | Unmeasured | Unmeasured |
-| Supra | Unavailable LFS source | Unmeasured | Unmeasured | Unmeasured | Unmeasured |
+| Asset | Before → after base-pass ranges | Reduction | Triangles retained | Unique derived geometry buffers |
+| --- | ---: | ---: | ---: | ---: |
+| BRZ | 259 → 143 | 116 / 44.8% | 204,815 | 16,125,666 bytes |
+| AE86 | 46 → 46 | 0 | 706,225 | 0 |
+| Camaro | Unavailable LFS source | Unmeasured | Unmeasured | Unmeasured |
+| Supra | Unavailable LFS source | Unmeasured | Unmeasured | Unmeasured |
 
 The AE86 starts at 37 source primitives and gains nine independently articulated
 door pieces before this comparison. Its remaining material/behavior boundaries
@@ -100,20 +125,33 @@ compatible static meshes become 18 batches; its other 125 meshes stay separate.
 Both assets retain their exact triangle and vertex counts. Maximum BRZ bounds
 difference was `7.43e-8` in source coordinates; AE86 bounds were unchanged.
 
-Cold times are one local Node diagnostic run, not browser timing guarantees.
-The BRZ's approximately 33.7 MB of derived attribute/index buffers is an explicit
-memory tradeoff and **is not measured VRAM**. Equivalent live instances reuse
-those buffers; after the final release they are disposed. A first preparation
-can still cause a main-thread hitch. Move the same protected-part contract into
-the established derived-asset build pipeline or a worker before treating cold
-car preparation as solved; keep those generated outputs separate from originals.
+All eight UV streams are byte-identical in each of the BRZ's 18 batches. Sharing
+them reduces unique derived storage from 33,701,266 to 16,125,666 bytes: a saving
+of **17,575,600 bytes / 52.2%**. Every UV channel name/value, vertex, triangle,
+material and protected control remains intact; there are no unreferenced batch
+vertices to compact away.
+
+The initial implementation at `a0468bd` measured 147 ms for a cold BRZ derivation
+and 0.23 ms for the AE86 in one local Node audit. The serialized current/baseline
+CPU comparison and full geometry-equivalence evidence belong in the
+[performance report](../../../../performance/README.md); neither the original
+single run nor the headless benchmark is a browser timing guarantee. The
+remaining approximately 16.1 MB of derived attribute/index buffers is still an
+explicit memory tradeoff and **is not measured VRAM**. Equivalent live instances
+reuse those buffers; after the final release they are disposed. A first
+preparation can still cause a main-thread hitch. A worker or the established
+derived-asset build pipeline remains an option if device profiling requires it;
+keep generated outputs separate from originals.
 
 Verified source hashes:
 
 - BRZ, 18,193,436 bytes: `3f6b5f2ebd6c5bbf7f1badfcc6d4d04e4b97d229dcbfe578516a1df0ece06f9d`.
 - AE86, 2,622,332 bytes: `0094d8bfd5a4cdf720d633c1857e6c29f5e4e4e9a89316e9404d94d45d90bdf8`.
 
-The seven focused batching tests pass with both real assets installed. They also
+The fourteen focused batching tests pass with both real assets installed. They
+cover exact aliases, differing UV data/format/layout/usage, interleaved and shared
+source buffers, unique allocation accounting, immutable source byte hashes, and
+source-version cache invalidation. They also
 exercise repeated body-color/finish changes on the real batched model, preserve
 trim/glass/texture state, and verify that cached source colors are untouched.
 All six Heroes staged-loading scenarios pass with the integration enabled.

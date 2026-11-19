@@ -12,6 +12,18 @@ The cache retains **CPU snapshots**, without retaining renderable geometries, so
 
 This helper is for topology-preserving deformations with the dependencies described above. A new operation that changes topology or depends on UVs, material values, skinning, or other metadata must extend the key/output contract before using it. Compute callbacks must preserve their source geometries. The current callers satisfy that contract.
 
+## Temporary coverage for cold fits
+
+`wardrobeCoverageUnion.ts` combines the active skirt triangles into one temporary BVH for `gothicCorsetTuck.ts`'s exact nearest-distance queries. Each ray searches the same triangle union once. The fit still uses the same ray origin/direction, double-sided intersections, near/far limits, and deformation calculations. The existing `wardrobeCoverageSurface` API and all its other consumers, including height-filtered coverage, remain unchanged.
+
+The helper copies packed, unnormalized Float32 positions and active triangle indices into independently owned buffers. It respects draw ranges, ignores empty/unindexed parts, and never reorders or disposes source geometry. Higher-precision, normalized, interleaved, or unsupported layouts use the existing separate-surface path without conversion. Single-surface input also keeps that path. The union is distance-query geometry: original per-part face/material identities are not an output contract.
+
+Additional union allocation is guarded before large buffers are created: at most **64 input parts** and a **2 MiB raw-buffer allowance**. That allowance counts copied positions, Uint32 indices, and conservative construction/packed-BVH bounds storage: at most two nodes per triangle, 32 packed bytes plus six Float32 bounds per construction node, six Float32 triangle bounds, and one six-Float32 scratch buffer. JavaScript metadata is bounded by those part/triangle limits but is not included in the byte counter. Larger inputs fall back to ordinary separate coverage. The allowance does not bound existing source models, the fallback's normal coverage costs, or the separate 16 MiB result cache.
+
+The BVH uses the library's default split strategy. The fit releases every temporary surface geometry in `finally`; no union is retained across fits or model instances. Unit tests compare exact nearest distances at triangle seams, coincident faces, near/far boundaries, clipped/empty input, and fallback cases, and check source ownership. All twelve accepted geometry fixtures also pass with this path active.
+
+The table below records the earlier result-cache pass. Compare the subsequent cold-fit union against `a0468bd` with the same benchmark harness; final comparisons belong in the repository's [performance notes](../../../../performance/README.md). These are preparation costs, not a GPU/FPS result.
+
 ## Measured preparation cost
 
 The following run compared accepted commit `0e81afeab830870989492bc69d52dfac17c0a23c` with the optimization working tree. Both used identical preloaded GLB geometry, Node v24.22.3, and an AMD EPYC 9V74 CPU, with other build/test work paused. Each row has eight measured rounds after warmup; the baseline ran before and after alternating optimized pairs. The reported statistic is the **upper middle sample** of eight (the harness's `median` field). Units are milliseconds for `prepareVillager`; applying the look is measured separately in the JSON output.
@@ -41,7 +53,9 @@ From `frontend/`, with the Git LFS character assets materialized:
 
 ```sh
 AVENLAB_WARDROBE_REQUIRE_ASSETS=1 node --test tests/wardrobe-fit-cache.test.mjs tests/gothic-skirt-layers.test.mjs tests/gothic-handkerchief-panels.test.mjs
+node --test tests/wardrobe-coverage-union.test.mjs
 node scripts/benchmark-wardrobe-fit.mjs --baseline 0e81afeab830870989492bc69d52dfac17c0a23c --samples 8 --output /tmp/wardrobe-fit.json
+node scripts/benchmark-wardrobe-fit.mjs --baseline a0468bd --samples 8 --output /tmp/wardrobe-cold-fit.json
 ```
 
 The focused suites passed eight tests with no skips. The twelve fixture looks above match the accepted commit's SHA-256 signatures on both cold and warm preparation: mesh names, draw ranges, groups, all raw geometry attributes and their layouts, and raw indices. Unit checks also cover direct input mutation, UV/skinning independence, interleaved arrays, per-model ownership, byte/entry eviction, and skipping unselected warp samples. Bounds are checked separately in the cache unit test; the asset signature excludes UUIDs, GPU counters, and bounding caches.
@@ -49,3 +63,5 @@ The focused suites passed eight tests with no skips. The twelve fixture looks ab
 ## Remaining issues
 
 This change preserves the accepted fitting result, including existing regular-skirt/corset contact failures and remaining fabric/close-up visual issues. It does not rebuild skirt textures, change skirt 02/05 placement, or alter animation clearance. The central readiness grid tracks those work items separately. GPU performance, rendered appearance, and visual fit still require their browser/device gates; these CPU and geometry checks do not establish those passes.
+
+Repeated exact positions at split vertices may permit sharing the expensive warp/Jacobian calculation while still transforming each authored normal/tangent independently. That is a potential later optimization requiring duplicate-rate evidence, bounded storage, and equivalence checks; it is not implemented here.

@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import {
-  AnimationClip, BufferAttribute, BufferGeometry, Float32BufferAttribute, Group, Matrix3,
+  AnimationClip, BufferAttribute, BufferGeometry, DynamicDrawUsage, Float32BufferAttribute,
+  Group, IntType, InterleavedBuffer, InterleavedBufferAttribute, Matrix3,
   Mesh, MeshPhysicalMaterial, MeshStandardMaterial, NumberKeyframeTrack, Raycaster,
   SkinnedMesh, Texture, Vector3,
 } from 'three';
@@ -28,6 +30,151 @@ function triangle() {
   geometry.setIndex([0, 1, 2]);
   return geometry;
 }
+
+function sourceBufferDigest(root) {
+  const buffers = new Set();
+  for (const mesh of meshes(root)) for (const attribute of [...Object.values(mesh.geometry.attributes), mesh.geometry.index]) {
+    if (attribute) buffers.add(attribute.array.buffer);
+  }
+  const hash = createHash('sha256');
+  for (const buffer of buffers) hash.update(new Uint8Array(buffer));
+  return hash.digest('hex');
+}
+
+test('identical UV channels share one owned derived attribute and unique storage is counted once', () => {
+  const source = new Group(), material = new MeshStandardMaterial();
+  for (let i = 0; i < 2; i++) {
+    const geometry = triangle();
+    for (const name of ['uv1', 'uv2', 'texcoord_4']) geometry.setAttribute(name, geometry.attributes.uv.clone());
+    const mesh = new Mesh(geometry, material); mesh.position.x = i * 3; source.add(mesh);
+  }
+  const first = source.clone(true), peer = source.clone(true);
+  const one = batchStaticVehicleMeshes(first), two = batchStaticVehicleMeshes(peer);
+  const geometry = batched(first)[0].geometry, uv = geometry.attributes.uv;
+  for (const name of ['uv1', 'uv2', 'texcoord_4']) assert.equal(geometry.attributes[name], uv, `${name} shares the BufferAttribute, not just its array`);
+  assert.equal(one.stats.geometryBytes, 318, 'six vertices have one 2D UV buffer, plus position/normal/tangent/color/index storage');
+  assert.equal(batched(peer)[0].geometry, geometry, 'equivalent live instances retain immutable shared derived geometry');
+  for (const mesh of meshes(source)) for (const attribute of Object.values(mesh.geometry.attributes)) {
+    assert.notEqual(uv, attribute); assert.notEqual(uv.array.buffer, attribute.array.buffer);
+  }
+  const original = source.children[0].geometry.attributes.uv;
+  original.setX(0, .5); original.needsUpdate = true;
+  assert.equal(uv.getX(0), 0, 'editing a source cannot write into an already-prepared instance');
+  const revised = source.clone(true), three = batchStaticVehicleMeshes(revised);
+  const revisedGeometry = batched(revised)[0].geometry;
+  assert.notEqual(revisedGeometry, geometry, 'a source version change cannot reuse stale derived geometry');
+  assert.equal(revisedGeometry.attributes.uv.getX(0), .5);
+  assert.equal(revisedGeometry.attributes.uv1.getX(0), 0);
+  assert.notEqual(revisedGeometry.attributes.uv, revisedGeometry.attributes.uv1, 'now-distinct source channels stay independent');
+  let disposed = 0; geometry.addEventListener('dispose', () => disposed++);
+  one.dispose(); assert.equal(disposed, 0); two.dispose(); assert.equal(disposed, 1); three.dispose();
+});
+
+test('interleaved UV aliases honor offsets and strides without mutating source storage', () => {
+  const root = new Group(), material = new MeshStandardMaterial();
+  const streams = [
+    { stride: 6, offsets: [0, 3], values: [0, 0, 91, 0, 0, 92, 1, 0, 91, 1, 0, 92, 0, 1, 91, 0, 1, 92] },
+    { stride: 7, offsets: [1, 3], values: [91, 0, 0, 0, 0, 92, 93, 91, 1, 0, 1, 0, 92, 93, 91, 0, 1, 0, 1, 92, 93] },
+  ];
+  for (const stream of streams) {
+    const geometry = triangle(), data = new InterleavedBuffer(new Float32Array(stream.values), stream.stride);
+    geometry.setAttribute('uv', new InterleavedBufferAttribute(data, 2, stream.offsets[0]));
+    geometry.setAttribute('uv1', new InterleavedBufferAttribute(data, 2, stream.offsets[1]));
+    root.add(new Mesh(geometry, material));
+  }
+  const before = sourceBufferDigest(root), result = batchStaticVehicleMeshes(root);
+  const geometry = batched(root)[0].geometry;
+  assert.equal(geometry.attributes.uv1, geometry.attributes.uv);
+  assert.deepEqual([...geometry.attributes.uv.array], [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1]);
+  result.dispose(); assert.equal(sourceBufferDigest(root), before);
+});
+
+test('exact UV aliases retain component widths and isolate shared source buffers', () => {
+  const values = [0, 0, 1, 0, 0, 1];
+  for (const ArrayType of [Uint8Array, Uint16Array, Float32Array, Float64Array]) {
+    const root = new Group(), material = new MeshStandardMaterial();
+    for (let i = 0; i < 2; i++) {
+      const geometry = triangle();
+      for (const name of ['uv', 'uv1']) {
+        const data = new ArrayType(new SharedArrayBuffer(values.length * ArrayType.BYTES_PER_ELEMENT)); data.set(values);
+        geometry.setAttribute(name, new BufferAttribute(data, 2, true));
+      }
+      root.add(new Mesh(geometry, material));
+    }
+    const source = root.children[0].geometry.attributes.uv;
+    const result = batchStaticVehicleMeshes(root), geometry = batched(root)[0].geometry;
+    const uv = geometry.attributes.uv;
+    assert.equal(uv, geometry.attributes.uv1); assert.equal(uv.array.constructor, ArrayType);
+    assert.equal(uv.normalized, true); assert.notEqual(uv.array.buffer, source.array.buffer);
+    source.array[0] = 1; assert.equal(uv.array[0], 0, `${ArrayType.name} source edits remain isolated`);
+    result.dispose();
+  }
+});
+
+test('unique storage accounting also deduplicates geometry reused by separate material batches', () => {
+  const root = new Group(), a = triangle(), b = triangle();
+  a.setAttribute('uv1', a.attributes.uv.clone()); b.setAttribute('uv1', b.attributes.uv.clone());
+  for (const material of [new MeshStandardMaterial(), new MeshStandardMaterial()]) {
+    const first = new Mesh(a, material), second = new Mesh(b, material); second.position.x = 3;
+    root.add(first, second);
+  }
+  const result = batchStaticVehicleMeshes(root), batches = batched(root);
+  assert.equal(result.stats.batches, 2); assert.equal(batches[0].geometry, batches[1].geometry);
+  assert.notEqual(batches[0].material, batches[1].material);
+  assert.equal(result.stats.geometryBytes, 318, 'two draws still reference only one allocation set');
+  result.dispose();
+});
+
+test('a differing source segment or signed-zero bit keeps UV channels independent', () => {
+  const root = new Group(), material = new MeshStandardMaterial();
+  for (let i = 0; i < 2; i++) {
+    const geometry = triangle();
+    geometry.setAttribute('uv1', geometry.attributes.uv.clone());
+    geometry.setAttribute('uv2', geometry.attributes.uv.clone());
+    if (i === 1) geometry.attributes.uv1.setY(2, .75);
+    geometry.attributes.uv2.setX(0, -0);
+    root.add(new Mesh(geometry, material));
+  }
+  const result = batchStaticVehicleMeshes(root), geometry = batched(root)[0].geometry;
+  assert.notEqual(geometry.attributes.uv1, geometry.attributes.uv);
+  assert.equal(geometry.attributes.uv1.getY(5), .75);
+  assert.notEqual(geometry.attributes.uv2, geometry.attributes.uv);
+  assert.ok(Object.is(geometry.attributes.uv2.getX(0), -0));
+  assert.ok(Object.is(geometry.attributes.uv.getX(0), 0));
+  result.dispose();
+});
+
+test('UV storage type, attribute class, normalization, item size and GPU type boundaries are preserved', () => {
+  const values = [0, 0, 1, 0, 0, 1];
+  const formats = [
+    ['storage type', () => new BufferAttribute(new Uint16Array(values), 2), () => new BufferAttribute(new Uint32Array(values), 2)],
+    ['attribute class', () => new Float32BufferAttribute(values, 2), () => new BufferAttribute(new Float32Array(values), 2)],
+    ['normalization', () => new BufferAttribute(new Uint16Array(values), 2), () => new BufferAttribute(new Uint16Array(values), 2, true)],
+    ['item size', () => new Float32BufferAttribute(values, 2), () => new Float32BufferAttribute([0, 0, 0], 1)],
+    ['GPU type', () => new BufferAttribute(new Uint16Array(values), 2), () => Object.assign(new BufferAttribute(new Uint16Array(values), 2), { gpuType: IntType })],
+  ];
+  for (const [label, first, second] of formats) {
+    const root = new Group(), material = new MeshStandardMaterial();
+    for (let i = 0; i < 2; i++) {
+      const geometry = triangle(); geometry.setAttribute('uv', first()); geometry.setAttribute('uv1', second());
+      root.add(new Mesh(geometry, material));
+    }
+    const result = batchStaticVehicleMeshes(root), geometry = batched(root)[0].geometry;
+    assert.notEqual(geometry.attributes.uv1, geometry.attributes.uv, label);
+    assert.notEqual(geometry.attributes.uv1.array.buffer, geometry.attributes.uv.array.buffer, label);
+    result.dispose();
+  }
+});
+
+test('dynamic UV usage remains outside static batching', () => {
+  const root = new Group(), material = new MeshStandardMaterial();
+  for (let i = 0; i < 2; i++) {
+    const geometry = triangle(); geometry.setAttribute('uv1', geometry.attributes.uv.clone().setUsage(DynamicDrawUsage));
+    root.add(new Mesh(geometry, material));
+  }
+  const original = [...root.children], result = batchStaticVehicleMeshes(root);
+  assert.equal(result.stats.batches, 0); assert.deepEqual(root.children, original); result.dispose();
+});
 
 test('opaque sibling batches preserve transformed vertices, UVs, normals, mirrored winding and tangent handedness', () => {
   const root = new Group(), parent = new Group(); root.add(parent);
@@ -139,6 +286,7 @@ for (const model of ['brz', 'ae86']) test(`installed ${model} preserves authored
   const bytes = await readFile(path).catch(() => null);
   if (bytes?.toString('ascii', 0, 4) !== 'glTF') return t.skip('Real asset is not installed; materialize with Git LFS');
   const { scene, animations } = await loadVehicleGeometry(bytes);
+  const sourceBuffers = sourceBufferDigest(scene);
   const visual = prepareVehicleVisual(scene, model);
   const restoreDoor = model === 'ae86' ? splitAe86DriverDoor(visual.root) : undefined;
   const before = meshes(visual.root), originalOrder = [...before];
@@ -158,7 +306,12 @@ for (const model of ['brz', 'ae86']) test(`installed ${model} preserves authored
     assert.equal(state.mesh.parent, state.parent); assert.equal(state.mesh.geometry, state.geometry);
     assert.equal(state.mesh.material, state.material); assert.deepEqual(state.mesh.matrix, state.matrix);
   }
-  if (model === 'brz') assert.ok(batch.stats.savedDrawRanges > 50, 'real BRZ must have a meaningful draw-range reduction');
+  if (model === 'brz') {
+    assert.ok(batch.stats.savedDrawRanges > 50, 'real BRZ must have a meaningful draw-range reduction');
+    assert.equal(batch.stats.geometryBytes, 16_125_666, 'exact UV aliases eliminate seven redundant streams');
+    for (const mesh of batched(visual.root)) for (const name of ['uv1', 'uv2', 'uv3', 'texcoord_4', 'texcoord_5', 'texcoord_6', 'texcoord_7'])
+      assert.equal(mesh.geometry.getAttribute(name), mesh.geometry.getAttribute('uv'), `${mesh.material.name} ${name}`);
+  }
   for (const mesh of batched(visual.root)) assert.equal(mesh.geometry.groups.length, 0);
   for (const [color, finish, roughness] of [['#6a2be1', 'matte', .82], ['#15b4d0', 'high-gloss', .18]]) {
     applyShowroomPaint(visual.root, model, 'factory', color);
@@ -174,5 +327,6 @@ for (const model of ['brz', 'ae86']) test(`installed ${model} preserves authored
   }
   batch.dispose(); assert.deepEqual(meshes(visual.root), originalOrder);
   restoreDoor?.(); visual.dispose();
+  assert.equal(sourceBufferDigest(scene), sourceBuffers, 'cached source attribute/index bytes remain immutable');
   assert.deepEqual(await readFile(path), bytes, 'original GLB bytes are immutable');
 });
