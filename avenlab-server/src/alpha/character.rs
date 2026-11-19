@@ -2,6 +2,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
 
+mod driver;
+pub use driver::DriverAppearance;
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CharacterChoice {
@@ -73,7 +76,12 @@ struct WardrobeSet {
     retired: bool,
     #[serde(rename = "extraDyeFields", default)]
     extra_dye_fields: Vec<String>,
+    #[serde(rename = "gameplayColors", default)]
+    gameplay_colors: Option<GameplayColors>,
 }
+
+#[derive(Deserialize)]
+struct GameplayColors { top: String, bottom: String }
 
 static WARDROBE: LazyLock<Vec<WardrobeSet>> = LazyLock::new(|| {
     serde_json::from_str(include_str!("../../../packages/wardrobe-catalog/character-wardrobe.json"))
@@ -199,6 +207,10 @@ struct Character {
 #[derive(Deserialize)]
 struct Outfit {
     id: String,
+    #[serde(default)]
+    color: Option<String>,
+    #[serde(default)]
+    jacket: Option<String>,
 }
 
 static APPEARANCES: LazyLock<std::collections::HashMap<String, Vec<Outfit>>> =

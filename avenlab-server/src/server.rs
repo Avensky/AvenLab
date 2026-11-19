@@ -386,6 +386,12 @@ impl Server {
         let data = self.data.lock().await;
         profile.and_then(|id|data.profiles.get(&id)).and_then(|p|p.progression.hero_loadouts.get(vehicle)).cloned().unwrap_or_default()
     }
+    pub async fn saved_driver(&self, player: &str) -> crate::alpha::character::DriverAppearance {
+        let profile = self.connections.lock().await.get(player).and_then(|c| c.profile_id.clone());
+        let data = self.data.lock().await;
+        profile.and_then(|id| data.profiles.get(&id)).and_then(|p| p.progression.equipped_character())
+            .and_then(|choice| choice.driver_appearance()).unwrap_or_default()
+    }
     pub async fn spawn(&self, player: &str, map: &str, vehicle: &str) -> Result<(), String> {
         let _operation = self.operations.lock().await;
         let current = self
@@ -446,6 +452,7 @@ impl Server {
         }
         let runtime = self.runtime(player).await?;
         let appearance = self.saved_appearance(player, vehicle).await;
+        let driver = self.saved_driver(player).await;
         let revive_cooldown = self.revival_cooldown(player).await;
         let assigned = self.alpha.lock().await.members.get(player).filter(|m|Some(m.world)==joined_world).map(|m|m.hero.clone()).unwrap_or_default();
         let guard_ability=if assigned=="tank" || (assigned.is_empty() && vehicle=="tank") {"tank_barrier"}else{"guard_boost"};
@@ -482,7 +489,7 @@ impl Server {
         if let Some(health) = room.physics.vehicle_health.get_mut(player) {
             health.revive_cooldown_s = health.revive_cooldown_s.max(revive_cooldown);
         }
-        if let Some(entity)=room.game.entities.get_mut(player) { entity.appearance=appearance; }
+        if let Some(entity)=room.game.entities.get_mut(player) { entity.appearance=appearance; entity.driver=Some(driver); }
         self.checkpoint_spawn(&room).await;
         drop(room);
         self.maintain_matches_inner().await;

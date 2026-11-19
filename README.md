@@ -4,6 +4,17 @@ Start with [Project guide](docs/PROJECT_GUIDE.md), [repo audit](docs/REPO_AUDIT.
 
 For character assets, start with the [wardrobe authoring and validation guide](frontend/src/game/characters/README.md#garment-authoring-and-validation) and the [shared wardrobe catalog](packages/wardrobe-catalog/README.md). Run `npm --prefix frontend run audit:wardrobe` for the fast checks or add `-- --full` to test installed GLBs and animated fit.
 
+## Alpha readiness and current work
+
+The [readiness grid](docs/readiness/README.md) tracks the must-have fixes for alpha,
+the later separation of research and game mode, and reusable package extraction.
+It includes the shared color selection tool, outfit color groups, palette quality,
+details-pane/mobile work, accepted wardrobe fits, and remaining performance gates.
+Use the [performance notes](performance/README.md) for measured results and limits;
+feature README files describe implementation ownership and local follow-up work.
+An implemented change is not a completed release gate until its acceptance check
+has been recorded.
+
 # AvensLab
 
 ```t

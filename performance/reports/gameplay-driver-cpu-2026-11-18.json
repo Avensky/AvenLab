@@ -1,0 +1,50 @@
+{
+  "method": "Node CPU only; warmed pure driver update, prebuilt pose fixtures; moving transforms; no renderer, network interpolation, React, GPU, or GLB work",
+  "scenarios": [
+    {
+      "occupants": 16,
+      "culled": false,
+      "measuredFrames": 2000,
+      "medianMs": 0.0064900000000136515,
+      "p95Ms": 0.018849000000017213,
+      "maxMs": 2.701141000000007,
+      "draws": 8,
+      "visibleDrivers": 16
+    },
+    {
+      "occupants": 64,
+      "culled": false,
+      "measuredFrames": 2000,
+      "medianMs": 0.025458999999955267,
+      "p95Ms": 0.03798699999998689,
+      "maxMs": 0.6331650000000195,
+      "draws": 8,
+      "visibleDrivers": 64
+    },
+    {
+      "occupants": 128,
+      "culled": false,
+      "measuredFrames": 2000,
+      "medianMs": 0.047270999999966534,
+      "p95Ms": 0.07823799999999892,
+      "maxMs": 1.326157999999964,
+      "draws": 8,
+      "visibleDrivers": 128
+    },
+    {
+      "occupants": 128,
+      "culled": true,
+      "measuredFrames": 2000,
+      "medianMs": 0.002192999999977019,
+      "p95Ms": 0.020129999999994652,
+      "maxMs": 0.46787599999998974,
+      "draws": 0,
+      "visibleDrivers": 0
+    }
+  ],
+  "notes": [
+    "400 warmup and 2000 measured frames per scenario.",
+    "128 occupants is synthetic and exceeds the compact decoder limit of 96 entities.",
+    "Probe preceded the bare-crown clearance constant correction from 0.80 to 0.81; geometry budget and update algorithm are unchanged."
+  ]
+}

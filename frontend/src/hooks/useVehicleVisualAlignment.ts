@@ -2,8 +2,11 @@ import {mountPlateLights} from '../vehicles/tools/plateLights';
 import {VehicleFlags} from '../store/input/protocol/inputMasks';
 import {prepareLampLenses} from "../vehicles/tools/lampLenses";
 import { useConnectionView, useMotionView, type MotionState } from "../store/session/networkViews";
-import { useLayoutEffect, useRef, type RefObject } from "react";
+import { useCallback, useLayoutEffect, useRef, type RefObject } from "react";
+import { useFrame } from "@react-three/fiber";
 import type { Group, Object3D } from "three";
+import { GARAGE_STATIONS } from "../game/preview/garageStations";
+import { batchStaticVehicleMeshes } from "../vehicles/tools/staticVehicleBatches";
 import { snapshotEntity, useNetworkStore } from "../store/session/networkStore";
 import { useRenderSettingsStore } from "../store/presentation/renderSettingsStore";
 import { useVisualAlignmentStore } from "../store/presentation/visualAlignmentStore";
@@ -22,6 +25,25 @@ export function useVehicleVisualAlignment(
 ) {
   const localId = useConnectionView(s => s.playerId);
   const id = entityId ?? localId;
+  const batches = useRef<{ root: Group; dispose: () => void } | null>(null);
+  const prepareBatches = useCallback(() => {
+    const root = visual.current;
+    if (!root || !root.children.length || batches.current?.root === root) return;
+    batches.current?.dispose();
+    const station = GARAGE_STATIONS[model as keyof typeof GARAGE_STATIONS];
+    const prepared = batchStaticVehicleMeshes(root, {
+      protectedObjects: wheels,
+      protectedNames: station?.kind === "wheel" ? station.steeringParts : undefined,
+    });
+    batches.current = { root, dispose: prepared.dispose };
+  }, [model, visual, wheels]);
+  useLayoutEffect(() => {
+    prepareBatches();
+    return () => { batches.current?.dispose(); batches.current = null; };
+  }, [prepareBatches]);
+  // R3F may attach the owned GLTF primitive after layout effects. Run before
+  // useLiveAppearance's first frame so its material ownership covers batches.
+  useFrame(prepareBatches, -100);
   const lampsEnabled=useRenderSettingsStore(s=>s.vehicleLights);
   useLayoutEffect(() => {
     if(!visual.current)return;

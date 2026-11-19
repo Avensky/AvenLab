@@ -1,4 +1,4 @@
-//! Version-one compact full snapshots. Tuple order is a wire contract, not game
+//! Versioned compact full snapshots. Tuple order is a wire contract, not game
 //! logic. These lossless full tuples also seed the shared delta baseline cache.
 //! Keep legacy JSON available until a client explicitly negotiates this version.
 use serde::{Serialize, Serializer, ser::SerializeSeq};
@@ -6,7 +6,7 @@ use std::sync::{Arc, atomic::{AtomicU8, AtomicU64, Ordering}};
 use tokio::sync::watch;
 use crate::state::{PhysicsFrame, PhysicsSnapshot, PhysicsEntitySnapshot};
 
-pub const VERSION: u8 = 2;
+pub const VERSION: u8 = 3;
 pub const AUX_DIVISOR: u64 = 6; // 10 Hz inspection / private slow readings.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DriverLane {
@@ -103,10 +103,10 @@ impl Compact for PhysicsEntitySnapshot<'_> {
             (u8::from(self.combat.fire)<<2) | (u8::from(self.combat.hull_locked)<<3) |
             (u8::from(self.combat.ram)<<4) | (u8::from(self.combat.impact_static)<<5),
             self.wheels.as_ref().map_or(0u32, |wheels| wheels.iter().enumerate().fold(0u32, |mask,(index,wheel)|
-                mask | u32::from(wheel.grounded).checked_shl(index as u32).unwrap_or(0))))
+                mask | u32::from(wheel.grounded).checked_shl(index as u32).unwrap_or(0))), self.driver)
     }
 }
-// Keep the v1 tuple length stable for older clients. The optional bridge transition
+// Keep the outer tuple length stable. The optional bridge transition
 // travels with frame metadata; modern decoders lift it onto the normalized snapshot.
 #[derive(Serialize)]
 struct FrameMetadata<'a>{

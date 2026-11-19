@@ -1,0 +1,125 @@
+{
+  "metadata": {
+    "head": "a0468bde66c13a61fc61355da764bc7f90693d3e",
+    "baseline": "a0468bde66c13a61fc61355da764bc7f90693d3e",
+    "currentBatcherSha256": "949b1a81e96813b57335558246c98857eadb27b30d4586013f4f5d860db8c713",
+    "baselineBatcherSha256": "1542c78ad53cc45b08e694d1451731cec7312fb51cde4c4ef136eddebf3aec97",
+    "current": "Working tree, including uncommitted changes",
+    "node": "v24.22.3",
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "samples": 8,
+    "statistic": "median is the upper middle sample for even sample counts; min, max, and arithmetic mean are also reported",
+    "scope": "Node CPU time for staticVehicleBatches only, after identical decoded source and production material/rig preparation. Four unmeasured warmup pairs per implementation; warmup and measured baseline/current pairs alternate. Cold releases every previous batch; shared measures a second equivalent instance while the first remains alive. Image uploads are mocked; no browser/GPU/FPS or measured VRAM claim.",
+    "comparison": "Only staticVehicleBatches.ts is restored from the baseline; source assets, installed dependencies, and material/door/steering/hinge preparation are identical."
+  },
+  "cases": [
+    {
+      "model": "brz",
+      "source": "/models/vehicles/land/sports-cars/brz/model.glb",
+      "sourceBytes": 18193436,
+      "sha256": "3f6b5f2ebd6c5bbf7f1badfcc6d4d04e4b97d229dcbfe578516a1df0ece06f9d",
+      "preparedGeometrySignature": "b399a1205dc1857f2278d9f08eb8d5bf0983725d0adf41bef83a8cc59e64905c",
+      "geometryIdentical": true,
+      "baseline": {
+        "coldMilliseconds": {
+          "samples": 8,
+          "min": 92.29360499999984,
+          "median": 105.44104299999981,
+          "max": 134.58448099999987,
+          "mean": 106.99827875000017
+        },
+        "sharedMilliseconds": {
+          "samples": 8,
+          "min": 2.0901910000002317,
+          "median": 2.3333769999999276,
+          "max": 2.4977149999995163,
+          "mean": 2.3106756249999307
+        },
+        "batch": {
+          "sourceMeshes": 134,
+          "batches": 18,
+          "savedDrawRanges": 116,
+          "geometryBytes": 33701266
+        },
+        "uniqueDerivedGeometryBytes": 33701266
+      },
+      "current": {
+        "coldMilliseconds": {
+          "samples": 8,
+          "min": 59.10235300000022,
+          "median": 69.89745500000026,
+          "max": 75.94450000000052,
+          "mean": 66.69096262500011
+        },
+        "sharedMilliseconds": {
+          "samples": 8,
+          "min": 2.0167700000001787,
+          "median": 2.1230399999994916,
+          "max": 3.330260000000635,
+          "mean": 2.2589013750000504
+        },
+        "batch": {
+          "sourceMeshes": 134,
+          "batches": 18,
+          "savedDrawRanges": 116,
+          "geometryBytes": 16125666
+        },
+        "uniqueDerivedGeometryBytes": 16125666
+      }
+    },
+    {
+      "model": "ae86",
+      "source": "/models/vehicles/land/sports-cars/ae86/model.glb",
+      "sourceBytes": 2622332,
+      "sha256": "0094d8bfd5a4cdf720d633c1857e6c29f5e4e4e9a89316e9404d94d45d90bdf8",
+      "preparedGeometrySignature": "6c4122b227b524fa0f90bccda6f7310386b876fc69d33dbcd494faa57f6b7d59",
+      "geometryIdentical": true,
+      "baseline": {
+        "coldMilliseconds": {
+          "samples": 8,
+          "min": 0.05129699999997683,
+          "median": 0.11502399999972113,
+          "max": 0.20037199999933364,
+          "mean": 0.1280356249999386
+        },
+        "sharedMilliseconds": {
+          "samples": 8,
+          "min": 0.04799300000013318,
+          "median": 0.12882400000034977,
+          "max": 0.18079299999953946,
+          "mean": 0.1134775000002719
+        },
+        "batch": {
+          "sourceMeshes": 0,
+          "batches": 0,
+          "savedDrawRanges": 0,
+          "geometryBytes": 0
+        },
+        "uniqueDerivedGeometryBytes": 0
+      },
+      "current": {
+        "coldMilliseconds": {
+          "samples": 8,
+          "min": 0.06120199999986653,
+          "median": 0.11516399999982241,
+          "max": 0.16510899999957473,
+          "mean": 0.11488324999982069
+        },
+        "sharedMilliseconds": {
+          "samples": 8,
+          "min": 0.04845300000033603,
+          "median": 0.10980600000038976,
+          "max": 0.14660100000037346,
+          "mean": 0.09983300000010331
+        },
+        "batch": {
+          "sourceMeshes": 0,
+          "batches": 0,
+          "savedDrawRanges": 0,
+          "geometryBytes": 0
+        },
+        "uniqueDerivedGeometryBytes": 0
+      }
+    }
+  ]
+}
