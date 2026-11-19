@@ -47,6 +47,26 @@ chooses a gesture from the equipped personality without immediately repeating it
 rig and the built-in drivers. Reduced Motion pauses character animation.
 Vesper also has procedural blink, smile, and brow shapes in the live preview.
 The rain and sparks seen during loading use one GPU point batch.
+## Pose pack
+
+In Character → Emotes → Preview emotes → Pose pack, pick a start pose, a
+standing animation, and an end pose. Preview either pose on its own or play
+the sequence. The player holds the end pose until you return to idle, play
+another preview, or leave the pack. If the start pose is already held, the
+sequence continues from it directly. The animation menu includes emotes that
+need no scene prop. The shop bag is stowed during pose pack playback.
+
+Define new poses in `posePack.ts` with the same model-space targets as
+garage emotes. Arm directions use positive Z for forward. Feet use offsets
+from the resting ankles in stage meters. `holdCharacterPose` makes a static
+clip and `composePoseSequence` accepts two poses and an authored emote. Pass
+the result to `buildEmoteClips` to solve it for the target character's rig and
+clothing clearance. Rebuild for each prepared character root because Three.js
+tracks bind to that root's joint UUIDs. New rig families need to implement
+the existing garage rig conventions before they can use the same pose data.
+
+## Emote collections
+
 Victory Essentials (011–020) is available under Emotes → Victory. On a live
 win, the Awards tab can play Small fist pump with the equipped driver.
 Cute and Playful (021–030) is available under Emotes → Playful. The imported

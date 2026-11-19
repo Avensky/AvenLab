@@ -139,6 +139,21 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(find('.character-emote-toggle').getAttribute('aria-expanded'), 'false');
     assert.equal(find('.character-emotes'), null);
     await openEmotes();
+    await chooseEmoteGroup('Pose pack');
+    const poseButton = label => act(async () => {
+      [...document.querySelectorAll('[aria-label="Emote results"] button')].find(button => button.textContent === label).click();
+    });
+    await select('Start pose', 'pose-attentive');
+    await poseButton('Hold start pose');
+    assert.equal(preview.getState().emote.id, 'pose-attentive');
+    await select('Animation', 'walk-casual');
+    await select('End pose', 'pose-greeting');
+    await poseButton('Play sequence');
+    assert.deepEqual(preview.getState().emote, {
+      id: 'pose-sequence', sequence: { from: 'pose-attentive', motion: 'walk-casual', to: 'pose-greeting' },
+    });
+    await poseButton('Return to idle');
+    assert.equal(preview.getState().emote, null);
     await chooseEmoteGroup('Garage');
     assert(![...document.querySelectorAll('.character-emotes button')].some(button => button.querySelector('.emote-name')?.textContent === 'Side step and glance'));
     await playEmote('.character-emotes button:first-child');

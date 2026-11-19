@@ -14,6 +14,7 @@ import { CHARACTERS, CHARACTER_APPEARANCE_OPTIONS, CHARACTER_IDENTITIES, DEFAULT
 import { CharacterPortrait } from "./CharacterPortrait";
 import { CHARACTER_CAMERAS, CHARACTER_ZOOM_MIN, CHARACTER_ZOOM_MAX, useCharacterPreviewStore } from "./characterPreviewStore";
 import { EMOTE_GROUPS } from "./garageEmotes";
+import { CharacterPosePack } from "./CharacterPosePack";
 import { CharacterEmoteList, type PreviewEmote, type PreviewEmoteGroup } from "./CharacterEmoteList";
 import { unlockVehicleAudio } from "../../audio/sharedAudio";
 import { GARAGE_STATIONS } from "../preview/garageStations";
@@ -77,7 +78,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
   const [message, setMessage] = useState("");
   const [emoteBrowserOpen, setEmoteBrowserOpen] = useState(false);
   const [emotePacksOpen, setEmotePacksOpen] = useState(false);
-  const [emoteGroup, setEmoteGroup] = useState<PreviewEmoteGroup>();
+  const [emoteGroup, setEmoteGroup] = useState<PreviewEmoteGroup | "Pose pack">();
   const [emoteSearch, setEmoteSearch] = useState("");
   const [emoteDetail, setEmoteDetail] = useState<PreviewEmote>();
   const emoteBrowserId = useId();
@@ -324,11 +325,11 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
     setEmoteSearch("");
     useCharacterPreviewStore.setState({ insideCar: !insideCar, emote: null, cockpitError: null, camera: "Full body", zoom: 1 });
   }
-  function chooseEmoteGroup(group: PreviewEmoteGroup | undefined) {
+  function chooseEmoteGroup(group: typeof emoteGroup) {
     setEmoteGroup(emoteGroup === group ? undefined : group);
     setEmoteDetail(undefined);
     setEmoteSearch("");
-    if (group === "Garage" && emoteGroup !== group) {
+    if ((group === "Garage" || group === "Pose pack") && emoteGroup !== group) {
       useFittingTurnStore.setState({ characterYaw: 0 });
       useCharacterPreviewStore.setState(state => ({
         camera: "Full body", zoom: 1, emote: null, insideCar: false, focusRevision: state.focusRevision + 1,
@@ -343,7 +344,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
     }
     setEmoteBrowserOpen(!emoteBrowserOpen);
   }
-  function emoteCategory(group: PreviewEmoteGroup, label: string = group) {
+  function emoteCategory(group: NonNullable<typeof emoteGroup>, label: string = group) {
     return <button key={group} type="button" className="menu-control character-emote-disclosure" data-controller-row data-emote-group={group}
       aria-expanded={emoteGroup === group} aria-controls={emoteResultsId} onClick={() => chooseEmoteGroup(group)}>{label}</button>;
   }
@@ -357,7 +358,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
       </select></label>}
       {!insideCar && <>
         <div className="character-emote-categories" role="group" aria-label="Emote library">
-          {emoteCategory("Garage")}{emoteCategory("Best")}{emoteCategory("All")}
+          {emoteCategory("Garage")}{emoteCategory("Best")}{emoteCategory("All")}{emoteCategory("Pose pack")}
         </div>
         <div className="character-emote-categories" role="group" aria-label="Personality emotes">
           {emoteCategory("Personality", "My personality")}
@@ -395,7 +396,8 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
       onClick={() => playEmote(emoteDetail)}>Replay emote</button>
     <FitReview choice={previewChoice} pose={emoteDetail.id} poseLabel={emoteDetail.name}
       subject={{ id: emoteDetail.id, label: emoteDetail.name, kind: "emote" }} />
-  </> : <CharacterEmoteList choice={previewChoice} group={emoteGroup} search={emoteSearch} station={station} insideCar={insideCar}
+  </> : !insideCar && emoteGroup === "Pose pack" ? <CharacterPosePack disabled={reducedMotion} />
+    : <CharacterEmoteList choice={previewChoice} group={emoteGroup === "Pose pack" ? undefined : emoteGroup} search={emoteSearch} station={station} insideCar={insideCar}
     disabled={reducedMotion || cockpitPending} mirrorAvailable={mirrorAvailable} leanAvailable={leanAvailable} selectedId={emote?.id}
     onSearch={setEmoteSearch} onSelect={selectEmote} />);
   const emoteResultsPanel = <section className={locked ? "character-controls menu-panel-frame character-controls--right" : undefined}

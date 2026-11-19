@@ -1,3 +1,4 @@
+import type { PoseSequence } from "./posePack";
 import type { ClothingPiece } from "./clothingPieces";
 import { create } from "zustand";
 import type { VehicleModelId } from "../../vehicles/tools/vehicleModelPaths";
@@ -15,7 +16,7 @@ export const useCharacterPreviewStore = create<{
   automaticEmotes: boolean;
   camera: Camera;
   zoom: number;
-  emote: { id: string } | null;
+  emote: { id: string; sequence?: PoseSequence } | null;
   cockpitVehicle: VehicleModelId | null;
   cockpitAvailable: boolean;
   cockpitError: string | null;
