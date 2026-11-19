@@ -4,7 +4,7 @@ Updated 2026-11-18 (America/Los_Angeles). This is the working release checklist,
 including the latest wardrobe, performance, color, and mobile UI requests.
 The performance implementation is published in [draft PR #36](https://github.com/Avensky/AvenLab/pull/36)
 on `perf/wardrobe-cache-and-gameplay-lods`, based on `0e81afe`.
-Rust and browser/target-device validation remain open; the PR is not merged or deployed.
+The original performance measurements below describe that branch. The combined test branch is listed below.
 The [next performance audit](../../performance/audits/2026-11-18/README.md)
 reviews runtime `25988e1` and adds evidence/priorities without changing production
 behavior. Its A3-01–06 grid tracks the next performance changes separately from
@@ -13,6 +13,22 @@ The [third performance pass](../../performance/README.md#third-pass-exact-fittin
 implements A3-01: bounded exact fitting reuse lowers the actual desktop High
 Collar cold-preparation median by 30.1% against `25de3c1`, with accepted geometry
 preserved. A3-02–06 and browser/device launch checks remain open.
+
+## Combined patch playtest
+
+`integration/alpha-patch-2026-11-18` combines `main` at `0e81afe` with wardrobe and driver performance (`1282826`), poses and the BRZ driving set (`81b6456`), and city rendering (`f5d345a`). The hair branch pointed to the same commit as `main` at integration.
+
+| Where to test | What to check |
+| --- | --- |
+| Fitting room | Load a previously saved outfit, change a dye, then hold and transition between poses with a full skirt. Watch the hands, skirt and mirror framing. |
+| BRZ garage | Stage the driver on each side and check the door and mirror targets. Play **Race start** and watch the clutch depress, the lever move left and forward into first, and the throttle pick up as the clutch releases. |
+| City on the target phone | Enter a city from a cold start, drive past occupied cars, then re-enter. Compare first-entry stalls and the appearance of distant drivers with the same route and settings on `main`. |
+
+### When to move the game
+
+Use a clean game checkout as the extraction test. Start the game client and Rust server with the research service absent, load an existing outfit, play and reconnect. Inspect the production output, including lazy chunks, copied assets and source maps. The game currently imports the Signal Recon screens from `GameUI.tsx`. A separate game entry must exclude those screens from its build.
+
+Start a reusable package with one independently runnable example. The wardrobe catalog already has a Rust consumer and a browser consumer. Its schema and validation rules can be demonstrated with a small sample garment catalog. Keep the game’s catalog, character art and model paths with the game. Keep new private research in private source and services from its first commit.
 
 ## Decisions to preserve
 

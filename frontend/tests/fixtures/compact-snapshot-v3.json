@@ -222,7 +222,8 @@
           null,
           {
             "body": "factory",
-            "finish": "frs",
+            "finish": "gloss",
+            "metallic": 0.42,
             "seats": "factory",
             "skin": "factory"
           },
@@ -439,7 +440,8 @@
           null,
           {
             "body": "factory",
-            "finish": "frs",
+            "finish": "gloss",
+            "metallic": 0.42,
             "seats": "factory",
             "skin": "factory"
           },
@@ -647,7 +649,8 @@
           null,
           {
             "body": "factory",
-            "finish": "frs",
+            "finish": "gloss",
+            "metallic": 0.42,
             "seats": "factory",
             "skin": "factory"
           },
@@ -945,7 +948,8 @@
           null,
           {
             "body": "factory",
-            "finish": "frs",
+            "finish": "gloss",
+            "metallic": 0.42,
             "seats": "factory",
             "skin": "factory"
           },
@@ -1162,7 +1166,8 @@
           null,
           {
             "body": "factory",
-            "finish": "frs",
+            "finish": "gloss",
+            "metallic": 0.42,
             "seats": "factory",
             "skin": "factory"
           },
@@ -1370,7 +1375,8 @@
           null,
           {
             "body": "factory",
-            "finish": "frs",
+            "finish": "gloss",
+            "metallic": 0.42,
             "seats": "factory",
             "skin": "factory"
           },
@@ -1402,7 +1408,8 @@
         {
           "appearance": {
             "body": "factory",
-            "finish": "frs",
+            "finish": "gloss",
+            "metallic": 0.42,
             "seats": "factory",
             "skin": "factory"
           },
@@ -1643,7 +1650,8 @@
         {
           "appearance": {
             "body": "factory",
-            "finish": "frs",
+            "finish": "gloss",
+            "metallic": 0.42,
             "seats": "factory",
             "skin": "factory"
           },
@@ -1855,7 +1863,8 @@
         {
           "appearance": {
             "body": "factory",
-            "finish": "frs",
+            "finish": "gloss",
+            "metallic": 0.42,
             "seats": "factory",
             "skin": "factory"
           },
@@ -2106,7 +2115,8 @@
         {
           "appearance": {
             "body": "factory",
-            "finish": "frs",
+            "finish": "gloss",
+            "metallic": 0.42,
             "seats": "factory",
             "skin": "factory"
           },
@@ -2347,7 +2357,8 @@
         {
           "appearance": {
             "body": "factory",
-            "finish": "frs",
+            "finish": "gloss",
+            "metallic": 0.42,
             "seats": "factory",
             "skin": "factory"
           },
@@ -2559,7 +2570,8 @@
         {
           "appearance": {
             "body": "factory",
-            "finish": "frs",
+            "finish": "gloss",
+            "metallic": 0.42,
             "seats": "factory",
             "skin": "factory"
           },
@@ -2791,7 +2803,8 @@
         {
           "appearance": {
             "body": "factory",
-            "finish": "frs",
+            "finish": "gloss",
+            "metallic": 0.42,
             "seats": "factory",
             "skin": "factory"
           },
@@ -3032,7 +3045,8 @@
         {
           "appearance": {
             "body": "factory",
-            "finish": "frs",
+            "finish": "gloss",
+            "metallic": 0.42,
             "seats": "factory",
             "skin": "factory"
           },
@@ -3244,7 +3258,8 @@
         {
           "appearance": {
             "body": "factory",
-            "finish": "frs",
+            "finish": "gloss",
+            "metallic": 0.42,
             "seats": "factory",
             "skin": "factory"
           },
