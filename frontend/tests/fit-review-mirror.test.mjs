@@ -83,12 +83,20 @@ test('Supra painted shell is opaque while glass, lamp lenses and grille cutouts 
 
 test('mirror check picks the closest exterior mirror, builds both rigs, and returns to the original pose',async()=>{
  const vite=await server();try{
-  const {nearestSideMirror,mirrorCheckPose}=await vite.ssrLoadModule('/src/game/characters/mirrorCheck.ts');
+  const {fitMirrorCheck,nearestSideMirror,mirrorCheckPose}=await vite.ssrLoadModule('/src/game/characters/mirrorCheck.ts');
   const {GARAGE_STATIONS}=await vite.ssrLoadModule('/src/game/preview/garageStations.ts');
   const root=new Group(),geometry=new BoxGeometry(.2,.15,.1);
   for(const x of [-1,1]){const p=new Mesh(geometry);p.position.set(x,1,.2);p.name=`side-mirror-${x}`;root.add(p);}
   const bounds=new Box3(new Vector3(-1,0,-2),new Vector3(1,1.3,2));
-  for(const sign of [-1,1])assert.equal(Math.sign(nearestSideMirror(root,GARAGE_STATIONS.supra,bounds,new Vector3(sign*1.4,0,-.4)).x),sign);
+  for(const side of [-1,1]){
+   const from=new Vector3(side*1.4,0,-.8);
+   const mirror=nearestSideMirror(root,GARAGE_STATIONS.supra,bounds,from);
+   assert.equal(Math.sign(mirror.x),side);
+   const fit=fitMirrorCheck(from,mirror,side);
+   const stand=from.clone().add(new Vector3(0,0,-side*fit.across));
+   const facing=new Vector3(0,0,1).applyAxisAngle(new Vector3(0,1,0),side*Math.PI/2+fit.turn);
+   assert(facing.dot(mirror.clone().sub(stand).setY(0).normalize())>.999);
+  }
   assert.equal(nearestSideMirror(root,{kind:'bridge'},bounds,new Vector3()),undefined);
   const {prepareVillager}=await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
   const {buildEmoteClips}=await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
@@ -96,7 +104,7 @@ test('mirror check picks the closest exterior mirror, builds both rigs, and retu
   for(const gender of ['female','male']){
    const {scene}=await new GLTFLoader().parseAsync(await readFile(`tests/fixtures/villager-${gender}-rig.json`,'utf8'),'');
    const model=prepareVillager(scene,{female:gender==='female',fitted:true}),prop=createEmoteProp('lipstick');model.root.add(prop.root);
-   const emote=mirrorCheckPose({across:.55,forward:.12,gaze:.4,side:1}),clip=buildEmoteClips(model.root,[emote],new Map([['lipstick',prop]]))[0];
+   const emote=mirrorCheckPose({across:.55,forward:.12,gaze:.4,turn:-2.4}),clip=buildEmoteClips(model.root,[emote],new Map([['lipstick',prop]]))[0];
    for(const track of clip.tracks)assert([...track.values].every(v=>typeof v==='boolean'||Number.isFinite(v)), `${gender}: ${track.name} ${[...track.values]}`);
    const rest=model.root.position.clone(),mixer=new AnimationMixer(model.root),action=mixer.clipAction(clip).setLoop(LoopOnce,1);action.clampWhenFinished=true;action.play();mixer.setTime(clip.duration*.44);
    assert(prop.root.scale.x>.99);assert(model.root.position.distanceTo(rest)>.4);

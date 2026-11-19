@@ -103,6 +103,15 @@ export function garageBreathing(bag = false): Emote {
   ] };
 }
 
+export const LOOK_AWAY_EMOTE = {
+  id: "look-away", name: "Look away", duration: 4.6, keys: [
+    [.18, { head: [.02, -.28, .025], torso: [.01, -.025, 0] }],
+    [.36, { head: [.04, -.64, .035], torso: [.015, -.09, -.015], face: [.21, .08] }],
+    [.65, { head: [.07, -.59, .025], torso: [.015, -.08, -.01], face: [.21, .08] }],
+    [.82, { head: [.02, -.22, 0], torso: [.01, -.035, 0] }],
+  ],
+} as const satisfies Emote;
+
 export const GARAGE_EMOTES = [
   garageBreathing(),
   { id: "002", name: "Comfortable weight shift", duration: 2.7, keys: [
@@ -571,7 +580,7 @@ export function emoteCollection(group: EmoteGroup, bag: boolean, includeWalks = 
   if (group === "Starter Comedy") return STARTER_COMEDY_EMOTES;
   if (group === "Race Reactions") return availableRaceReactions(bag);
   if (bag) return [garageBreathing(true), ...GARAGE_EMOTES.slice(1).filter(item => compatibleGarageEmotes(item.id)), ...BAG_EMOTES];
-  return includeWalks ? [...GARAGE_EMOTES, ...WALK_EMOTES] : GARAGE_EMOTES;
+  return includeWalks ? [...GARAGE_EMOTES, LOOK_AWAY_EMOTE, ...WALK_EMOTES] : GARAGE_EMOTES;
 }
 
 export function garagePreviewCollection(group: EmoteGroup | "Best", bag: boolean): readonly Emote[] {
@@ -583,6 +592,7 @@ export function garagePreviewCollection(group: EmoteGroup | "Best", bag: boolean
 }
 
 export function findGaragePreviewEmote(id: string, bag: boolean): Emote | undefined {
+  if (id === LOOK_AWAY_EMOTE.id) return LOOK_AWAY_EMOTE;
   if (bag && id.startsWith("bag-")) return BAG_EMOTES.find(emote => emote.id === id);
   for (const group of EMOTE_GROUPS) {
     const emote = emoteCollection(group, false).find(item => item.id === id);

@@ -6,6 +6,7 @@ const ICON_PATHS = {
   adjustments: "M4 6h16M4 12h16M4 18h16M8 3v6m8 0v6m-7 0v6",
   zoomOut: "M14 10a5 5 0 1 1-10 0 5 5 0 0 1 10 0Z M13 14l6 6 M7 10h4",
   zoomIn: "M14 10a5 5 0 1 1-10 0 5 5 0 0 1 10 0Z M13 14l6 6 M7 10h4m-2-2v4",
+  lookAway: "M20 12s-3 4-8 4-8-4-8-4 3-4 8-4 8 4 8 4Z M9 12h1 M5 4H2m0 0 2-2M2 4l2 2",
   hold: "M9 5v14m6-14v14",
   resume: "m9 5 10 7-10 7z",
   reframe: "M3 8V3h5m8 0h5v5m0 8v5h-5m-8 0H3v-5m9-7v6m-3-3h6",

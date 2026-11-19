@@ -47,6 +47,20 @@ chooses a gesture from the equipped personality without immediately repeating it
 rig and the built-in drivers. Reduced Motion pauses character animation.
 Vesper also has procedural blink, smile, and brow shapes in the live preview.
 The rain and sparks seen during loading use one GPU point batch.
+## Garage door and mirror previews
+
+Garage entry selects the front door on the current driver seat's side.
+An exterior handle mesh or marker anchors the grip. A movable door panel
+without a named handle supplies an approximate grip from its bounds.
+The hand reaches before the panel starts to swing, follows the grip in
+hinge space, then releases before stepping in. Fused body meshes require
+a separable door assembly to show this contact.
+
+Garage → Emotes → Side mirror uses the exterior mirror on the staged door
+side. Separately named mirror meshes give the target point. Fused mirrors
+use an estimate near the window corner. In Appearance, Camera tools →
+Look away plays a stationary glance for outfit inspection.
+
 ## Pose pack
 
 In Character → Emotes → Preview emotes → Pose pack, pick a start pose, a

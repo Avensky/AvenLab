@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { Group, Vector3, Quaternion } from 'three';
+import { BoxGeometry, Group, Mesh, Vector3, Quaternion } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createServer } from 'vite';
 
@@ -75,6 +75,51 @@ test('the door opens independently, entry keeps planted shoes stable, and seated
       assert(position('thumb_03_r').sub(new Vector3(...station.rim)).dot(padAxis) > .02, 'thumb remains on the driver side of the horn pad');
       cabin.stop();
       assert(driver.position.length() < 1e-9, 'exit restores the standing root');
+    }
+    const { createVehiclePartRig } = await vite.ssrLoadModule('/src/game/preview/vehiclePartRig.ts');
+    const shell = new Group();
+    const panel = new Mesh(new BoxGeometry(.10, .5, 1.3));
+    panel.name = 'Door_Front_Left';
+    panel.position.set(.86, .77, 0);
+    shell.add(panel);
+    const trim = new Mesh(new BoxGeometry(.03, .035, .13));
+    trim.name = 'Exterior_Handle';
+    trim.position.set(.93, .87, -.38);
+    shell.add(trim);
+    const body = new Mesh(new BoxGeometry(1.5, 1, 4));
+    shell.add(body);
+    const [bound] = createVehiclePartRig(shell, 'brz');
+    assert(bound?.handle, 'a separately named front panel gets a grip anchor');
+    assert.equal(trim.parent, bound.pivot, 'the named handle mesh follows the door panel');
+    assert(bound.handle.getWorldPosition(new Vector3()).distanceTo(trim.getWorldPosition(new Vector3())) < .0001);
+    bound.pivot.rotation.y = bound.open;
+    assert(trim.getWorldPosition(new Vector3()).x > 1, 'the selected hinge swings the handle outward');
+
+    for (const side of [-1, 1]) {
+      const { scene: driver } = await new GLTFLoader().parseAsync(await readFile('tests/fixtures/villager-female-rig.json', 'utf8'), '');
+      const motion = new Group(), car = new Group(), stand = new Group(), pivot = new Group(), handle = new Group();
+      motion.add(car, stand);
+      stand.position.set(side * 1.18, 0, -.30);
+      stand.rotation.y = side * Math.PI / 2;
+      stand.add(driver);
+      car.add(pivot);
+      pivot.position.set(side * .88, .75, .48);
+      pivot.add(handle);
+      handle.position.set(0, .15, -.72);
+      const station = { ...GARAGE_STATIONS.ae86, seat: [side * .397, .42, -.07], rim: [side * .397, .745, .365] };
+      const cabin = prepareGarageCockpit(car, [], { pivot, handle, axis: 'y', open: -side * 1.1, angle: 0 }, station)(driver, motion);
+      const knuckle = driver.getObjectByName(side > 0 ? 'middle_01_l' : 'middle_01_r');
+      const contactError = () => knuckle.getWorldPosition(new Vector3()).distanceTo(handle.getWorldPosition(new Vector3()));
+      cabin.sample(null, 0, sampleDriveOut(0));
+      assert(contactError() > .25);
+      cabin.sample(null, 0, sampleDriveOut(.47));
+      assert.equal(pivot.rotation.y, 0);
+      assert(contactError() < .085, `side ${side} reaches the closed exterior handle (${contactError()})`);
+      cabin.sample(null, 0, sampleDriveOut(.74));
+      assert(Math.abs(pivot.rotation.y) > .15);
+      assert(contactError() < .085, `side ${side} tracks the handle as it swings (${contactError()})`);
+      cabin.stop();
+      assert.equal(pivot.rotation.y, 0);
     }
     const drift = phase => sampleCockpitMotion('drive-drift', phase);
     assert(drift(.25).handControl === 'shift' && drift(.25).clutch === 1);

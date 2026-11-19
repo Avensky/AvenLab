@@ -225,6 +225,16 @@ export function prepareGarageCockpit(
       ? new Vector3(...station.deck).setY(station.deck[1] + hip.y * localScale)
       : new Vector3(...station.seat).setY(Math.min(station.seat[1], station.roof - crown - .035 * localScale));
     if (classic) seat.set(center.x, Math.min(.42, Math.min(1.04 - headHeight, (road?.roof ?? 1.21) - crown - .035)), center.z - .435);
+    const closedHandle = door?.handle && car.worldToLocal(door.handle.getWorldPosition(new Vector3()));
+    const doorSide = Math.sign(standingHip.x - seat.x) || 1;
+    const handleHand = closedHandle && (closedHandle.z < standingHip.z ? -doorSide : doorSide);
+    const approachHip = standingHip.clone();
+    if (closedHandle) {
+      approachHip.z += MathUtils.clamp(closedHandle.z - standingHip.z, -.36, .36);
+      approachHip.x -= doorSide * .14;
+      const shoulder = car.worldToLocal(arms.find(arm => arm.side === handleHand)!.shoulder.getWorldPosition(new Vector3()));
+      approachHip.y -= MathUtils.clamp(shoulder.y - closedHandle.y - .30, 0, .28);
+    }
     const pedals = station.kind === "bridge" ? null : new Vector3(...station.pedals);
     const rest = [head, ...(torso ? [torso] : []), ...arms.flatMap(({ shoulder, elbow, hand, rig }) =>
       [shoulder, elbow, hand, ...(rig?.fingers.map(({ joint }) => joint) ?? [])]), ...legs.flatMap(({ hip, knee, foot }) => [hip, knee, foot])].map(localRest);
@@ -257,7 +267,8 @@ export function prepareGarageCockpit(
     const carRotation = new Quaternion(), roll = new Quaternion(), steer = new Quaternion(), rimTurn = new Quaternion();
     const wheelTurn = new Quaternion(), seatRotation = new Quaternion(), entryRotation = new Quaternion(), parentRotation = new Quaternion();
     const rootWorldRotation = new Quaternion(), footRotation = new Quaternion(), anklePitch = new Quaternion();
-    const entryHip = new Vector3(), reach = new Vector3();
+    const entryHip = new Vector3(), reach = new Vector3(), standingAtDoor = new Vector3();
+    const doorFacing = new Quaternion(), shoeTurn = new Quaternion();
     const headAxes = new Quaternion(), localAxis = new Vector3();
     const shotTarget = new Vector3(...shot.at), shotEye = new Vector3(...shot.eye);
     const steeringSide = Math.sign(center.x);
@@ -327,17 +338,25 @@ export function prepareGarageCockpit(
         driver.scale.copy(restScale).multiplyScalar(modelScale);
         const enter = drive?.enter ?? 1;
         const sit = MathUtils.smoothstep(enter, .12, .93);
+        const faceDoor = closedHandle ? drive?.faceDoor ?? 0 : 0;
+        const gripDoor = closedHandle ? drive?.handlesDoor ?? 0 : 0;
         driver.quaternion.copy(seatRotation);
         entryHip.copy(seat);
+        standingAtDoor.copy(standingHip).lerp(approachHip, faceDoor);
         if (enter < 1) {
           const turn = MathUtils.smoothstep(enter, .02, .52);
           const acrossSill = MathUtils.smoothstep(enter, .10, .85);
           const lowerToSeat = MathUtils.smoothstep(enter, .12, .87);
           const duck = Math.sin(Math.PI * acrossSill);
-          driver.quaternion.copy(driverRest.rotation).slerp(seatRotation, turn)
+          doorFacing.copy(seatRotation).multiply(entryRotation.setFromAxisAngle(UP, -doorSide * Math.PI / 2));
+          // Turn through the nose of the car to keep both the body and shoes on
+          // the same side of the half-turn.
+          if (faceDoor < .5) driver.quaternion.copy(driverRest.rotation).slerp(seatRotation, faceDoor * 2);
+          else driver.quaternion.copy(seatRotation).slerp(doorFacing, faceDoor * 2 - 1);
+          driver.quaternion.slerp(seatRotation, turn)
             .multiply(entryRotation.setFromAxisAngle(AXLE, duck * .16));
-          entryHip.copy(standingHip).lerp(seat, acrossSill);
-          entryHip.y = MathUtils.lerp(standingHip.y, seat.y, lowerToSeat);
+          entryHip.copy(standingAtDoor).lerp(seat, acrossSill);
+          entryHip.y = MathUtils.lerp(standingAtDoor.y, seat.y, lowerToSeat);
           entryHip.z -= duck * .09;
         }
         driver.position.copy(parent.worldToLocal(car.localToWorld(entryHip)))
@@ -359,7 +378,7 @@ export function prepareGarageCockpit(
           weights[index] = MathUtils.lerp(MathUtils.lerp(rest, focus, pose.focus), greeting, pose.gesture);
         }
         driver.getWorldQuaternion(rootWorldRotation);
-        if (pedals && enter > 0) for (const [index, { hip, knee, foot, side }] of legs.entries()) {
+        if (pedals && (enter > 0 || faceDoor > 0)) for (const [index, { hip, knee, foot, side }] of legs.entries()) {
           const brake = road && side < 0 ? (id === null ? drive?.brake ?? pose.brake : pose.brake) : 0;
           const throttle = road && side < 0 ? pose.throttle : 0;
           const parkingPedal = road?.parkingBrake === "pedal" && pose.handControl === "handbrake" ? pose.actuate : 0;
@@ -371,7 +390,13 @@ export function prepareGarageCockpit(
           const leading = side === -steeringSide;
           const step = leading ? MathUtils.smoothstep(enter, .02, .61) : MathUtils.smoothstep(enter, .40, .97);
           const lifted = Math.sin(Math.PI * step);
-          ankle.lerp(standingAnkles[index], 1 - step);
+          shoeTurn.setFromAxisAngle(UP, -doorSide * Math.PI * faceDoor);
+          const planted = standingAnkles[index].clone();
+          if (faceDoor) {
+            planted.sub(standingHip).applyQuaternion(shoeTurn).add(standingAtDoor);
+            planted.y = standingAnkles[index].y;
+          }
+          ankle.lerp(planted, 1 - step);
           ankle.y += lifted * .16;
           car.localToWorld(ankle);
           const kneePole = road ? new Vector3(side * .10, sit * .86, 1 - sit * .77).applyQuaternion(rootWorldRotation)
@@ -381,11 +406,31 @@ export function prepareGarageCockpit(
           // Turn the toes toward the pedals during the swing, independent of knee IK.
           const pitch = .13 * throttle + .12 * brake + .12 * clutch - .11 * lifted;
           anklePitch.setFromAxisAngle(AXLE, pitch);
-          footRotation.copy(standingFeet[index]).slerp(seatedFeet[index], step).premultiply(anklePitch).premultiply(carRotation);
+          footRotation.copy(standingFeet[index]).premultiply(shoeTurn).slerp(seatedFeet[index], step).premultiply(anklePitch).premultiply(carRotation);
           foot.quaternion.copy(knee.getWorldQuaternion(new Quaternion()).invert().multiply(footRotation));
         }
         for (const { shoulder, elbow, hand, rig, side, palmReach } of arms) {
-          if (bridge || enter === 0) continue;
+          if (bridge) continue;
+          if (gripDoor > 0 && side === handleHand && door?.handle) {
+            const fingers = new Vector3(0, 0, doorSide).applyQuaternion(door.pivot.getWorldQuaternion(new Quaternion()));
+            const normal = new Vector3(-doorSide, 0, 0).applyQuaternion(door.pivot.getWorldQuaternion(new Quaternion()));
+            const wrist = hand.getWorldPosition(reach).clone();
+            const target = door.handle.getWorldPosition(new Vector3()).addScaledVector(fingers, -palmReach * scale);
+            wrist.lerp(target, gripDoor);
+            const pole = new Vector3(doorSide * .25, -1, side * .4).applyQuaternion(carRotation);
+            aimLimb(shoulder, elbow, hand, wrist, pole, shoulder instanceof Bone ? ELBOW_HINGE : undefined);
+            if (rig) {
+              const relaxed = hand.quaternion.clone();
+              aimDriverJoint(hand, rig.middle, fingers.clone());
+              alignJointNormal(hand, fingers, rig.palm, normal);
+              hand.quaternion.slerp(relaxed, 1 - gripDoor);
+              for (const { joint, axis, name, segment } of rig.fingers) {
+                joint.rotateOnAxis(axis, RIM_FINGER_CURL[name][segment] * gripDoor);
+              }
+            }
+            continue;
+          }
+          if (enter === 0) continue;
           const radial = new Vector3(side * .73, 0, 0).addScaledVector(up, .68).normalize().applyQuaternion(rimTurn);
           // Aim the knuckles beyond the outer rim. The palm faces inward and
           // the fingers wrap down over the far side of the rim.

@@ -394,6 +394,9 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(find('.fitting-camera-panel:not(.fitting-camera-angles)').hidden, false);
     assert(find('.fitting-camera-panel:not(.fitting-camera-angles)').contains(document.activeElement), 'keyboard activation focuses a camera adjustment');
     assert.equal(find('.fitting-camera-panel:not(.fitting-camera-angles)').textContent.trim(), '', 'the camera popup uses icons');
+    await click('.fitting-camera-panel [aria-label="Look away"]');
+    assert.equal(preview.getState().emote?.id, 'look-away', 'wardrobe can play the glance on its own stage');
+    await act(async () => preview.setState({ emote: null }));
     assert(cameraView('Glasses').querySelector('svg'), 'the clothing close-up has a labeled icon');
     await click('.fitting-camera-panel [aria-label="Zoom in"]');
     assert.equal(preview.getState().zoom, 1.05);

@@ -13,7 +13,7 @@ import { canEditCharacter, useUIStore } from "../../store/menus/uiStore";
 import { CHARACTERS, CHARACTER_APPEARANCE_OPTIONS, CHARACTER_IDENTITIES, DEFAULT_CHARACTER, ROOK_ID, characterAppearance, characterLook, type CharacterChoice } from "./characterCatalog";
 import { CharacterPortrait } from "./CharacterPortrait";
 import { CHARACTER_CAMERAS, CHARACTER_ZOOM_MIN, CHARACTER_ZOOM_MAX, useCharacterPreviewStore } from "./characterPreviewStore";
-import { EMOTE_GROUPS } from "./garageEmotes";
+import { EMOTE_GROUPS, LOOK_AWAY_EMOTE } from "./garageEmotes";
 import { CharacterPosePack } from "./CharacterPosePack";
 import { CharacterEmoteList, type PreviewEmote, type PreviewEmoteGroup } from "./CharacterEmoteList";
 import { unlockVehicleAudio } from "../../audio/sharedAudio";
@@ -23,6 +23,7 @@ import { FittingCameraSelect } from "./FittingCameraSelect";
 import { FittingCameraToolbar } from "./FittingCameraToolbar";
 import { DressingRoom } from "./DressingRoom";
 import { clothingColorKey, UNDERWEAR_PIECES } from "./clothingPieces";
+import { PreviewToolIcon } from "../preview/PreviewToolIcon";
 import { PreviewToolButton } from "../preview/PreviewToolButton";
 import { PreviewVisibilityToggle } from "../preview/PreviewVisibilityToggle";
 import { PreviewZoomSlider } from "../preview/PreviewZoomSlider";
@@ -426,7 +427,8 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
   </PreviewToolButton>;
   const cameraTools = <FittingCameraToolbar key={tab} camera={fitting ? undefined : cameraSelect} splitCamera
     visibility={<PreviewVisibilityToggle />} paused={playbackPaused} onPause={togglePose}
-    vehicle={vehiclePreview} rotationDisabled={rotationDisabled} actions={exitCockpit}
+    vehicle={vehiclePreview} rotationDisabled={rotationDisabled} actions={fitting ? <PreviewToolButton label="Look away" data-controller-row disabled={reducedMotion}
+      onClick={() => playEmote(LOOK_AWAY_EMOTE)}><PreviewToolIcon icon="lookAway" /></PreviewToolButton> : exitCockpit}
     onReframe={tab !== "emotes" ? () => useCharacterPreviewStore.setState(s => ({ zoom: 1, focusRevision: s.focusRevision + 1 })) : undefined}
     zoomOutDisabled={zoom <= CHARACTER_ZOOM_MIN} zoomInDisabled={zoom >= CHARACTER_ZOOM_MAX}
     onZoomOut={insideCar ? undefined : () => zoomBy(-.05)} onZoomIn={insideCar ? undefined : () => zoomBy(.05)} />;
