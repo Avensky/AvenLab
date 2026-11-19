@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { useCharacterPreviewStore } from "./characterPreviewStore";
-import { CHARACTER_POSES, POSE_MOTION_GROUPS, POSE_SEQUENCE_ID } from "./posePack";
+import { CHARACTER_POSE_GROUPS, POSE_MOTION_GROUPS, POSE_SEQUENCE_ID } from "./posePack";
+
+const poseOptions = CHARACTER_POSE_GROUPS.map(({ group, poses }) => <optgroup key={group} label={group}>
+  {poses.map(pose => <option key={pose.id} value={pose.id}>{pose.name}</option>)}
+</optgroup>);
 
 function previewPose(id: string) {
   useCharacterPreviewStore.setState({ emote: { id }, playbackPaused: false });
@@ -17,7 +21,7 @@ export function CharacterPosePack({ disabled }: { disabled: boolean }) {
     <div className="character-emote-results">
       <label className="character-setting" data-controller-row>Start pose
         <select className="menu-control" aria-label="Start pose" value={from} onChange={event => setFrom(event.target.value)}>
-          {CHARACTER_POSES.map(pose => <option key={pose.id} value={pose.id}>{pose.name}</option>)}
+          {poseOptions}
         </select>
       </label>
       <button type="button" className="menu-control" data-controller-row disabled={disabled} onClick={() => previewPose(from)}>Hold start pose</button>
@@ -30,7 +34,7 @@ export function CharacterPosePack({ disabled }: { disabled: boolean }) {
       </label>
       <label className="character-setting" data-controller-row>End pose
         <select className="menu-control" aria-label="End pose" value={to} onChange={event => setTo(event.target.value)}>
-          {CHARACTER_POSES.map(pose => <option key={pose.id} value={pose.id}>{pose.name}</option>)}
+          {poseOptions}
         </select>
       </label>
       <button type="button" className="menu-control" data-controller-row disabled={disabled} onClick={() => previewPose(to)}>Hold end pose</button>

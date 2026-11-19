@@ -52,6 +52,8 @@ type Pose = {
   sway?: number;
   travel?: number;
   feet?: { l?: Foot; r?: Foot };
+  knees?: { l?: XYZ; r?: XYZ };
+  footFacing?: { l?: XYZ; r?: XYZ };
   elbowsBack?: boolean;
   face?: readonly [smile: number, brow: number];
   blink?: number;
@@ -503,10 +505,13 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
         const [sideOffset, lift, forward, pivot = 0, pitch = 0] = pose.feet?.[leg.side] ?? [0, 0, 0];
         const yaw = new Quaternion().setFromAxisAngle(up, pivot);
         const goal = leg.anchor.clone().applyQuaternion(yaw).add(new Vector3(sideOffset, lift, forward)).applyMatrix4(modelMatrix);
-        const knee = new Vector3(leg.side === "l" ? .16 : -.16, 0, 1).applyQuaternion(yaw).applyQuaternion(modelRotation);
+        const knee = new Vector3(...(pose.knees?.[leg.side] ?? [leg.side === "l" ? .16 : -.16, 0, 1]))
+          .applyQuaternion(yaw).applyQuaternion(modelRotation);
         aimLimb(leg.thigh, leg.calf, leg.foot, goal, knee);
         // Counter the shin's rotation, then pitch only the swinging shoe.
-        const shoe = yaw.multiply(new Quaternion().setFromAxisAngle(across, pitch));
+        const facing = pose.footFacing?.[leg.side];
+        const shoe = yaw.multiply(facing ? new Quaternion().setFromEuler(new Euler(...facing))
+          : new Quaternion().setFromAxisAngle(across, pitch));
         leg.foot.quaternion.copy(leg.calf.getWorldQuaternion(new Quaternion()).invert()
           .multiply(modelRotation).multiply(shoe).multiply(inverseModelRotation).multiply(leg.orientation));
       }

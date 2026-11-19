@@ -147,10 +147,13 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await poseButton('Hold start pose');
     assert.equal(preview.getState().emote.id, 'pose-attentive');
     await select('Animation', 'walk-casual');
-    await select('End pose', 'pose-greeting');
+    assert.equal(find('select[aria-label="Start pose"]').options.length, 121);
+    assert.equal(find('select[aria-label="End pose"]').options.length, 121);
+    const importedPose = 'pose-mh-poses03-anrico_standing10';
+    await select('End pose', importedPose);
     await poseButton('Play sequence');
     assert.deepEqual(preview.getState().emote, {
-      id: 'pose-sequence', sequence: { from: 'pose-attentive', motion: 'walk-casual', to: 'pose-greeting' },
+      id: 'pose-sequence', sequence: { from: 'pose-attentive', motion: 'walk-casual', to: importedPose },
     });
     await poseButton('Return to idle');
     assert.equal(preview.getState().emote, null);

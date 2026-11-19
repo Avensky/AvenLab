@@ -1,8 +1,10 @@
 import { EMOTE_GROUPS, emoteCollection, type Emote } from "./garageEmotes";
 
-export type CharacterPose = { id: string; name: string; pose: Emote["keys"][number][1] };
+import { MAKEHUMAN_POSE_GROUPS } from "./makehumanPoses";
 
-export const CHARACTER_POSES = [
+export type CharacterPose = { id: string; name: string; author?: string; pose: Emote["keys"][number][1] };
+
+const AVENLAB_POSES = [
   { id: "pose-neutral", name: "Neutral stand", pose: {} },
   { id: "pose-weight-shift", name: "Relaxed weight shift", pose: {
     sway: .035, rise: -.025, feet: { r: [-.025, 0, .04, -.12] },
@@ -16,6 +18,12 @@ export const CHARACTER_POSES = [
     right: [[-1, -.55, .28], [-.24, 1, .28]], wrist: -.15, face: [.65, .32],
   } },
 ] as const satisfies readonly CharacterPose[];
+
+export const CHARACTER_POSE_GROUPS: readonly { group: string; poses: readonly CharacterPose[] }[] = [
+  { group: "AvenLab", poses: AVENLAB_POSES },
+  ...MAKEHUMAN_POSE_GROUPS,
+];
+const characterPoses = new Map(CHARACTER_POSE_GROUPS.flatMap(({ poses }) => poses.map(pose => [pose.id, pose] as const)));
 
 export const POSE_SEQUENCE_ID = "pose-sequence";
 export const POSE_START_HOLD_SECONDS = .9;
@@ -60,12 +68,12 @@ export function composePoseSequence(from: CharacterPose, motion: Emote, to: Char
 
 export function posePackEmote(id: string, sequence?: PoseSequence): Emote | undefined {
   if (id === POSE_SEQUENCE_ID && sequence) {
-    const from = CHARACTER_POSES.find(pose => pose.id === sequence.from);
-    const to = CHARACTER_POSES.find(pose => pose.id === sequence.to);
+    const from = characterPoses.get(sequence.from);
+    const to = characterPoses.get(sequence.to);
     const motion = poseMotions.get(sequence.motion);
     if (from && motion && to) return composePoseSequence(from, motion, to);
     return;
   }
-  const pose = CHARACTER_POSES.find(pose => pose.id === id);
+  const pose = characterPoses.get(id);
   if (pose) return holdCharacterPose(pose);
 }

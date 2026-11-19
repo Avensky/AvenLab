@@ -56,6 +56,20 @@ another preview, or leave the pack. If the start pose is already held, the
 sequence continues from it directly. The animation menu includes emotes that
 need no scene prop. The shop bag is stowed during pose pack playback.
 
+The pose selectors include all 117 BVH entries from the six
+[MakeHuman Community CC0 pose packs](https://static.makehumancommunity.org/assets/assetpacks/).
+The generated catalog retains each asset's pack, name, and author. The nine
+multi-frame files repeat the same pose, so the converter samples the first
+frame of each file. It maps torso, head, arms, palms, ankles, knee directions,
+and foot orientation to AvenLab's shared controls. Finger articulation,
+seating surfaces, sports equipment, and garment-fit adjustments need a
+visual pass on the target character.
+
+To rebuild the catalog, extract each archive to its own directory under
+`EXTRACTED_PACKS_DIR`, using the upstream pack names
+(`makehuman_system_poses` and `poses01` through `poses05`). From `frontend`,
+run `node scripts/import-makehuman-poses.mjs EXTRACTED_PACKS_DIR`.
+
 Define new poses in `posePack.ts` with the same model-space targets as
 garage emotes. Arm directions use positive Z for forward. Feet use offsets
 from the resting ankles in stage meters. `holdCharacterPose` makes a static
