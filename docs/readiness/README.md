@@ -2,8 +2,9 @@
 
 Updated 2026-11-18 (America/Los_Angeles). This is the working release checklist,
 including the latest wardrobe, performance, color, and mobile UI requests.
-The performance implementation is being validated on the branch based on
-`0e81afe`; it must not be described as a merged or deployed release until it is.
+The performance implementation is published in [draft PR #36](https://github.com/Avensky/AvenLab/pull/36)
+on `perf/wardrobe-cache-and-gameplay-lods`, based on `0e81afe`.
+Rust and browser/target-device validation remain open; the PR is not merged or deployed.
 
 ## Decisions to preserve
 
@@ -22,6 +23,31 @@ The performance implementation is being validated on the branch based on
 - Fix and measure the current paths before extracting packages. A package is not
   reusable if it silently depends on game stores, research routes, or a particular
   renderer's global state.
+
+## Three-branch coordination
+
+Three concurrent work branches are planned. Their names and responsibilities are
+still to be supplied; keep branch ownership explicit when assigning work. The
+current performance PR remains its own reviewable change until that mapping is
+agreed.
+
+- Use a separate worktree for each active branch so unfinished changes remain
+  isolated. Record each branch's purpose, base commit, owning README, and dependent
+  PRs before integrating work across branches.
+- Keep commits focused and record shared dependencies by commit/PR. Coordinate one
+  version of changes to `packages/wardrobe-catalog`, detailed-to-gameplay appearance
+  mapping, and the TypeScript/Rust snapshot contract with their shared fixtures.
+  Integrate the validated dependency before changes that consume it.
+- Coordinate edits to `GameUI.tsx`, `HeroWorkshop.tsx`, vehicle preparation, and
+  resource ownership before overlapping changes land. Preserve accepted fit
+  signatures and source assets when bringing branches together.
+- Compare current source and target heads before each integration, resolve
+  conflicts against the intended behavior, and run checks for the affected shared
+  boundaries. Keep open visual, Rust, and device checks attached to their branch;
+  another branch's passing checks do not close them.
+- Update this grid and the relevant component README with the branch/PR, evidence,
+  and remaining issues. Record integration status separately from implementation
+  status so parallel work does not appear released prematurely.
 
 ## Must-have grid
 
