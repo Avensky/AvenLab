@@ -3,7 +3,7 @@ import {
   AnimationClip, Bone, BooleanKeyframeTrack, Euler, NumberKeyframeTrack, Quaternion, QuaternionKeyframeTrack, Vector3, VectorKeyframeTrack,
   type Object3D,
 } from "three";
-import { driverFaceTargets } from "./villagerFace";
+import { driverFaceTargets, VILLAGER_EYES } from "./villagerFace";
 import { availableVictoryEmotes } from "./victoryEmotes";
 import { availablePlayfulEmotes } from "./playfulEmotes";
 import { availableShyEmotes, QUIET_THANK_YOU } from "./shyEmotes";
@@ -60,7 +60,7 @@ type Pose = {
   blink?: number;
   wetEyes?: number;
   // Prop coordinates are meters from the shoulder midpoint or the head.
-  prop?: { offset: XYZ; angles?: XYZ; fold?: number; show?: number; atHead?: boolean; grip?: boolean; ripple?: number };
+  prop?: { offset: XYZ; angles?: XYZ; fold?: number; show?: number; atHead?: true | "lips" | "eyes"; grip?: boolean; ripple?: number };
   thumbs?: readonly [left: number, right: number];
 };
 export type Emote = { id: string; name: string; duration: number; prop?: EmoteProp; keys: readonly (readonly [time: number, pose: Pose])[] };
@@ -292,6 +292,18 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
   const modelRotation = root.getWorldQuaternion(new Quaternion());
   const modelMatrix = root.matrixWorld.clone();
   const inverseModelRotation = modelRotation.clone().invert();
+  const hasHeadProp = head && emotes.some(emote => emote.keys.some(([, pose]) => typeof pose.prop?.atHead === "string"));
+  const inverseRestHead = hasHeadProp && inverseModelRotation.clone()
+    .multiply(head.getWorldQuaternion(new Quaternion())).invert();
+  const makeupAnchors = hasHeadProp && (() => {
+    const stylized = root.name.endsWith("-stylized");
+    const face = VILLAGER_EYES[root.name.endsWith("-male") ? "male" : "female"];
+    const restHead = root.worldToLocal(head.getWorldPosition(new Vector3()));
+    return {
+      lips: new Vector3(0, stylized ? 1.496 : face.lip, stylized ? .110 : face.z + .019).sub(restHead),
+      eyes: new Vector3(0, (stylized ? 1.579 : face.y) + .006, (stylized ? .092 : face.z) + .010).sub(restHead),
+    };
+  })();
   let lipAnchor: Vector3 | undefined;
   if (head && emotes.some(emote => emote.keys.some(([, pose]) => pose.rightAtLips))) {
     const restHead = root.worldToLocal(head.getWorldPosition(new Vector3()));
@@ -402,9 +414,17 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
       if (propPose && grips && left && right) {
         const anchor = propPose.atHead && head ? head.getWorldPosition(new Vector3())
           : left.shoulder.getWorldPosition(new Vector3()).lerp(right.shoulder.getWorldPosition(new Vector3()), .5);
-        const origin = root.worldToLocal(anchor).add(new Vector3(...propPose.offset));
+        const offset = new Vector3(...propPose.offset);
+        const facialTarget = typeof propPose.atHead === "string" ? propPose.atHead : undefined;
+        const headFrame = facialTarget && head && inverseRestHead
+          ? inverseModelRotation.clone().multiply(head.getWorldQuaternion(new Quaternion())).multiply(inverseRestHead) : undefined;
+        if (facialTarget && headFrame && makeupAnchors) {
+          offset.add(makeupAnchors[facialTarget]).applyQuaternion(headFrame);
+        }
+        const origin = root.worldToLocal(anchor).add(offset);
         const [pitch, yaw, roll] = propPose.angles ?? [0, 0, 0];
         const orientation = new Quaternion().setFromEuler(new Euler(pitch, yaw, roll));
+        if (headFrame) orientation.premultiply(headFrame);
         // Fingers roll around the paper's edges as it turns between the palms.
         const palmRotation = modelRotation.clone().multiply(emote.prop === "map"
           ? new Quaternion().setFromEuler(new Euler(Math.max(-.3, Math.min(.25, pitch)), yaw, roll)) : orientation);

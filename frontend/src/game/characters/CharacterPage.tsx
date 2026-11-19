@@ -1,4 +1,4 @@
-import { MIRROR_CHECK_ID } from "./mirrorCheck";
+import { isMirrorMakeupEmote, MAKEUP_EMOTES } from "./mirrorCheck";
 import { useFittingTurnStore } from "./fittingControlsStore";
 import { FitReview } from "./FitReview";
 import { useCallback, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type FocusEvent, type Ref } from "react";
@@ -50,8 +50,14 @@ function revealCharacterControl(event: FocusEvent<HTMLElement>) {
 
 function playEmote(item: PreviewEmote) {
   if (item.id === "drive-honk") unlockVehicleAudio();
-  if (item.id === MIRROR_CHECK_ID) useFittingTurnStore.setState({ characterYaw: 0 });
-  useCharacterPreviewStore.setState({ emote: { id: item.id }, playbackPaused: false, ...(item.id === MIRROR_CHECK_ID ? { camera: "Whole car" } : {}) });
+  const mirror = isMirrorMakeupEmote(item.id);
+  const makeup = MAKEUP_EMOTES.some(emote => emote.id === item.id);
+  if (mirror || makeup) useFittingTurnStore.setState({ characterYaw: 0 });
+  useCharacterPreviewStore.setState(state => ({
+    emote: { id: item.id },
+    playbackPaused: false,
+    ...(mirror ? { camera: "Whole car" } : makeup ? { camera: "Face", zoom: 1, focusRevision: state.focusRevision + 1 } : {}),
+  }));
 }
 
 export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
@@ -406,7 +412,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
     {emoteResults}
   </section>;
   const fitting = tab === "appearance";
-  const rotationDisabled = insideCar || emote?.id === MIRROR_CHECK_ID;
+  const rotationDisabled = insideCar || isMirrorMakeupEmote(emote?.id);
   const vehiclePreview = tab === "emotes" && Boolean(cockpitVehicle);
   const cameraViews = vehiclePreview ? CHARACTER_CAMERAS : CHARACTER_CAMERAS.filter(view => view !== "Whole car");
   const changeCamera = (view: typeof camera) => useCharacterPreviewStore.setState({ camera: view, zoom: 1 });
@@ -427,8 +433,11 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
   </PreviewToolButton>;
   const cameraTools = <FittingCameraToolbar key={tab} camera={fitting ? undefined : cameraSelect} splitCamera
     visibility={<PreviewVisibilityToggle />} paused={playbackPaused} onPause={togglePose}
-    vehicle={vehiclePreview} rotationDisabled={rotationDisabled} actions={fitting ? <PreviewToolButton label="Look away" data-controller-row disabled={reducedMotion}
-      onClick={() => playEmote(LOOK_AWAY_EMOTE)}><PreviewToolIcon icon="lookAway" /></PreviewToolButton> : exitCockpit}
+    vehicle={vehiclePreview} rotationDisabled={rotationDisabled} actions={fitting ? <><PreviewToolButton label="Look away" data-controller-row disabled={reducedMotion}
+      onClick={() => playEmote(LOOK_AWAY_EMOTE)}><PreviewToolIcon icon="lookAway" /></PreviewToolButton>
+      {MAKEUP_EMOTES.map(item => <PreviewToolButton key={item.id} label={item.name} data-controller-row
+        disabled={reducedMotion} onClick={() => playEmote(item)}><PreviewToolIcon icon={item.icon} /></PreviewToolButton>)}
+    </> : exitCockpit}
     onReframe={tab !== "emotes" ? () => useCharacterPreviewStore.setState(s => ({ zoom: 1, focusRevision: s.focusRevision + 1 })) : undefined}
     zoomOutDisabled={zoom <= CHARACTER_ZOOM_MIN} zoomInDisabled={zoom >= CHARACTER_ZOOM_MAX}
     onZoomOut={insideCar ? undefined : () => zoomBy(-.05)} onZoomIn={insideCar ? undefined : () => zoomBy(.05)} />;

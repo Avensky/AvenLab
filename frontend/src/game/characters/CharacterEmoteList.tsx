@@ -6,7 +6,7 @@ import { COCKPIT_TAKES } from "./cockpitEmotes";
 import { FitBadge } from "./FitReview";
 import { EMOTE_GROUPS, emoteCollection, findGaragePreviewEmote, garagePreviewCollection, type EmoteGroup } from "./garageEmotes";
 import { GARAGE_LEAN_ID, GARAGE_LEAN_NAME } from "./garageLean";
-import { MIRROR_CHECK_ID, MIRROR_CHECK_NAME } from "./mirrorCheck";
+import { MIRROR_MAKEUP_EMOTES } from "./mirrorCheck";
 
 export type PreviewEmoteGroup = EmoteGroup | CharacterPersonality | "Best" | "All" | "Personality";
 export type PreviewEmote = { id: string; name: string };
@@ -43,7 +43,7 @@ export const CharacterEmoteList = memo(function CharacterEmoteList({
   }, [insideCar, group, bag, road, station, personality]);
   const query = search.trim().toLowerCase();
   const visible = [
-    ...(!insideCar && mirrorAvailable && (group === "Garage" || group === "All") ? [{ id: MIRROR_CHECK_ID, name: MIRROR_CHECK_NAME }] : []),
+    ...(!insideCar && mirrorAvailable && (group === "Garage" || group === "All") ? MIRROR_MAKEUP_EMOTES : []),
     ...(!insideCar && leanAvailable && group === "Garage" ? [{ id: GARAGE_LEAN_ID, name: GARAGE_LEAN_NAME }] : []),
     ...picked,
   ].filter(item => `${item.id} ${item.name}`.toLowerCase().includes(query));

@@ -397,6 +397,12 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     await click('.fitting-camera-panel [aria-label="Look away"]');
     assert.equal(preview.getState().emote?.id, 'look-away', 'wardrobe can play the glance on its own stage');
     await act(async () => preview.setState({ emote: null }));
+    for (const [label, id] of [['Check makeup', 'makeup-check'], ['Redo lipstick', 'redo-lipstick'], ['Apply eyeliner', 'apply-eyeliner']]) {
+      await click(`.fitting-camera-panel [aria-label="${label}"]`);
+      assert.equal(preview.getState().emote?.id, id);
+      assert.equal(preview.getState().camera, 'Face');
+    }
+    await act(async () => preview.setState({ emote: null, camera: 'Full body' }));
     assert(cameraView('Glasses').querySelector('svg'), 'the clothing close-up has a labeled icon');
     await click('.fitting-camera-panel [aria-label="Zoom in"]');
     assert.equal(preview.getState().zoom, 1.05);

@@ -21,7 +21,7 @@ import { clothingFrame, orbitFittingCamera } from "../characters/clothingFraming
 import { FittingCameraOrbit } from "../characters/FittingCameraOrbit";
 import { FittingMirrorDisplay } from "../characters/FittingMirrorDisplay";
 import { GARAGE_LEAN_ID } from "../characters/garageLean";
-import { MIRROR_CHECK_ID } from "../characters/mirrorCheck";
+import { isMirrorMakeupEmote } from "../characters/mirrorCheck";
 import type { CharacterChoice } from "../characters/characterCatalog";
 import { CHARACTER_ZOOM_MAX, CHARACTER_ZOOM_MIN, failCockpitPreview, useCharacterPreviewStore } from "../characters/characterPreviewStore";
 import { HEROES, useAlphaStore } from "../../store/alpha/alphaStore";
@@ -121,7 +121,7 @@ export function VehiclePreview({
   const selected = HEROES.find(hero => hero.id === (picked ?? savedHero))?.vehicle;
   const vehicleEmotes = wardrobeOpen && !characterOnly;
   const insideCar = useCharacterPreviewStore(s => vehicleEmotes && s.insideCar);
-  const fittingToCar = useCharacterPreviewStore(s => vehicleEmotes && (s.emote?.id === GARAGE_LEAN_ID || s.emote?.id === MIRROR_CHECK_ID));
+  const fittingToCar = useCharacterPreviewStore(s => vehicleEmotes && (s.emote?.id === GARAGE_LEAN_ID || isMirrorMakeupEmote(s.emote?.id)));
   const vehicleId = awaitingHero ? selected ?? (driverStage ? favorite : undefined) : favorite;
   const lastVehicle = useRef(vehicleId);
   useLayoutEffect(() => {

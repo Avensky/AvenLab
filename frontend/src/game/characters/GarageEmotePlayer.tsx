@@ -1,4 +1,4 @@
-import { MIRROR_CHECK_ID, mirrorCheckPose, type MirrorCheckFit } from "./mirrorCheck";
+import { MIRROR_MAKEUP_EMOTES, makeupPreviewEmote, type MirrorCheckFit } from "./mirrorCheck";
 import { useFittingTurnStore } from "./fittingControlsStore";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
@@ -232,7 +232,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
       }
       const nextFit = JSON.stringify([mirrorFit, leanFit]);
       if (nextFit !== contextFit.current) {
-        for (const id of [MIRROR_CHECK_ID, GARAGE_LEAN_ID]) {
+        for (const id of [...MIRROR_MAKEUP_EMOTES.map(item => item.id), GARAGE_LEAN_ID]) {
           const previous = current.actions.get(id);
           if (previous) { previous.stop(); current.mixer.uncacheAction(previous.getClip()); current.actions.delete(id); }
         }
@@ -241,7 +241,8 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
       let action = preview ? current.actions.get(preview.id) : undefined;
       if (!action && preview) {
         const pose = previewPacks ? posePackEmote(preview.id, sequence) : undefined;
-        const emote = pose ?? (preview.id === MIRROR_CHECK_ID && mirrorFit ? mirrorCheckPose(mirrorFit) : preview.id === GARAGE_LEAN_ID && leanFit ? garageLeanPose(leanFit) : findGaragePreviewEmote(preview.id, bag));
+        const emote = pose ?? (previewPacks ? makeupPreviewEmote(preview.id, mirrorFit) : undefined)
+          ?? (preview.id === GARAGE_LEAN_ID && leanFit ? garageLeanPose(leanFit) : findGaragePreviewEmote(preview.id, bag));
         if (emote) {
           // The solver needs the rest skeleton. Release mixer bindings before
           // compiling one clip, then keep it for the rest of this preview.

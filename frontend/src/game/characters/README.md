@@ -56,10 +56,16 @@ The hand reaches before the panel starts to swing, follows the grip in
 hinge space, then releases before stepping in. Fused body meshes require
 a separable door assembly to show this contact.
 
-Garage → Emotes → Side mirror uses the exterior mirror on the staged door
-side. Separately named mirror meshes give the target point. Fused mirrors
-use an estimate near the window corner. In Appearance, Camera tools →
-Look away plays a stationary glance for outfit inspection.
+The Garage emote list has side-mirror versions of Check makeup, Redo
+lipstick, and Apply eyeliner. All three use the exterior mirror on the staged
+door side. Separately named mirror meshes give the target point. Fused mirrors
+use an estimate near the window corner.
+
+In Appearance, Camera tools has stationary versions of all three actions
+with a face close-up. Look away is also available for outfit inspection.
+The lipstick and eyeliner emotes follow rig-specific face landmarks and
+use temporary handheld props. These previews leave saved appearance colors
+as equipped.
 
 ## Pose pack
 
