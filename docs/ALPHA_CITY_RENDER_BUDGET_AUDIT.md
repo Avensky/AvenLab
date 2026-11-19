@@ -1,7 +1,7 @@
 # Alpha city render-budget audit — 2026-11-18
 
 ## Status
-PR #38 covers the capture comparator, empty material batches and the city render passes measured below. The P0 audit remains open for physical-device frame times, first-load stalls and sustained driving.
+PR #38 covers the capture comparator, empty material batches and the city render passes measured below. The P0 audit remains open for first-entry measurements on the live map, physical-device frame times and sustained driving.
 
 ## Existing evidence
 The historical ten-second gameplay capture averaged 41.23 ms/frame, 4,187 draws and 19.70M triangles. A separate controlled city-only Chromium software-WebGL comparison measured Original at 4,385 draws / 19,418,060 triangles and Fast at 233 draws / 3,120,463 triangles. That is about 94.7% fewer draws and 83.9% fewer triangles **in that isolated view**. Both paths used 512px textures, and no vehicle was present. Do not claim mobile FPS or compare the gameplay and city-only records as a matched pair. See [CITY_PERFORMANCE.md](CITY_PERFORMANCE.md).
@@ -21,7 +21,7 @@ Example JSON **schema illustration, not a measured capture**:
 ## Remaining implementation and visual checks
 - Extend the fixed-view pass measurements to a warmed driving route with a vehicle and moving lights.
 - Verify near/far building culling, junction geometry, stable instance buffers and authored collision transforms.
-- Measure first-load texture/shader stalls separately from warmed driving.
+- Trace a first login on the live map with concurrent buildings, roads, vehicle and UI. Compare it with warmed driving on the same phone.
 - Compare Fast/Balanced/Original and 250/500/750m at identical settings on desktop and a physical phone.
 - Perform a 15-minute mobile thermal run and verify visible building facades, road seams, shadows and glass.
 
@@ -72,3 +72,44 @@ The CPU measurement used Node 24.22.3 in one process. For each preset and resolu
 From `frontend/`, run `node --test tests/city-*.test.mjs tests/world-sky-lighting.test.mjs tests/capture-recording.test.mjs`. All 47 checks passed, including shadow toggles and offscreen casters, custom materials, texel equivalence, and comparator CLI exit codes. The comparator now checks arguments only during direct execution and rejects either cold input. Frontend typecheck and the standard production build passed.
 
 The full frontend run (`node --test --test-concurrency=4 tests/*.test.mjs`) reported 76 failures and 58 skips. The same 76 failure names occurred on the baseline, which also failed to import the comparator. Examples include unmaterialized vehicle fixtures, the garage paint assertion and UI behavior tests. Full frontend lint reported 49 errors and 6 warnings on each revision. The physical-phone driving and thermal checks remain open for review.
+
+## First city load and GPU preparation
+
+The streamed city prepares full and reduced buildings before replacing their proxies. On the Fast instanced fallback, the old upload phase drew 1,393,693 building triangles into a 1 × 1 target. The renderer can upload the same buffers with the meshes visible and their instance counts at zero. Three.js r181 binds the vertex, index and instance buffers before it checks how many instances to draw. The warmup keeps the representative bounding sphere that Three uses for sorting.
+
+The shared work queue now groups up to four small meshes per offscreen render, with a combined 256 KiB budget for vertex and index arrays. Large meshes and transmissive materials get individual turns. After live shader compilation, a WebGL fence checks whether previously submitted commands have finished. Each poll uses a zero timeout and yields to the animation loop, so the proxy can stay on screen during that wait. Cancellation disposes the fence and the warmup target.
+
+### Measurements
+
+Each cell is the baseline → candidate median of three fresh Chromium/SwiftShader processes per revision. The four junction configurations produced 24 captures. Shadows and detailed reflections were enabled except in the basic-reflections row. The same locked Three.js version, assets, camera, lights, viewport and DPR ran on both revisions. Browser caches and WebGL contexts were fresh per run. The local files could remain in the OS cache.
+
+| City rendering mode | Building geometry phase (ms) | Largest observed building-prep frame gap per run (ms) | First visible render + readback (ms) | Load to first visible (ms) | Warmed frame + readback (ms) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Fast fallback, shadows off, basic reflections | 924 → 465 | 50 → 50 | 1,267 → 391 | 3,923 → 3,757 | 151 → 143 |
+| Fast, instanced fallback | 918 → 420 | 83 → 33 | 1,288 → 499 | 4,098 → 3,511 | 187 → 196 |
+| Fast, native multi-draw | 570 → 384 | 67 → 50 | 1,557 → 713 | 4,026 → 4,082 | 210 → 213 |
+| Balanced, instanced fallback | 1,044 → 504 | 117 → 67 | 5,156 → 1,680 | 8,896 → 8,987 | 755 → 802 |
+
+The Fast fallback building upload used 206 offscreen renders instead of 566 and allocated the same 2,857 vertex/index buffers (87,622,732 bytes, including instance data). The native path used 89 renders instead of 212 with the same 930 buffers (84,688,104 bytes). In both paths, Three issued zero city geometry draws during the upload phase. The first visible frame allocated zero additional vertex/index buffers. Final draw counts, submitted triangles and RGBA hashes matched within each mode.
+
+Fast fallback reached the first complete frame 166 ms sooner with basic reflections and 587 ms sooner with shadows and detailed reflections. Native and Balanced reached it 56 ms and 91 ms later in these samples. Much of the first-frame improvement came from letting the GPU finish submitted work while proxies were available. The median building fence waits were 975 ms (Fast), 1,016 ms (native Fast) and 3,863 ms (Balanced). Balanced texture upload also took 1,441 ms on the candidate. Warmed frame medians varied and this change only runs during preparation.
+
+The per-run CSV records both assets, every preparation phase, buffer allocations and frame readbacks. Scene-level metrics repeat on the building and road rows of each capture. [Raw measurements](../performance/city-gpu-preparation-2026-11-18.csv)
+
+### Repeat the cold capture
+
+Use the WebGL fixture procedure above with baseline `bf2056a`. Copy both `city-render-passes.html` and `city-preparation.mjs` from the candidate into the baseline fixture directory. Also materialize `chunck_0,0_2x2_blocks_centered_reduced.glb`.
+
+- Start a fresh browser process and WebGL context per capture. Open the fixture with `?prepare=1` for Fast fallback, `?prepare=1&multiDraw=1` for Fast native, `?prepare=1&quality=balanced` for Balanced fallback, or `?prepare=1&shadows=0&reflections=0` for Fast fallback with basic reflections. The harness uses the production preparation queue and prepares the building asset and road asset in sequence.
+- Read the per-asset phase times, queue frame gaps, geometry draws and vertex/index buffer allocations. Asset preparation elapsed time includes queue yields and, on the candidate, the GPU wait. The load/decode field includes the reduced asset for buildings.
+- A one-pixel readback synchronizes the first visible frame. Five more renders of the same view provide a warmed median. The load-to-visible timer starts just before the first GLB load and ends at the first readback. The fixture uses a single placed tile, the fixed junction camera and the same 480 × 270 software-WebGL setup as the render-pass audit.
+
+### Verification for this milestone
+
+All 55 focused city, capture and reflection checks passed, including eight new GPU preparation tests covering group limits, buffer eligibility, native batching, cancellation, renderer state restoration and fence cleanup. Frontend typecheck, lint on the changed runtime module and the production build passed.
+
+The full frontend suite ran 873 tests with 738 passes, 77 failures and 58 skips. Of the failures, 76 also appeared in the preceding PR run. The additional prematch preview test file exited unsuccessfully during the full run and passed all eight tests when rerun alone.
+
+### Next physical-device check
+
+On the same iPhone and production route, start a browser performance trace before joining. Record time to the first proxy, the first detailed frame and the first steering input the game displays. Repeat with the same graphics settings on both revisions, then use F8 for a separate warmed driving capture. The remaining first-entry question is how concurrent city uploads, vehicle loading and UI affect those three points.

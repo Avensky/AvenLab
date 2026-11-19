@@ -8,6 +8,8 @@ For character assets, start with the [wardrobe authoring and validation guide](f
 
 At a fixed city junction, Fast mode with shadows and detailed reflections went from **314 to 209 draws** on the instanced fallback and **156 to 141** with native multi-draw. Both paths rendered the same pixels as their respective baselines. The audit covers per-light caster culling, blended road paint and sky reflection generation. Phone frame times and sustained thermal performance still need a matched driving capture. [Measurements and reproduction steps](docs/ALPHA_CITY_RENDER_BUDGET_AUDIT.md#city-render-pass-measurements)
 
+For first city entry, the Fast fallback now uploads the full and reduced building buffers with zero warmup triangle draws. In three cold software-WebGL runs per revision, median building geometry preparation fell from **918 to 420 ms**. The first synchronized display frame fell from **1,288 to 499 ms**. Native multi-draw and Balanced had shorter first frames but slightly longer total load-to-display medians. [Cold-load results and remaining phone checks](docs/ALPHA_CITY_RENDER_BUDGET_AUDIT.md#first-city-load-and-gpu-preparation)
+
 # AvensLab
 
 ```t
