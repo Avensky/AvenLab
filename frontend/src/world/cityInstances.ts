@@ -1,9 +1,9 @@
-import { Box3, Frustum, Group, InstancedMesh, Material, Matrix4, Mesh, MeshPhysicalMaterial, Quaternion, Texture, Vector3, type Object3D } from "three";
+import { Box3, DoubleSide, Frustum, Group, InstancedMesh, Material, Matrix4, Mesh, MeshPhysicalMaterial, Quaternion, Sphere, Texture, Vector3, type Object3D } from "three";
 import type { CityPlacement } from "./cityLod.ts";
-import { cityDrawBatchJobs, updateCityDrawPart, type CityDrawPart, type CityRenderMesh } from "./cityDrawBatches.ts";
+import { cityDrawBatchJobs, settleCityDrawBatches, updateCityDrawPart, type CityDrawPart, type CityRenderMesh } from "./cityDrawBatches.ts";
 
 type Batch = { mesh: InstancedMesh; reduced?: InstancedMesh; fullDraw: CityDrawPart; reducedDraw?: CityDrawPart; block?: string; local: Matrix4; bounds: Box3; matrices: Matrix4[]; boxes: Box3[]; visibleIndices: number[]; reducedIndices: number[] };
-type CityInstanceOptions = { multiDraw?: boolean; castShadow?: boolean };
+type CityInstanceOptions = { multiDraw?: boolean; castShadow?: boolean; assetPath?: string };
 
 export function supportsCityInstancing(source: Object3D) {
   let supported = true;
@@ -29,6 +29,7 @@ export function createCityInstances(source: Object3D, capacity: number, fastGlas
   const reducedObjects = new Map<string, Mesh>();
   reducedSource?.traverseVisible(object => { if (object instanceof Mesh) reducedObjects.set(object.name, object); });
   const group = new Group(); group.name = "instanced-city-asset";
+  const cityRoads = /^\/models\/chuncks\/chunck_0,0_2x2_roads(?:_textures(?:512|1024))?\.glb$/.test(options.assetPath ?? "");
   const materials = new Map<Material, Material>(), batches: Batch[] = [], textures = new Set<Texture>(), meshes: CityRenderMesh[] = [];
   const materialFor = (source: Material) => {
     const cached = materials.get(source); if (cached) return cached;
@@ -37,6 +38,11 @@ export function createCityInstances(source: Object3D, capacity: number, fastGlas
     const glass = source.name.trim().toLowerCase() === "glass";
     // The exported bricks/asphalt have transmission=1. They are solid surfaces.
     if (!glass || fastGlass) material.transmission = 0;
+    // These three road-paint primitives are flat decals. Both sides still draw,
+    // but there is no separate back surface to composite before the front.
+    if (cityRoads && material.transparent && material.side === DoubleSide && /^MarkingRoad\.00[123]$/.test(material.name)) {
+      material.forceSinglePass = true;
+    }
     if (fastGlass) {
       material.clearcoat = 0; material.sheen = 0; material.iridescence = 0;
       if (glass) { material.transparent = true; material.opacity = 0.32; material.alphaTest = 0; material.depthWrite = false; material.forceSinglePass = true; }
@@ -129,6 +135,16 @@ export function createCityInstances(source: Object3D, capacity: number, fastGlas
       batch.mesh.count = visible; batch.mesh.visible = visible > 0;
       const high = batch.fullDraw.binding?.mesh ?? batch.mesh;
       high.castShadow = shadows && batch.fullDraw.castsShadow; high.receiveShadow = shadows;
+      if (!batch.fullDraw.binding && batch.fullDraw.castsShadow) {
+        // Packing retains the union of camera and light placements. Give each
+        // render pass conservative bounds for that union in mesh-local space.
+        if (shadows && visible && (changed || !high.frustumCulled)) {
+          box.makeEmpty();
+          for (const i of indices) box.union(batch.boxes[i]);
+          box.getBoundingSphere(batch.mesh.boundingSphere ??= new Sphere());
+        }
+        high.frustumCulled = shadows;
+      }
       count += visible;
       if (batch.reduced) {
         const changed = moved || reducedIndices.length !== batch.reducedIndices.length || reducedIndices.some((index, i) => index !== batch.reducedIndices[i]);
@@ -143,6 +159,7 @@ export function createCityInstances(source: Object3D, capacity: number, fastGlas
         count += reducedIndices.length;
       }
     }
+    settleCityDrawBatches(batches.flatMap(batch => batch.reducedDraw ? [batch.fullDraw, batch.reducedDraw] : [batch.fullDraw]));
     return count;
   };
   return { group, batches, objects, textures, meshes, stats, prepareMesh, prepareDrawBatches, update,

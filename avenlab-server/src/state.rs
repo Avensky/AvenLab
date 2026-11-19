@@ -74,6 +74,8 @@ pub struct PhysicsEntitySnapshot<'a> {
     /// Canonical model id selected at spawn (ae86, brz, camaro, supra, ...).
     pub vehicle_id: Option<&'a str>,
     pub appearance: &'a crate::alpha::appearance::HeroAppearance,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub driver: Option<&'a crate::alpha::character::DriverAppearance>,
     pub room_id: usize,
     pub team: &'a str,
 
@@ -219,6 +221,7 @@ pub struct EntityState {
     /// Selected model id used by every client to render this entity.
     pub vehicle_id: Option<String>,
     pub appearance: crate::alpha::appearance::HeroAppearance,
+    pub driver: Option<crate::alpha::character::DriverAppearance>,
     pub room_id: usize,
     pub team: Team,
     pub body_handle: RigidBodyHandle,
@@ -407,6 +410,7 @@ impl SharedGameState {
             kind,
             vehicle_id: None,
             appearance: Default::default(),
+            driver: None,
             room_id: 0, // overwritten later
             team: Team::Red, // overwritten later
             body_handle: RigidBodyHandle::invalid(),
@@ -677,6 +681,7 @@ impl SharedGameState {
                 kind: ent.kind.as_str(),
                 vehicle_id: ent.vehicle_id.as_deref(),
                 appearance: &ent.appearance,
+                driver: ent.driver.as_ref(),
                 room_id: ent.room_id,
                 team: ent.team.as_str(),
 
@@ -727,6 +732,7 @@ mod tests {
             room.join(id,tx,frames,input,None,10);room.spawn(id,model).unwrap();receivers.push((rx,fr));
         }
         room.game.tick=123456;
+        room.game.entities.get_mut("alpha").unwrap().driver=Some(Default::default());
         room.physics.combat_poses.insert("alpha".into(), CombatPose{
             assisted_target:Some("beta".into()),impact:Some([1.2345678,-2.5,3.0]),
             shot_origin:Some([4.5,6.0,7.0]),impact_normal:Some([0.0,1.0,0.0]),
@@ -766,7 +772,7 @@ mod tests {
         if let Ok(path)=std::env::var("AVENLAB_SNAPSHOT_FIXTURE") {
             std::fs::write(path,serde_json::to_string_pretty(&fixture).unwrap()).unwrap();
         } else {
-            let expected:serde_json::Value=serde_json::from_str(include_str!("../../frontend/tests/fixtures/compact-snapshot.json")).unwrap();
+            let expected:serde_json::Value=serde_json::from_str(include_str!("../../frontend/tests/fixtures/compact-snapshot-v3.json")).unwrap();
             assert_eq!(fixture,expected,"Regenerate the cross-language wire fixture after a deliberate schema/config change");
         }
     }
@@ -778,7 +784,7 @@ mod tests {
         let (tx,_)=crate::outbox::channel();let (frames,mut rx)=watch::channel(None);
         let sender=crate::snapshot_wire::SnapshotSender::from(frames);let format=sender.format.clone();
         let (_,input)=watch::channel(None);game.register_client("new".into(),tx,sender,input);
-        format.store(1,Ordering::Relaxed);game.tick=1;
+        format.store(crate::snapshot_wire::VERSION,Ordering::Relaxed);game.tick=1;
         assert_eq!(game.publish_physics_frame(&physics),0);assert!(!rx.has_changed().unwrap());
         game.tick=2;assert!(game.publish_physics_frame(&physics)>0);
         let compact=rx.borrow_and_update().clone().unwrap();
@@ -795,7 +801,7 @@ mod tests {
         round.phase=crate::ctf::CtfPhase::Ended;game.match_state=Some(round.view());game.tick=3;
         let (tx,_)=crate::outbox::channel();let (frame,mut frames)=watch::channel(None);let (_,input)=watch::channel(None);
         let sender=crate::snapshot_wire::SnapshotSender::from(frame);
-        sender.format.store(1,std::sync::atomic::Ordering::Relaxed);
+        sender.format.store(crate::snapshot_wire::VERSION,std::sync::atomic::Ordering::Relaxed);
         let revision=sender.revision.clone();
         game.register_client("first".into(),tx,sender,input);
         assert!(game.publish_physics_frame(&physics)>0);

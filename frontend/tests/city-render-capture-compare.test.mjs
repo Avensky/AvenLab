@@ -1,0 +1,38 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { compare } from '../../scripts/audit-city-render.mjs';
+const context={map:'city',route:'fixed-loop',camera:'chase',viewport:'1280x720',dpr:1,vehicle:'BRZ',shadows:false,reflections:false,viewDistance:'500m',warmupComplete:true};
+const sample=(drawCalls,triangles,frameP95Ms=15,frameP99Ms=20)=>({context:{...context},metrics:{drawCalls,triangles,frameP95Ms,frameP99Ms}});
+test('matched improvement',()=>assert.equal(compare(sample(4385,19418060),sample(233,3120463)).regression,false));
+test('draw regression',()=>assert.equal(compare(sample(100,1000),sample(101,900)).regression,true));
+test('tail latency regression',()=>assert.equal(compare(sample(100,1000),sample(90,900,16,21)).regression,true));
+test('reject mismatched DPR',()=>assert.throws(()=>compare(sample(100,1000),{...sample(90,900),context:{...context,dpr:2}}),/Unmatched/));
+test('reject cold capture',()=>assert.throws(()=>compare({...sample(100,1000),context:{...context,warmupComplete:false}},sample(90,900)),/warmed/));
+test('reject invalid metrics',()=>assert.throws(()=>compare(sample(100,1000),sample(-1,900)),/Invalid/));
+
+test('CLI reports success, regression and invalid input using the documented exit codes', t => {
+  const dir = mkdtempSync(join(tmpdir(), 'audit-city-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const before = join(dir, 'before.json'), after = join(dir, 'after.json');
+  const cli = fileURLToPath(new URL('../../scripts/audit-city-render.mjs', import.meta.url));
+  const run = (...args) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8' });
+  writeFileSync(before, JSON.stringify(sample(100, 1000)));
+  writeFileSync(after, JSON.stringify(sample(90, 900)));
+  const improved = run(before, after);
+  assert.equal(improved.status, 0);
+  assert.equal(JSON.parse(improved.stdout).metrics.drawCalls.delta, -10);
+  writeFileSync(after, JSON.stringify(sample(101, 900)));
+  assert.equal(run(before, after).status, 1);
+  writeFileSync(after, JSON.stringify({ ...sample(90, 900), context: { ...context, warmupComplete: false } }));
+  const cold = run(before, after);
+  assert.equal(cold.status, 2);
+  assert.match(cold.stderr, /warmed/);
+  const missing = run();
+  assert.equal(missing.status, 2);
+  assert.match(missing.stderr, /Usage/);
+});

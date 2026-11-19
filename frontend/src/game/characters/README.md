@@ -47,6 +47,82 @@ chooses a gesture from the equipped personality without immediately repeating it
 rig and the built-in drivers. Reduced Motion pauses character animation.
 Vesper also has procedural blink, smile, and brow shapes in the live preview.
 The rain and sparks seen during loading use one GPU point batch.
+## Garage door and mirror previews
+
+Garage entry selects the front door on the current driver seat's side.
+An exterior handle mesh or marker anchors the grip. A movable door panel
+without a named handle supplies an approximate grip from its bounds.
+The hand reaches before the panel starts to swing, follows the grip in
+hinge space, then releases before stepping in. Fused body meshes require
+a separable door assembly to show this contact.
+
+The Garage emote list has side-mirror versions of Check makeup, Redo
+lipstick, and Apply eyeliner. All three use the exterior mirror on the staged
+door side. Separately named mirror meshes give the target point. Fused mirrors
+use an estimate near the window corner.
+
+In Appearance, Camera tools has stationary versions of all three actions
+with a face close-up. Look away is also available for outfit inspection.
+The lipstick and eyeliner emotes follow rig-specific face landmarks and
+use temporary handheld props. These previews leave saved appearance colors
+as equipped.
+
+## BRZ driving set
+
+In the BRZ cockpit, select **Race start · Stare-down, throttle and brake**
+from Driver gestures. The driver looks toward the neighboring lane, returns
+her gaze to the road, presses the clutch, selects first gear, and feeds in
+throttle as the clutch comes up. The shot cuts from her face to the shifter
+and pedals, then back for the braking dip and recovery. The preview shifter
+follows a left-then-forward gate and supplies the target for her hand. The set plays in the cockpit preview.
+
+The steering grip follows the measured BRZ rim. The source GLB has an empty
+pedal node, so the cockpit creates three lightweight movable pedal plates
+and removes them on exit. The right foot follows the accelerator and brake
+surfaces, and the left foot follows the clutch in Clutch and shift. Floor
+hinge, pedal throw, and contact offsets come from `garagePedalRig.ts`.
+A second vehicle can opt in by supplying a `drivingSet` pedal layout on its
+wheel station and fitting it to that vehicle's seat and footwell. Check the
+steering wheel, seated headroom, and close camera framing on each model.
+
+## Pose pack
+
+In Character → Emotes → Preview emotes → Pose pack, pick a start pose, a
+standing animation, and an end pose. Preview either pose on its own or play
+the sequence. The player holds the end pose until you return to idle, play
+another preview, or leave the pack. If the start pose is already held, the
+sequence continues from it directly. The animation menu includes emotes that
+need no scene prop. The shop bag is stowed during pose pack playback.
+
+The pose selectors include all 117 BVH entries from the six
+[MakeHuman Community CC0 pose packs](https://static.makehumancommunity.org/assets/assetpacks/).
+The generated catalog retains each asset's pack, name, and author. The nine
+multi-frame files repeat the same pose, so the converter samples the first
+frame of each file and normalizes exports that repeat hierarchy offsets in
+position channels. It maps torso, head, arms, palms, ankles, knee directions,
+and foot orientation to AvenLab's shared controls. Lowered, outward-facing
+free arms use the current garment's skirt clearance, even on imported poses
+with palm orientation. Raised and cross-body gestures keep their authored arm
+targets. Finger articulation,
+seating surfaces, sports equipment, and garment-fit adjustments need a
+visual pass on the target character.
+
+To rebuild the catalog, extract each archive to its own directory under
+`EXTRACTED_PACKS_DIR`, using the upstream pack names
+(`makehuman_system_poses` and `poses01` through `poses05`). From `frontend`,
+run `node scripts/import-makehuman-poses.mjs EXTRACTED_PACKS_DIR`.
+
+Define new poses in `posePack.ts` with the same model-space targets as
+garage emotes. Arm directions use positive Z for forward. Feet use offsets
+from the resting ankles in stage meters. `holdCharacterPose` makes a static
+clip and `composePoseSequence` accepts two poses and an authored emote. Pass
+the result to `buildEmoteClips` to solve it for the target character's rig and
+clothing clearance. Rebuild for each prepared character root because Three.js
+tracks bind to that root's joint UUIDs. New rig families need to implement
+the existing garage rig conventions before they can use the same pose data.
+
+## Emote collections
+
 Victory Essentials (011–020) is available under Emotes → Victory. On a live
 win, the Awards tab can play Small fist pump with the equipped driver.
 Cute and Playful (021–030) is available under Emotes → Playful. The imported

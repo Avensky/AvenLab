@@ -23,7 +23,9 @@ function testSurfaces() {
     enforce: "pre",
     transform(source, id) {
       if (id.endsWith("/game/GameUI.tsx")) {
-        return source.replace(/^import \{([^}\n]+)\} from "([^"]+)";$/gm, (line, bindings, path) => {
+        return source.replace(/import\("\.\/heroes\/HeroWorkshop"\)/g, 'Promise.resolve({HeroWorkshop: () => null})')
+          .replace(/import\("\.\/alpha\/HeroSelection"\)/g, 'Promise.resolve({HeroSelection: () => null})')
+          .replace(/^import \{([^}\n]+)\} from "([^"]+)";$/gm, (line, bindings, path) => {
           if (retained.has(path)) return line;
           if (path === "../store") return line.replace(path, "../store/menus/uiStore");
           return bindings.split(",").map(binding => {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EquirectangularReflectionMapping, SRGBColorSpace} from 'three';
+import {Color, EquirectangularReflectionMapping, SRGBColorSpace} from 'three';
 import {skyReflectionMap, worldSkyLighting} from '../src/world/worldSkyLighting.ts';
 
 // A matte surface receives the solid-angle weighted sky, not an unweighted average of the poles.
@@ -33,4 +33,30 @@ test('reflection quality preserves world illumination on both weather presets', 
   }
   assert(energies.foggy_day > energies.starry_night * 6);
   assert(worldSkyLighting('foggy_day').fogFar < worldSkyLighting('starry_night').fogFar);
+});
+
+test('both reflection resolutions reproduce the authored sky at every texel', () => {
+  for (const preset of ['foggy_day', 'starry_night']) {
+    const sky = worldSkyLighting(preset);
+    const horizon = new Color(sky.horizon), zenith = new Color(sky.zenith), ground = new Color(sky.ground);
+    const key = new Color(sky.keyColor), band = new Color(), color = new Color();
+    for (const detailed of [false, true]) {
+      const texture = skyReflectionMap(preset, detailed);
+      const { width, height, data } = texture.image;
+      const reference = new Uint8ClampedArray(data.length);
+      for (let row = 0; row < height; row++) {
+        const latitude = Math.PI * ((row + .5) / height - .5);
+        const y = Math.sin(latitude), ring = Math.cos(latitude);
+        band.copy(horizon).lerp(y < 0 ? ground : zenith, Math.abs(y));
+        for (let col = 0; col < width; col++) {
+          const angle = 2 * Math.PI * ((col + .5) / width - .5);
+          const dot = (-120 * ring * Math.cos(angle) + 180 * y - 80 * ring * Math.sin(angle)) / Math.hypot(-120, 180, -80);
+          color.copy(key).multiplyScalar(Math.max(0, dot) ** 48 * .22 * sky.keyIntensity).add(band).convertLinearToSRGB();
+          reference.set([Math.round(color.r * 255), Math.round(color.g * 255), Math.round(color.b * 255), 255], 4 * (row * width + col));
+        }
+      }
+      assert.deepEqual(data, new Uint8Array(reference.buffer));
+      texture.dispose();
+    }
+  }
 });

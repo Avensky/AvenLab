@@ -1,6 +1,7 @@
 import { BufferGeometry, type SkinnedMesh } from "three";
 import type { MeshBVH } from "three-mesh-bvh";
 import { seatCoveredSkirtLayer } from "./gothicSkirtLayers";
+import { wardrobeFitCache } from "./wardrobeFitCache";
 
 /** Identify the two handkerchief drapes without depending on export vertex order. */
 export function handkerchiefSkirtPanelLayers(source: BufferGeometry) {
@@ -50,34 +51,21 @@ export function handkerchiefSkirtPanelLayers(source: BufferGeometry) {
   return { inner, outer };
 }
 
+const handkerchiefLayerFit = {};
+
 /** Seat only the longer covered drape, retaining the outer cut and exposed hem. */
 export function fitHandkerchiefSkirtPanels(source: BufferGeometry, body: MeshBVH) {
+  return wardrobeFitCache.fit(handkerchiefLayerFit, "", [source], [body.geometry], () => [fitPanels(source, body)])[0];
+}
+
+function fitPanels(source: BufferGeometry, body: MeshBVH) {
   const panels = handkerchiefSkirtPanelLayers(source);
   if (!panels) return;
   const shell = new BufferGeometry().setAttribute("position", source.getAttribute("position")).setIndex(panels.outer);
   let fitted: BufferGeometry | undefined;
   try {
-    fitted = seatCoveredSkirtLayer(source, shell, body, { lower: [.60, .66], upper: [1, 1.04] });
+    fitted = seatCoveredSkirtLayer(source, shell, body, { lower: [.60, .66], upper: [1, 1.04], selected: panels.inner });
   } finally { shell.dispose(); }
-  if (!fitted) return;
-  const original = source.getAttribute("position"), position = fitted.getAttribute("position");
-  let changed = false;
-  for (let i = 0; i < position.count; i++) {
-    if (panels.inner[i]) {
-      changed ||= position.getX(i) !== original.getX(i) || position.getY(i) !== original.getY(i) || position.getZ(i) !== original.getZ(i);
-      continue;
-    }
-    // The generic fitter sees both drapes; restore the unselected components
-    // byte-for-byte, including their shading frames. UVs and skinning are cloned.
-    for (const name of ["position", "normal", "tangent"]) {
-      const from = source.getAttribute(name), to = fitted.getAttribute(name);
-      if (!from || !to) continue;
-      for (let channel = 0; channel < from.itemSize; channel++) to.setComponent(i, channel, from.getComponent(i, channel));
-    }
-  }
-  if (!changed) { fitted.dispose(); return; }
-  fitted.computeBoundingBox();
-  fitted.computeBoundingSphere();
   return fitted;
 }
 

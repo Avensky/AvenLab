@@ -13,6 +13,7 @@ export const COCKPIT_TAKES = [
   { id: "drive-clutch", name: "Clutch and shift", duration: 4.6 },
   { id: "drive-brake", name: "Press the brake", duration: 3.4 },
   { id: "drive-gas", name: "Floor the gas", duration: 3.4 },
+  { id: "drive-race-start", name: "Race start · Stare-down, throttle and brake", duration: 7.8 },
   { id: "drive-drift", name: "Shift, handbrake and throttle", duration: 6.4 },
   { id: "drive-honk", name: "Honk", duration: 3.8 },
   { id: "drive-ignition", name: "Turn ignition key", duration: 4.2 },
@@ -23,3 +24,8 @@ export const COCKPIT_TAKES = [
   { id: "200", name: "Steering test · Right", duration: 3.65 },
 ] as const;
 export type CockpitTake = typeof COCKPIT_TAKES[number];
+
+export function cockpitTakesForWheel(hasSteering: boolean, hasDrivingSet: boolean) {
+  return COCKPIT_TAKES.filter(({ id }) =>
+    (hasSteering || (id !== "199" && id !== "200")) && (hasDrivingSet || id !== "drive-race-start"));
+}

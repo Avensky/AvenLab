@@ -1,0 +1,86 @@
+{
+  "acceptedCommit": "0e81afeab830870989492bc69d52dfac17c0a23c",
+  "description": "SHA-256 of every prepared mesh name, draw range, groups and raw geometry attributes/index; UUIDs and mutable GPU upload counters are excluded.",
+  "cases": [
+    {
+      "id": "garage:gothic-skirt-01",
+      "tier": "garage",
+      "skirt": "gothic-skirt-01",
+      "sha256": "eade684a3e1b1ec411d21ecbb2b1dd5f8de4fcbbfabddf0891339d1c3b18b790"
+    },
+    {
+      "id": "garage:gothic-skirt-03+gothic-03",
+      "tier": "garage",
+      "skirt": "gothic-skirt-03",
+      "corset": "gothic-03",
+      "sha256": "ba45db27abd22f41a9d251501825d680a8e7a78bbe0f7a7142a08db229cff4c8"
+    },
+    {
+      "id": "garage:gothic-skirt-05+gothic-05",
+      "tier": "garage",
+      "skirt": "gothic-skirt-05",
+      "corset": "gothic-05",
+      "sha256": "15975a829eca52df5985f3711092e4bf665e9e52fc945d72a15078ad0f9dc714"
+    },
+    {
+      "id": "garage:gothic-skirt-02+gothic-02",
+      "tier": "garage",
+      "skirt": "gothic-skirt-02",
+      "corset": "gothic-02",
+      "sha256": "3c1dd4715069a1738facd9194a71dfd058aa34f977fbe74e95867c6fa638b8a6"
+    },
+    {
+      "id": "garage:skirt-03+gothic-05",
+      "tier": "garage",
+      "skirt": "skirt-03",
+      "corset": "gothic-05",
+      "sha256": "92be1a9b07a0b5f3099f615711cc9c173011228425d7bbf704f4bed80780f49f"
+    },
+    {
+      "id": "garage:gothic-01",
+      "tier": "garage",
+      "bundled": "gothic-01",
+      "sha256": "1312411b5363e2c9d13b752e1880973c8ce3e8a12ac78ccd8688de66f7f179b9"
+    },
+    {
+      "id": "portrait:gothic-skirt-01",
+      "tier": "portrait",
+      "skirt": "gothic-skirt-01",
+      "sha256": "98a6899c5ae1f14a33e58c6de111442f3479d172056123bbd0ba42317bff2648"
+    },
+    {
+      "id": "portrait:gothic-skirt-03+gothic-03",
+      "tier": "portrait",
+      "skirt": "gothic-skirt-03",
+      "corset": "gothic-03",
+      "sha256": "57da5535e21189d3e4c995d91ec630d6cc5a21f4b035302354f9579f0db5155a"
+    },
+    {
+      "id": "portrait:gothic-skirt-05+gothic-05",
+      "tier": "portrait",
+      "skirt": "gothic-skirt-05",
+      "corset": "gothic-05",
+      "sha256": "7de22a68d971de1f10b3da7e844eadf358e1fe4c9e5eb7663d04e65d1050fb95"
+    },
+    {
+      "id": "portrait:gothic-skirt-02+gothic-02",
+      "tier": "portrait",
+      "skirt": "gothic-skirt-02",
+      "corset": "gothic-02",
+      "sha256": "37392f63834e8961fef58121cf79576b68a2b35bd929449dea787b6eaca41424"
+    },
+    {
+      "id": "portrait:skirt-03+gothic-05",
+      "tier": "portrait",
+      "skirt": "skirt-03",
+      "corset": "gothic-05",
+      "sha256": "086a5e35244ff2f5607aa8ec21c82eae7aac1a119754d403ac0012495d19a3fa"
+    },
+    {
+      "id": "portrait:gothic-01",
+      "tier": "portrait",
+      "bundled": "gothic-01",
+      "sha256": "99e2a4bc181bb8f696001c362f8719f6a352c426211ab826ca5384b80e8cbb90"
+    }
+  ]
+}

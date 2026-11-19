@@ -1,4 +1,5 @@
 import {SnapshotDecoder} from './snapshotDecoder';
+import {isDriverAppearance} from '../game/characters/driverAppearance';
 import {SnapshotDelivery, type SnapshotReceipt} from './snapshotDelivery';
 import {useScoreboardStore} from "../store/hud/scoreboardStore";
 import {receiveMatchResult} from "../store/session/matchResultsStore";
@@ -402,6 +403,7 @@ function isSnapshot(value: unknown): value is PhysicsSnapshot {
         typeof entity.id === "string" &&
         finiteTuple(entity.position, 3) &&
         finiteTuple(entity.rotation, 4) &&
+        (entity.driver == null || isDriverAppearance(entity.driver)) &&
         (entity.wheels === undefined ||
           (Array.isArray(entity.wheels) &&
             entity.wheels.every(
@@ -507,7 +509,7 @@ export function connectRustServer(): WebSocket {
       return;
     }
     if (!message || typeof message !== "object") return;
-    if(message.type==='snapshot_compact'&&[1,2].includes(message.version))snapshotVersion=message.version;
+    if(message.type==='snapshot_compact'&&[1,2,3].includes(message.version))snapshotVersion=message.version;
     const masked = message.type === 'snapshot_compact' || message.type === 'snapshot_delta';
     if (masked) {
       // Reliable world changes can overtake a coalesced frame on the server.
@@ -551,7 +553,7 @@ export function connectRustServer(): WebSocket {
         if (setupTimer !== null) clearTimeout(setupTimer);
         setupTimer = null;
         if (message.packed_input_version === 1) packedInputPeers.add(connection);
-        if ([1,2].includes(message.compact_snapshot_version)) {
+        if ([1,2,3].includes(message.compact_snapshot_version)) {
           snapshotVersion=message.compact_snapshot_version;
           connection.send(JSON.stringify({type:'snapshot_format',version:message.compact_snapshot_version}));
         }

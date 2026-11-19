@@ -1,4 +1,4 @@
-import { MIRROR_CHECK_ID } from "./mirrorCheck";
+import { isMirrorMakeupEmote } from "./mirrorCheck";
 import { useEffect, useRef, type ReactNode } from "react";
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Group, MathUtils } from "three";
@@ -47,13 +47,13 @@ export function CharacterTurntable({ children, enabled }: { children: ReactNode;
   }, [enabled, connected]);
   useFrame((_, delta) => {
     if (!group.current) return;
-    const yaw = enabled && !useCharacterPreviewStore.getState().insideCar && useCharacterPreviewStore.getState().emote?.id !== MIRROR_CHECK_ID ? useFittingTurnStore.getState().characterYaw : 0;
+    const yaw = enabled && !useCharacterPreviewStore.getState().insideCar && !isMirrorMakeupEmote(useCharacterPreviewStore.getState().emote?.id) ? useFittingTurnStore.getState().characterYaw : 0;
     group.current.rotation.y = reduced ? yaw : MathUtils.damp(group.current.rotation.y, yaw, 18, Math.min(delta, .1));
     if (Math.abs(group.current.rotation.y - yaw) > .001) invalidate();
   }, -.75);
   const begin = (event: ThreeEvent<PointerEvent>) => {
     const view = useCharacterPreviewStore.getState();
-    if (drag.current || event.button !== 0 || event.pointerType === "touch" || view.insideCar || view.emote?.id === MIRROR_CHECK_ID) return;
+    if (drag.current || event.button !== 0 || event.pointerType === "touch" || view.insideCar || isMirrorMakeupEmote(view.emote?.id)) return;
     event.stopPropagation();
     event.nativeEvent.stopImmediatePropagation();
     const target = event.nativeEvent.target as Element;

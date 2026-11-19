@@ -1,0 +1,627 @@
+{
+  "metadata": {
+    "head": "25988e120d8d8b3a84872aa34d51335b4fef073a",
+    "runtimeSourceChanges": [],
+    "node": "v24.22.3",
+    "auditScriptSha256": "530f2a5f570f73180c3d8606c366588d2fa2b775f39780ffbfa0375d4f441c91",
+    "lockfileSha256": "3f8a7ee1ea8f78de3122ef2130c31ab5e6f06dc4a958696afa8a84c15749fded",
+    "viteConfigSha256": "110c6173197bcaf7465acceac1b8fe7e72ba547dbe32e417a8444ff324a5edf4",
+    "method": "Production Vite build with current installed assets/config, write:false and public copying disabled. Walk only static output-chunk imports from index.html; SHA-256 and Node zlib default gzip for final chunk code. Sum separately compressed initial chunks. Dynamic chunks are excluded until statically reachable.",
+    "limits": "Emitted code inclusion proves startup transfer/parse exposure, not runtime execution or measured network latency. Bundler reportedRenderedLength is attribution before final chunk compression, not additive gzip savings. Other world-builder modules include legitimate gameplay layout/rendering helpers; the whole directory is not classified as removable editor code. Static source paths explain imports, but chunk co-residence can also put modules into the initial closure."
+  },
+  "entry": "assets/index-BnHURkO6.js",
+  "initialJavaScriptBytes": 7952488,
+  "initialJavaScriptGzipBytes": 2232240,
+  "initialChunkCount": 7,
+  "initialEmittedModuleCount": 767,
+  "files": [
+    {
+      "file": "assets/BufferGeometryUtils-BWdGOBja.js",
+      "sha256": "aff048fc00e4d9fc826767f41d932b288a272dfd050a5f3d1fed713845450966",
+      "bytes": 4803,
+      "gzipBytes": 1405,
+      "imports": [
+        "assets/three.module-Du9UrYu1.js"
+      ],
+      "dynamicImports": []
+    },
+    {
+      "file": "assets/DRACOLoader-BOuT4B4U.js",
+      "sha256": "2606114bcaa7a3e39eb01715341d340412ccac973c3a5a82d309c5c82c17421c",
+      "bytes": 6475,
+      "gzipBytes": 2688,
+      "imports": [
+        "assets/three.module-Du9UrYu1.js"
+      ],
+      "dynamicImports": []
+    },
+    {
+      "file": "assets/GLTFLoader-CaBnNnOA.js",
+      "sha256": "f44229b542972507b1e7c6c756e2912b787fc0a557c57b26d2d281f9ceeb9e31",
+      "bytes": 43461,
+      "gzipBytes": 12571,
+      "imports": [
+        "assets/three.module-Du9UrYu1.js",
+        "assets/BufferGeometryUtils-BWdGOBja.js"
+      ],
+      "dynamicImports": []
+    },
+    {
+      "file": "assets/chunk-CQeTWI2k.js",
+      "sha256": "509fd36f6c31aad744033287fb420391534662af951bfc19487a2464aafdfeca",
+      "bytes": 637,
+      "gzipBytes": 389,
+      "imports": [],
+      "dynamicImports": []
+    },
+    {
+      "file": "assets/index-BnHURkO6.js",
+      "sha256": "c1fe9ffc87fe8c4c832d562bd90747afe0c7f4c714f8a10c96aa66f2b7195b10",
+      "bytes": 7182166,
+      "gzipBytes": 2030170,
+      "imports": [
+        "assets/modulepreload-polyfill-CHffM2Lr.js",
+        "assets/three.module-Du9UrYu1.js",
+        "assets/DRACOLoader-BOuT4B4U.js",
+        "assets/GLTFLoader-CaBnNnOA.js",
+        "assets/BufferGeometryUtils-BWdGOBja.js",
+        "assets/chunk-CQeTWI2k.js"
+      ],
+      "dynamicImports": [
+        "assets/bakeHeroPortrait-C9UsCPoK.js",
+        "assets/index-BnHURkO6.js",
+        "assets/RescueEmote-5SRFgO4i.js",
+        "assets/VictoryPreview-Cgj3T9sI.js",
+        "assets/HeroSelection-VC2U5Qp3.js",
+        "assets/HeroWorkshop-C99ElZpF.js",
+        "assets/WorldBuilderPanel-CxkZo5WF.js",
+        "assets/SocialPanel-D6pWGN2y.js",
+        "assets/WorldBuilderScene-HRJeZ_pG.js",
+        "assets/SignalRecon-Cvrwpx6m.js",
+        "assets/SignalReconSetup-Bze7H96z.js",
+        "assets/SignalReconMission-DkUmJ4Yq.js"
+      ]
+    },
+    {
+      "file": "assets/modulepreload-polyfill-CHffM2Lr.js",
+      "sha256": "785597bca2e7dd97a652a20a197c077079e635a5663433448e0e1d9fd8c98a64",
+      "bytes": 698,
+      "gzipBytes": 392,
+      "imports": [],
+      "dynamicImports": []
+    },
+    {
+      "file": "assets/three.module-Du9UrYu1.js",
+      "sha256": "c464e8e72e2f20862b0e01431003ee632a049e268a5dccca31de53b5db543b53",
+      "bytes": 714248,
+      "gzipBytes": 184625,
+      "imports": [
+        "assets/chunk-CQeTWI2k.js"
+      ],
+      "dynamicImports": []
+    }
+  ],
+  "categories": {
+    "dependencies": {
+      "modules": 111,
+      "reportedRenderedLength": 3169241
+    },
+    "other": {
+      "modules": 412,
+      "reportedRenderedLength": 12842800
+    },
+    "vehicleRuntime": {
+      "modules": 59,
+      "reportedRenderedLength": 697897
+    },
+    "worldRuntime": {
+      "modules": 34,
+      "reportedRenderedLength": 131241
+    },
+    "performanceCaptureAndUI": {
+      "modules": 12,
+      "reportedRenderedLength": 55318
+    },
+    "otherWorldBuilderSharedRuntime": {
+      "modules": 38,
+      "reportedRenderedLength": 216812
+    },
+    "builderStateAndActions": {
+      "modules": 2,
+      "reportedRenderedLength": 12347
+    },
+    "characterRuntimeAndUI": {
+      "modules": 96,
+      "reportedRenderedLength": 716980
+    },
+    "worldBuilderPanelsAndVehicleEditor": {
+      "modules": 3,
+      "reportedRenderedLength": 7879
+    }
+  },
+  "boundaries": [
+    {
+      "path": "frontend/src/game/alpha/HeroSelection.tsx",
+      "emitted": true,
+      "inInitialClosure": false,
+      "chunks": [
+        "assets/HeroSelection-VC2U5Qp3.js"
+      ],
+      "reportedRenderedLength": 9636,
+      "staticImportPath": null,
+      "staticImporters": [],
+      "dynamicDependencyCount": 0
+    },
+    {
+      "path": "frontend/src/game/heroes/HeroWorkshop.tsx",
+      "emitted": true,
+      "inInitialClosure": false,
+      "chunks": [
+        "assets/HeroWorkshop-C99ElZpF.js"
+      ],
+      "reportedRenderedLength": 35609,
+      "staticImportPath": null,
+      "staticImporters": [],
+      "dynamicDependencyCount": 0
+    },
+    {
+      "path": "frontend/src/worldBuilder/panels/WorldBuilderPanel.tsx",
+      "emitted": true,
+      "inInitialClosure": false,
+      "chunks": [
+        "assets/WorldBuilderPanel-CxkZo5WF.js"
+      ],
+      "reportedRenderedLength": 34893,
+      "staticImportPath": null,
+      "staticImporters": [],
+      "dynamicDependencyCount": 1
+    },
+    {
+      "path": "frontend/src/worldBuilder/state/builderStore.ts",
+      "emitted": true,
+      "inInitialClosure": true,
+      "chunks": [
+        "assets/index-BnHURkO6.js"
+      ],
+      "reportedRenderedLength": 3709,
+      "staticImportPath": [
+        "frontend/index.html",
+        "frontend/src/main.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/game/GameUI.tsx",
+        "frontend/src/worldBuilder/state/builderStore.ts"
+      ],
+      "staticImporters": [
+        "frontend/src/effects/Cameras.tsx",
+        "frontend/src/game/GameUI.tsx",
+        "frontend/src/game/alpha/EditorTestAction.tsx",
+        "frontend/src/game/alpha/applyEditorDraft.ts",
+        "frontend/src/worldBuilder/panels/CoastalGenerator.tsx",
+        "frontend/src/worldBuilder/panels/CollisionBuilderPanel.tsx",
+        "frontend/src/worldBuilder/panels/EditorWorldControls.tsx",
+        "frontend/src/worldBuilder/panels/LayoutInspector.tsx",
+        "frontend/src/worldBuilder/panels/WorldBuilderPanel.tsx",
+        "frontend/src/worldBuilder/scene/ColliderPlan.tsx",
+        "frontend/src/worldBuilder/scene/LayoutPlan.tsx",
+        "frontend/src/worldBuilder/scene/LayoutScene.tsx",
+        "frontend/src/worldBuilder/scene/WorldBuilderScene.tsx",
+        "frontend/src/worldBuilder/state/builderActions.ts",
+        "frontend/src/worldBuilder/vehicleEditor/EditorDriveBar.tsx",
+        "frontend/src/worldBuilder/vehicleEditor/VehicleEditorPanel.tsx"
+      ],
+      "dynamicDependencyCount": 0
+    },
+    {
+      "path": "frontend/src/worldBuilder/state/builderActions.ts",
+      "emitted": true,
+      "inInitialClosure": true,
+      "chunks": [
+        "assets/index-BnHURkO6.js"
+      ],
+      "reportedRenderedLength": 8638,
+      "staticImportPath": [
+        "frontend/index.html",
+        "frontend/src/main.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/controls/Keyboard.ts",
+        "frontend/src/worldBuilder/state/builderActions.ts"
+      ],
+      "staticImporters": [
+        "frontend/src/components/debugger/DebugMenu.tsx",
+        "frontend/src/controls/Keyboard.ts",
+        "frontend/src/game/alpha/EditorTestAction.tsx",
+        "frontend/src/worldBuilder/panels/CoastalGenerator.tsx",
+        "frontend/src/worldBuilder/panels/CollisionBuilderPanel.tsx",
+        "frontend/src/worldBuilder/panels/EditorWorldControls.tsx",
+        "frontend/src/worldBuilder/panels/ExcavationTools.tsx",
+        "frontend/src/worldBuilder/panels/WorldBuilderPanel.tsx"
+      ],
+      "dynamicDependencyCount": 0
+    },
+    {
+      "path": "frontend/src/performance/PerformanceOverlay.tsx",
+      "emitted": true,
+      "inInitialClosure": true,
+      "chunks": [
+        "assets/index-BnHURkO6.js"
+      ],
+      "reportedRenderedLength": 24304,
+      "staticImportPath": [
+        "frontend/index.html",
+        "frontend/src/main.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/game/GameUI.tsx",
+        "frontend/src/performance/PerformanceOverlay.tsx"
+      ],
+      "staticImporters": [
+        "frontend/src/game/GameUI.tsx"
+      ],
+      "dynamicDependencyCount": 0
+    },
+    {
+      "path": "avenlab-server/src/assets/models/commercial-buildings.json",
+      "emitted": true,
+      "inInitialClosure": true,
+      "chunks": [
+        "assets/index-BnHURkO6.js"
+      ],
+      "reportedRenderedLength": 10207989,
+      "staticImportPath": [
+        "frontend/index.html",
+        "frontend/src/main.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/controls/Keyboard.ts",
+        "frontend/src/worldBuilder/state/builderActions.ts",
+        "frontend/src/worldBuilder/document/layoutDocument.ts",
+        "frontend/src/worldBuilder/models/modelCatalog.ts",
+        "avenlab-server/src/assets/models/commercial-buildings.json"
+      ],
+      "staticImporters": [
+        "frontend/src/worldBuilder/models/modelCatalog.ts"
+      ],
+      "dynamicDependencyCount": 0
+    },
+    {
+      "path": "avenlab-server/src/assets/roads/road-colliders.json",
+      "emitted": true,
+      "inInitialClosure": true,
+      "chunks": [
+        "assets/index-BnHURkO6.js"
+      ],
+      "reportedRenderedLength": 822315,
+      "staticImportPath": [
+        "frontend/index.html",
+        "frontend/src/main.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/controls/Keyboard.ts",
+        "frontend/src/worldBuilder/state/builderActions.ts",
+        "frontend/src/worldBuilder/document/layoutDocument.ts",
+        "frontend/src/worldBuilder/roads/roadCatalog.ts",
+        "avenlab-server/src/assets/roads/road-colliders.json"
+      ],
+      "staticImporters": [
+        "frontend/src/worldBuilder/roads/roadCatalog.ts"
+      ],
+      "dynamicDependencyCount": 0
+    },
+    {
+      "path": "avenlab-server/src/assets/models/placement-colliders.json",
+      "emitted": true,
+      "inInitialClosure": true,
+      "chunks": [
+        "assets/index-BnHURkO6.js"
+      ],
+      "reportedRenderedLength": 40319,
+      "staticImportPath": [
+        "frontend/index.html",
+        "frontend/src/main.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/controls/Keyboard.ts",
+        "frontend/src/worldBuilder/state/builderActions.ts",
+        "frontend/src/worldBuilder/document/layoutDocument.ts",
+        "frontend/src/worldBuilder/models/modelCatalog.ts",
+        "avenlab-server/src/assets/models/placement-colliders.json"
+      ],
+      "staticImporters": [
+        "frontend/src/worldBuilder/models/modelCatalog.ts"
+      ],
+      "dynamicDependencyCount": 0
+    }
+  ],
+  "dataCatalogs": [
+    {
+      "path": "avenlab-server/src/assets/models/commercial-buildings.json",
+      "sourceSha256": "cf215c6046ee1fc5b6a61904f5e262b44bbfe27fba7ca15f00b9deee7894c9d5",
+      "sourceBytes": 4114191,
+      "records": 44,
+      "compactJsonBytes": 4096293,
+      "compactJsonGzipBytes": 986520,
+      "colliderValueJsonBytes": 4072724,
+      "colliderGroups": 132,
+      "colliderVertices": 95126,
+      "colliderTriangles": 90342,
+      "metadataWithoutCollidersJsonBytes": 22997,
+      "metadataWithoutCollidersGzipBytes": 4798,
+      "note": "The metadata-only size is field attribution, not a working replacement: current proxy/collision renderers and editor consumers still need geometry. Model bounds are metadata; road bounds use collider vertices. It is not a measured bundle saving."
+    },
+    {
+      "path": "avenlab-server/src/assets/roads/road-colliders.json",
+      "sourceSha256": "36a99c191185ba56cc3eba6368d3140d981a31a9a323f9c3c0dbc5d5e72e3451",
+      "sourceBytes": 386098,
+      "records": 3,
+      "compactJsonBytes": 386097,
+      "compactJsonGzipBytes": 70100,
+      "colliderValueJsonBytes": 383170,
+      "colliderGroups": 19,
+      "colliderVertices": 5461,
+      "colliderTriangles": 7820,
+      "metadataWithoutCollidersJsonBytes": 2888,
+      "metadataWithoutCollidersGzipBytes": 1165,
+      "note": "The metadata-only size is field attribution, not a working replacement: current proxy/collision renderers and editor consumers still need geometry. Model bounds are metadata; road bounds use collider vertices. It is not a measured bundle saving."
+    },
+    {
+      "path": "avenlab-server/src/assets/models/placement-colliders.json",
+      "sourceSha256": "85631c483848715067b0edabfb5a1e120d7aa94495c6c7ec1a57dc77d82a6933",
+      "sourceBytes": 20967,
+      "records": 1,
+      "compactJsonBytes": 20966,
+      "compactJsonGzipBytes": 4243,
+      "colliderValueJsonBytes": 20404,
+      "colliderGroups": 3,
+      "colliderVertices": 267,
+      "colliderTriangles": 414,
+      "metadataWithoutCollidersJsonBytes": 549,
+      "metadataWithoutCollidersGzipBytes": 378,
+      "note": "The metadata-only size is field attribution, not a working replacement: current proxy/collision renderers and editor consumers still need geometry. Model bounds are metadata; road bounds use collider vertices. It is not a measured bundle saving."
+    }
+  ],
+  "initialEditorModules": [
+    {
+      "path": "frontend/src/worldBuilder/state/builderActions.ts",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "builderStateAndActions",
+      "reportedRenderedLength": 8638
+    },
+    {
+      "path": "frontend/src/worldBuilder/vehicleEditor/VehicleCameraRig.tsx",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "worldBuilderPanelsAndVehicleEditor",
+      "reportedRenderedLength": 4518
+    },
+    {
+      "path": "frontend/src/worldBuilder/state/builderStore.ts",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "builderStateAndActions",
+      "reportedRenderedLength": 3709
+    },
+    {
+      "path": "frontend/src/worldBuilder/vehicleEditor/EditorDriveBar.tsx",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "worldBuilderPanelsAndVehicleEditor",
+      "reportedRenderedLength": 2476
+    },
+    {
+      "path": "frontend/src/worldBuilder/vehicleEditor/vehicleEditorStore.ts",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "worldBuilderPanelsAndVehicleEditor",
+      "reportedRenderedLength": 885
+    }
+  ],
+  "largestInitialModules": [
+    {
+      "path": "avenlab-server/src/assets/models/commercial-buildings.json",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "other",
+      "reportedRenderedLength": 10207989
+    },
+    {
+      "path": "frontend/node_modules/three/build/three.core.js",
+      "chunk": "assets/three.module-Du9UrYu1.js",
+      "initial": true,
+      "category": "dependencies",
+      "reportedRenderedLength": 1252365
+    },
+    {
+      "path": "avenlab-server/src/assets/roads/road-colliders.json",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "other",
+      "reportedRenderedLength": 822315
+    },
+    {
+      "path": "frontend/node_modules/three/build/three.module.js",
+      "chunk": "assets/three.module-Du9UrYu1.js",
+      "initial": true,
+      "category": "dependencies",
+      "reportedRenderedLength": 562682
+    },
+    {
+      "path": "frontend/node_modules/react-dom/cjs/react-dom-client.production.js",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "dependencies",
+      "reportedRenderedLength": 458868
+    },
+    {
+      "path": "frontend/src/vehicles/fleetSeeds.json",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "vehicleRuntime",
+      "reportedRenderedLength": 287032
+    },
+    {
+      "path": "frontend/node_modules/@react-three/fiber/dist/events-5a94e5eb.esm.js",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "dependencies",
+      "reportedRenderedLength": 252532
+    },
+    {
+      "path": "frontend/src/vehicles/tools/roadLensGeometry.json",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "vehicleRuntime",
+      "reportedRenderedLength": 211952
+    },
+    {
+      "path": "frontend/node_modules/three/examples/jsm/loaders/GLTFLoader.js",
+      "chunk": "assets/GLTFLoader-CaBnNnOA.js",
+      "initial": true,
+      "category": "dependencies",
+      "reportedRenderedLength": 96910
+    },
+    {
+      "path": "frontend/node_modules/three-stdlib/loaders/GLTFLoader.js",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "dependencies",
+      "reportedRenderedLength": 89422
+    },
+    {
+      "path": "frontend/node_modules/three-stdlib/loaders/EXRLoader.js",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "dependencies",
+      "reportedRenderedLength": 44616
+    },
+    {
+      "path": "avenlab-server/src/assets/models/placement-colliders.json",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "other",
+      "reportedRenderedLength": 40319
+    },
+    {
+      "path": "frontend/src/game/menus/SettingsMenu.tsx",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "other",
+      "reportedRenderedLength": 39027
+    },
+    {
+      "path": "frontend/src/game/characters/wardrobeGarmentFit.ts",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "characterRuntimeAndUI",
+      "reportedRenderedLength": 35714
+    },
+    {
+      "path": "frontend/src/game/characters/garageEmotes.ts",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "characterRuntimeAndUI",
+      "reportedRenderedLength": 35654
+    },
+    {
+      "path": "frontend/src/store/recon/catalog.ts",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "other",
+      "reportedRenderedLength": 34403
+    },
+    {
+      "path": "frontend/src/worldBuilder/mapKit/generated/catalog.json",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "otherWorldBuilderSharedRuntime",
+      "reportedRenderedLength": 32451
+    },
+    {
+      "path": "frontend/src/game/results/MatchResultsScreen.tsx",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "other",
+      "reportedRenderedLength": 32243
+    },
+    {
+      "path": "frontend/src/game/preview/VehiclePreview.tsx",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "other",
+      "reportedRenderedLength": 31537
+    },
+    {
+      "path": "frontend/src/game/preview/VehiclePreviewModel.tsx",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "other",
+      "reportedRenderedLength": 31372
+    },
+    {
+      "path": "frontend/src/world/facades/wallPanels.json",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "worldRuntime",
+      "reportedRenderedLength": 30525
+    },
+    {
+      "path": "frontend/src/game/stats/MatchPresentation.tsx",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "other",
+      "reportedRenderedLength": 27380
+    },
+    {
+      "path": "frontend/src/game/preview/garageCockpit.ts",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "other",
+      "reportedRenderedLength": 27301
+    },
+    {
+      "path": "frontend/src/worldBuilder/scene/LayoutMeshes.tsx",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "otherWorldBuilderSharedRuntime",
+      "reportedRenderedLength": 26901
+    },
+    {
+      "path": "frontend/node_modules/three-stdlib/controls/OrbitControls.js",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "dependencies",
+      "reportedRenderedLength": 26866
+    },
+    {
+      "path": "frontend/src/performance/PerformanceOverlay.tsx",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "performanceCaptureAndUI",
+      "reportedRenderedLength": 24304
+    },
+    {
+      "path": "frontend/src/net/rustSocket.ts",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "other",
+      "reportedRenderedLength": 23679
+    },
+    {
+      "path": "frontend/src/game/characters/victoryEmotes.ts",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "characterRuntimeAndUI",
+      "reportedRenderedLength": 22544
+    },
+    {
+      "path": "frontend/node_modules/three-stdlib/libs/MeshoptDecoder.js",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "dependencies",
+      "reportedRenderedLength": 21190
+    },
+    {
+      "path": "frontend/src/worldBuilder/document/libraryCatalog.ts",
+      "chunk": "assets/index-BnHURkO6.js",
+      "initial": true,
+      "category": "otherWorldBuilderSharedRuntime",
+      "reportedRenderedLength": 19855
+    }
+  ]
+}

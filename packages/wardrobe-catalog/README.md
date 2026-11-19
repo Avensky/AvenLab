@@ -25,6 +25,20 @@ When adding a corset dye control, list its saved field in `extraDyeFields`
 for that set. All pieces already accept `color` and `accent`. Profile saves
 validate the extra fields against this list, including for retired sets.
 
+`gameplayColors` supplies the broad original top/bottom colors for the cheap
+seated driver tier. It does not change fitting-room materials. The current top
+values follow the authored main-fabric values in `corsetDye.ts`; the bundled
+Gothic skirt fabric factor `[0.72, 0.69, 0.64]` converts from linear RGB to
+`#ddd8d1` in sRGB. These are intentionally broad silhouette colors rather than
+texture averages. Explicit outfit dyes and per-piece colors take precedence.
+Keep these values aligned with future authored asset changes and the shared
+`frontend/tests/fixtures/driver-appearance.json` browser/Rust fixture.
+
+The [readiness grid](../../docs/readiness/README.md) tracks the remaining uniform
+color tool, per-asset color-group coverage, better palette combinations, and
+package extraction requirements. Existing `extraDyeFields` support is partial;
+do not expose unsupported controls or treat it as a finished shared color editor.
+
 Edit curated entries in the relevant source JSON. Keep `slot` and `piece`
 aligned with the garment the model replaces. Paths in the garment catalog
 start at the frontend public root. A compatible revision can replace its

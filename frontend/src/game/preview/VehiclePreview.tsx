@@ -21,7 +21,7 @@ import { clothingFrame, orbitFittingCamera } from "../characters/clothingFraming
 import { FittingCameraOrbit } from "../characters/FittingCameraOrbit";
 import { FittingMirrorDisplay } from "../characters/FittingMirrorDisplay";
 import { GARAGE_LEAN_ID } from "../characters/garageLean";
-import { MIRROR_CHECK_ID } from "../characters/mirrorCheck";
+import { isMirrorMakeupEmote } from "../characters/mirrorCheck";
 import type { CharacterChoice } from "../characters/characterCatalog";
 import { CHARACTER_ZOOM_MAX, CHARACTER_ZOOM_MIN, failCockpitPreview, useCharacterPreviewStore } from "../characters/characterPreviewStore";
 import { HEROES, useAlphaStore } from "../../store/alpha/alphaStore";
@@ -73,7 +73,7 @@ function createPreviewAim() {
     anchorRotation: new Quaternion(), orbit: new Quaternion(), swing: new Quaternion(), lookAt: new Matrix4(),
     itemKey: "", itemCenter: new Vector3(), itemDistance: 1,
     anchors: new Map<string, Object3D>(), cameraMin: new Vector3(), cameraMax: new Vector3(),
-    renderedVehicle: undefined as string | undefined, renderedView: "", inStation: false, held: false,
+    renderedVehicle: undefined as string | undefined, renderedView: "", drivingSetShot: undefined as string | undefined, inStation: false, held: false,
     heldPosition: new Vector3(), heldTarget: new Vector3(), heldOffset: new Vector2(), heldFov: 0, heldNear: 0,
     initializedCamera: null as ThreePerspectiveCamera | null,
   };
@@ -121,7 +121,7 @@ export function VehiclePreview({
   const selected = HEROES.find(hero => hero.id === (picked ?? savedHero))?.vehicle;
   const vehicleEmotes = wardrobeOpen && !characterOnly;
   const insideCar = useCharacterPreviewStore(s => vehicleEmotes && s.insideCar);
-  const fittingToCar = useCharacterPreviewStore(s => vehicleEmotes && (s.emote?.id === GARAGE_LEAN_ID || s.emote?.id === MIRROR_CHECK_ID));
+  const fittingToCar = useCharacterPreviewStore(s => vehicleEmotes && (s.emote?.id === GARAGE_LEAN_ID || isMirrorMakeupEmote(s.emote?.id)));
   const vehicleId = awaitingHero ? selected ?? (driverStage ? favorite : undefined) : favorite;
   const lastVehicle = useRef(vehicleId);
   useLayoutEffect(() => {
@@ -229,11 +229,13 @@ export function VehiclePreview({
     position.set(...cameraPosition);
     target.set(0, driverStage ? 1.17 : 1.35, 0);
     let lensZoom = zoom;
+    let drivingSetShot: string | undefined;
     if (!aim.held && garageView !== "Showroom") {
       const occupiedShot = garageView === "Cockpit" && stationActive
         ? findPreviewAnchor(aim.anchors, turntable, "garage-cockpit-camera") : undefined;
       const shot = occupiedShot ?? findPreviewAnchor(aim.anchors, turntable, `garage-view-${garageView}`);
       if (shot) {
+        drivingSetShot = shot.userData.drivingSetShot;
         shot.getWorldPosition(target);
         shot.children[0].getWorldPosition(position);
         if (garageView === "Cockpit") lensZoom = Math.min(1.2, zoom);
@@ -246,6 +248,7 @@ export function VehiclePreview({
       const anchor = cockpit || wide || insideCar ? undefined : findPreviewAnchor(aim.anchors, characterActor.current, "garage-driver");
       if (wide && !cockpit) lensZoom = view.zoom;
       if (cockpit) {
+        drivingSetShot = cockpit.userData.drivingSetShot;
         cockpit.children[0].getWorldPosition(position);
         cockpit.getWorldPosition(target);
       } else if (anchor) {
@@ -310,7 +313,9 @@ export function VehiclePreview({
     const offsetX = aim.held ? aim.heldOffset.x * width : area?.width ? width / 2 - (area.left + area.width / 2) : width * (sandboxPicker ? .15 : garageOffset);
     const offsetY = aim.held ? aim.heldOffset.y * height : area?.height ? height / 2 - (area.top + area.height / 2) : wardrobeOpen && !panelsHidden ? height * .055 : heroLayout && aspect < 1 ? -height * .04 : 0;
     aim.initializedCamera = camera;
-    const blend = firstFrame || reducedMotion ? 1 : 1 - Math.exp(-(closeShot ? 2.8 : 4.5) * Math.min(delta, .1));
+    const drivingSetCut = drivingSetShot && drivingSetShot !== aim.drivingSetShot;
+    aim.drivingSetShot = drivingSetShot;
+    const blend = firstFrame || reducedMotion || drivingSetCut ? 1 : 1 - Math.exp(-(closeShot ? 2.8 : 4.5) * Math.min(delta, .1));
     if (blend === 1) {
       pivot.copy(target);
       camera.position.copy(position);

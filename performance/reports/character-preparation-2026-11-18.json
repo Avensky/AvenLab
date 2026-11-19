@@ -1,0 +1,4682 @@
+{
+  "metadata": {
+    "head": "25988e120d8d8b3a84872aa34d51335b4fef073a",
+    "mode": "counts",
+    "node": "v24.22.3",
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "acceptedGeometryCommit": "0e81afeab830870989492bc69d52dfac17c0a23c",
+    "auditToolSha256": "ddab5b1115812c55167deef21d1bf15cb7a95882c000b28516f5fc93e950ddac",
+    "acceptedFixtureSha256": "84c0703a65ee4a070e0d2795ba89a99e157503517780ae5050e79bb014504799",
+    "coldDefinition": "First preparation of each case in the recorded order after clearing only wardrobeFitCache; existing module/source caches remain in-process and may perform first-use setup.",
+    "warmDefinition": "Immediate repeat of the preceding cold look; all existing caches remain available.",
+    "scope": "Untimed, instrumented Node CPU work counts; copy bytes are cumulative traffic, not retained/peak memory. Exact duplicate keys distinguish signed zero, exclude nonfinite/unsupported input getters, and are scoped to each warp closure; bounded tracking flags truncation. Repeatable rays are potential avoided work, not measured time savings. No GPU/FPS claims.",
+    "sourceHashes": {
+      "src/game/characters/wardrobeFitCache.ts": "f4aab963e079821c7fb01b925aa3dc462d0dae615c3c840038c4bab6d9b82c16",
+      "src/game/characters/villagerModel.ts": "9615958e757f8e011428ed68a547750f672ca03aa6afa9bc50e02a934a47b98a",
+      "src/game/characters/wardrobeCoverage.ts": "49a344a53d27574b3bf7c2c5a3288c0dfc7dbadcb1b2a32d87e9d8d3bc8f9e1d",
+      "src/game/characters/wardrobeGarmentFit.ts": "b8e41a8c37fd2cc05d8679d69b9321519e659f920c73ccea35d113a27d03729c",
+      "src/game/characters/gothicCorsetTuck.ts": "c7cba86e3c2af2426a23c12f9366b5e18e28acebd20600a624e2572a79285b62",
+      "src/game/characters/skirtWaistProfile.ts": "012e3403233338664a933e0623326f4927ab56e6a771232d0614dcdfceefe528",
+      "src/game/characters/wardrobeCoverageUnion.ts": "1e5aa1ca8f9da4a192d65a16dd97b5cadcf3195aef38ce874a2f3921c2465241",
+      "src/game/characters/warpWardrobeGeometry.ts": "7c9f751f93b1477242f2f009383ed0acb55841bb8f064b0281f9008afc242c97"
+    },
+    "sourceHashScope": "Individually hashes transformed counting modules; HEAD identifies other runtime code. Asset hashes identify full loaded GLB files; the CPU loader excludes texture decoding.",
+    "fixtureScope": "The accepted garage fixtures explicitly use garage base actors; normal desktop GarageDriver uses a portrait base actor with garage garment/corset tiers. These fixture timings/counts are not a browser-route benchmark. The optional default desktop case is separately resolved through the current production resolver.",
+    "assetInputs": {
+      "/models/characters/villagers/villager-female/villager-female.portrait.glb": {
+        "path": "frontend/public/models/characters/villagers/villager-female/villager-female.portrait.glb",
+        "bytes": 5499572,
+        "sha256": "488bb531fcd3529e15dfabdf5e44beb1c7d327da18c5b7932a807fb291dbf592"
+      },
+      "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-05.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-05.glb",
+        "bytes": 790368,
+        "sha256": "4f7c1a2ff4c874fee545b7734626634f3fa3c44490fa18025394e4d7dddd5ddf"
+      },
+      "/models/characters/female/wardrobe/corsets/gothic-high-collar.garage.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/corsets/gothic-high-collar.garage.glb",
+        "bytes": 5561348,
+        "sha256": "53a9504e323979b17c6385b7abbcbf1660dc8e6fd987cc7b43c9426c8bae8b27"
+      },
+      "/models/characters/female/wardrobe/vesper-body.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/vesper-body.glb",
+        "bytes": 505072,
+        "sha256": "b0763508155c0d028414cced0e04341a5513e54e2d07eea1aafe373d08b38eb2"
+      },
+      "/models/characters/villagers/villager-female/villager-female.garage.glb": {
+        "path": "frontend/public/models/characters/villagers/villager-female/villager-female.garage.glb",
+        "bytes": 4192432,
+        "sha256": "d9d139faaef9b34a0b0b92fe1eb9b7c2d15dceae54f3e19776fdee65dc69c686"
+      },
+      "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-01.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-01.glb",
+        "bytes": 903768,
+        "sha256": "796c4a5af2cb95dd14a8dc8b008359ea3f02dddb95bc25dc2061f0e829cba7d4"
+      },
+      "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-03.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-03.glb",
+        "bytes": 654112,
+        "sha256": "885861a944fbe50492b91cbe1a46113d21da8841bdfdc3315cba6957b2c8d982"
+      },
+      "/models/characters/female/wardrobe/corsets/gothic-03.garage.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/corsets/gothic-03.garage.glb",
+        "bytes": 2431580,
+        "sha256": "62ec6701dc25998ddcf16f68130b445723bf31e2c53c80628bd89e24bf2a887b"
+      },
+      "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-02.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-02.glb",
+        "bytes": 975652,
+        "sha256": "c5bf3fb473e8143cd0b52453a2f69db213ce6937b0c70d71b1f72de5d58246bc"
+      },
+      "/models/characters/female/wardrobe/corsets/gothic-02.garage.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/corsets/gothic-02.garage.glb",
+        "bytes": 1313880,
+        "sha256": "cd20c8baae19281ac0979c8430960d30ac5856c2bb131799b4e74140e9a54337"
+      },
+      "/models/characters/female/wardrobe/skirts/skirt-03.garage.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/skirts/skirt-03.garage.glb",
+        "bytes": 708872,
+        "sha256": "b4eb5fe880958a9e8e13cfd6166fedb20a1a0f143d1d9083f0bc8c55883b6557"
+      },
+      "/models/characters/wardrobe/gothic-01.garage.glb": {
+        "path": "frontend/public/models/characters/wardrobe/gothic-01.garage.glb",
+        "bytes": 6831532,
+        "sha256": "9bf110a896db1a9595db93be862930193f132183acd6c368b3f8eb687ae98e47"
+      },
+      "/models/characters/female/wardrobe/corsets/gothic-03.mobile.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/corsets/gothic-03.mobile.glb",
+        "bytes": 862612,
+        "sha256": "4573b7753dcc1604149cb13b56f40cfcdacb6edd8a95eea8450087cf044ad738"
+      },
+      "/models/characters/female/wardrobe/corsets/gothic-high-collar.mobile.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/corsets/gothic-high-collar.mobile.glb",
+        "bytes": 2982708,
+        "sha256": "bbd40e7e4fff3b708d9eb2a51995ecef1b9476d8aec0bfceedcf7ed3b465f90d"
+      },
+      "/models/characters/female/wardrobe/corsets/gothic-02.mobile.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/corsets/gothic-02.mobile.glb",
+        "bytes": 799380,
+        "sha256": "47e1becffafba319c208376db27f926b46e5c104fa7287d90943de78c1ec5038"
+      },
+      "/models/characters/female/wardrobe/skirts/skirt-03.mobile.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/skirts/skirt-03.mobile.glb",
+        "bytes": 404604,
+        "sha256": "94a2f47a316804e93e1aab3f861013d3404f35b83cd264f73319a6b7a8b855a5"
+      },
+      "/models/characters/wardrobe/gothic-01.mobile.glb": {
+        "path": "frontend/public/models/characters/wardrobe/gothic-01.mobile.glb",
+        "bytes": 2991320,
+        "sha256": "19f2143b2473385d08f54dbe57a0ad8197ad0d15f8cc88ae738aa753af87bb18"
+      }
+    },
+    "selectedCases": [
+      "garage:gothic-skirt-01",
+      "garage:gothic-skirt-03+gothic-03",
+      "garage:gothic-skirt-05+gothic-05",
+      "garage:gothic-skirt-02+gothic-02",
+      "garage:skirt-03+gothic-05",
+      "garage:gothic-01",
+      "portrait:gothic-skirt-01",
+      "portrait:gothic-skirt-03+gothic-03",
+      "portrait:gothic-skirt-05+gothic-05",
+      "portrait:gothic-skirt-02+gothic-02",
+      "portrait:skirt-03+gothic-05",
+      "portrait:gothic-01"
+    ],
+    "pressureCycles": 2,
+    "includeDefaultDesktop": true,
+    "loadedSourceScenes": 17
+  },
+  "cases": [
+    {
+      "id": "garage:gothic-skirt-01",
+      "inputs": {
+        "kind": "garage",
+        "villageKind": "garage",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-01.glb"
+        ],
+        "actor": "/models/characters/villagers/villager-female/villager-female.garage.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb"
+      },
+      "cold": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "eade684a3e1b1ec411d21ecbb2b1dd5f8de4fcbbfabddf0891339d1c3b18b790",
+        "cache": {
+          "before": {
+            "entries": 0,
+            "bytes": 0,
+            "hits": 0,
+            "misses": 0
+          },
+          "after": {
+            "entries": 1,
+            "bytes": 689434,
+            "hits": 0,
+            "misses": 1
+          },
+          "hits": 0,
+          "misses": 1
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1610038,
+              "attributeCopies": 5,
+              "attributeCopyBytes": 57030,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1553008,
+              "computeBoundingBox": 2,
+              "computeBoundingBoxVertices": 3834,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 1917,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 1917
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "raycasts": 18531,
+              "shapeCalls": 36627,
+              "geometryClones": 7,
+              "geometryCloneInputBytes": 1893000,
+              "attributeCopies": 44,
+              "attributeCopyBytes": 2040132,
+              "computeBoundingBox": 6,
+              "computeBoundingBoxVertices": 18336,
+              "computeBoundingSphere": 6,
+              "computeBoundingSphereVertices": 18336
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 8,
+              "bvhBuilds": 8,
+              "bvhPackedBytes": 408384
+            },
+            "prepare:fingerprint": {
+              "calls": 1,
+              "fingerprintBytesRead": 507060
+            },
+            "prepare:captureShape": {
+              "calls": 1,
+              "deformationSnapshotBytes": 181680
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 2,
+              "geometryCloneInputBytes": 648404,
+              "attributeCopies": 2,
+              "attributeCopyBytes": 16548,
+              "interleavedCopies": 4,
+              "interleavedCopyBytes": 631856,
+              "computeBoundingBox": 1,
+              "computeBoundingBoxVertices": 2323,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 2323
+            },
+            "apply:wardrobeCoverageSurface": {
+              "calls": 1,
+              "bvhBuilds": 1,
+              "bvhPackedBytes": 66208
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 5,
+              "sourceVertices": 10766,
+              "selectedVertices": 10766,
+              "movedVertices": 3818,
+              "shapeCalls": 33674,
+              "pointCalls": 10766,
+              "jacobianCalls": 22908,
+              "repeatedPointCalls": 4623,
+              "repeatedJacobianCalls": 4050,
+              "repeatedWithinSource": 4384,
+              "repeatedAcrossSources": 239,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 6143,
+              "uniqueJacobians": 3143,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            },
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 1,
+              "sourceVertices": 7570,
+              "selectedVertices": 1657,
+              "movedVertices": 216,
+              "shapeCalls": 2953,
+              "pointCalls": 1657,
+              "jacobianCalls": 1296,
+              "repeatedPointCalls": 17,
+              "repeatedJacobianCalls": 18,
+              "repeatedWithinSource": 17,
+              "repeatedAcrossSources": 0,
+              "rays": 10083,
+              "repeatablePointRays": 61,
+              "repeatableJacobianRays": 108,
+              "uniquePositions": 1640,
+              "uniqueJacobians": 213,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 7783,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 9,
+            "repeatedBuilds": 0
+          }
+        }
+      },
+      "warm": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "eade684a3e1b1ec411d21ecbb2b1dd5f8de4fcbbfabddf0891339d1c3b18b790",
+        "cache": {
+          "before": {
+            "entries": 1,
+            "bytes": 689434,
+            "hits": 0,
+            "misses": 1
+          },
+          "after": {
+            "entries": 1,
+            "bytes": 689434,
+            "hits": 1,
+            "misses": 1
+          },
+          "hits": 1,
+          "misses": 0
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1610038,
+              "attributeCopies": 5,
+              "attributeCopyBytes": 57030,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1553008,
+              "computeBoundingBox": 2,
+              "computeBoundingBoxVertices": 3834,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 1917,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 1917
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "raycasts": 8448,
+              "shapeCalls": 33674,
+              "geometryClones": 6,
+              "geometryCloneInputBytes": 1448366,
+              "attributeCopies": 38,
+              "attributeCopyBytes": 1595498,
+              "computeBoundingBox": 5,
+              "computeBoundingBoxVertices": 10766,
+              "computeBoundingSphere": 5,
+              "computeBoundingSphereVertices": 10766
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 7,
+              "bvhBuilds": 7,
+              "bvhPackedBytes": 394144
+            },
+            "prepare:fingerprint": {
+              "calls": 1,
+              "fingerprintBytesRead": 507060
+            },
+            "prepare:equalBytes": {
+              "calls": 5,
+              "confirmedEqualBytesRead": 507060
+            },
+            "prepare:restoreShape": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 444634,
+              "attributeCopies": 6,
+              "attributeCopyBytes": 444634
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 324202,
+              "attributeCopies": 1,
+              "attributeCopyBytes": 8274,
+              "interleavedCopies": 2,
+              "interleavedCopyBytes": 315928
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 5,
+              "sourceVertices": 10766,
+              "selectedVertices": 10766,
+              "movedVertices": 3818,
+              "shapeCalls": 33674,
+              "pointCalls": 10766,
+              "jacobianCalls": 22908,
+              "repeatedPointCalls": 4623,
+              "repeatedJacobianCalls": 4050,
+              "repeatedWithinSource": 4384,
+              "repeatedAcrossSources": 239,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 6143,
+              "uniqueJacobians": 3143,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 6143,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 7,
+            "repeatedBuilds": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "garage:gothic-skirt-03+gothic-03",
+      "inputs": {
+        "kind": "garage",
+        "villageKind": "garage",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-03.glb"
+        ],
+        "actor": "/models/characters/villagers/villager-female/villager-female.garage.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb",
+        "corset": "/models/characters/female/wardrobe/corsets/gothic-03.garage.glb"
+      },
+      "cold": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "ba45db27abd22f41a9d251501825d680a8e7a78bbe0f7a7142a08db229cff4c8",
+        "cache": {
+          "before": {
+            "entries": 0,
+            "bytes": 0,
+            "hits": 0,
+            "misses": 0
+          },
+          "after": {
+            "entries": 2,
+            "bytes": 1441482,
+            "hits": 0,
+            "misses": 2
+          },
+          "hits": 0,
+          "misses": 2
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1610038,
+              "attributeCopies": 5,
+              "attributeCopyBytes": 57030,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1553008,
+              "computeBoundingBox": 2,
+              "computeBoundingBoxVertices": 3834,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 1917,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 1917
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "raycasts": 47198,
+              "shapeCalls": 53808,
+              "geometryClones": 9,
+              "geometryCloneInputBytes": 2172082,
+              "attributeCopies": 56,
+              "attributeCopyBytes": 2319214,
+              "computeBoundingBox": 6,
+              "computeBoundingBoxVertices": 14706,
+              "computeBoundingSphere": 6,
+              "computeBoundingSphereVertices": 14706
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 15,
+              "bvhBuilds": 15,
+              "bvhPackedBytes": 554784
+            },
+            "prepare:fingerprint": {
+              "calls": 2,
+              "fingerprintBytesRead": 1143468
+            },
+            "prepare:captureShape": {
+              "calls": 4,
+              "deformationSnapshotBytes": 294480
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1,
+              "geometryClones": 3,
+              "geometryCloneInputBytes": 305130,
+              "attributeCopies": 21,
+              "attributeCopyBytes": 305130
+            },
+            "prepare:profile.body": {
+              "calls": 1,
+              "raycasts": 5184
+            },
+            "prepare:extendHem": {
+              "calls": 1
+            },
+            "prepare:profile.cloth": {
+              "calls": 2,
+              "raycasts": 31104
+            },
+            "prepare:seatHem": {
+              "calls": 1,
+              "shapeCalls": 12234,
+              "raycasts": 25832,
+              "geometryClones": 3,
+              "geometryCloneInputBytes": 305130,
+              "attributeCopies": 21,
+              "attributeCopyBytes": 305130,
+              "computeBoundingBox": 3,
+              "computeBoundingBoxVertices": 3954,
+              "computeBoundingSphere": 3,
+              "computeBoundingSphereVertices": 3954
+            },
+            "prepare:wardrobeCoverageUnion": {
+              "calls": 1,
+              "unionInputParts": 3,
+              "unionOutputSurfaces": 1,
+              "unionBuilds": 1,
+              "unionGeometryBytes": 247896,
+              "unionPackedBytes": 119584
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 324202,
+              "attributeCopies": 1,
+              "attributeCopyBytes": 8274,
+              "interleavedCopies": 2,
+              "interleavedCopyBytes": 315928
+            },
+            "apply:wardrobeCoverageSurface": {
+              "calls": 1,
+              "bvhBuilds": 1,
+              "bvhPackedBytes": 29792
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 5,
+              "sourceVertices": 9026,
+              "selectedVertices": 9026,
+              "movedVertices": 5624,
+              "shapeCalls": 42770,
+              "pointCalls": 9026,
+              "jacobianCalls": 33744,
+              "repeatedPointCalls": 1443,
+              "repeatedJacobianCalls": 8550,
+              "repeatedWithinSource": 1443,
+              "repeatedAcrossSources": 0,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 7583,
+              "uniqueJacobians": 4199,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            },
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 1,
+              "sourceVertices": 5680,
+              "selectedVertices": 5680,
+              "movedVertices": 893,
+              "shapeCalls": 11038,
+              "pointCalls": 5680,
+              "jacobianCalls": 5358,
+              "repeatedPointCalls": 1310,
+              "repeatedJacobianCalls": 1002,
+              "repeatedWithinSource": 1310,
+              "repeatedAcrossSources": 0,
+              "rays": 38750,
+              "repeatablePointRays": 1219,
+              "repeatableJacobianRays": 5502,
+              "uniquePositions": 4370,
+              "uniqueJacobians": 726,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            },
+            {
+              "owner": "seatHem",
+              "sources": 3,
+              "sourceVertices": 3954,
+              "selectedVertices": 3954,
+              "movedVertices": 1380,
+              "shapeCalls": 12234,
+              "pointCalls": 3954,
+              "jacobianCalls": 8280,
+              "repeatedPointCalls": 189,
+              "repeatedJacobianCalls": 408,
+              "repeatedWithinSource": 189,
+              "repeatedAcrossSources": 0,
+              "rays": 25832,
+              "repeatablePointRays": 172,
+              "repeatableJacobianRays": 915,
+              "uniquePositions": 3765,
+              "uniqueJacobians": 1312,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 15718,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 16,
+            "repeatedBuilds": 0
+          }
+        }
+      },
+      "warm": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "ba45db27abd22f41a9d251501825d680a8e7a78bbe0f7a7142a08db229cff4c8",
+        "cache": {
+          "before": {
+            "entries": 2,
+            "bytes": 1441482,
+            "hits": 0,
+            "misses": 2
+          },
+          "after": {
+            "entries": 2,
+            "bytes": 1441482,
+            "hits": 2,
+            "misses": 2
+          },
+          "hits": 2,
+          "misses": 0
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1610038,
+              "attributeCopies": 5,
+              "attributeCopyBytes": 57030,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1553008,
+              "computeBoundingBox": 2,
+              "computeBoundingBoxVertices": 3834,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 1917,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 1917
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "raycasts": 8448,
+              "shapeCalls": 42770,
+              "geometryClones": 8,
+              "geometryCloneInputBytes": 1825728,
+              "attributeCopies": 50,
+              "attributeCopyBytes": 1972860,
+              "computeBoundingBox": 5,
+              "computeBoundingBoxVertices": 9026,
+              "computeBoundingSphere": 5,
+              "computeBoundingSphereVertices": 9026
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 7,
+              "bvhBuilds": 7,
+              "bvhPackedBytes": 439968
+            },
+            "prepare:fingerprint": {
+              "calls": 2,
+              "fingerprintBytesRead": 1143468
+            },
+            "prepare:equalBytes": {
+              "calls": 27,
+              "confirmedEqualBytesRead": 1143468
+            },
+            "prepare:restoreShape": {
+              "calls": 4,
+              "geometryClones": 4,
+              "geometryCloneInputBytes": 651484,
+              "attributeCopies": 27,
+              "attributeCopyBytes": 651484
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 324202,
+              "attributeCopies": 1,
+              "attributeCopyBytes": 8274,
+              "interleavedCopies": 2,
+              "interleavedCopyBytes": 315928
+            },
+            "apply:wardrobeCoverageSurface": {
+              "calls": 1,
+              "bvhBuilds": 1,
+              "bvhPackedBytes": 29792
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 5,
+              "sourceVertices": 9026,
+              "selectedVertices": 9026,
+              "movedVertices": 5624,
+              "shapeCalls": 42770,
+              "pointCalls": 9026,
+              "jacobianCalls": 33744,
+              "repeatedPointCalls": 1443,
+              "repeatedJacobianCalls": 8550,
+              "repeatedWithinSource": 1443,
+              "repeatedAcrossSources": 0,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 7583,
+              "uniqueJacobians": 4199,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 7583,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 8,
+            "repeatedBuilds": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "garage:gothic-skirt-05+gothic-05",
+      "inputs": {
+        "kind": "garage",
+        "villageKind": "garage",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-05.glb"
+        ],
+        "actor": "/models/characters/villagers/villager-female/villager-female.garage.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb",
+        "corset": "/models/characters/female/wardrobe/corsets/gothic-high-collar.garage.glb"
+      },
+      "cold": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "15975a829eca52df5985f3711092e4bf665e9e52fc945d72a15078ad0f9dc714",
+        "cache": {
+          "before": {
+            "entries": 0,
+            "bytes": 0,
+            "hits": 0,
+            "misses": 0
+          },
+          "after": {
+            "entries": 1,
+            "bytes": 5522038,
+            "hits": 0,
+            "misses": 1
+          },
+          "hits": 0,
+          "misses": 1
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 15,
+              "geometryCloneInputBytes": 12850434,
+              "attributeCopies": 115,
+              "attributeCopyBytes": 11297426,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1553008,
+              "computeBoundingBox": 12,
+              "computeBoundingBoxVertices": 94948,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 1917,
+              "computeBoundingSphere": 11,
+              "computeBoundingSphereVertices": 93031
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "raycasts": 10560,
+              "shapeCalls": 37629,
+              "geometryClones": 9,
+              "geometryCloneInputBytes": 2043160,
+              "attributeCopies": 56,
+              "attributeCopyBytes": 2190292,
+              "computeBoundingBox": 5,
+              "computeBoundingBoxVertices": 9801,
+              "computeBoundingSphere": 5,
+              "computeBoundingSphereVertices": 9801
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 20,
+              "bvhBuilds": 20,
+              "bvhPackedBytes": 953856,
+              "repeatedExactBvhInputs": 1
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 5620198,
+              "attributeCopies": 55,
+              "attributeCopyBytes": 5620198
+            },
+            "prepare:fingerprint": {
+              "calls": 1,
+              "fingerprintBytesRead": 3694484
+            },
+            "prepare:profile.body": {
+              "calls": 1,
+              "raycasts": 5184
+            },
+            "prepare:extendHem": {
+              "calls": 1
+            },
+            "prepare:profile.cloth": {
+              "calls": 2,
+              "raycasts": 46656
+            },
+            "prepare:seatHem": {
+              "calls": 1,
+              "shapeCalls": 138857,
+              "raycasts": 443309,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 5620198,
+              "attributeCopies": 55,
+              "attributeCopyBytes": 5620198,
+              "computeBoundingBox": 5,
+              "computeBoundingBoxVertices": 45557,
+              "computeBoundingSphere": 5,
+              "computeBoundingSphereVertices": 45557
+            },
+            "prepare:wardrobeCoverageUnion": {
+              "calls": 1,
+              "unionInputParts": 4,
+              "unionOutputSurfaces": 1,
+              "unionBuilds": 1,
+              "unionGeometryBytes": 233412,
+              "unionPackedBytes": 105504
+            },
+            "prepare:captureShape": {
+              "calls": 5,
+              "deformationSnapshotBytes": 1822280
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 324202,
+              "attributeCopies": 1,
+              "attributeCopyBytes": 8274,
+              "interleavedCopies": 2,
+              "interleavedCopyBytes": 315928
+            },
+            "apply:wardrobeCoverageSurface": {
+              "calls": 2,
+              "bvhBuilds": 2,
+              "bvhPackedBytes": 319040
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 5,
+              "sourceVertices": 9801,
+              "selectedVertices": 9801,
+              "movedVertices": 4638,
+              "shapeCalls": 37629,
+              "pointCalls": 9801,
+              "jacobianCalls": 27828,
+              "repeatedPointCalls": 3067,
+              "repeatedJacobianCalls": 5184,
+              "repeatedWithinSource": 3043,
+              "repeatedAcrossSources": 24,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 6734,
+              "uniqueJacobians": 3774,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            },
+            {
+              "owner": "seatHem",
+              "sources": 5,
+              "sourceVertices": 45557,
+              "selectedVertices": 45557,
+              "movedVertices": 15550,
+              "shapeCalls": 138857,
+              "pointCalls": 45557,
+              "jacobianCalls": 93300,
+              "repeatedPointCalls": 16524,
+              "repeatedJacobianCalls": 37452,
+              "repeatedWithinSource": 16524,
+              "repeatedAcrossSources": 0,
+              "rays": 443309,
+              "repeatablePointRays": 37858,
+              "repeatableJacobianRays": 133434,
+              "uniquePositions": 29033,
+              "uniqueJacobians": 9308,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 35767,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 21,
+            "repeatedBuilds": 1
+          }
+        }
+      },
+      "warm": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "15975a829eca52df5985f3711092e4bf665e9e52fc945d72a15078ad0f9dc714",
+        "cache": {
+          "before": {
+            "entries": 1,
+            "bytes": 5522038,
+            "hits": 0,
+            "misses": 1
+          },
+          "after": {
+            "entries": 1,
+            "bytes": 5522038,
+            "hits": 1,
+            "misses": 1
+          },
+          "hits": 1,
+          "misses": 0
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1610038,
+              "attributeCopies": 5,
+              "attributeCopyBytes": 57030,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1553008,
+              "computeBoundingBox": 2,
+              "computeBoundingBoxVertices": 3834,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 1917,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 1917
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "raycasts": 10560,
+              "shapeCalls": 37629,
+              "geometryClones": 9,
+              "geometryCloneInputBytes": 2043160,
+              "attributeCopies": 56,
+              "attributeCopyBytes": 2190292,
+              "computeBoundingBox": 5,
+              "computeBoundingBoxVertices": 9801,
+              "computeBoundingSphere": 5,
+              "computeBoundingSphereVertices": 9801
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 9,
+              "bvhBuilds": 9,
+              "bvhPackedBytes": 419296
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1
+            },
+            "prepare:fingerprint": {
+              "calls": 1,
+              "fingerprintBytesRead": 3694484
+            },
+            "prepare:equalBytes": {
+              "calls": 40,
+              "confirmedEqualBytesRead": 3694484
+            },
+            "prepare:restoreShape": {
+              "calls": 5,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 5620198,
+              "attributeCopies": 55,
+              "attributeCopyBytes": 5620198
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 324202,
+              "attributeCopies": 1,
+              "attributeCopyBytes": 8274,
+              "interleavedCopies": 2,
+              "interleavedCopyBytes": 315928
+            },
+            "apply:wardrobeCoverageSurface": {
+              "calls": 2,
+              "bvhBuilds": 2,
+              "bvhPackedBytes": 319040
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 5,
+              "sourceVertices": 9801,
+              "selectedVertices": 9801,
+              "movedVertices": 4638,
+              "shapeCalls": 37629,
+              "pointCalls": 9801,
+              "jacobianCalls": 27828,
+              "repeatedPointCalls": 3067,
+              "repeatedJacobianCalls": 5184,
+              "repeatedWithinSource": 3043,
+              "repeatedAcrossSources": 24,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 6734,
+              "uniqueJacobians": 3774,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 6734,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 11,
+            "repeatedBuilds": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "garage:gothic-skirt-02+gothic-02",
+      "inputs": {
+        "kind": "garage",
+        "villageKind": "garage",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-02.glb"
+        ],
+        "actor": "/models/characters/villagers/villager-female/villager-female.garage.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb",
+        "corset": "/models/characters/female/wardrobe/corsets/gothic-02.garage.glb"
+      },
+      "cold": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "3c1dd4715069a1738facd9194a71dfd058aa34f977fbe74e95867c6fa638b8a6",
+        "cache": {
+          "before": {
+            "entries": 0,
+            "bytes": 0,
+            "hits": 0,
+            "misses": 0
+          },
+          "after": {
+            "entries": 1,
+            "bytes": 1288118,
+            "hits": 0,
+            "misses": 1
+          },
+          "hits": 0,
+          "misses": 1
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1610038,
+              "attributeCopies": 5,
+              "attributeCopyBytes": 57030,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1553008,
+              "computeBoundingBox": 2,
+              "computeBoundingBoxVertices": 3834,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 1917,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 1917
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "raycasts": 10560,
+              "shapeCalls": 67376,
+              "geometryClones": 9,
+              "geometryCloneInputBytes": 1611392,
+              "attributeCopies": 53,
+              "attributeCopyBytes": 1758524,
+              "computeBoundingBox": 5,
+              "computeBoundingBoxVertices": 11642,
+              "computeBoundingSphere": 5,
+              "computeBoundingSphereVertices": 11642
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 23,
+              "bvhBuilds": 23,
+              "bvhPackedBytes": 1016224,
+              "repeatedExactBvhInputs": 5
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1,
+              "geometryClones": 3,
+              "geometryCloneInputBytes": 789140,
+              "attributeCopies": 18,
+              "attributeCopyBytes": 789140
+            },
+            "prepare:fingerprint": {
+              "calls": 1,
+              "fingerprintBytesRead": 961722
+            },
+            "prepare:profile.body": {
+              "calls": 1,
+              "raycasts": 5184
+            },
+            "prepare:extendHem": {
+              "calls": 1
+            },
+            "prepare:profile.cloth": {
+              "calls": 2,
+              "raycasts": 41472
+            },
+            "prepare:seatHem": {
+              "calls": 1,
+              "shapeCalls": 43486,
+              "raycasts": 520113,
+              "geometryClones": 3,
+              "geometryCloneInputBytes": 789140,
+              "attributeCopies": 18,
+              "attributeCopyBytes": 789140,
+              "computeBoundingBox": 3,
+              "computeBoundingBoxVertices": 13475,
+              "computeBoundingSphere": 3,
+              "computeBoundingSphereVertices": 13475
+            },
+            "prepare:wardrobeCoverageUnion": {
+              "calls": 1,
+              "unionInputParts": 4,
+              "unionOutputSurfaces": 4
+            },
+            "prepare:captureShape": {
+              "calls": 3,
+              "deformationSnapshotBytes": 323400
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 324202,
+              "attributeCopies": 1,
+              "attributeCopyBytes": 8274,
+              "interleavedCopies": 2,
+              "interleavedCopyBytes": 315928
+            },
+            "apply:wardrobeCoverageSurface": {
+              "calls": 1,
+              "bvhBuilds": 1,
+              "bvhPackedBytes": 15776
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 5,
+              "sourceVertices": 11642,
+              "selectedVertices": 11642,
+              "movedVertices": 9289,
+              "shapeCalls": 67376,
+              "pointCalls": 11642,
+              "jacobianCalls": 55734,
+              "repeatedPointCalls": 1670,
+              "repeatedJacobianCalls": 9966,
+              "repeatedWithinSource": 1670,
+              "repeatedAcrossSources": 0,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 9972,
+              "uniqueJacobians": 7628,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            },
+            {
+              "owner": "seatHem",
+              "sources": 4,
+              "sourceVertices": 15190,
+              "selectedVertices": 15190,
+              "movedVertices": 4716,
+              "shapeCalls": 43486,
+              "pointCalls": 15190,
+              "jacobianCalls": 28296,
+              "repeatedPointCalls": 5878,
+              "repeatedJacobianCalls": 11004,
+              "repeatedWithinSource": 5878,
+              "repeatedAcrossSources": 0,
+              "rays": 520113,
+              "repeatablePointRays": 50883,
+              "repeatableJacobianRays": 154069,
+              "uniquePositions": 9312,
+              "uniqueJacobians": 2882,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 19284,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 19,
+            "repeatedBuilds": 5
+          }
+        }
+      },
+      "warm": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "3c1dd4715069a1738facd9194a71dfd058aa34f977fbe74e95867c6fa638b8a6",
+        "cache": {
+          "before": {
+            "entries": 1,
+            "bytes": 1288118,
+            "hits": 0,
+            "misses": 1
+          },
+          "after": {
+            "entries": 1,
+            "bytes": 1288118,
+            "hits": 1,
+            "misses": 1
+          },
+          "hits": 1,
+          "misses": 0
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1610038,
+              "attributeCopies": 5,
+              "attributeCopyBytes": 57030,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1553008,
+              "computeBoundingBox": 2,
+              "computeBoundingBoxVertices": 3834,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 1917,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 1917
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "raycasts": 10560,
+              "shapeCalls": 67376,
+              "geometryClones": 9,
+              "geometryCloneInputBytes": 1611392,
+              "attributeCopies": 53,
+              "attributeCopyBytes": 1758524,
+              "computeBoundingBox": 5,
+              "computeBoundingBoxVertices": 11642,
+              "computeBoundingSphere": 5,
+              "computeBoundingSphereVertices": 11642
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 9,
+              "bvhBuilds": 9,
+              "bvhPackedBytes": 496800
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1
+            },
+            "prepare:fingerprint": {
+              "calls": 1,
+              "fingerprintBytesRead": 961722
+            },
+            "prepare:equalBytes": {
+              "calls": 22,
+              "confirmedEqualBytesRead": 961722
+            },
+            "prepare:restoreShape": {
+              "calls": 3,
+              "geometryClones": 3,
+              "geometryCloneInputBytes": 789140,
+              "attributeCopies": 18,
+              "attributeCopyBytes": 789140
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 324202,
+              "attributeCopies": 1,
+              "attributeCopyBytes": 8274,
+              "interleavedCopies": 2,
+              "interleavedCopyBytes": 315928
+            },
+            "apply:wardrobeCoverageSurface": {
+              "calls": 1,
+              "bvhBuilds": 1,
+              "bvhPackedBytes": 15776
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 5,
+              "sourceVertices": 11642,
+              "selectedVertices": 11642,
+              "movedVertices": 9289,
+              "shapeCalls": 67376,
+              "pointCalls": 11642,
+              "jacobianCalls": 55734,
+              "repeatedPointCalls": 1670,
+              "repeatedJacobianCalls": 9966,
+              "repeatedWithinSource": 1670,
+              "repeatedAcrossSources": 0,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 9972,
+              "uniqueJacobians": 7628,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 9972,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 10,
+            "repeatedBuilds": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "garage:skirt-03+gothic-05",
+      "inputs": {
+        "kind": "garage",
+        "villageKind": "garage",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/skirt-03.garage.glb"
+        ],
+        "actor": "/models/characters/villagers/villager-female/villager-female.garage.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb",
+        "corset": "/models/characters/female/wardrobe/corsets/gothic-high-collar.garage.glb"
+      },
+      "cold": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "92be1a9b07a0b5f3099f615711cc9c173011228425d7bbf704f4bed80780f49f",
+        "cache": {
+          "before": {
+            "entries": 0,
+            "bytes": 0,
+            "hits": 0,
+            "misses": 0
+          },
+          "after": {
+            "entries": 1,
+            "bytes": 5893670,
+            "hits": 0,
+            "misses": 1
+          },
+          "hits": 0,
+          "misses": 1
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1610038,
+              "attributeCopies": 5,
+              "attributeCopyBytes": 57030,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1553008,
+              "computeBoundingBox": 2,
+              "computeBoundingBoxVertices": 3834,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 1917,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 1917
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "raycasts": 2664,
+              "shapeCalls": 34694,
+              "geometryClones": 4,
+              "geometryCloneInputBytes": 1890758,
+              "attributeCopies": 11,
+              "attributeCopyBytes": 1042098,
+              "interleavedCopies": 6,
+              "interleavedCopyBytes": 995792,
+              "computeBoundingBox": 3,
+              "computeBoundingBoxVertices": 7322,
+              "computeBoundingSphere": 3,
+              "computeBoundingSphereVertices": 7322
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 4,
+              "bvhBuilds": 4,
+              "bvhPackedBytes": 168000
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 5620198,
+              "attributeCopies": 55,
+              "attributeCopyBytes": 5620198
+            },
+            "prepare:fingerprint": {
+              "calls": 1,
+              "fingerprintBytesRead": 4066594
+            },
+            "prepare:profile.body": {
+              "calls": 1,
+              "raycasts": 5184
+            },
+            "prepare:seatHem": {
+              "calls": 1,
+              "shapeCalls": 105263,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 5620198,
+              "attributeCopies": 55,
+              "attributeCopyBytes": 5620198,
+              "computeBoundingBox": 5,
+              "computeBoundingBoxVertices": 45557,
+              "computeBoundingSphere": 5,
+              "computeBoundingSphereVertices": 45557
+            },
+            "prepare:profile.cloth": {
+              "calls": 1,
+              "raycasts": 10368
+            },
+            "prepare:captureShape": {
+              "calls": 5,
+              "deformationSnapshotBytes": 1822280
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 324202,
+              "attributeCopies": 1,
+              "attributeCopyBytes": 8274,
+              "interleavedCopies": 2,
+              "interleavedCopyBytes": 315928
+            },
+            "apply:wardrobeCoverageSurface": {
+              "calls": 3,
+              "bvhBuilds": 3,
+              "bvhPackedBytes": 334176
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 3,
+              "sourceVertices": 7322,
+              "selectedVertices": 7322,
+              "movedVertices": 4562,
+              "shapeCalls": 34694,
+              "pointCalls": 7322,
+              "jacobianCalls": 27372,
+              "repeatedPointCalls": 219,
+              "repeatedJacobianCalls": 1272,
+              "repeatedWithinSource": 219,
+              "repeatedAcrossSources": 0,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 7103,
+              "uniqueJacobians": 4350,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            },
+            {
+              "owner": "seatHem",
+              "sources": 5,
+              "sourceVertices": 45557,
+              "selectedVertices": 45557,
+              "movedVertices": 9951,
+              "shapeCalls": 105263,
+              "pointCalls": 45557,
+              "jacobianCalls": 59706,
+              "repeatedPointCalls": 16524,
+              "repeatedJacobianCalls": 23208,
+              "repeatedWithinSource": 16524,
+              "repeatedAcrossSources": 0,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 29033,
+              "uniqueJacobians": 6083,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 36136,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 7,
+            "repeatedBuilds": 0
+          }
+        }
+      },
+      "warm": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "92be1a9b07a0b5f3099f615711cc9c173011228425d7bbf704f4bed80780f49f",
+        "cache": {
+          "before": {
+            "entries": 1,
+            "bytes": 5893670,
+            "hits": 0,
+            "misses": 1
+          },
+          "after": {
+            "entries": 1,
+            "bytes": 5893670,
+            "hits": 1,
+            "misses": 1
+          },
+          "hits": 1,
+          "misses": 0
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1610038,
+              "attributeCopies": 5,
+              "attributeCopyBytes": 57030,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1553008,
+              "computeBoundingBox": 2,
+              "computeBoundingBoxVertices": 3834,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 1917,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 1917
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "shapeCalls": 34694,
+              "geometryClones": 4,
+              "geometryCloneInputBytes": 1890758,
+              "attributeCopies": 11,
+              "attributeCopyBytes": 1042098,
+              "interleavedCopies": 6,
+              "interleavedCopyBytes": 995792,
+              "computeBoundingBox": 3,
+              "computeBoundingBoxVertices": 7322,
+              "computeBoundingSphere": 3,
+              "computeBoundingSphereVertices": 7322
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1
+            },
+            "prepare:fingerprint": {
+              "calls": 1,
+              "fingerprintBytesRead": 4066594
+            },
+            "prepare:equalBytes": {
+              "calls": 36,
+              "confirmedEqualBytesRead": 4066594
+            },
+            "prepare:restoreShape": {
+              "calls": 5,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 5620198,
+              "attributeCopies": 55,
+              "attributeCopyBytes": 5620198
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 324202,
+              "attributeCopies": 1,
+              "attributeCopyBytes": 8274,
+              "interleavedCopies": 2,
+              "interleavedCopyBytes": 315928
+            },
+            "apply:wardrobeCoverageSurface": {
+              "calls": 3,
+              "bvhBuilds": 3,
+              "bvhPackedBytes": 334176
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 3,
+              "sourceVertices": 7322,
+              "selectedVertices": 7322,
+              "movedVertices": 4562,
+              "shapeCalls": 34694,
+              "pointCalls": 7322,
+              "jacobianCalls": 27372,
+              "repeatedPointCalls": 219,
+              "repeatedJacobianCalls": 1272,
+              "repeatedWithinSource": 219,
+              "repeatedAcrossSources": 0,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 7103,
+              "uniqueJacobians": 4350,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 7103,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 3,
+            "repeatedBuilds": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "garage:gothic-01",
+      "inputs": {
+        "kind": "garage",
+        "villageKind": "garage",
+        "garments": [],
+        "actor": "/models/characters/wardrobe/gothic-01.garage.glb"
+      },
+      "cold": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "1312411b5363e2c9d13b752e1880973c8ce3e8a12ac78ccd8688de66f7f179b9",
+        "cache": {
+          "before": {
+            "entries": 0,
+            "bytes": 0,
+            "hits": 0,
+            "misses": 0
+          },
+          "after": {
+            "entries": 2,
+            "bytes": 2123748,
+            "hits": 0,
+            "misses": 2
+          },
+          "hits": 0,
+          "misses": 2
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "raycasts": 130414,
+              "computeBoundingBox": 13,
+              "computeBoundingBoxVertices": 48628,
+              "computeBoundingSphere": 12,
+              "computeBoundingSphereVertices": 46532,
+              "geometryClones": 17,
+              "geometryCloneInputBytes": 4358317,
+              "attributeCopies": 110,
+              "attributeCopyBytes": 4988177,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 2096,
+              "shapeCalls": 92177
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 27,
+              "bvhBuilds": 27,
+              "bvhPackedBytes": 1264352,
+              "repeatedExactBvhInputs": 1
+            },
+            "prepare:fingerprint": {
+              "calls": 2,
+              "fingerprintBytesRead": 1596396
+            },
+            "prepare:captureShape": {
+              "calls": 5,
+              "deformationSnapshotBytes": 523536
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1,
+              "geometryClones": 4,
+              "geometryCloneInputBytes": 477700,
+              "attributeCopies": 25,
+              "attributeCopyBytes": 477700
+            },
+            "prepare:profile.body": {
+              "calls": 1,
+              "raycasts": 5184
+            },
+            "prepare:extendHem": {
+              "calls": 1
+            },
+            "prepare:profile.cloth": {
+              "calls": 2,
+              "raycasts": 41472
+            },
+            "prepare:seatHem": {
+              "calls": 1,
+              "shapeCalls": 24969,
+              "raycasts": 303688,
+              "geometryClones": 4,
+              "geometryCloneInputBytes": 477700,
+              "attributeCopies": 25,
+              "attributeCopyBytes": 477700,
+              "computeBoundingBox": 4,
+              "computeBoundingBoxVertices": 7851,
+              "computeBoundingSphere": 4,
+              "computeBoundingSphereVertices": 7851
+            },
+            "prepare:wardrobeCoverageUnion": {
+              "calls": 1,
+              "unionInputParts": 4,
+              "unionOutputSurfaces": 4
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 2,
+              "geometryCloneInputBytes": 259164,
+              "attributeCopies": 12,
+              "attributeCopyBytes": 259164,
+              "computeBoundingBox": 1,
+              "computeBoundingBoxVertices": 2331,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 2331
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareVillager",
+              "sources": 4,
+              "sourceVertices": 16726,
+              "selectedVertices": 16726,
+              "movedVertices": 9218,
+              "shapeCalls": 72034,
+              "pointCalls": 16726,
+              "jacobianCalls": 55308,
+              "repeatedPointCalls": 4570,
+              "repeatedJacobianCalls": 3618,
+              "repeatedWithinSource": 4570,
+              "repeatedAcrossSources": 0,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 12156,
+              "uniqueJacobians": 8615,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            },
+            {
+              "owner": "prepareVillager",
+              "sources": 1,
+              "sourceVertices": 13963,
+              "selectedVertices": 4735,
+              "movedVertices": 2568,
+              "shapeCalls": 20143,
+              "pointCalls": 4735,
+              "jacobianCalls": 15408,
+              "repeatedPointCalls": 75,
+              "repeatedJacobianCalls": 348,
+              "repeatedWithinSource": 75,
+              "repeatedAcrossSources": 0,
+              "rays": 113005,
+              "repeatablePointRays": 382,
+              "repeatableJacobianRays": 2088,
+              "uniquePositions": 4660,
+              "uniqueJacobians": 2510,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            },
+            {
+              "owner": "seatHem",
+              "sources": 4,
+              "sourceVertices": 7851,
+              "selectedVertices": 7851,
+              "movedVertices": 2853,
+              "shapeCalls": 24969,
+              "pointCalls": 7851,
+              "jacobianCalls": 17118,
+              "repeatedPointCalls": 2102,
+              "repeatedJacobianCalls": 3936,
+              "repeatedWithinSource": 2073,
+              "repeatedAcrossSources": 29,
+              "rays": 303688,
+              "repeatablePointRays": 10892,
+              "repeatableJacobianRays": 61936,
+              "uniquePositions": 5749,
+              "uniqueJacobians": 2197,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 22565,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 26,
+            "repeatedBuilds": 1
+          }
+        }
+      },
+      "warm": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "1312411b5363e2c9d13b752e1880973c8ce3e8a12ac78ccd8688de66f7f179b9",
+        "cache": {
+          "before": {
+            "entries": 2,
+            "bytes": 2123748,
+            "hits": 0,
+            "misses": 2
+          },
+          "after": {
+            "entries": 2,
+            "bytes": 2123748,
+            "hits": 2,
+            "misses": 2
+          },
+          "hits": 2,
+          "misses": 0
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "raycasts": 17409,
+              "computeBoundingBox": 12,
+              "computeBoundingBoxVertices": 34665,
+              "computeBoundingSphere": 11,
+              "computeBoundingSphereVertices": 32569,
+              "geometryClones": 16,
+              "geometryCloneInputBytes": 3506697,
+              "attributeCopies": 104,
+              "attributeCopyBytes": 4136557,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 2096,
+              "shapeCalls": 72034
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 13,
+              "bvhBuilds": 13,
+              "bvhPackedBytes": 842720,
+              "repeatedExactBvhInputs": 1
+            },
+            "prepare:fingerprint": {
+              "calls": 2,
+              "fingerprintBytesRead": 1596396
+            },
+            "prepare:equalBytes": {
+              "calls": 27,
+              "confirmedEqualBytesRead": 1596396
+            },
+            "prepare:restoreShape": {
+              "calls": 5,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1329320,
+              "attributeCopies": 31,
+              "attributeCopyBytes": 1329320
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 129582,
+              "attributeCopies": 6,
+              "attributeCopyBytes": 129582
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareVillager",
+              "sources": 4,
+              "sourceVertices": 16726,
+              "selectedVertices": 16726,
+              "movedVertices": 9218,
+              "shapeCalls": 72034,
+              "pointCalls": 16726,
+              "jacobianCalls": 55308,
+              "repeatedPointCalls": 4570,
+              "repeatedJacobianCalls": 3618,
+              "repeatedWithinSource": 4570,
+              "repeatedAcrossSources": 0,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 12156,
+              "uniqueJacobians": 8615,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 12156,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 12,
+            "repeatedBuilds": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "portrait:gothic-skirt-01",
+      "inputs": {
+        "kind": "portrait",
+        "villageKind": "portrait",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-01.glb"
+        ],
+        "actor": "/models/characters/villagers/villager-female/villager-female.portrait.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb"
+      },
+      "cold": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "98a6899c5ae1f14a33e58c6de111442f3479d172056123bbd0ba42317bff2648",
+        "cache": {
+          "before": {
+            "entries": 0,
+            "bytes": 0,
+            "hits": 0,
+            "misses": 0
+          },
+          "after": {
+            "entries": 1,
+            "bytes": 689434,
+            "hits": 0,
+            "misses": 1
+          },
+          "hits": 0,
+          "misses": 1
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1708386,
+              "attributeCopies": 5,
+              "attributeCopyBytes": 63330,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1645056,
+              "computeBoundingBox": 2,
+              "computeBoundingBoxVertices": 4192,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 2096,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 2096
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "raycasts": 18531,
+              "shapeCalls": 36627,
+              "geometryClones": 7,
+              "geometryCloneInputBytes": 1893000,
+              "attributeCopies": 44,
+              "attributeCopyBytes": 2040132,
+              "computeBoundingBox": 6,
+              "computeBoundingBoxVertices": 18336,
+              "computeBoundingSphere": 6,
+              "computeBoundingSphereVertices": 18336
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 8,
+              "bvhBuilds": 8,
+              "bvhPackedBytes": 408384
+            },
+            "prepare:fingerprint": {
+              "calls": 1,
+              "fingerprintBytesRead": 507060
+            },
+            "prepare:captureShape": {
+              "calls": 1,
+              "deformationSnapshotBytes": 181680
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 2,
+              "geometryCloneInputBytes": 650772,
+              "attributeCopies": 2,
+              "attributeCopyBytes": 16740,
+              "interleavedCopies": 4,
+              "interleavedCopyBytes": 634032,
+              "computeBoundingBox": 1,
+              "computeBoundingBoxVertices": 2331,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 2331
+            },
+            "apply:wardrobeCoverageSurface": {
+              "calls": 1,
+              "bvhBuilds": 1,
+              "bvhPackedBytes": 99040
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 5,
+              "sourceVertices": 10766,
+              "selectedVertices": 10766,
+              "movedVertices": 3818,
+              "shapeCalls": 33674,
+              "pointCalls": 10766,
+              "jacobianCalls": 22908,
+              "repeatedPointCalls": 4623,
+              "repeatedJacobianCalls": 4050,
+              "repeatedWithinSource": 4384,
+              "repeatedAcrossSources": 239,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 6143,
+              "uniqueJacobians": 3143,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            },
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 1,
+              "sourceVertices": 7570,
+              "selectedVertices": 1657,
+              "movedVertices": 216,
+              "shapeCalls": 2953,
+              "pointCalls": 1657,
+              "jacobianCalls": 1296,
+              "repeatedPointCalls": 17,
+              "repeatedJacobianCalls": 18,
+              "repeatedWithinSource": 17,
+              "repeatedAcrossSources": 0,
+              "rays": 10083,
+              "repeatablePointRays": 61,
+              "repeatableJacobianRays": 108,
+              "uniquePositions": 1640,
+              "uniqueJacobians": 213,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 7783,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 9,
+            "repeatedBuilds": 0
+          }
+        }
+      },
+      "warm": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "98a6899c5ae1f14a33e58c6de111442f3479d172056123bbd0ba42317bff2648",
+        "cache": {
+          "before": {
+            "entries": 1,
+            "bytes": 689434,
+            "hits": 0,
+            "misses": 1
+          },
+          "after": {
+            "entries": 1,
+            "bytes": 689434,
+            "hits": 1,
+            "misses": 1
+          },
+          "hits": 1,
+          "misses": 0
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1708386,
+              "attributeCopies": 5,
+              "attributeCopyBytes": 63330,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1645056,
+              "computeBoundingBox": 2,
+              "computeBoundingBoxVertices": 4192,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 2096,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 2096
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "raycasts": 8448,
+              "shapeCalls": 33674,
+              "geometryClones": 6,
+              "geometryCloneInputBytes": 1448366,
+              "attributeCopies": 38,
+              "attributeCopyBytes": 1595498,
+              "computeBoundingBox": 5,
+              "computeBoundingBoxVertices": 10766,
+              "computeBoundingSphere": 5,
+              "computeBoundingSphereVertices": 10766
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 7,
+              "bvhBuilds": 7,
+              "bvhPackedBytes": 394144
+            },
+            "prepare:fingerprint": {
+              "calls": 1,
+              "fingerprintBytesRead": 507060
+            },
+            "prepare:equalBytes": {
+              "calls": 5,
+              "confirmedEqualBytesRead": 507060
+            },
+            "prepare:restoreShape": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 444634,
+              "attributeCopies": 6,
+              "attributeCopyBytes": 444634
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 325386,
+              "attributeCopies": 1,
+              "attributeCopyBytes": 8370,
+              "interleavedCopies": 2,
+              "interleavedCopyBytes": 317016
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 5,
+              "sourceVertices": 10766,
+              "selectedVertices": 10766,
+              "movedVertices": 3818,
+              "shapeCalls": 33674,
+              "pointCalls": 10766,
+              "jacobianCalls": 22908,
+              "repeatedPointCalls": 4623,
+              "repeatedJacobianCalls": 4050,
+              "repeatedWithinSource": 4384,
+              "repeatedAcrossSources": 239,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 6143,
+              "uniqueJacobians": 3143,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 6143,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 7,
+            "repeatedBuilds": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "portrait:gothic-skirt-03+gothic-03",
+      "inputs": {
+        "kind": "portrait",
+        "villageKind": "portrait",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-03.glb"
+        ],
+        "actor": "/models/characters/villagers/villager-female/villager-female.portrait.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb",
+        "corset": "/models/characters/female/wardrobe/corsets/gothic-03.mobile.glb"
+      },
+      "cold": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "57da5535e21189d3e4c995d91ec630d6cc5a21f4b035302354f9579f0db5155a",
+        "cache": {
+          "before": {
+            "entries": 0,
+            "bytes": 0,
+            "hits": 0,
+            "misses": 0
+          },
+          "after": {
+            "entries": 2,
+            "bytes": 1253408,
+            "hits": 0,
+            "misses": 2
+          },
+          "hits": 0,
+          "misses": 2
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1708386,
+              "attributeCopies": 5,
+              "attributeCopyBytes": 63330,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1645056,
+              "computeBoundingBox": 2,
+              "computeBoundingBoxVertices": 4192,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 2096,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 2096
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "raycasts": 47198,
+              "shapeCalls": 53808,
+              "geometryClones": 9,
+              "geometryCloneInputBytes": 2172082,
+              "attributeCopies": 56,
+              "attributeCopyBytes": 2319214,
+              "computeBoundingBox": 6,
+              "computeBoundingBoxVertices": 14706,
+              "computeBoundingSphere": 6,
+              "computeBoundingSphereVertices": 14706
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 15,
+              "bvhBuilds": 15,
+              "bvhPackedBytes": 539040
+            },
+            "prepare:fingerprint": {
+              "calls": 2,
+              "fingerprintBytesRead": 1038848
+            },
+            "prepare:captureShape": {
+              "calls": 4,
+              "deformationSnapshotBytes": 211040
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1,
+              "geometryClones": 3,
+              "geometryCloneInputBytes": 142102,
+              "attributeCopies": 21,
+              "attributeCopyBytes": 142102
+            },
+            "prepare:profile.body": {
+              "calls": 1,
+              "raycasts": 5184
+            },
+            "prepare:extendHem": {
+              "calls": 1
+            },
+            "prepare:profile.cloth": {
+              "calls": 2,
+              "raycasts": 31104
+            },
+            "prepare:seatHem": {
+              "calls": 1,
+              "shapeCalls": 5618,
+              "raycasts": 11725,
+              "geometryClones": 3,
+              "geometryCloneInputBytes": 142102,
+              "attributeCopies": 21,
+              "attributeCopyBytes": 142102,
+              "computeBoundingBox": 3,
+              "computeBoundingBoxVertices": 1868,
+              "computeBoundingSphere": 3,
+              "computeBoundingSphereVertices": 1868
+            },
+            "prepare:wardrobeCoverageUnion": {
+              "calls": 1,
+              "unionInputParts": 3,
+              "unionOutputSurfaces": 1,
+              "unionBuilds": 1,
+              "unionGeometryBytes": 247896,
+              "unionPackedBytes": 119584
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 325386,
+              "attributeCopies": 1,
+              "attributeCopyBytes": 8370,
+              "interleavedCopies": 2,
+              "interleavedCopyBytes": 317016
+            },
+            "apply:wardrobeCoverageSurface": {
+              "calls": 1,
+              "bvhBuilds": 1,
+              "bvhPackedBytes": 12576
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 5,
+              "sourceVertices": 9026,
+              "selectedVertices": 9026,
+              "movedVertices": 5624,
+              "shapeCalls": 42770,
+              "pointCalls": 9026,
+              "jacobianCalls": 33744,
+              "repeatedPointCalls": 1443,
+              "repeatedJacobianCalls": 8550,
+              "repeatedWithinSource": 1443,
+              "repeatedAcrossSources": 0,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 7583,
+              "uniqueJacobians": 4199,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            },
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 1,
+              "sourceVertices": 5680,
+              "selectedVertices": 5680,
+              "movedVertices": 893,
+              "shapeCalls": 11038,
+              "pointCalls": 5680,
+              "jacobianCalls": 5358,
+              "repeatedPointCalls": 1310,
+              "repeatedJacobianCalls": 1002,
+              "repeatedWithinSource": 1310,
+              "repeatedAcrossSources": 0,
+              "rays": 38750,
+              "repeatablePointRays": 1219,
+              "repeatableJacobianRays": 5502,
+              "uniquePositions": 4370,
+              "uniqueJacobians": 726,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            },
+            {
+              "owner": "seatHem",
+              "sources": 3,
+              "sourceVertices": 1868,
+              "selectedVertices": 1868,
+              "movedVertices": 625,
+              "shapeCalls": 5618,
+              "pointCalls": 1868,
+              "jacobianCalls": 3750,
+              "repeatedPointCalls": 140,
+              "repeatedJacobianCalls": 330,
+              "repeatedWithinSource": 140,
+              "repeatedAcrossSources": 0,
+              "rays": 11725,
+              "repeatablePointRays": 146,
+              "repeatableJacobianRays": 785,
+              "uniquePositions": 1728,
+              "uniqueJacobians": 570,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 13681,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 16,
+            "repeatedBuilds": 0
+          }
+        }
+      },
+      "warm": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "57da5535e21189d3e4c995d91ec630d6cc5a21f4b035302354f9579f0db5155a",
+        "cache": {
+          "before": {
+            "entries": 2,
+            "bytes": 1253408,
+            "hits": 0,
+            "misses": 2
+          },
+          "after": {
+            "entries": 2,
+            "bytes": 1253408,
+            "hits": 2,
+            "misses": 2
+          },
+          "hits": 2,
+          "misses": 0
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1708386,
+              "attributeCopies": 5,
+              "attributeCopyBytes": 63330,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1645056,
+              "computeBoundingBox": 2,
+              "computeBoundingBoxVertices": 4192,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 2096,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 2096
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "raycasts": 8448,
+              "shapeCalls": 42770,
+              "geometryClones": 8,
+              "geometryCloneInputBytes": 1825728,
+              "attributeCopies": 50,
+              "attributeCopyBytes": 1972860,
+              "computeBoundingBox": 5,
+              "computeBoundingBoxVertices": 9026,
+              "computeBoundingSphere": 5,
+              "computeBoundingSphereVertices": 9026
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 7,
+              "bvhBuilds": 7,
+              "bvhPackedBytes": 439968
+            },
+            "prepare:fingerprint": {
+              "calls": 2,
+              "fingerprintBytesRead": 1038848
+            },
+            "prepare:equalBytes": {
+              "calls": 27,
+              "confirmedEqualBytesRead": 1038848
+            },
+            "prepare:restoreShape": {
+              "calls": 4,
+              "geometryClones": 4,
+              "geometryCloneInputBytes": 488456,
+              "attributeCopies": 27,
+              "attributeCopyBytes": 488456
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 325386,
+              "attributeCopies": 1,
+              "attributeCopyBytes": 8370,
+              "interleavedCopies": 2,
+              "interleavedCopyBytes": 317016
+            },
+            "apply:wardrobeCoverageSurface": {
+              "calls": 1,
+              "bvhBuilds": 1,
+              "bvhPackedBytes": 12576
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 5,
+              "sourceVertices": 9026,
+              "selectedVertices": 9026,
+              "movedVertices": 5624,
+              "shapeCalls": 42770,
+              "pointCalls": 9026,
+              "jacobianCalls": 33744,
+              "repeatedPointCalls": 1443,
+              "repeatedJacobianCalls": 8550,
+              "repeatedWithinSource": 1443,
+              "repeatedAcrossSources": 0,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 7583,
+              "uniqueJacobians": 4199,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 7583,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 8,
+            "repeatedBuilds": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "portrait:gothic-skirt-05+gothic-05",
+      "inputs": {
+        "kind": "portrait",
+        "villageKind": "portrait",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-05.glb"
+        ],
+        "actor": "/models/characters/villagers/villager-female/villager-female.portrait.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb",
+        "corset": "/models/characters/female/wardrobe/corsets/gothic-high-collar.mobile.glb"
+      },
+      "cold": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "7de22a68d971de1f10b3da7e844eadf358e1fe4c9e5eb7663d04e65d1050fb95",
+        "cache": {
+          "before": {
+            "entries": 0,
+            "bytes": 0,
+            "hits": 0,
+            "misses": 0
+          },
+          "after": {
+            "entries": 1,
+            "bytes": 3781168,
+            "hits": 0,
+            "misses": 1
+          },
+          "hits": 0,
+          "misses": 1
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 15,
+              "geometryCloneInputBytes": 9097230,
+              "attributeCopies": 115,
+              "attributeCopyBytes": 7452174,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1645056,
+              "computeBoundingBox": 12,
+              "computeBoundingBoxVertices": 64486,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 2096,
+              "computeBoundingSphere": 11,
+              "computeBoundingSphereVertices": 62390
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "raycasts": 10560,
+              "shapeCalls": 37629,
+              "geometryClones": 9,
+              "geometryCloneInputBytes": 2043160,
+              "attributeCopies": 56,
+              "attributeCopyBytes": 2190292,
+              "computeBoundingBox": 5,
+              "computeBoundingBoxVertices": 9801,
+              "computeBoundingSphere": 5,
+              "computeBoundingSphereVertices": 9801
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 20,
+              "bvhBuilds": 20,
+              "bvhPackedBytes": 828672,
+              "repeatedExactBvhInputs": 1
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 3694422,
+              "attributeCopies": 55,
+              "attributeCopyBytes": 3694422
+            },
+            "prepare:fingerprint": {
+              "calls": 1,
+              "fingerprintBytesRead": 2570028
+            },
+            "prepare:profile.body": {
+              "calls": 1,
+              "raycasts": 5184
+            },
+            "prepare:extendHem": {
+              "calls": 1
+            },
+            "prepare:profile.cloth": {
+              "calls": 2,
+              "raycasts": 46656
+            },
+            "prepare:seatHem": {
+              "calls": 1,
+              "shapeCalls": 93837,
+              "raycasts": 280280,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 3694422,
+              "attributeCopies": 55,
+              "attributeCopyBytes": 3694422,
+              "computeBoundingBox": 5,
+              "computeBoundingBoxVertices": 30147,
+              "computeBoundingSphere": 5,
+              "computeBoundingSphereVertices": 30147
+            },
+            "prepare:wardrobeCoverageUnion": {
+              "calls": 1,
+              "unionInputParts": 4,
+              "unionOutputSurfaces": 1,
+              "unionBuilds": 1,
+              "unionGeometryBytes": 233412,
+              "unionPackedBytes": 105504
+            },
+            "prepare:captureShape": {
+              "calls": 5,
+              "deformationSnapshotBytes": 1205880
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 325386,
+              "attributeCopies": 1,
+              "attributeCopyBytes": 8370,
+              "interleavedCopies": 2,
+              "interleavedCopyBytes": 317016
+            },
+            "apply:wardrobeCoverageSurface": {
+              "calls": 2,
+              "bvhBuilds": 2,
+              "bvhPackedBytes": 206016
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 5,
+              "sourceVertices": 9801,
+              "selectedVertices": 9801,
+              "movedVertices": 4638,
+              "shapeCalls": 37629,
+              "pointCalls": 9801,
+              "jacobianCalls": 27828,
+              "repeatedPointCalls": 3067,
+              "repeatedJacobianCalls": 5184,
+              "repeatedWithinSource": 3043,
+              "repeatedAcrossSources": 24,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 6734,
+              "uniqueJacobians": 3774,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            },
+            {
+              "owner": "seatHem",
+              "sources": 5,
+              "sourceVertices": 30147,
+              "selectedVertices": 30147,
+              "movedVertices": 10615,
+              "shapeCalls": 93837,
+              "pointCalls": 30147,
+              "jacobianCalls": 63690,
+              "repeatedPointCalls": 13574,
+              "repeatedJacobianCalls": 30036,
+              "repeatedWithinSource": 13574,
+              "repeatedAcrossSources": 0,
+              "rays": 280280,
+              "repeatablePointRays": 27975,
+              "repeatableJacobianRays": 101889,
+              "uniquePositions": 16573,
+              "uniqueJacobians": 5609,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 23307,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 21,
+            "repeatedBuilds": 1
+          }
+        }
+      },
+      "warm": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "7de22a68d971de1f10b3da7e844eadf358e1fe4c9e5eb7663d04e65d1050fb95",
+        "cache": {
+          "before": {
+            "entries": 1,
+            "bytes": 3781168,
+            "hits": 0,
+            "misses": 1
+          },
+          "after": {
+            "entries": 1,
+            "bytes": 3781168,
+            "hits": 1,
+            "misses": 1
+          },
+          "hits": 1,
+          "misses": 0
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1708386,
+              "attributeCopies": 5,
+              "attributeCopyBytes": 63330,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1645056,
+              "computeBoundingBox": 2,
+              "computeBoundingBoxVertices": 4192,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 2096,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 2096
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "raycasts": 10560,
+              "shapeCalls": 37629,
+              "geometryClones": 9,
+              "geometryCloneInputBytes": 2043160,
+              "attributeCopies": 56,
+              "attributeCopyBytes": 2190292,
+              "computeBoundingBox": 5,
+              "computeBoundingBoxVertices": 9801,
+              "computeBoundingSphere": 5,
+              "computeBoundingSphereVertices": 9801
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 9,
+              "bvhBuilds": 9,
+              "bvhPackedBytes": 419296
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1
+            },
+            "prepare:fingerprint": {
+              "calls": 1,
+              "fingerprintBytesRead": 2570028
+            },
+            "prepare:equalBytes": {
+              "calls": 40,
+              "confirmedEqualBytesRead": 2570028
+            },
+            "prepare:restoreShape": {
+              "calls": 5,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 3694422,
+              "attributeCopies": 55,
+              "attributeCopyBytes": 3694422
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 325386,
+              "attributeCopies": 1,
+              "attributeCopyBytes": 8370,
+              "interleavedCopies": 2,
+              "interleavedCopyBytes": 317016
+            },
+            "apply:wardrobeCoverageSurface": {
+              "calls": 2,
+              "bvhBuilds": 2,
+              "bvhPackedBytes": 206016
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 5,
+              "sourceVertices": 9801,
+              "selectedVertices": 9801,
+              "movedVertices": 4638,
+              "shapeCalls": 37629,
+              "pointCalls": 9801,
+              "jacobianCalls": 27828,
+              "repeatedPointCalls": 3067,
+              "repeatedJacobianCalls": 5184,
+              "repeatedWithinSource": 3043,
+              "repeatedAcrossSources": 24,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 6734,
+              "uniqueJacobians": 3774,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 6734,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 11,
+            "repeatedBuilds": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "portrait:gothic-skirt-02+gothic-02",
+      "inputs": {
+        "kind": "portrait",
+        "villageKind": "portrait",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-02.glb"
+        ],
+        "actor": "/models/characters/villagers/villager-female/villager-female.portrait.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb",
+        "corset": "/models/characters/female/wardrobe/corsets/gothic-02.mobile.glb"
+      },
+      "cold": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "37392f63834e8961fef58121cf79576b68a2b35bd929449dea787b6eaca41424",
+        "cache": {
+          "before": {
+            "entries": 0,
+            "bytes": 0,
+            "hits": 0,
+            "misses": 0
+          },
+          "after": {
+            "entries": 1,
+            "bytes": 966814,
+            "hits": 0,
+            "misses": 1
+          },
+          "hits": 0,
+          "misses": 1
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1708386,
+              "attributeCopies": 5,
+              "attributeCopyBytes": 63330,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1645056,
+              "computeBoundingBox": 2,
+              "computeBoundingBoxVertices": 4192,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 2096,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 2096
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "raycasts": 10560,
+              "shapeCalls": 67376,
+              "geometryClones": 9,
+              "geometryCloneInputBytes": 1611392,
+              "attributeCopies": 53,
+              "attributeCopyBytes": 1758524,
+              "computeBoundingBox": 5,
+              "computeBoundingBoxVertices": 11642,
+              "computeBoundingSphere": 5,
+              "computeBoundingSphereVertices": 11642
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 23,
+              "bvhBuilds": 23,
+              "bvhPackedBytes": 976224,
+              "repeatedExactBvhInputs": 5
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1,
+              "geometryClones": 3,
+              "geometryCloneInputBytes": 478244,
+              "attributeCopies": 18,
+              "attributeCopyBytes": 478244
+            },
+            "prepare:fingerprint": {
+              "calls": 1,
+              "fingerprintBytesRead": 764988
+            },
+            "prepare:profile.body": {
+              "calls": 1,
+              "raycasts": 5184
+            },
+            "prepare:extendHem": {
+              "calls": 1
+            },
+            "prepare:profile.cloth": {
+              "calls": 2,
+              "raycasts": 41472
+            },
+            "prepare:seatHem": {
+              "calls": 1,
+              "shapeCalls": 24690,
+              "raycasts": 296830,
+              "geometryClones": 3,
+              "geometryCloneInputBytes": 478244,
+              "attributeCopies": 18,
+              "attributeCopyBytes": 478244,
+              "computeBoundingBox": 3,
+              "computeBoundingBoxVertices": 8285,
+              "computeBoundingSphere": 3,
+              "computeBoundingSphereVertices": 8285
+            },
+            "prepare:wardrobeCoverageUnion": {
+              "calls": 1,
+              "unionInputParts": 4,
+              "unionOutputSurfaces": 4
+            },
+            "prepare:captureShape": {
+              "calls": 3,
+              "deformationSnapshotBytes": 198840
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 325386,
+              "attributeCopies": 1,
+              "attributeCopyBytes": 8370,
+              "interleavedCopies": 2,
+              "interleavedCopyBytes": 317016
+            },
+            "apply:wardrobeCoverageSurface": {
+              "calls": 1,
+              "bvhBuilds": 1,
+              "bvhPackedBytes": 18144
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 5,
+              "sourceVertices": 11642,
+              "selectedVertices": 11642,
+              "movedVertices": 9289,
+              "shapeCalls": 67376,
+              "pointCalls": 11642,
+              "jacobianCalls": 55734,
+              "repeatedPointCalls": 1670,
+              "repeatedJacobianCalls": 9966,
+              "repeatedWithinSource": 1670,
+              "repeatedAcrossSources": 0,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 9972,
+              "uniqueJacobians": 7628,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            },
+            {
+              "owner": "seatHem",
+              "sources": 4,
+              "sourceVertices": 9114,
+              "selectedVertices": 9114,
+              "movedVertices": 2596,
+              "shapeCalls": 24690,
+              "pointCalls": 9114,
+              "jacobianCalls": 15576,
+              "repeatedPointCalls": 4144,
+              "repeatedJacobianCalls": 6948,
+              "repeatedWithinSource": 4144,
+              "repeatedAcrossSources": 0,
+              "rays": 296830,
+              "repeatablePointRays": 34216,
+              "repeatableJacobianRays": 99627,
+              "uniquePositions": 4970,
+              "uniqueJacobians": 1438,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 14942,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 19,
+            "repeatedBuilds": 5
+          }
+        }
+      },
+      "warm": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "37392f63834e8961fef58121cf79576b68a2b35bd929449dea787b6eaca41424",
+        "cache": {
+          "before": {
+            "entries": 1,
+            "bytes": 966814,
+            "hits": 0,
+            "misses": 1
+          },
+          "after": {
+            "entries": 1,
+            "bytes": 966814,
+            "hits": 1,
+            "misses": 1
+          },
+          "hits": 1,
+          "misses": 0
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1708386,
+              "attributeCopies": 5,
+              "attributeCopyBytes": 63330,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1645056,
+              "computeBoundingBox": 2,
+              "computeBoundingBoxVertices": 4192,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 2096,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 2096
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "raycasts": 10560,
+              "shapeCalls": 67376,
+              "geometryClones": 9,
+              "geometryCloneInputBytes": 1611392,
+              "attributeCopies": 53,
+              "attributeCopyBytes": 1758524,
+              "computeBoundingBox": 5,
+              "computeBoundingBoxVertices": 11642,
+              "computeBoundingSphere": 5,
+              "computeBoundingSphereVertices": 11642
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 9,
+              "bvhBuilds": 9,
+              "bvhPackedBytes": 496800
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1
+            },
+            "prepare:fingerprint": {
+              "calls": 1,
+              "fingerprintBytesRead": 764988
+            },
+            "prepare:equalBytes": {
+              "calls": 22,
+              "confirmedEqualBytesRead": 764988
+            },
+            "prepare:restoreShape": {
+              "calls": 3,
+              "geometryClones": 3,
+              "geometryCloneInputBytes": 478244,
+              "attributeCopies": 18,
+              "attributeCopyBytes": 478244
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 325386,
+              "attributeCopies": 1,
+              "attributeCopyBytes": 8370,
+              "interleavedCopies": 2,
+              "interleavedCopyBytes": 317016
+            },
+            "apply:wardrobeCoverageSurface": {
+              "calls": 1,
+              "bvhBuilds": 1,
+              "bvhPackedBytes": 18144
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 5,
+              "sourceVertices": 11642,
+              "selectedVertices": 11642,
+              "movedVertices": 9289,
+              "shapeCalls": 67376,
+              "pointCalls": 11642,
+              "jacobianCalls": 55734,
+              "repeatedPointCalls": 1670,
+              "repeatedJacobianCalls": 9966,
+              "repeatedWithinSource": 1670,
+              "repeatedAcrossSources": 0,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 9972,
+              "uniqueJacobians": 7628,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 9972,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 10,
+            "repeatedBuilds": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "portrait:skirt-03+gothic-05",
+      "inputs": {
+        "kind": "portrait",
+        "villageKind": "portrait",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/skirt-03.mobile.glb"
+        ],
+        "actor": "/models/characters/villagers/villager-female/villager-female.portrait.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb",
+        "corset": "/models/characters/female/wardrobe/corsets/gothic-high-collar.mobile.glb"
+      },
+      "cold": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "086a5e35244ff2f5607aa8ec21c82eae7aac1a119754d403ac0012495d19a3fa",
+        "cache": {
+          "before": {
+            "entries": 0,
+            "bytes": 0,
+            "hits": 0,
+            "misses": 0
+          },
+          "after": {
+            "entries": 1,
+            "bytes": 3889586,
+            "hits": 0,
+            "misses": 1
+          },
+          "hits": 0,
+          "misses": 1
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1708386,
+              "attributeCopies": 5,
+              "attributeCopyBytes": 63330,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1645056,
+              "computeBoundingBox": 2,
+              "computeBoundingBoxVertices": 4192,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 2096,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 2096
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "shapeCalls": 17794,
+              "geometryClones": 4,
+              "geometryCloneInputBytes": 1369036,
+              "attributeCopies": 11,
+              "attributeCopyBytes": 1001544,
+              "interleavedCopies": 6,
+              "interleavedCopyBytes": 514624,
+              "computeBoundingBox": 3,
+              "computeBoundingBoxVertices": 3784,
+              "computeBoundingSphere": 3,
+              "computeBoundingSphereVertices": 3784
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 3694422,
+              "attributeCopies": 55,
+              "attributeCopyBytes": 3694422
+            },
+            "prepare:fingerprint": {
+              "calls": 1,
+              "fingerprintBytesRead": 2678924
+            },
+            "prepare:profile.body": {
+              "calls": 1,
+              "raycasts": 5184
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 3,
+              "bvhBuilds": 3,
+              "bvhPackedBytes": 51552
+            },
+            "prepare:seatHem": {
+              "calls": 1,
+              "shapeCalls": 66105,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 3694422,
+              "attributeCopies": 55,
+              "attributeCopyBytes": 3694422,
+              "computeBoundingBox": 5,
+              "computeBoundingBoxVertices": 30147,
+              "computeBoundingSphere": 5,
+              "computeBoundingSphereVertices": 30147
+            },
+            "prepare:profile.cloth": {
+              "calls": 1,
+              "raycasts": 10368
+            },
+            "prepare:captureShape": {
+              "calls": 5,
+              "deformationSnapshotBytes": 1205880
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 325386,
+              "attributeCopies": 1,
+              "attributeCopyBytes": 8370,
+              "interleavedCopies": 2,
+              "interleavedCopyBytes": 317016
+            },
+            "apply:wardrobeCoverageSurface": {
+              "calls": 3,
+              "bvhBuilds": 3,
+              "bvhPackedBytes": 224608
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 3,
+              "sourceVertices": 3784,
+              "selectedVertices": 3784,
+              "movedVertices": 2335,
+              "shapeCalls": 17794,
+              "pointCalls": 3784,
+              "jacobianCalls": 14010,
+              "repeatedPointCalls": 142,
+              "repeatedJacobianCalls": 810,
+              "repeatedWithinSource": 142,
+              "repeatedAcrossSources": 0,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 3642,
+              "uniqueJacobians": 2200,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            },
+            {
+              "owner": "seatHem",
+              "sources": 5,
+              "sourceVertices": 30147,
+              "selectedVertices": 30147,
+              "movedVertices": 5993,
+              "shapeCalls": 66105,
+              "pointCalls": 30147,
+              "jacobianCalls": 35958,
+              "repeatedPointCalls": 13574,
+              "repeatedJacobianCalls": 16584,
+              "repeatedWithinSource": 13574,
+              "repeatedAcrossSources": 0,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 16573,
+              "uniqueJacobians": 3229,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 20215,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 6,
+            "repeatedBuilds": 0
+          }
+        }
+      },
+      "warm": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "086a5e35244ff2f5607aa8ec21c82eae7aac1a119754d403ac0012495d19a3fa",
+        "cache": {
+          "before": {
+            "entries": 1,
+            "bytes": 3889586,
+            "hits": 0,
+            "misses": 1
+          },
+          "after": {
+            "entries": 1,
+            "bytes": 3889586,
+            "hits": 1,
+            "misses": 1
+          },
+          "hits": 1,
+          "misses": 0
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1708386,
+              "attributeCopies": 5,
+              "attributeCopyBytes": 63330,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1645056,
+              "computeBoundingBox": 2,
+              "computeBoundingBoxVertices": 4192,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 2096,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 2096
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "shapeCalls": 17794,
+              "geometryClones": 4,
+              "geometryCloneInputBytes": 1369036,
+              "attributeCopies": 11,
+              "attributeCopyBytes": 1001544,
+              "interleavedCopies": 6,
+              "interleavedCopyBytes": 514624,
+              "computeBoundingBox": 3,
+              "computeBoundingBoxVertices": 3784,
+              "computeBoundingSphere": 3,
+              "computeBoundingSphereVertices": 3784
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1
+            },
+            "prepare:fingerprint": {
+              "calls": 1,
+              "fingerprintBytesRead": 2678924
+            },
+            "prepare:equalBytes": {
+              "calls": 36,
+              "confirmedEqualBytesRead": 2678924
+            },
+            "prepare:restoreShape": {
+              "calls": 5,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 3694422,
+              "attributeCopies": 55,
+              "attributeCopyBytes": 3694422
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 325386,
+              "attributeCopies": 1,
+              "attributeCopyBytes": 8370,
+              "interleavedCopies": 2,
+              "interleavedCopyBytes": 317016
+            },
+            "apply:wardrobeCoverageSurface": {
+              "calls": 3,
+              "bvhBuilds": 3,
+              "bvhPackedBytes": 224608
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 3,
+              "sourceVertices": 3784,
+              "selectedVertices": 3784,
+              "movedVertices": 2335,
+              "shapeCalls": 17794,
+              "pointCalls": 3784,
+              "jacobianCalls": 14010,
+              "repeatedPointCalls": 142,
+              "repeatedJacobianCalls": 810,
+              "repeatedWithinSource": 142,
+              "repeatedAcrossSources": 0,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 3642,
+              "uniqueJacobians": 2200,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 3642,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 3,
+            "repeatedBuilds": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "portrait:gothic-01",
+      "inputs": {
+        "kind": "portrait",
+        "villageKind": "portrait",
+        "garments": [],
+        "actor": "/models/characters/wardrobe/gothic-01.mobile.glb"
+      },
+      "cold": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "99e2a4bc181bb8f696001c362f8719f6a352c426211ab826ca5384b80e8cbb90",
+        "cache": {
+          "before": {
+            "entries": 0,
+            "bytes": 0,
+            "hits": 0,
+            "misses": 0
+          },
+          "after": {
+            "entries": 2,
+            "bytes": 1454256,
+            "hits": 0,
+            "misses": 2
+          },
+          "hits": 0,
+          "misses": 2
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "raycasts": 35254,
+              "computeBoundingBox": 13,
+              "computeBoundingBoxVertices": 27841,
+              "computeBoundingSphere": 12,
+              "computeBoundingSphereVertices": 26560,
+              "geometryClones": 17,
+              "geometryCloneInputBytes": 3097779,
+              "attributeCopies": 110,
+              "attributeCopyBytes": 3727639,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 1281,
+              "shapeCalls": 31123
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 23,
+              "bvhBuilds": 23,
+              "bvhPackedBytes": 751712,
+              "repeatedExactBvhInputs": 1
+            },
+            "prepare:fingerprint": {
+              "calls": 2,
+              "fingerprintBytesRead": 1132236
+            },
+            "prepare:captureShape": {
+              "calls": 5,
+              "deformationSnapshotBytes": 318216
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1,
+              "geometryClones": 4,
+              "geometryCloneInputBytes": 309022,
+              "attributeCopies": 25,
+              "attributeCopyBytes": 309022
+            },
+            "prepare:profile.body": {
+              "calls": 1,
+              "raycasts": 5184
+            },
+            "prepare:extendHem": {
+              "calls": 1
+            },
+            "prepare:profile.cloth": {
+              "calls": 2,
+              "raycasts": 41472
+            },
+            "prepare:seatHem": {
+              "calls": 1,
+              "shapeCalls": 16857,
+              "raycasts": 51177,
+              "geometryClones": 4,
+              "geometryCloneInputBytes": 309022,
+              "attributeCopies": 25,
+              "attributeCopyBytes": 309022,
+              "computeBoundingBox": 4,
+              "computeBoundingBoxVertices": 5217,
+              "computeBoundingSphere": 4,
+              "computeBoundingSphereVertices": 5217
+            },
+            "prepare:wardrobeCoverageUnion": {
+              "calls": 1,
+              "unionInputParts": 4,
+              "unionOutputSurfaces": 1,
+              "unionBuilds": 1,
+              "unionGeometryBytes": 238908,
+              "unionPackedBytes": 106208
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 2,
+              "geometryCloneInputBytes": 163048,
+              "attributeCopies": 12,
+              "attributeCopyBytes": 163048,
+              "computeBoundingBox": 1,
+              "computeBoundingBoxVertices": 1487,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 1487
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareVillager",
+              "sources": 4,
+              "sourceVertices": 9410,
+              "selectedVertices": 9410,
+              "movedVertices": 2847,
+              "shapeCalls": 26492,
+              "pointCalls": 9410,
+              "jacobianCalls": 17082,
+              "repeatedPointCalls": 4492,
+              "repeatedJacobianCalls": 3306,
+              "repeatedWithinSource": 4492,
+              "repeatedAcrossSources": 0,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 4918,
+              "uniqueJacobians": 2296,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            },
+            {
+              "owner": "prepareVillager",
+              "sources": 1,
+              "sourceVertices": 8042,
+              "selectedVertices": 1817,
+              "movedVertices": 469,
+              "shapeCalls": 4631,
+              "pointCalls": 1817,
+              "jacobianCalls": 2814,
+              "repeatedPointCalls": 51,
+              "repeatedJacobianCalls": 210,
+              "repeatedWithinSource": 51,
+              "repeatedAcrossSources": 0,
+              "rays": 20823,
+              "repeatablePointRays": 239,
+              "repeatableJacobianRays": 1250,
+              "uniquePositions": 1766,
+              "uniqueJacobians": 434,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            },
+            {
+              "owner": "seatHem",
+              "sources": 4,
+              "sourceVertices": 5217,
+              "selectedVertices": 5217,
+              "movedVertices": 1940,
+              "shapeCalls": 16857,
+              "pointCalls": 5217,
+              "jacobianCalls": 11640,
+              "repeatedPointCalls": 1102,
+              "repeatedJacobianCalls": 2034,
+              "repeatedWithinSource": 1077,
+              "repeatedAcrossSources": 25,
+              "rays": 51177,
+              "repeatablePointRays": 1502,
+              "repeatableJacobianRays": 8514,
+              "uniquePositions": 4115,
+              "uniqueJacobians": 1601,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 10799,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 22,
+            "repeatedBuilds": 1
+          }
+        }
+      },
+      "warm": {
+        "acceptedGeometryMatch": true,
+        "geometrySha256": "99e2a4bc181bb8f696001c362f8719f6a352c426211ab826ca5384b80e8cbb90",
+        "cache": {
+          "before": {
+            "entries": 2,
+            "bytes": 1454256,
+            "hits": 0,
+            "misses": 2
+          },
+          "after": {
+            "entries": 2,
+            "bytes": 1454256,
+            "hits": 2,
+            "misses": 2
+          },
+          "hits": 2,
+          "misses": 0
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "raycasts": 14431,
+              "computeBoundingBox": 12,
+              "computeBoundingBoxVertices": 19799,
+              "computeBoundingSphere": 11,
+              "computeBoundingSphereVertices": 18518,
+              "geometryClones": 16,
+              "geometryCloneInputBytes": 2623819,
+              "attributeCopies": 104,
+              "attributeCopyBytes": 3253679,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 1281,
+              "shapeCalls": 26492
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 13,
+              "bvhBuilds": 13,
+              "bvhPackedBytes": 655264,
+              "repeatedExactBvhInputs": 1
+            },
+            "prepare:fingerprint": {
+              "calls": 2,
+              "fingerprintBytesRead": 1132236
+            },
+            "prepare:equalBytes": {
+              "calls": 27,
+              "confirmedEqualBytesRead": 1132236
+            },
+            "prepare:restoreShape": {
+              "calls": 5,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 782982,
+              "attributeCopies": 31,
+              "attributeCopyBytes": 782982
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 81524,
+              "attributeCopies": 6,
+              "attributeCopyBytes": 81524
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareVillager",
+              "sources": 4,
+              "sourceVertices": 9410,
+              "selectedVertices": 9410,
+              "movedVertices": 2847,
+              "shapeCalls": 26492,
+              "pointCalls": 9410,
+              "jacobianCalls": 17082,
+              "repeatedPointCalls": 4492,
+              "repeatedJacobianCalls": 3306,
+              "repeatedWithinSource": 4492,
+              "repeatedAcrossSources": 0,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 4918,
+              "uniqueJacobians": 2296,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 4918,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 12,
+            "repeatedBuilds": 1
+          }
+        }
+      }
+    }
+  ],
+  "cachePressure": [
+    {
+      "cycle": 1,
+      "id": "garage:gothic-skirt-01",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "eade684a3e1b1ec411d21ecbb2b1dd5f8de4fcbbfabddf0891339d1c3b18b790",
+      "cache": {
+        "before": {
+          "entries": 0,
+          "bytes": 0,
+          "hits": 0,
+          "misses": 0
+        },
+        "after": {
+          "entries": 1,
+          "bytes": 689434,
+          "hits": 0,
+          "misses": 1
+        },
+        "hits": 0,
+        "misses": 1
+      }
+    },
+    {
+      "cycle": 1,
+      "id": "garage:gothic-skirt-03+gothic-03",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "ba45db27abd22f41a9d251501825d680a8e7a78bbe0f7a7142a08db229cff4c8",
+      "cache": {
+        "before": {
+          "entries": 1,
+          "bytes": 689434,
+          "hits": 0,
+          "misses": 1
+        },
+        "after": {
+          "entries": 3,
+          "bytes": 2130916,
+          "hits": 0,
+          "misses": 3
+        },
+        "hits": 0,
+        "misses": 2
+      }
+    },
+    {
+      "cycle": 1,
+      "id": "garage:gothic-skirt-05+gothic-05",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "15975a829eca52df5985f3711092e4bf665e9e52fc945d72a15078ad0f9dc714",
+      "cache": {
+        "before": {
+          "entries": 3,
+          "bytes": 2130916,
+          "hits": 0,
+          "misses": 3
+        },
+        "after": {
+          "entries": 4,
+          "bytes": 7652954,
+          "hits": 0,
+          "misses": 4
+        },
+        "hits": 0,
+        "misses": 1
+      }
+    },
+    {
+      "cycle": 1,
+      "id": "garage:gothic-skirt-02+gothic-02",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "3c1dd4715069a1738facd9194a71dfd058aa34f977fbe74e95867c6fa638b8a6",
+      "cache": {
+        "before": {
+          "entries": 4,
+          "bytes": 7652954,
+          "hits": 0,
+          "misses": 4
+        },
+        "after": {
+          "entries": 5,
+          "bytes": 8941072,
+          "hits": 0,
+          "misses": 5
+        },
+        "hits": 0,
+        "misses": 1
+      }
+    },
+    {
+      "cycle": 1,
+      "id": "garage:skirt-03+gothic-05",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "92be1a9b07a0b5f3099f615711cc9c173011228425d7bbf704f4bed80780f49f",
+      "cache": {
+        "before": {
+          "entries": 5,
+          "bytes": 8941072,
+          "hits": 0,
+          "misses": 5
+        },
+        "after": {
+          "entries": 6,
+          "bytes": 14834742,
+          "hits": 0,
+          "misses": 6
+        },
+        "hits": 0,
+        "misses": 1
+      }
+    },
+    {
+      "cycle": 1,
+      "id": "garage:gothic-01",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "1312411b5363e2c9d13b752e1880973c8ce3e8a12ac78ccd8688de66f7f179b9",
+      "cache": {
+        "before": {
+          "entries": 6,
+          "bytes": 14834742,
+          "hits": 0,
+          "misses": 6
+        },
+        "after": {
+          "entries": 7,
+          "bytes": 16269056,
+          "hits": 0,
+          "misses": 8
+        },
+        "hits": 0,
+        "misses": 2
+      }
+    },
+    {
+      "cycle": 1,
+      "id": "portrait:gothic-skirt-01",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "98a6899c5ae1f14a33e58c6de111442f3479d172056123bbd0ba42317bff2648",
+      "cache": {
+        "before": {
+          "entries": 7,
+          "bytes": 16269056,
+          "hits": 0,
+          "misses": 8
+        },
+        "after": {
+          "entries": 7,
+          "bytes": 16318866,
+          "hits": 0,
+          "misses": 9
+        },
+        "hits": 0,
+        "misses": 1
+      }
+    },
+    {
+      "cycle": 1,
+      "id": "portrait:gothic-skirt-03+gothic-03",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "57da5535e21189d3e4c995d91ec630d6cc5a21f4b035302354f9579f0db5155a",
+      "cache": {
+        "before": {
+          "entries": 7,
+          "bytes": 16318866,
+          "hits": 0,
+          "misses": 9
+        },
+        "after": {
+          "entries": 8,
+          "bytes": 16770416,
+          "hits": 0,
+          "misses": 11
+        },
+        "hits": 0,
+        "misses": 2
+      }
+    },
+    {
+      "cycle": 1,
+      "id": "portrait:gothic-skirt-05+gothic-05",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "7de22a68d971de1f10b3da7e844eadf358e1fe4c9e5eb7663d04e65d1050fb95",
+      "cache": {
+        "before": {
+          "entries": 8,
+          "bytes": 16770416,
+          "hits": 0,
+          "misses": 11
+        },
+        "after": {
+          "entries": 8,
+          "bytes": 15029546,
+          "hits": 0,
+          "misses": 12
+        },
+        "hits": 0,
+        "misses": 1
+      }
+    },
+    {
+      "cycle": 1,
+      "id": "portrait:gothic-skirt-02+gothic-02",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "37392f63834e8961fef58121cf79576b68a2b35bd929449dea787b6eaca41424",
+      "cache": {
+        "before": {
+          "entries": 8,
+          "bytes": 15029546,
+          "hits": 0,
+          "misses": 12
+        },
+        "after": {
+          "entries": 9,
+          "bytes": 15996360,
+          "hits": 0,
+          "misses": 13
+        },
+        "hits": 0,
+        "misses": 1
+      }
+    },
+    {
+      "cycle": 1,
+      "id": "portrait:skirt-03+gothic-05",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "086a5e35244ff2f5607aa8ec21c82eae7aac1a119754d403ac0012495d19a3fa",
+      "cache": {
+        "before": {
+          "entries": 9,
+          "bytes": 15996360,
+          "hits": 0,
+          "misses": 13
+        },
+        "after": {
+          "entries": 8,
+          "bytes": 12704158,
+          "hits": 0,
+          "misses": 14
+        },
+        "hits": 0,
+        "misses": 1
+      }
+    },
+    {
+      "cycle": 1,
+      "id": "portrait:gothic-01",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "99e2a4bc181bb8f696001c362f8719f6a352c426211ab826ca5384b80e8cbb90",
+      "cache": {
+        "before": {
+          "entries": 8,
+          "bytes": 12704158,
+          "hits": 0,
+          "misses": 14
+        },
+        "after": {
+          "entries": 10,
+          "bytes": 14158414,
+          "hits": 0,
+          "misses": 16
+        },
+        "hits": 0,
+        "misses": 2
+      }
+    },
+    {
+      "cycle": 2,
+      "id": "garage:gothic-skirt-01",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "eade684a3e1b1ec411d21ecbb2b1dd5f8de4fcbbfabddf0891339d1c3b18b790",
+      "cache": {
+        "before": {
+          "entries": 10,
+          "bytes": 14158414,
+          "hits": 0,
+          "misses": 16
+        },
+        "after": {
+          "entries": 10,
+          "bytes": 14158414,
+          "hits": 1,
+          "misses": 16
+        },
+        "hits": 1,
+        "misses": 0
+      }
+    },
+    {
+      "cycle": 2,
+      "id": "garage:gothic-skirt-03+gothic-03",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "ba45db27abd22f41a9d251501825d680a8e7a78bbe0f7a7142a08db229cff4c8",
+      "cache": {
+        "before": {
+          "entries": 10,
+          "bytes": 14158414,
+          "hits": 1,
+          "misses": 16
+        },
+        "after": {
+          "entries": 11,
+          "bytes": 14960272,
+          "hits": 2,
+          "misses": 17
+        },
+        "hits": 1,
+        "misses": 1
+      }
+    },
+    {
+      "cycle": 2,
+      "id": "garage:gothic-skirt-05+gothic-05",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "15975a829eca52df5985f3711092e4bf665e9e52fc945d72a15078ad0f9dc714",
+      "cache": {
+        "before": {
+          "entries": 11,
+          "bytes": 14960272,
+          "hits": 2,
+          "misses": 17
+        },
+        "after": {
+          "entries": 8,
+          "bytes": 13963610,
+          "hits": 2,
+          "misses": 18
+        },
+        "hits": 0,
+        "misses": 1
+      }
+    },
+    {
+      "cycle": 2,
+      "id": "garage:gothic-skirt-02+gothic-02",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "3c1dd4715069a1738facd9194a71dfd058aa34f977fbe74e95867c6fa638b8a6",
+      "cache": {
+        "before": {
+          "entries": 8,
+          "bytes": 13963610,
+          "hits": 2,
+          "misses": 18
+        },
+        "after": {
+          "entries": 9,
+          "bytes": 15251728,
+          "hits": 2,
+          "misses": 19
+        },
+        "hits": 0,
+        "misses": 1
+      }
+    },
+    {
+      "cycle": 2,
+      "id": "garage:skirt-03+gothic-05",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "92be1a9b07a0b5f3099f615711cc9c173011228425d7bbf704f4bed80780f49f",
+      "cache": {
+        "before": {
+          "entries": 9,
+          "bytes": 15251728,
+          "hits": 2,
+          "misses": 19
+        },
+        "after": {
+          "entries": 8,
+          "bytes": 16288998,
+          "hits": 2,
+          "misses": 20
+        },
+        "hits": 0,
+        "misses": 1
+      }
+    },
+    {
+      "cycle": 2,
+      "id": "garage:gothic-01",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "1312411b5363e2c9d13b752e1880973c8ce3e8a12ac78ccd8688de66f7f179b9",
+      "cache": {
+        "before": {
+          "entries": 8,
+          "bytes": 16288998,
+          "hits": 2,
+          "misses": 20
+        },
+        "after": {
+          "entries": 7,
+          "bytes": 16269056,
+          "hits": 2,
+          "misses": 22
+        },
+        "hits": 0,
+        "misses": 2
+      }
+    },
+    {
+      "cycle": 2,
+      "id": "portrait:gothic-skirt-01",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "98a6899c5ae1f14a33e58c6de111442f3479d172056123bbd0ba42317bff2648",
+      "cache": {
+        "before": {
+          "entries": 7,
+          "bytes": 16269056,
+          "hits": 2,
+          "misses": 22
+        },
+        "after": {
+          "entries": 7,
+          "bytes": 16318866,
+          "hits": 2,
+          "misses": 23
+        },
+        "hits": 0,
+        "misses": 1
+      }
+    },
+    {
+      "cycle": 2,
+      "id": "portrait:gothic-skirt-03+gothic-03",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "57da5535e21189d3e4c995d91ec630d6cc5a21f4b035302354f9579f0db5155a",
+      "cache": {
+        "before": {
+          "entries": 7,
+          "bytes": 16318866,
+          "hits": 2,
+          "misses": 23
+        },
+        "after": {
+          "entries": 8,
+          "bytes": 16770416,
+          "hits": 2,
+          "misses": 25
+        },
+        "hits": 0,
+        "misses": 2
+      }
+    },
+    {
+      "cycle": 2,
+      "id": "portrait:gothic-skirt-05+gothic-05",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "7de22a68d971de1f10b3da7e844eadf358e1fe4c9e5eb7663d04e65d1050fb95",
+      "cache": {
+        "before": {
+          "entries": 8,
+          "bytes": 16770416,
+          "hits": 2,
+          "misses": 25
+        },
+        "after": {
+          "entries": 8,
+          "bytes": 15029546,
+          "hits": 2,
+          "misses": 26
+        },
+        "hits": 0,
+        "misses": 1
+      }
+    },
+    {
+      "cycle": 2,
+      "id": "portrait:gothic-skirt-02+gothic-02",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "37392f63834e8961fef58121cf79576b68a2b35bd929449dea787b6eaca41424",
+      "cache": {
+        "before": {
+          "entries": 8,
+          "bytes": 15029546,
+          "hits": 2,
+          "misses": 26
+        },
+        "after": {
+          "entries": 9,
+          "bytes": 15996360,
+          "hits": 2,
+          "misses": 27
+        },
+        "hits": 0,
+        "misses": 1
+      }
+    },
+    {
+      "cycle": 2,
+      "id": "portrait:skirt-03+gothic-05",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "086a5e35244ff2f5607aa8ec21c82eae7aac1a119754d403ac0012495d19a3fa",
+      "cache": {
+        "before": {
+          "entries": 9,
+          "bytes": 15996360,
+          "hits": 2,
+          "misses": 27
+        },
+        "after": {
+          "entries": 8,
+          "bytes": 12704158,
+          "hits": 2,
+          "misses": 28
+        },
+        "hits": 0,
+        "misses": 1
+      }
+    },
+    {
+      "cycle": 2,
+      "id": "portrait:gothic-01",
+      "acceptedGeometryMatch": true,
+      "geometrySha256": "99e2a4bc181bb8f696001c362f8719f6a352c426211ab826ca5384b80e8cbb90",
+      "cache": {
+        "before": {
+          "entries": 8,
+          "bytes": 12704158,
+          "hits": 2,
+          "misses": 28
+        },
+        "after": {
+          "entries": 10,
+          "bytes": 14158414,
+          "hits": 2,
+          "misses": 30
+        },
+        "hits": 0,
+        "misses": 2
+      }
+    }
+  ],
+  "defaultDesktop": [
+    {
+      "id": "default-desktop:gothic-skirt-05+gothic-05",
+      "inputs": {
+        "kind": "garage",
+        "villageKind": "portrait",
+        "preferredUrl": "/models/characters/villagers/villager-female/villager-female.portrait.glb",
+        "actor": "/models/characters/villagers/villager-female/villager-female.portrait.glb",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-05.glb"
+        ],
+        "corset": "/models/characters/female/wardrobe/corsets/gothic-high-collar.garage.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb",
+        "resolvedAssetUrls": [
+          "/models/characters/villagers/villager-female/villager-female.portrait.glb",
+          "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-05.glb",
+          "/models/characters/female/wardrobe/corsets/gothic-high-collar.garage.glb",
+          "/models/characters/female/wardrobe/vesper-body.glb"
+        ]
+      },
+      "oracle": {
+        "kind": "Current runtime, separate Vite module context with no diagnostic transforms or prototype hooks",
+        "head": "25988e120d8d8b3a84872aa34d51335b4fef073a",
+        "sha256": "1d50f9370b91b7592c68a50345c142608818fee8a75e74467ba1228f2160e011",
+        "inputs": {
+          "kind": "garage",
+          "villageKind": "portrait",
+          "preferredUrl": "/models/characters/villagers/villager-female/villager-female.portrait.glb",
+          "actor": "/models/characters/villagers/villager-female/villager-female.portrait.glb",
+          "garments": [
+            "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-05.glb"
+          ],
+          "corset": "/models/characters/female/wardrobe/corsets/gothic-high-collar.garage.glb",
+          "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb",
+          "resolvedAssetUrls": [
+            "/models/characters/villagers/villager-female/villager-female.portrait.glb",
+            "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-05.glb",
+            "/models/characters/female/wardrobe/corsets/gothic-high-collar.garage.glb",
+            "/models/characters/female/wardrobe/vesper-body.glb"
+          ]
+        },
+        "acceptance": "Current-code instrumentation oracle only; not added to the accepted 0e81afe fixture set or a visual approval."
+      },
+      "cold": {
+        "currentRuntimeOracleMatch": true,
+        "geometrySha256": "1d50f9370b91b7592c68a50345c142608818fee8a75e74467ba1228f2160e011",
+        "cache": {
+          "before": {
+            "entries": 0,
+            "bytes": 0,
+            "hits": 0,
+            "misses": 0
+          },
+          "after": {
+            "entries": 1,
+            "bytes": 5522038,
+            "hits": 0,
+            "misses": 1
+          },
+          "hits": 0,
+          "misses": 1
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1708386,
+              "attributeCopies": 5,
+              "attributeCopyBytes": 63330,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1645056,
+              "computeBoundingBox": 2,
+              "computeBoundingBoxVertices": 4192,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 2096,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 2096
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "raycasts": 10560,
+              "shapeCalls": 37629,
+              "geometryClones": 9,
+              "geometryCloneInputBytes": 2043160,
+              "attributeCopies": 56,
+              "attributeCopyBytes": 2190292,
+              "computeBoundingBox": 5,
+              "computeBoundingBoxVertices": 9801,
+              "computeBoundingSphere": 5,
+              "computeBoundingSphereVertices": 9801
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 20,
+              "bvhBuilds": 20,
+              "bvhPackedBytes": 953856,
+              "repeatedExactBvhInputs": 1
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 5620198,
+              "attributeCopies": 55,
+              "attributeCopyBytes": 5620198
+            },
+            "prepare:fingerprint": {
+              "calls": 1,
+              "fingerprintBytesRead": 3694484
+            },
+            "prepare:profile.body": {
+              "calls": 1,
+              "raycasts": 5184
+            },
+            "prepare:extendHem": {
+              "calls": 1
+            },
+            "prepare:profile.cloth": {
+              "calls": 2,
+              "raycasts": 46656
+            },
+            "prepare:seatHem": {
+              "calls": 1,
+              "shapeCalls": 138857,
+              "raycasts": 443309,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 5620198,
+              "attributeCopies": 55,
+              "attributeCopyBytes": 5620198,
+              "computeBoundingBox": 5,
+              "computeBoundingBoxVertices": 45557,
+              "computeBoundingSphere": 5,
+              "computeBoundingSphereVertices": 45557
+            },
+            "prepare:wardrobeCoverageUnion": {
+              "calls": 1,
+              "unionInputParts": 4,
+              "unionOutputSurfaces": 1,
+              "unionBuilds": 1,
+              "unionGeometryBytes": 233412,
+              "unionPackedBytes": 105504
+            },
+            "prepare:captureShape": {
+              "calls": 5,
+              "deformationSnapshotBytes": 1822280
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 325386,
+              "attributeCopies": 1,
+              "attributeCopyBytes": 8370,
+              "interleavedCopies": 2,
+              "interleavedCopyBytes": 317016
+            },
+            "apply:wardrobeCoverageSurface": {
+              "calls": 2,
+              "bvhBuilds": 2,
+              "bvhPackedBytes": 319040
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 5,
+              "sourceVertices": 9801,
+              "selectedVertices": 9801,
+              "movedVertices": 4638,
+              "shapeCalls": 37629,
+              "pointCalls": 9801,
+              "jacobianCalls": 27828,
+              "repeatedPointCalls": 3067,
+              "repeatedJacobianCalls": 5184,
+              "repeatedWithinSource": 3043,
+              "repeatedAcrossSources": 24,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 6734,
+              "uniqueJacobians": 3774,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            },
+            {
+              "owner": "seatHem",
+              "sources": 5,
+              "sourceVertices": 45557,
+              "selectedVertices": 45557,
+              "movedVertices": 15550,
+              "shapeCalls": 138857,
+              "pointCalls": 45557,
+              "jacobianCalls": 93300,
+              "repeatedPointCalls": 16524,
+              "repeatedJacobianCalls": 37452,
+              "repeatedWithinSource": 16524,
+              "repeatedAcrossSources": 0,
+              "rays": 443309,
+              "repeatablePointRays": 37858,
+              "repeatableJacobianRays": 133434,
+              "uniquePositions": 29033,
+              "uniqueJacobians": 9308,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 35767,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 21,
+            "repeatedBuilds": 1
+          }
+        }
+      },
+      "warm": {
+        "currentRuntimeOracleMatch": true,
+        "geometrySha256": "1d50f9370b91b7592c68a50345c142608818fee8a75e74467ba1228f2160e011",
+        "cache": {
+          "before": {
+            "entries": 1,
+            "bytes": 5522038,
+            "hits": 0,
+            "misses": 1
+          },
+          "after": {
+            "entries": 1,
+            "bytes": 5522038,
+            "hits": 1,
+            "misses": 1
+          },
+          "hits": 1,
+          "misses": 0
+        },
+        "work": {
+          "stages": {
+            "prepare:prepareVillager": {
+              "calls": 1,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 1708386,
+              "attributeCopies": 5,
+              "attributeCopyBytes": 63330,
+              "interleavedCopies": 10,
+              "interleavedCopyBytes": 1645056,
+              "computeBoundingBox": 2,
+              "computeBoundingBoxVertices": 4192,
+              "computeVertexNormals": 1,
+              "computeVertexNormalsVertices": 2096,
+              "computeBoundingSphere": 1,
+              "computeBoundingSphereVertices": 2096
+            },
+            "prepare:prepareWardrobeGarments": {
+              "calls": 1,
+              "raycasts": 10560,
+              "shapeCalls": 37629,
+              "geometryClones": 9,
+              "geometryCloneInputBytes": 2043160,
+              "attributeCopies": 56,
+              "attributeCopyBytes": 2190292,
+              "computeBoundingBox": 5,
+              "computeBoundingBoxVertices": 9801,
+              "computeBoundingSphere": 5,
+              "computeBoundingSphereVertices": 9801
+            },
+            "prepare:wardrobeCoverageSurface": {
+              "calls": 9,
+              "bvhBuilds": 9,
+              "bvhPackedBytes": 419296
+            },
+            "prepare:prepareSkirtCorsetFit": {
+              "calls": 1
+            },
+            "prepare:fingerprint": {
+              "calls": 1,
+              "fingerprintBytesRead": 3694484
+            },
+            "prepare:equalBytes": {
+              "calls": 40,
+              "confirmedEqualBytesRead": 3694484
+            },
+            "prepare:restoreShape": {
+              "calls": 5,
+              "geometryClones": 5,
+              "geometryCloneInputBytes": 5620198,
+              "attributeCopies": 55,
+              "attributeCopyBytes": 5620198
+            },
+            "apply:applyVillagerLook": {
+              "calls": 1,
+              "geometryClones": 1,
+              "geometryCloneInputBytes": 325386,
+              "attributeCopies": 1,
+              "attributeCopyBytes": 8370,
+              "interleavedCopies": 2,
+              "interleavedCopyBytes": 317016
+            },
+            "apply:wardrobeCoverageSurface": {
+              "calls": 2,
+              "bvhBuilds": 2,
+              "bvhPackedBytes": 319040
+            }
+          },
+          "warps": [
+            {
+              "owner": "prepareWardrobeGarments",
+              "sources": 5,
+              "sourceVertices": 9801,
+              "selectedVertices": 9801,
+              "movedVertices": 4638,
+              "shapeCalls": 37629,
+              "pointCalls": 9801,
+              "jacobianCalls": 27828,
+              "repeatedPointCalls": 3067,
+              "repeatedJacobianCalls": 5184,
+              "repeatedWithinSource": 3043,
+              "repeatedAcrossSources": 24,
+              "rays": 0,
+              "repeatablePointRays": 0,
+              "repeatableJacobianRays": 0,
+              "uniquePositions": 6734,
+              "uniqueJacobians": 3774,
+              "unsupportedPositionSources": 0,
+              "excludedPositionCalls": 0,
+              "nonFinitePositionCalls": 0,
+              "trackingLimitReached": false
+            }
+          ],
+          "exactPositionTracking": {
+            "stored": 6734,
+            "perWarpLimit": 50000,
+            "totalLimit": 200000,
+            "complete": true
+          },
+          "coverageInputReuse": {
+            "unique": 11,
+            "repeatedBuilds": 0
+          }
+        }
+      }
+    }
+  ]
+}

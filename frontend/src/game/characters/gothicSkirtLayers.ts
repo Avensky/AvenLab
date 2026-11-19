@@ -2,10 +2,12 @@ import { DoubleSide, MathUtils, Ray, type BufferGeometry, type SkinnedMesh } fro
 import type { MeshBVH } from "three-mesh-bvh";
 import { wardrobeCoverageSurface } from "./wardrobeCoverage";
 import { warpWardrobeGeometry } from "./warpWardrobeGeometry";
+import { wardrobeFitCache } from "./wardrobeFitCache";
 
 type CoveredSkirtLayerOptions = {
   lower: readonly [number, number]; upper: readonly [number, number];
   clearance?: number; maxInset?: number; skinClearance?: number;
+  selected?: ArrayLike<number>;
 };
 
 /** Seat a covered inner panel without moving its outer shell or exposed edges. */
@@ -47,18 +49,21 @@ export function seatCoveredSkirtLayer(source: BufferGeometry, shell: BufferGeome
       if (!inset) return point;
       const scale = 1 - inset / radius;
       return point.set(x * scale, y, .025 + depth * scale);
-    })(source);
+    }, options.selected)(source);
   } finally { outer.geometry.dispose(); }
 }
+
+const ruffledLayerFit = {};
 
 /** Keep the Ruffled skirt's covered inner waist behind its white outer panel. */
 export function seatRuffledSkirtLining(meshes: readonly SkinnedMesh[], body: MeshBVH) {
   const part = (name: string) => meshes.find(mesh => !Array.isArray(mesh.material) && mesh.material.name === name);
   const lining = part("MAT_GOTHIC_03_Trim_1"), shell = part("MAT_GOTHIC_03_Fabric_2");
   if (!lining || !shell) return;
-  const fitted = seatCoveredSkirtLayer(lining.geometry, shell.geometry, body, {
-    lower: [.78, .82], upper: [1.06, 1.08], clearance: .007, maxInset: .040, skinClearance: .006,
-  });
+  const [fitted] = wardrobeFitCache.fit(ruffledLayerFit, "", [lining.geometry], [shell.geometry, body.geometry], () =>
+    [seatCoveredSkirtLayer(lining.geometry, shell.geometry, body, {
+      lower: [.78, .82], upper: [1.06, 1.08], clearance: .007, maxInset: .040, skinClearance: .006,
+    })]);
   if (fitted) lining.geometry = fitted;
   return fitted;
 }

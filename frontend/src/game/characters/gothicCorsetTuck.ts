@@ -1,7 +1,11 @@
 import { DoubleSide, MathUtils, Ray, SkinnedMesh, type BufferGeometry, type Object3D } from "three";
 import { angularStep, centerZ, columns, createGarmentProfiler, type GarmentProfiler, meridian, profile, sample, step, top } from "./skirtWaistProfile";
 import { wardrobeCoverageSurface } from "./wardrobeCoverage";
+import { wardrobeCoverageUnion } from "./wardrobeCoverageUnion";
 import { warpWardrobeGeometry } from "./warpWardrobeGeometry";
+import { wardrobeFitCache } from "./wardrobeFitCache";
+
+const corsetTuckFit = {};
 
 function tuckedParts(root: Object3D) {
   const parts: SkinnedMesh[] = [];
@@ -61,7 +65,7 @@ function extendHem(parts: readonly SkinnedMesh[], skirts: readonly SkinnedMesh[]
 function seatHem(parts: readonly SkinnedMesh[], skirts: readonly SkinnedMesh[], skin: Float32Array, measure: GarmentProfiler, followFolds: boolean, body: BufferGeometry) {
   const skirt = measure(skirts);
   if (!skirt.found) return;
-  const surfaces = followFolds ? skirts.flatMap(mesh => wardrobeCoverageSurface(mesh.geometry) ?? []) : [];
+  const surfaces = followFolds ? wardrobeCoverageUnion(skirts.map(mesh => mesh.geometry)) : [];
   const highestRim = Math.max(...skirt.upper);
   // High-waist styles reach the cups. Their smooth seam transition can extend
   // above the ordinary profile; retain the real skin floor across that boundary.
@@ -130,7 +134,7 @@ function seatHem(parts: readonly SkinnedMesh[], skirts: readonly SkinnedMesh[], 
       const compression = excess - relief * (1 - Math.exp(-excess / relief));
       const scale = 1 - blend * compression / radius;
       return point.set(x * scale, y, centerZ + depth * scale);
-    }));
+    }, undefined, { reuseExactPositions: followFolds }));
   } finally {
     for (const surface of surfaces) surface.geometry.dispose();
     upperBody?.geometry.dispose();
@@ -143,16 +147,26 @@ export function prepareSkirtCorsetFit(
   if (!fabric.length) return;
   const parts = tuckedParts(root);
   if (!parts.length) return;
-  const measure = createGarmentProfiler();
-  const skin = profile([body], true).radius;
-  const restoreHem = extend ? extendHem(parts, fabric, skin, measure) : undefined;
-  // Fit the tucked corset to the existing waistband. Expanding the skirt here
-  // makes its belt bulge and stretches the fabric whenever a corset is selected.
-  const restoreTuck = seatHem(parts, fabric, skin, measure, extend, body);
+  const sources = parts.map(part => part.geometry);
+  const fitted = wardrobeFitCache.fit(corsetTuckFit, String(extend), sources, [...fabric.map(mesh => mesh.geometry), body], () => {
+    const measure = createGarmentProfiler();
+    const skin = profile([body], true).radius;
+    let restoreHem: ReturnType<typeof extendHem>, restoreTuck: ReturnType<typeof seatHem>;
+    try {
+      restoreHem = extend ? extendHem(parts, fabric, skin, measure) : undefined;
+      // Keep the accepted fit and clone its final result before releasing the
+      // temporary extended/tucked geometries. Each model owns its final clone.
+      restoreTuck = seatHem(parts, fabric, skin, measure, extend, body);
+      return parts.map((part, i) => part.geometry === sources[i] ? undefined : part.geometry.clone());
+    } finally { restoreTuck?.(); restoreHem?.(); }
+  });
+  for (let i = 0; i < parts.length; i++) if (fitted[i]) parts[i].geometry = fitted[i]!;
   return {
     dispose() {
-      restoreTuck?.();
-      restoreHem?.();
+      for (let i = 0; i < parts.length; i++) {
+        parts[i].geometry = sources[i];
+        fitted[i]?.dispose();
+      }
     },
   };
 }

@@ -2,15 +2,18 @@ import {Box3,Group,Matrix4,Mesh,Vector3,type Object3D} from "three";
 import type {VehicleStudioPart} from "../heroes/vehicleStudioStore";
 import {AE_HINGE} from "../../vehicles/tools/roadLamps";
 
-export type VehiclePartHinge={part:VehicleStudioPart;pivot:Group;axis:"x"|"y"|"z";closed:number;open:number;angle:number};
+export type VehiclePartHinge={part:VehicleStudioPart;pivot:Group;axis:"x"|"y"|"z";closed:number;open:number;angle:number;handle?:Object3D};
+const frontDoor = (side: "left" | "right", letter: "l" | "r") => new RegExp(
+  `^(?:.*_)?door(?:_?glass)?[_ .-]*(?:(?:front[_ .-]*)?(?:${side}|${letter})|f${letter}|${letter}f)(?:[_ .-].*)?$`, "i",
+);
 const rules:Partial<Record<VehicleStudioPart,RegExp>>={
- "door-left":/^(?:.*_)?door(?:_?glass)?[_ .-]*(?:left|l)(?:[_ .-].*)?$/i,
- "door-right":/^(?:.*_)?door(?:_?glass)?[_ .-]*(?:right|r)(?:[_ .-].*)?$/i,
+ "door-left":frontDoor("left", "l"),
+ "door-right":frontDoor("right", "r"),
  hood:/hood/i,
  trunk:/^(?:.*_)?(?:trunk|boot)(?:[_ .-](?!arms?).*)?$/i,
  headlights:/^(?:headlights?|headlightlenses)$/i,
 };
-function boundsInRoot(root:Object3D,objects:Object3D[]){
+export function boundsInRoot(root:Object3D,objects:Object3D[]){
  root.updateWorldMatrix(true,true);const inverse=root.matrixWorld.clone().invert(),bounds=new Box3();
  for(const object of objects){const world=new Box3().setFromObject(object,true);world.applyMatrix4(inverse);bounds.union(world);}
  return bounds;
@@ -24,7 +27,7 @@ function meshCandidates(root:Object3D,part:VehicleStudioPart){
    for (let node: Object3D | null = object; node && node !== root; node = node.parent) {
     if (pattern.test(node.name)) { found.push(object); break; }
    }
-  } else if (pattern.test(object.name) && !/(?:sticker|decal|latch|arm|frame)$/i.test(object.name)) {
+  } else if (!(part.startsWith("door-") && /rear/i.test(object.name)) && pattern.test(object.name) && !/(?:sticker|decal|latch|arm|frame)$/i.test(object.name)) {
    found.push(object);
   }
  });
@@ -71,13 +74,54 @@ function moveUnderPivot(root:Object3D,objects:Mesh[],hinge:Vector3,part:VehicleS
  return {part,pivot,axis,closed:0,open,angle:0};
 }
 
+/** Bind the exterior grip in hinge space so it follows the moving panel. */
+export function bindDoorHandle(root: Object3D, hinge: VehiclePartHinge, bounds: Box3, frontSign: number, longAxis: "x" | "z", attachHandle = true) {
+ const size = bounds.getSize(new Vector3());
+ if (bounds.isEmpty() || size[longAxis] < .35 || size.y < .22) return;
+ const widthAxis = longAxis === "z" ? "x" : "z";
+ const outer = Math.sign(bounds.getCenter(new Vector3())[widthAxis]);
+ const point = bounds.getCenter(new Vector3());
+ point[widthAxis] = outer < 0 ? bounds.min[widthAxis] : bounds.max[widthAxis];
+ point[longAxis] += -frontSign * size[longAxis] * .31;
+ point.y = bounds.min.y + size.y * .53;
+ let nearest = .34 ** 2;
+ let named: Object3D | undefined;
+ const search = bounds.clone().expandByScalar(.14);
+ root.traverse(part => {
+  if (!/handle|door[_ .-]*grip/i.test(part.name) || /interior|inside|cabin/i.test(part.name)) return;
+  const at = part instanceof Mesh ? boundsInRoot(root, [part]).getCenter(new Vector3())
+    : root.worldToLocal(part.getWorldPosition(new Vector3()));
+  const distance = at.distanceToSquared(point);
+  if (!search.containsPoint(at) || distance >= nearest) return;
+  nearest = distance;
+  named = part;
+ });
+ if (named) {
+  const part = named;
+  const at = part instanceof Mesh ? boundsInRoot(root, [part]).getCenter(new Vector3())
+    : root.worldToLocal(part.getWorldPosition(new Vector3()));
+  point.copy(at);
+  if (attachHandle && part instanceof Mesh && part.parent !== hinge.pivot) {
+   for (let parent = part.parent; parent && parent !== root; parent = parent.parent) {
+    if (parent === hinge.pivot) { named = undefined; break; }
+   }
+   if (named) hinge.pivot.attach(part);
+  }
+ }
+ const anchor = new Group();
+ anchor.name = "garage-exterior-door-handle";
+ anchor.position.copy(hinge.pivot.worldToLocal(root.localToWorld(point)));
+ hinge.pivot.add(anchor);
+ hinge.handle = anchor;
+}
+
 /** Adds temporary presentation hinges only where the GLB has separate panel
  * meshes. This never changes or saves the source GLB or in-game vehicle. */
 export function createVehiclePartRig(root:Group,model:string):VehiclePartHinge[]{
- root.updateWorldMatrix(true,true);const whole=new Box3().setFromObject(root,true),size=whole.getSize(new Vector3());
+ const whole=boundsInRoot(root,[root]),size=whole.getSize(new Vector3());
  const longAxis=size.x>=size.z?"x":"z",widthAxis=longAxis==="x"?"z":"x";
  const headlightMeshes:Mesh[]=[];root.traverse(object=>{if((object as Mesh).isMesh&&/head.?lights?/i.test(object.name))headlightMeshes.push(object as Mesh);});
- const front=headlightMeshes.length?boundsInRoot(root,headlightMeshes).getCenter(new Vector3())[longAxis]:whole.min[longAxis];
+ const front=headlightMeshes.length?boundsInRoot(root,headlightMeshes).getCenter(new Vector3())[longAxis]:longAxis==="z" ? whole.max.z : whole.min.x;
  const frontSign=front<whole.getCenter(new Vector3())[longAxis]?-1:1;
  const hinges:VehiclePartHinge[]=[];
  for(const part of ["door-left","door-right","hood","trunk","headlights"] as const){
@@ -92,13 +136,17 @@ export function createVehiclePartRig(root:Group,model:string):VehiclePartHinge[]
   if(part==="door-left"||part==="door-right"){
    point[longAxis]=frontSign<0?bounds.min[longAxis]:bounds.max[longAxis];
    point.y=bounds.min.y+bounds.getSize(new Vector3()).y*.35;
-   angle=(part==="door-left"?-1:1)*Math.PI/3;
+   const outer = Math.sign(center[widthAxis]) || (part === "door-left" ? 1 : -1);
+   angle = outer * frontSign * (longAxis === "z" ? -1 : 1) * Math.PI / 3;
   }else{
    axis=widthAxis;
    if(part==="hood"){point[longAxis]=frontSign<0?bounds.max[longAxis]:bounds.min[longAxis];angle=frontSign*Math.PI/5;}
    else if(part==="trunk"){point[longAxis]=frontSign<0?bounds.min[longAxis]:bounds.max[longAxis];angle=-frontSign*Math.PI/5;}
   }
-  const hinge=moveUnderPivot(root,objects,point,part,axis,angle);if(hinge)hinges.push(hinge);
+  const hinge=moveUnderPivot(root,objects,point,part,axis,angle);if (hinge) {
+   if (part === "door-left" || part === "door-right") bindDoorHandle(root, hinge, bounds, frontSign, longAxis);
+   hinges.push(hinge);
+  }
  }
  return hinges;
 }

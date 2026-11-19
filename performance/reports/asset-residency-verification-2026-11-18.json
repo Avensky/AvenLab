@@ -1,0 +1,19 @@
+{
+  "auditRevision": "25988e120d8d8b3a84872aa34d51335b4fef073a",
+  "checkedInstalledFileHashes": 71,
+  "checkedEmbeddedImageHashes": 431,
+  "sharpIndependentDimensionChecks": 184,
+  "formats": {
+    "png": 70,
+    "webp": 111,
+    "jpeg": 3
+  },
+  "mipmapChecks": 3,
+  "underbustImageEqualityVariants": 6,
+  "originalVehicleHashesMatch": true,
+  "geometryOrPixelDecoding": false,
+  "browserResidencyMeasured": false,
+  "reportSha256": "75ddddc5ccc117eadd5153d704cc284bedd05744906ea4b4ac0f50d3188c2db6",
+  "auditScriptSha256": "152736adaa363e5abbe2418a9b419e304351da2e1db39876ba3a1cf01047136f",
+  "logicalAllocationCaveat": "Image dimensions estimate RGBA8 plus a complete mip chain, not measured browser residency or VRAM; alternative texture profiles are separate and inventory scopes overlap."
+}

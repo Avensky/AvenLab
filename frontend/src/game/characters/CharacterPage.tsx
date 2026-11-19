@@ -1,4 +1,4 @@
-import { MIRROR_CHECK_ID } from "./mirrorCheck";
+import { isMirrorMakeupEmote, MAKEUP_EMOTES } from "./mirrorCheck";
 import { useFittingTurnStore } from "./fittingControlsStore";
 import { FitReview } from "./FitReview";
 import { useCallback, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type FocusEvent, type Ref } from "react";
@@ -13,7 +13,8 @@ import { canEditCharacter, useUIStore } from "../../store/menus/uiStore";
 import { CHARACTERS, CHARACTER_APPEARANCE_OPTIONS, CHARACTER_IDENTITIES, DEFAULT_CHARACTER, ROOK_ID, characterAppearance, characterLook, type CharacterChoice } from "./characterCatalog";
 import { CharacterPortrait } from "./CharacterPortrait";
 import { CHARACTER_CAMERAS, CHARACTER_ZOOM_MIN, CHARACTER_ZOOM_MAX, useCharacterPreviewStore } from "./characterPreviewStore";
-import { EMOTE_GROUPS } from "./garageEmotes";
+import { EMOTE_GROUPS, LOOK_AWAY_EMOTE } from "./garageEmotes";
+import { CharacterPosePack } from "./CharacterPosePack";
 import { CharacterEmoteList, type PreviewEmote, type PreviewEmoteGroup } from "./CharacterEmoteList";
 import { unlockVehicleAudio } from "../../audio/sharedAudio";
 import { GARAGE_STATIONS } from "../preview/garageStations";
@@ -22,6 +23,7 @@ import { FittingCameraSelect } from "./FittingCameraSelect";
 import { FittingCameraToolbar } from "./FittingCameraToolbar";
 import { DressingRoom } from "./DressingRoom";
 import { clothingColorKey, UNDERWEAR_PIECES } from "./clothingPieces";
+import { PreviewToolIcon } from "../preview/PreviewToolIcon";
 import { PreviewToolButton } from "../preview/PreviewToolButton";
 import { PreviewVisibilityToggle } from "../preview/PreviewVisibilityToggle";
 import { PreviewZoomSlider } from "../preview/PreviewZoomSlider";
@@ -48,8 +50,14 @@ function revealCharacterControl(event: FocusEvent<HTMLElement>) {
 
 function playEmote(item: PreviewEmote) {
   if (item.id === "drive-honk") unlockVehicleAudio();
-  if (item.id === MIRROR_CHECK_ID) useFittingTurnStore.setState({ characterYaw: 0 });
-  useCharacterPreviewStore.setState({ emote: { id: item.id }, playbackPaused: false, ...(item.id === MIRROR_CHECK_ID ? { camera: "Whole car" } : {}) });
+  const mirror = isMirrorMakeupEmote(item.id);
+  const makeup = MAKEUP_EMOTES.some(emote => emote.id === item.id);
+  if (mirror || makeup) useFittingTurnStore.setState({ characterYaw: 0 });
+  useCharacterPreviewStore.setState(state => ({
+    emote: { id: item.id },
+    playbackPaused: false,
+    ...(mirror ? { camera: "Whole car" } : makeup ? { camera: "Face", zoom: 1, focusRevision: state.focusRevision + 1 } : {}),
+  }));
 }
 
 export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
@@ -77,7 +85,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
   const [message, setMessage] = useState("");
   const [emoteBrowserOpen, setEmoteBrowserOpen] = useState(false);
   const [emotePacksOpen, setEmotePacksOpen] = useState(false);
-  const [emoteGroup, setEmoteGroup] = useState<PreviewEmoteGroup>();
+  const [emoteGroup, setEmoteGroup] = useState<PreviewEmoteGroup | "Pose pack">();
   const [emoteSearch, setEmoteSearch] = useState("");
   const [emoteDetail, setEmoteDetail] = useState<PreviewEmote>();
   const emoteBrowserId = useId();
@@ -324,11 +332,11 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
     setEmoteSearch("");
     useCharacterPreviewStore.setState({ insideCar: !insideCar, emote: null, cockpitError: null, camera: "Full body", zoom: 1 });
   }
-  function chooseEmoteGroup(group: PreviewEmoteGroup | undefined) {
+  function chooseEmoteGroup(group: typeof emoteGroup) {
     setEmoteGroup(emoteGroup === group ? undefined : group);
     setEmoteDetail(undefined);
     setEmoteSearch("");
-    if (group === "Garage" && emoteGroup !== group) {
+    if ((group === "Garage" || group === "Pose pack") && emoteGroup !== group) {
       useFittingTurnStore.setState({ characterYaw: 0 });
       useCharacterPreviewStore.setState(state => ({
         camera: "Full body", zoom: 1, emote: null, insideCar: false, focusRevision: state.focusRevision + 1,
@@ -343,7 +351,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
     }
     setEmoteBrowserOpen(!emoteBrowserOpen);
   }
-  function emoteCategory(group: PreviewEmoteGroup, label: string = group) {
+  function emoteCategory(group: NonNullable<typeof emoteGroup>, label: string = group) {
     return <button key={group} type="button" className="menu-control character-emote-disclosure" data-controller-row data-emote-group={group}
       aria-expanded={emoteGroup === group} aria-controls={emoteResultsId} onClick={() => chooseEmoteGroup(group)}>{label}</button>;
   }
@@ -357,7 +365,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
       </select></label>}
       {!insideCar && <>
         <div className="character-emote-categories" role="group" aria-label="Emote library">
-          {emoteCategory("Garage")}{emoteCategory("Best")}{emoteCategory("All")}
+          {emoteCategory("Garage")}{emoteCategory("Best")}{emoteCategory("All")}{emoteCategory("Pose pack")}
         </div>
         <div className="character-emote-categories" role="group" aria-label="Personality emotes">
           {emoteCategory("Personality", "My personality")}
@@ -395,7 +403,8 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
       onClick={() => playEmote(emoteDetail)}>Replay emote</button>
     <FitReview choice={previewChoice} pose={emoteDetail.id} poseLabel={emoteDetail.name}
       subject={{ id: emoteDetail.id, label: emoteDetail.name, kind: "emote" }} />
-  </> : <CharacterEmoteList choice={previewChoice} group={emoteGroup} search={emoteSearch} station={station} insideCar={insideCar}
+  </> : !insideCar && emoteGroup === "Pose pack" ? <CharacterPosePack disabled={reducedMotion} />
+    : <CharacterEmoteList choice={previewChoice} group={emoteGroup === "Pose pack" ? undefined : emoteGroup} search={emoteSearch} station={station} insideCar={insideCar}
     disabled={reducedMotion || cockpitPending} mirrorAvailable={mirrorAvailable} leanAvailable={leanAvailable} selectedId={emote?.id}
     onSearch={setEmoteSearch} onSelect={selectEmote} />);
   const emoteResultsPanel = <section className={locked ? "character-controls menu-panel-frame character-controls--right" : undefined}
@@ -403,7 +412,7 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
     {emoteResults}
   </section>;
   const fitting = tab === "appearance";
-  const rotationDisabled = insideCar || emote?.id === MIRROR_CHECK_ID;
+  const rotationDisabled = insideCar || isMirrorMakeupEmote(emote?.id);
   const vehiclePreview = tab === "emotes" && Boolean(cockpitVehicle);
   const cameraViews = vehiclePreview ? CHARACTER_CAMERAS : CHARACTER_CAMERAS.filter(view => view !== "Whole car");
   const changeCamera = (view: typeof camera) => useCharacterPreviewStore.setState({ camera: view, zoom: 1 });
@@ -424,7 +433,11 @@ export function CharacterPage({ onPreview, onReady, tab, beforeClose }: {
   </PreviewToolButton>;
   const cameraTools = <FittingCameraToolbar key={tab} camera={fitting ? undefined : cameraSelect} splitCamera
     visibility={<PreviewVisibilityToggle />} paused={playbackPaused} onPause={togglePose}
-    vehicle={vehiclePreview} rotationDisabled={rotationDisabled} actions={exitCockpit}
+    vehicle={vehiclePreview} rotationDisabled={rotationDisabled} actions={fitting ? <><PreviewToolButton label="Look away" data-controller-row disabled={reducedMotion}
+      onClick={() => playEmote(LOOK_AWAY_EMOTE)}><PreviewToolIcon icon="lookAway" /></PreviewToolButton>
+      {MAKEUP_EMOTES.map(item => <PreviewToolButton key={item.id} label={item.name} data-controller-row
+        disabled={reducedMotion} onClick={() => playEmote(item)}><PreviewToolIcon icon={item.icon} /></PreviewToolButton>)}
+    </> : exitCockpit}
     onReframe={tab !== "emotes" ? () => useCharacterPreviewStore.setState(s => ({ zoom: 1, focusRevision: s.focusRevision + 1 })) : undefined}
     zoomOutDisabled={zoom <= CHARACTER_ZOOM_MIN} zoomInDisabled={zoom >= CHARACTER_ZOOM_MAX}
     onZoomOut={insideCar ? undefined : () => zoomBy(-.05)} onZoomIn={insideCar ? undefined : () => zoomBy(.05)} />;

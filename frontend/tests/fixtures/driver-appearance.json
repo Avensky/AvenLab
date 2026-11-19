@@ -1,0 +1,37 @@
+[
+  {
+    "name": "default occupied Vesper",
+    "choice": {"id":"mara-vega","outfit":"dockwear"},
+    "driver": {"body":"female","skin":"#d49673","hair":"#7c573c","hairStyle":"long","headwear":"hat","headwearColor":"#e7cda0","top":"#46584b","bottom":"#46584b"}
+  },
+  {
+    "name": "Rook silhouette follows the selected body",
+    "choice": {"id":"jules-okafor","outfit":"night-run","identity":"nonbinary"},
+    "driver": {"body":"male","skin":"#95553d","hair":"#2b2127","hairStyle":"short","headwear":"none","headwearColor":"#e7cda0","top":"#493851","bottom":"#493851"}
+  },
+  {
+    "name": "cropped hair and individually dyed Village layers",
+    "choice": {"id":"mara-vega","outfit":"dockwear","appearance":{"hair":"cropped","hair_color":"copper","skin":"deep","headwear":"none","color":"#112233","item_colors":{"dockwear:corset":{"color":"#aabbcc"},"dockwear:skirt":{"color":"#223344"},"dockwear:hat":{"color":"#556677"}}}},
+    "driver": {"body":"female","skin":"#85513c","hair":"#ae5837","hairStyle":"short","headwear":"hat","headwearColor":"#556677","top":"#aabbcc","bottom":"#223344"}
+  },
+  {
+    "name": "saved Gothic wardrobe palette",
+    "choice": {"id":"mara-vega","outfit":"dockwear","wardrobe":{"set":"gothic-05","shirt":"none","waist":"over"},"appearance":{"hair":"natural","hair_color":"ash","skin":"fair","headwear":"hat","color":"ink","item_colors":{"gothic-05:corset":{"color":"#663399"},"gothic-05:skirt":{"color":"#336699"}}}},
+    "driver": {"body":"female","skin":"#efb495","hair":"#c0b3aa","hairStyle":"long","headwear":"hat","headwearColor":"#e7cda0","top":"#663399","bottom":"#336699"}
+  },
+  {
+    "name": "dress silhouette uses its main color and removes bundled hat",
+    "choice": {"id":"mara-vega","outfit":"linen-nightgown","appearance":{"hair":"natural","hair_color":"original","skin":"warm","headwear":"hat","color":"original","item_colors":{"linen-nightgown:dress":{"color":"#ccddee"}}}},
+    "driver": {"body":"female","skin":"#bb7953","hair":"#7c573c","hairStyle":"long","headwear":"none","headwearColor":"#e7cda0","top":"#ccddee","bottom":"#ccddee"}
+  },
+  {
+    "name": "undyed Gothic silhouette retains authored fabric colors",
+    "choice": {"id":"mara-vega","outfit":"dockwear","wardrobe":{"set":"gothic-05","shirt":"none","waist":"over"}},
+    "driver": {"body":"female","skin":"#d49673","hair":"#7c573c","hairStyle":"long","headwear":"hat","headwearColor":"#e7cda0","top":"#292731","bottom":"#ddd8d1"}
+  },
+  {
+    "name": "Rook hat and separated coat and trousers",
+    "choice": {"id":"jules-okafor","outfit":"race-crew","appearance":{"hair":"natural","hair_color":"soft-black","skin":"original","headwear":"hat","color":"crimson","item_colors":{"race-crew:coat":{"color":"#123456"},"race-crew:pants":{"color":"#654321"}}}},
+    "driver": {"body":"male","skin":"#95553d","hair":"#211d23","hairStyle":"short","headwear":"hat","headwearColor":"#e7cda0","top":"#123456","bottom":"#654321"}
+  }
+]

@@ -1,0 +1,108 @@
+{
+  "baseline": "0e81afeab830870989492bc69d52dfac17c0a23c",
+  "method": "Same current Vite configuration and installed public assets; baseline source restored before transforms. Static import closure of index.html; Node zlib default gzip. No transfer/FPS measurements.",
+  "before": {
+    "initialJavaScriptBytes": 8076797,
+    "initialJavaScriptGzipBytes": 2270405,
+    "files": [
+      {
+        "path": "assets/index-CMnqpTOM.js",
+        "bytes": 7306475,
+        "gzipBytes": 2068335
+      },
+      {
+        "path": "assets/modulepreload-polyfill-CHffM2Lr.js",
+        "bytes": 698,
+        "gzipBytes": 392
+      },
+      {
+        "path": "assets/three.module-Du9UrYu1.js",
+        "bytes": 714248,
+        "gzipBytes": 184625
+      },
+      {
+        "path": "assets/chunk-CQeTWI2k.js",
+        "bytes": 637,
+        "gzipBytes": 389
+      },
+      {
+        "path": "assets/DRACOLoader-BOuT4B4U.js",
+        "bytes": 6475,
+        "gzipBytes": 2688
+      },
+      {
+        "path": "assets/GLTFLoader-CaBnNnOA.js",
+        "bytes": 43461,
+        "gzipBytes": 12571
+      },
+      {
+        "path": "assets/BufferGeometryUtils-BWdGOBja.js",
+        "bytes": 4803,
+        "gzipBytes": 1405
+      }
+    ],
+    "optional": {
+      "src/game/alpha/HeroSelection.tsx": {
+        "path": "assets/HeroSelection-CwFBjeG_.js",
+        "bytes": 144,
+        "gzipBytes": 137,
+        "inInitialClosure": false
+      }
+    }
+  },
+  "after": {
+    "initialJavaScriptBytes": 7950000,
+    "initialJavaScriptGzipBytes": 2231257,
+    "files": [
+      {
+        "path": "assets/index-GU9sIrfH.js",
+        "bytes": 7179678,
+        "gzipBytes": 2029187
+      },
+      {
+        "path": "assets/modulepreload-polyfill-CHffM2Lr.js",
+        "bytes": 698,
+        "gzipBytes": 392
+      },
+      {
+        "path": "assets/three.module-Du9UrYu1.js",
+        "bytes": 714248,
+        "gzipBytes": 184625
+      },
+      {
+        "path": "assets/chunk-CQeTWI2k.js",
+        "bytes": 637,
+        "gzipBytes": 389
+      },
+      {
+        "path": "assets/DRACOLoader-BOuT4B4U.js",
+        "bytes": 6475,
+        "gzipBytes": 2688
+      },
+      {
+        "path": "assets/GLTFLoader-CaBnNnOA.js",
+        "bytes": 43461,
+        "gzipBytes": 12571
+      },
+      {
+        "path": "assets/BufferGeometryUtils-BWdGOBja.js",
+        "bytes": 4803,
+        "gzipBytes": 1405
+      }
+    ],
+    "optional": {
+      "src/game/alpha/HeroSelection.tsx": {
+        "path": "assets/HeroSelection-BUHk173y.js",
+        "bytes": 6786,
+        "gzipBytes": 3042,
+        "inInitialClosure": false
+      },
+      "src/game/heroes/HeroWorkshop.tsx": {
+        "path": "assets/HeroWorkshop-DdAUYFMZ.js",
+        "bytes": 149386,
+        "gzipBytes": 49336,
+        "inInitialClosure": false
+      }
+    }
+  }
+}
