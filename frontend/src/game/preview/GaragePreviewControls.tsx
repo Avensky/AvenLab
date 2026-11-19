@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import type { VehicleModelId } from "../../vehicles/tools/vehicleModelPaths";
 import { GARAGE_STATIONS } from "./garageStations";
 import { GARAGE_CAMERAS, garageCamera, useGarageDrive, type DriveStage, type GarageCamera } from "./garageDriveStore";
-import { COCKPIT_TAKES, type CockpitTake } from "../characters/cockpitEmotes";
+import { cockpitTakesForWheel, type CockpitTake } from "../characters/cockpitEmotes";
 import { unlockVehicleAudio } from "../../audio/sharedAudio";
 import { useVehicleStudioStore } from "../heroes/vehicleStudioStore";
 import { PreviewVisibilityToggle } from "./PreviewVisibilityToggle";
@@ -55,7 +55,7 @@ export function GaragePreviewControls({ vehicle }: { vehicle: VehicleModelId }) 
         <select className="menu-control" value="" aria-label="Driver gesture"
           onChange={event => playGesture(event.target.value as CockpitTake["id"])}>
           <option value="" disabled>Driver gestures</option>
-          {COCKPIT_TAKES.filter(take => take.id.startsWith("drive-")).map(take =>
+          {cockpitTakesForWheel(canSteer, Boolean(station.drivingSet)).filter(take => take.id.startsWith("drive-")).map(take =>
             <option key={take.id} value={take.id}>{take.name}</option>)}
         </select>}
         </div>

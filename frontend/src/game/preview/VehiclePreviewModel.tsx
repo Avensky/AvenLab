@@ -1,4 +1,4 @@
-import { nearestSideMirror, type MirrorCheckFit } from "../characters/mirrorCheck";
+import { fitMirrorCheck, nearestSideMirror, type MirrorCheckFit } from "../characters/mirrorCheck";
 import { FACTORY_APPEARANCE, useHeroLoadouts } from "../../vehicles/cosmetics/heroLoadouts";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useGLTF } from "@react-three/drei";
@@ -127,7 +127,15 @@ export function VehiclePreviewModel({platform,model,showroomPath,driver,previewP
     if (prepared.gullwing) parts.push(prepared.gullwing.hinge);
     return parts;
   }, [prepared, model, showroomPath]);
-  const driverDoor = station.kind === "wheel" ? partRig.find(part => part.part === (station.rim[0] < 0 ? "door-right" : "door-left")) : undefined;
+  const driverDoor = useMemo(() => {
+    if (station.kind !== "wheel") return undefined;
+    const side = Math.sign(station.seat[0]);
+    return partRig.find(part => {
+      if (part.part !== "door-left" && part.part !== "door-right") return false;
+      const across = prepared.root.worldToLocal(part.pivot.getWorldPosition(new Vector3())).x;
+      return side * across > 0;
+    });
+  }, [partRig, prepared, station]);
   const popup = partRig.find(part => part.part === "headlights");
   const cockpitSetup = useRef<{ source: Object3D; prepare: ReturnType<typeof prepareGarageCockpit> }>(null);
   const playCockpit = useCallback<GarageCockpit>((driverRoot, characterPreview) => {
@@ -234,7 +242,7 @@ export function VehiclePreviewModel({platform,model,showroomPath,driver,previewP
   const staging = useMemo(() => {
     const vehicleCenter = measurements.centering.getCenter(new Vector3());
     const doorCenter = doorBounds?.getCenter(new Vector3());
-    const side = station.kind === "wheel" ? Math.sign(station.rim[0]) : doorCenter && doorCenter.x > vehicleCenter.x ? 1 : -1;
+    const side = station.kind === "wheel" ? Math.sign(station.seat[0]) : doorCenter && doorCenter.x > vehicleCenter.x ? 1 : -1;
     const edge = side < 0
       ? Math.min(doorBounds?.min.x ?? Infinity, measurements.bounds.min.x)
       : Math.max(doorBounds?.max.x ?? -Infinity, measurements.bounds.max.x);
@@ -259,9 +267,7 @@ export function VehiclePreviewModel({platform,model,showroomPath,driver,previewP
     const from = new Vector3(staging.edge + staging.side * (.27 - inset), measurements.support.min.y, staging.along);
     const mirror = nearestSideMirror(prepared.root, station, measurements.bounds, from);
     if (!mirror) return undefined;
-    const across = -staging.side * (mirror.z - from.z);
-    if (Math.abs(across) > 1.4) return undefined;
-    return { across, forward: .12, side: staging.side, gaze: Math.max(.15, Math.min(.65, Math.atan2(1.48 - (mirror.y - from.y), .5))) };
+    return fitMirrorCheck(from, mirror, staging.side);
   }, [previewPacks, driverReady, station, staging, inset, measurements, prepared]);
   const cameraRig = useMemo(() => {
     const size = measurements.bounds.getSize(new Vector3());

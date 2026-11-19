@@ -3,7 +3,7 @@ import {
   AnimationClip, Bone, BooleanKeyframeTrack, Euler, NumberKeyframeTrack, Quaternion, QuaternionKeyframeTrack, Vector3, VectorKeyframeTrack,
   type Object3D,
 } from "three";
-import { driverFaceTargets } from "./villagerFace";
+import { driverFaceTargets, VILLAGER_EYES } from "./villagerFace";
 import { availableVictoryEmotes } from "./victoryEmotes";
 import { availablePlayfulEmotes } from "./playfulEmotes";
 import { availableShyEmotes, QUIET_THANK_YOU } from "./shyEmotes";
@@ -42,6 +42,7 @@ type Pose = {
   rightHand?: XYZ;
   leftPalm?: Palm;
   rightPalm?: Palm;
+  skirtClearanceWithPalm?: boolean;
   rightAtLips?: boolean;
   joinIndexTips?: boolean;
   fingers?: readonly [HandShape | null, HandShape | null];
@@ -52,12 +53,14 @@ type Pose = {
   sway?: number;
   travel?: number;
   feet?: { l?: Foot; r?: Foot };
+  knees?: { l?: XYZ; r?: XYZ };
+  footFacing?: { l?: XYZ; r?: XYZ };
   elbowsBack?: boolean;
   face?: readonly [smile: number, brow: number];
   blink?: number;
   wetEyes?: number;
   // Prop coordinates are meters from the shoulder midpoint or the head.
-  prop?: { offset: XYZ; angles?: XYZ; fold?: number; show?: number; atHead?: boolean; grip?: boolean; ripple?: number };
+  prop?: { offset: XYZ; angles?: XYZ; fold?: number; show?: number; atHead?: true | "lips" | "eyes"; grip?: boolean; ripple?: number };
   thumbs?: readonly [left: number, right: number];
 };
 export type Emote = { id: string; name: string; duration: number; prop?: EmoteProp; keys: readonly (readonly [time: number, pose: Pose])[] };
@@ -99,6 +102,15 @@ export function garageBreathing(bag = false): Emote {
     [1, {}],
   ] };
 }
+
+export const LOOK_AWAY_EMOTE = {
+  id: "look-away", name: "Look away", duration: 4.6, keys: [
+    [.18, { head: [.02, -.28, .025], torso: [.01, -.025, 0] }],
+    [.36, { head: [.04, -.64, .035], torso: [.015, -.09, -.015], face: [.21, .08] }],
+    [.65, { head: [.07, -.59, .025], torso: [.015, -.08, -.01], face: [.21, .08] }],
+    [.82, { head: [.02, -.22, 0], torso: [.01, -.035, 0] }],
+  ],
+} as const satisfies Emote;
 
 export const GARAGE_EMOTES = [
   garageBreathing(),
@@ -280,6 +292,18 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
   const modelRotation = root.getWorldQuaternion(new Quaternion());
   const modelMatrix = root.matrixWorld.clone();
   const inverseModelRotation = modelRotation.clone().invert();
+  const hasHeadProp = head && emotes.some(emote => emote.keys.some(([, pose]) => typeof pose.prop?.atHead === "string"));
+  const inverseRestHead = hasHeadProp && inverseModelRotation.clone()
+    .multiply(head.getWorldQuaternion(new Quaternion())).invert();
+  const makeupAnchors = hasHeadProp && (() => {
+    const stylized = root.name.endsWith("-stylized");
+    const face = VILLAGER_EYES[root.name.endsWith("-male") ? "male" : "female"];
+    const restHead = root.worldToLocal(head.getWorldPosition(new Vector3()));
+    return {
+      lips: new Vector3(0, stylized ? 1.496 : face.lip, stylized ? .110 : face.z + .019).sub(restHead),
+      eyes: new Vector3(0, (stylized ? 1.579 : face.y) + .006, (stylized ? .092 : face.z) + .010).sub(restHead),
+    };
+  })();
   let lipAnchor: Vector3 | undefined;
   if (head && emotes.some(emote => emote.keys.some(([, pose]) => pose.rightAtLips))) {
     const restHead = root.worldToLocal(head.getWorldPosition(new Vector3()));
@@ -366,8 +390,10 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
       const freeHands = skirtRoom !== undefined && !emote.prop && !pose.joinIndexTips && !pose.elbowsBack;
       const leftArm = fitted ? fittedArmTarget(pose.left) : pose.left;
       const rightArm = fitted ? fittedArmTarget(pose.right) : pose.right;
-      arms(left, freeHands && !pose.leftPalm ? skirtArmTarget(leftArm, skirtRoom) : leftArm);
-      arms(right, freeHands && !pose.rightPalm && !pose.rightAtLips ? skirtArmTarget(rightArm, skirtRoom) : rightArm);
+      // Imported palms describe wrist orientation, so a lowered free arm can still open for the skirt.
+      arms(left, freeHands && (!pose.leftPalm || pose.skirtClearanceWithPalm) ? skirtArmTarget(leftArm, skirtRoom) : leftArm);
+      arms(right, freeHands && (!pose.rightPalm || pose.skirtClearanceWithPalm) && !pose.rightAtLips
+        ? skirtArmTarget(rightArm, skirtRoom) : rightArm);
       const tuckPoseElbow = tuckElbow && !pose.joinIndexTips;
       let leftHand = fitted ? fittedHandTarget(pose.leftHand) : pose.leftHand;
       let rightHand = fitted ? fittedHandTarget(pose.rightHand) : pose.rightHand;
@@ -388,9 +414,17 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
       if (propPose && grips && left && right) {
         const anchor = propPose.atHead && head ? head.getWorldPosition(new Vector3())
           : left.shoulder.getWorldPosition(new Vector3()).lerp(right.shoulder.getWorldPosition(new Vector3()), .5);
-        const origin = root.worldToLocal(anchor).add(new Vector3(...propPose.offset));
+        const offset = new Vector3(...propPose.offset);
+        const facialTarget = typeof propPose.atHead === "string" ? propPose.atHead : undefined;
+        const headFrame = facialTarget && head && inverseRestHead
+          ? inverseModelRotation.clone().multiply(head.getWorldQuaternion(new Quaternion())).multiply(inverseRestHead) : undefined;
+        if (facialTarget && headFrame && makeupAnchors) {
+          offset.add(makeupAnchors[facialTarget]).applyQuaternion(headFrame);
+        }
+        const origin = root.worldToLocal(anchor).add(offset);
         const [pitch, yaw, roll] = propPose.angles ?? [0, 0, 0];
         const orientation = new Quaternion().setFromEuler(new Euler(pitch, yaw, roll));
+        if (headFrame) orientation.premultiply(headFrame);
         // Fingers roll around the paper's edges as it turns between the palms.
         const palmRotation = modelRotation.clone().multiply(emote.prop === "map"
           ? new Quaternion().setFromEuler(new Euler(Math.max(-.3, Math.min(.25, pitch)), yaw, roll)) : orientation);
@@ -503,10 +537,13 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
         const [sideOffset, lift, forward, pivot = 0, pitch = 0] = pose.feet?.[leg.side] ?? [0, 0, 0];
         const yaw = new Quaternion().setFromAxisAngle(up, pivot);
         const goal = leg.anchor.clone().applyQuaternion(yaw).add(new Vector3(sideOffset, lift, forward)).applyMatrix4(modelMatrix);
-        const knee = new Vector3(leg.side === "l" ? .16 : -.16, 0, 1).applyQuaternion(yaw).applyQuaternion(modelRotation);
+        const knee = new Vector3(...(pose.knees?.[leg.side] ?? [leg.side === "l" ? .16 : -.16, 0, 1]))
+          .applyQuaternion(yaw).applyQuaternion(modelRotation);
         aimLimb(leg.thigh, leg.calf, leg.foot, goal, knee);
         // Counter the shin's rotation, then pitch only the swinging shoe.
-        const shoe = yaw.multiply(new Quaternion().setFromAxisAngle(across, pitch));
+        const facing = pose.footFacing?.[leg.side];
+        const shoe = yaw.multiply(facing ? new Quaternion().setFromEuler(new Euler(...facing))
+          : new Quaternion().setFromAxisAngle(across, pitch));
         leg.foot.quaternion.copy(leg.calf.getWorldQuaternion(new Quaternion()).invert()
           .multiply(modelRotation).multiply(shoe).multiply(inverseModelRotation).multiply(leg.orientation));
       }
@@ -563,7 +600,7 @@ export function emoteCollection(group: EmoteGroup, bag: boolean, includeWalks = 
   if (group === "Starter Comedy") return STARTER_COMEDY_EMOTES;
   if (group === "Race Reactions") return availableRaceReactions(bag);
   if (bag) return [garageBreathing(true), ...GARAGE_EMOTES.slice(1).filter(item => compatibleGarageEmotes(item.id)), ...BAG_EMOTES];
-  return includeWalks ? [...GARAGE_EMOTES, ...WALK_EMOTES] : GARAGE_EMOTES;
+  return includeWalks ? [...GARAGE_EMOTES, LOOK_AWAY_EMOTE, ...WALK_EMOTES] : GARAGE_EMOTES;
 }
 
 export function garagePreviewCollection(group: EmoteGroup | "Best", bag: boolean): readonly Emote[] {
@@ -575,6 +612,7 @@ export function garagePreviewCollection(group: EmoteGroup | "Best", bag: boolean
 }
 
 export function findGaragePreviewEmote(id: string, bag: boolean): Emote | undefined {
+  if (id === LOOK_AWAY_EMOTE.id) return LOOK_AWAY_EMOTE;
   if (bag && id.startsWith("bag-")) return BAG_EMOTES.find(emote => emote.id === id);
   for (const group of EMOTE_GROUPS) {
     const emote = emoteCollection(group, false).find(item => item.id === id);

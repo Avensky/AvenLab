@@ -1,4 +1,4 @@
-import { MIRROR_CHECK_ID, mirrorCheckPose, type MirrorCheckFit } from "./mirrorCheck";
+import { MIRROR_MAKEUP_EMOTES, makeupPreviewEmote, type MirrorCheckFit } from "./mirrorCheck";
 import { useFittingTurnStore } from "./fittingControlsStore";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
@@ -21,6 +21,7 @@ import { useGarageDrive } from "../preview/garageDriveStore";
 import { personalityEmote, type CharacterPersonality } from "./characterPersonality";
 import type { PieceColors } from "./clothingPieces";
 import { keepHeldProp } from "./emotePropNotes";
+import { POSE_SEQUENCE_ID, POSE_START_HOLD_SECONDS, posePackEmote } from "./posePack";
 
 const FADE_SECONDS = .52;
 
@@ -209,14 +210,29 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
       current.rest = restSeconds;
       current.idle.setEffectiveWeight(1);
     }
+    const sequence = previewPacks ? view.emote?.sequence : undefined;
+    let continueFromHold = false;
     if (!victory && preview !== current.preview && current.active) {
-      current.release ??= { elapsed: 0, weight: current.active.getEffectiveWeight() };
+      // A matching held pose is already the first frame of the next sequence.
+      const heldPose = current.preview?.sequence?.to ?? current.preview?.id;
+      continueFromHold = Boolean(sequence && sequence.from === heldPose && !current.release
+        && current.active.clampWhenFinished && current.active.paused);
+      if (continueFromHold) {
+        current.active.stop();
+        current.active = null;
+      } else current.release ??= { elapsed: 0, weight: current.active.getEffectiveWeight() };
     }
     if (!victory && preview !== current.preview && !current.active) {
       current.preview = preview;
+      // One composed take per mixer. Replacing it avoids caching every combination.
+      const previousSequence = current.actions.get(POSE_SEQUENCE_ID);
+      if (previousSequence) {
+        current.mixer.uncacheAction(previousSequence.getClip());
+        current.actions.delete(POSE_SEQUENCE_ID);
+      }
       const nextFit = JSON.stringify([mirrorFit, leanFit]);
       if (nextFit !== contextFit.current) {
-        for (const id of [MIRROR_CHECK_ID, GARAGE_LEAN_ID]) {
+        for (const id of [...MIRROR_MAKEUP_EMOTES.map(item => item.id), GARAGE_LEAN_ID]) {
           const previous = current.actions.get(id);
           if (previous) { previous.stop(); current.mixer.uncacheAction(previous.getClip()); current.actions.delete(id); }
         }
@@ -224,7 +240,9 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
       }
       let action = preview ? current.actions.get(preview.id) : undefined;
       if (!action && preview) {
-        const emote = preview.id === MIRROR_CHECK_ID && mirrorFit ? mirrorCheckPose(mirrorFit) : preview.id === GARAGE_LEAN_ID && leanFit ? garageLeanPose(leanFit) : findGaragePreviewEmote(preview.id, bag);
+        const pose = previewPacks ? posePackEmote(preview.id, sequence) : undefined;
+        const emote = pose ?? (previewPacks ? makeupPreviewEmote(preview.id, mirrorFit) : undefined)
+          ?? (preview.id === GARAGE_LEAN_ID && leanFit ? garageLeanPose(leanFit) : findGaragePreviewEmote(preview.id, bag));
         if (emote) {
           // The solver needs the rest skeleton. Release mixer bindings before
           // compiling one clip, then keep it for the rest of this preview.
@@ -236,13 +254,16 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
             if (emote.prop === "flag") current.fitFlag = bindFlagPoleGrip(root, prop);
           }
           action = current.mixer.clipAction(buildEmoteClips(root, [emote], current.props)[0]).setLoop(LoopOnce, 1);
+          action.clampWhenFinished = Boolean(pose);
           current.actions.set(preview.id, action);
           current.idle.reset().play();
         }
       }
       if (action) {
-        current.active = action.reset().setEffectiveWeight(0).play();
-        current.idle.setEffectiveWeight(1);
+        const weight = continueFromHold ? 1 : 0;
+        current.active = action.reset().setEffectiveWeight(weight).play();
+        if (continueFromHold) current.active.time = POSE_START_HOLD_SECONDS;
+        current.idle.setEffectiveWeight(1 - weight);
       }
     }
     if (current.active) {
@@ -250,7 +271,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
       const duration = active.getClip().duration;
       const time = active.time + step;
       if (release) release.elapsed += step;
-      if (time >= duration || (release && release.elapsed >= FADE_SECONDS)) {
+      if ((!active.clampWhenFinished && time >= duration) || (release && release.elapsed >= FADE_SECONDS)) {
         active.stop();
         current.active = null;
         current.release = null;
@@ -259,7 +280,7 @@ export function GarageEmotePlayer({ root, bag = false, previewPacks = false, lea
         if (current.clicked === current.preview) current.clicked = null;
         victory?.onFinish();
       } else {
-        const clipWeight = MathUtils.smoothstep(Math.min(time, duration - time), 0, FADE_SECONDS);
+        const clipWeight = MathUtils.smoothstep(active.clampWhenFinished ? time : Math.min(time, duration - time), 0, FADE_SECONDS);
         const weight = release ? Math.min(clipWeight, release.weight * (1 - MathUtils.smoothstep(release.elapsed, 0, FADE_SECONDS))) : clipWeight;
         active.setEffectiveWeight(weight);
         current.idle.setEffectiveWeight(1 - weight);

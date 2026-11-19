@@ -83,25 +83,61 @@ test('Supra painted shell is opaque while glass, lamp lenses and grille cutouts 
 
 test('mirror check picks the closest exterior mirror, builds both rigs, and returns to the original pose',async()=>{
  const vite=await server();try{
-  const {nearestSideMirror,mirrorCheckPose}=await vite.ssrLoadModule('/src/game/characters/mirrorCheck.ts');
+  const {fitMirrorCheck,nearestSideMirror,makeupPreviewEmote,MAKEUP_EMOTES}=await vite.ssrLoadModule('/src/game/characters/mirrorCheck.ts');
   const {GARAGE_STATIONS}=await vite.ssrLoadModule('/src/game/preview/garageStations.ts');
   const root=new Group(),geometry=new BoxGeometry(.2,.15,.1);
   for(const x of [-1,1]){const p=new Mesh(geometry);p.position.set(x,1,.2);p.name=`side-mirror-${x}`;root.add(p);}
   const bounds=new Box3(new Vector3(-1,0,-2),new Vector3(1,1.3,2));
-  for(const sign of [-1,1])assert.equal(Math.sign(nearestSideMirror(root,GARAGE_STATIONS.supra,bounds,new Vector3(sign*1.4,0,-.4)).x),sign);
+  for(const side of [-1,1]){
+   const from=new Vector3(side*1.4,0,-.8);
+   const mirror=nearestSideMirror(root,GARAGE_STATIONS.supra,bounds,from);
+   assert.equal(Math.sign(mirror.x),side);
+   const fit=fitMirrorCheck(from,mirror,side);
+   const stand=from.clone().add(new Vector3(0,0,-side*fit.across));
+   const facing=new Vector3(0,0,1).applyAxisAngle(new Vector3(0,1,0),side*Math.PI/2+fit.turn);
+   assert(facing.dot(mirror.clone().sub(stand).setY(0).normalize())>.999);
+  }
   assert.equal(nearestSideMirror(root,{kind:'bridge'},bounds,new Vector3()),undefined);
   const {prepareVillager}=await vite.ssrLoadModule('/src/game/characters/villagerModel.ts');
   const {buildEmoteClips}=await vite.ssrLoadModule('/src/game/characters/garageEmotes.ts');
-  const {createEmoteProp}=await vite.ssrLoadModule('/src/game/characters/emoteProps.ts');
+  const {VILLAGER_EYES}=await vite.ssrLoadModule('/src/game/characters/villagerFace.ts');
+  const {createEmoteProp,EMOTE_PROP_GRIPS}=await vite.ssrLoadModule('/src/game/characters/emoteProps.ts');
+  const fit={across:.55,forward:.12,gaze:.4,turn:-2.4};
   for(const gender of ['female','male']){
    const {scene}=await new GLTFLoader().parseAsync(await readFile(`tests/fixtures/villager-${gender}-rig.json`,'utf8'),'');
-   const model=prepareVillager(scene,{female:gender==='female',fitted:true}),prop=createEmoteProp('lipstick');model.root.add(prop.root);
-   const emote=mirrorCheckPose({across:.55,forward:.12,gaze:.4,side:1}),clip=buildEmoteClips(model.root,[emote],new Map([['lipstick',prop]]))[0];
-   for(const track of clip.tracks)assert([...track.values].every(v=>typeof v==='boolean'||Number.isFinite(v)), `${gender}: ${track.name} ${[...track.values]}`);
-   const rest=model.root.position.clone(),mixer=new AnimationMixer(model.root),action=mixer.clipAction(clip).setLoop(LoopOnce,1);action.clampWhenFinished=true;action.play();mixer.setTime(clip.duration*.44);
-   assert(prop.root.scale.x>.99);assert(model.root.position.distanceTo(rest)>.4);
-   mixer.setTime(clip.duration);assert(model.root.position.distanceTo(rest)<1e-5);assert.equal(prop.root.scale.x,0);
-   mixer.stopAllAction();prop.dispose();model.dispose();
+   const model=prepareVillager(scene,{female:gender==='female',fitted:true});
+   const rest=model.root.position.clone();
+   for(const mode of MAKEUP_EMOTES) for(const mirror of [false,true]){
+    const emote=makeupPreviewEmote(mirror?mode.mirrorId:mode.id,mirror?fit:undefined);
+    const prop=emote.prop && createEmoteProp(emote.prop);
+    if(prop)model.root.add(prop.root);
+    const head=model.root.getObjectByName('head'),face=VILLAGER_EYES[gender];
+    const lip=emote.prop==='lipstick';
+    const landmark=head.worldToLocal(model.root.localToWorld(new Vector3(0,lip?face.lip:face.y+.006,face.z+(lip?.019:.010))));
+    const clip=buildEmoteClips(model.root,[emote],prop?new Map([[emote.prop,prop]]):undefined)[0];
+    for(const track of clip.tracks)assert([...track.values].every(v=>typeof v==='boolean'||Number.isFinite(v)), `${gender}: ${track.name}`);
+    const mixer=new AnimationMixer(model.root),action=mixer.clipAction(clip).setLoop(LoopOnce,1);
+    action.clampWhenFinished=true;action.play();
+    const working=emote.keys.filter(([,pose])=>pose.prop).slice(1,-1);
+    if(prop) for(const [index,[time]] of working.entries()){
+     mixer.setTime(clip.duration*time);
+     assert(prop.root.visible && prop.root.scale.x>.99);
+     const wrist=model.root.getObjectByName('hand_r').getWorldPosition(new Vector3());
+     const grip=prop.root.localToWorld(new Vector3(...EMOTE_PROP_GRIPS[emote.prop][1].wrist));
+     assert(wrist.distanceTo(grip)<.040,`${gender} ${emote.id}: the applicator stays in the hand (${wrist.distanceTo(grip)})`);
+     if(lip || index!==2){
+      const tip=head.worldToLocal(prop.root.localToWorld(new Vector3(0,lip?.0225:.060,0)));
+      assert(tip.distanceTo(landmark)<.052,`${gender} ${emote.id}: the tip tracks the intended face area`);
+     }
+    }
+    mixer.setTime(clip.duration*.62);
+    assert.equal(model.root.position.distanceTo(rest)>.4,mirror,'only the side-mirror version walks');
+    mixer.setTime(clip.duration);
+    assert(model.root.position.distanceTo(rest)<1e-5);
+    if(prop)assert.equal(prop.root.scale.x,0);
+    mixer.stopAllAction();prop?.dispose();
+   }
+   model.dispose();
   }
  }finally{await vite.close();}
 });
