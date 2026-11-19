@@ -27,3 +27,11 @@ Example JSON **schema illustration, not a measured capture**:
 
 ## Acceptance
 Do not close P0 until matched physical-device captures and visual checks exist. This comparator is deliberately strict: an increase in draws, triangles, p95 or p99 flags a regression; quality tradeoffs need separately documented approval. It does not measure GPU memory, per-pass overdraw, thermal behavior or input latency.
+
+## Milestone 2: empty material-batch draw suppression
+
+Reviewed `cityDrawBatches.ts` and `cityInstances.ts`. The existing native multi-draw path already groups compatible opaque materials, skips transparent/transmissive meshes, and frustum-culls placements. Found a concrete avoidable-work issue: `updateCityDrawPart` unconditionally sets the shared `BatchedMesh.visible = true` even when every part's instance count is zero. That can leave empty material batches eligible for a draw submission.
+
+Added `settleCityDrawBatches`, called after all parts update, to set shared batch visibility from the aggregate live instance count. It preserves visibility if any sibling part still has instances. Added a regression test covering proxy-only, visible and frustum-culled placements. No changes to geometry, collision, textures, LOD thresholds or transparency ordering.
+
+**Validation pending:** This change has been pushed but the test suite and in-engine GPU captures have not run in this session. Verify with `node --test frontend/tests/city-render-budget.test.mjs frontend/tests/city-render-capture-compare.test.mjs`, then `npm --prefix frontend run build`. Record before/after draw counts at a view where all parts of at least one batch are culled; there may be no measurable FPS difference in a view where all batches are populated.
