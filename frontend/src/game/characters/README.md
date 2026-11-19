@@ -60,8 +60,12 @@ The pose selectors include all 117 BVH entries from the six
 [MakeHuman Community CC0 pose packs](https://static.makehumancommunity.org/assets/assetpacks/).
 The generated catalog retains each asset's pack, name, and author. The nine
 multi-frame files repeat the same pose, so the converter samples the first
-frame of each file. It maps torso, head, arms, palms, ankles, knee directions,
-and foot orientation to AvenLab's shared controls. Finger articulation,
+frame of each file and normalizes exports that repeat hierarchy offsets in
+position channels. It maps torso, head, arms, palms, ankles, knee directions,
+and foot orientation to AvenLab's shared controls. Lowered, outward-facing
+free arms use the current garment's skirt clearance, even on imported poses
+with palm orientation. Raised and cross-body gestures keep their authored arm
+targets. Finger articulation,
 seating surfaces, sports equipment, and garment-fit adjustments need a
 visual pass on the target character.
 

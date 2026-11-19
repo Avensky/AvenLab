@@ -42,6 +42,7 @@ type Pose = {
   rightHand?: XYZ;
   leftPalm?: Palm;
   rightPalm?: Palm;
+  skirtClearanceWithPalm?: boolean;
   rightAtLips?: boolean;
   joinIndexTips?: boolean;
   fingers?: readonly [HandShape | null, HandShape | null];
@@ -368,8 +369,10 @@ export function buildEmoteClips(root: Object3D, emotes: readonly Emote[], props?
       const freeHands = skirtRoom !== undefined && !emote.prop && !pose.joinIndexTips && !pose.elbowsBack;
       const leftArm = fitted ? fittedArmTarget(pose.left) : pose.left;
       const rightArm = fitted ? fittedArmTarget(pose.right) : pose.right;
-      arms(left, freeHands && !pose.leftPalm ? skirtArmTarget(leftArm, skirtRoom) : leftArm);
-      arms(right, freeHands && !pose.rightPalm && !pose.rightAtLips ? skirtArmTarget(rightArm, skirtRoom) : rightArm);
+      // Imported palms describe wrist orientation, so a lowered free arm can still open for the skirt.
+      arms(left, freeHands && (!pose.leftPalm || pose.skirtClearanceWithPalm) ? skirtArmTarget(leftArm, skirtRoom) : leftArm);
+      arms(right, freeHands && (!pose.rightPalm || pose.skirtClearanceWithPalm) && !pose.rightAtLips
+        ? skirtArmTarget(rightArm, skirtRoom) : rightArm);
       const tuckPoseElbow = tuckElbow && !pose.joinIndexTips;
       let leftHand = fitted ? fittedHandTarget(pose.leftHand) : pose.leftHand;
       let rightHand = fitted ? fittedHandTarget(pose.rightHand) : pose.rightHand;

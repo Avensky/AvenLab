@@ -39,13 +39,25 @@ function samplePose(text) {
   const restFeet = ['L', 'R'].map(side => point('foot.' + side));
   const scale = 1.55 / (point('head').y - restFloor);
 
+  // Some exporters write the full local offset into each position channel.
+  // BVHLoader adds the hierarchy offset, so remove the extra copy for those files.
+  const positionTracks = clip.tracks.filter(track => track.name.endsWith('.position') && track.name !== root.name + '.position');
+  const absoluteOffsets = positionTracks.filter(track => {
+    const offset = joint(track.name.slice(0, -'.position'.length)).position;
+    const channel = new Vector3().fromArray(track.values).sub(offset);
+    return channel.distanceToSquared(offset) < channel.lengthSq();
+  }).length > positionTracks.length / 2;
+
   // Tracks have literal joint names, including periods. Sample frame zero
   // directly so generic Three.js property binding never parses those names.
   for (const track of clip.tracks) {
     const split = track.name.lastIndexOf('.');
     const bone = joint(track.name.slice(0, split));
-    const target = track.name.slice(split + 1) === 'position' ? bone.position : bone.quaternion;
-    target.fromArray(track.values);
+    if (track.name.endsWith('.position')) {
+      const sampled = new Vector3().fromArray(track.values);
+      if (absoluteOffsets) sampled.sub(bone.position);
+      bone.position.copy(sampled);
+    } else bone.quaternion.fromArray(track.values);
   }
   root.updateMatrixWorld(true);
 

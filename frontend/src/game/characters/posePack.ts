@@ -21,7 +21,9 @@ const AVENLAB_POSES = [
 
 export const CHARACTER_POSE_GROUPS: readonly { group: string; poses: readonly CharacterPose[] }[] = [
   { group: "AvenLab", poses: AVENLAB_POSES },
-  ...MAKEHUMAN_POSE_GROUPS,
+  ...MAKEHUMAN_POSE_GROUPS.map(({ group, poses }) => ({
+    group, poses: poses.map(pose => ({ ...pose, pose: { ...pose.pose, skirtClearanceWithPalm: true } })),
+  })),
 ];
 const characterPoses = new Map(CHARACTER_POSE_GROUPS.flatMap(({ poses }) => poses.map(pose => [pose.id, pose] as const)));
 
