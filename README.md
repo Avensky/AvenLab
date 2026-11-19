@@ -4,6 +4,10 @@ Start with [Project guide](docs/PROJECT_GUIDE.md), [repo audit](docs/REPO_AUDIT.
 
 For character assets, start with the [wardrobe authoring and validation guide](frontend/src/game/characters/README.md#garment-authoring-and-validation) and the [shared wardrobe catalog](packages/wardrobe-catalog/README.md). Run `npm --prefix frontend run audit:wardrobe` for the fast checks or add `-- --full` to test installed GLBs and animated fit.
 
+## Alpha city rendering audit
+
+At a fixed city junction, Fast mode with shadows and detailed reflections went from **314 to 209 draws** on the instanced fallback and **156 to 141** with native multi-draw. Both paths rendered the same pixels as their respective baselines. The audit covers per-light caster culling, blended road paint and sky reflection generation. Phone frame times and sustained thermal performance still need a matched driving capture. [Measurements and reproduction steps](docs/ALPHA_CITY_RENDER_BUDGET_AUDIT.md#city-render-pass-measurements)
+
 # AvensLab
 
 ```t
