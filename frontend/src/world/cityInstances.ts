@@ -1,6 +1,6 @@
 import { Box3, Frustum, Group, InstancedMesh, Material, Matrix4, Mesh, MeshPhysicalMaterial, Quaternion, Texture, Vector3, type Object3D } from "three";
 import type { CityPlacement } from "./cityLod.ts";
-import { cityDrawBatchJobs, updateCityDrawPart, type CityDrawPart, type CityRenderMesh } from "./cityDrawBatches.ts";
+import { cityDrawBatchJobs, settleCityDrawBatches, updateCityDrawPart, type CityDrawPart, type CityRenderMesh } from "./cityDrawBatches.ts";
 
 type Batch = { mesh: InstancedMesh; reduced?: InstancedMesh; fullDraw: CityDrawPart; reducedDraw?: CityDrawPart; block?: string; local: Matrix4; bounds: Box3; matrices: Matrix4[]; boxes: Box3[]; visibleIndices: number[]; reducedIndices: number[] };
 type CityInstanceOptions = { multiDraw?: boolean; castShadow?: boolean };
@@ -143,6 +143,7 @@ export function createCityInstances(source: Object3D, capacity: number, fastGlas
         count += reducedIndices.length;
       }
     }
+    settleCityDrawBatches(batches.flatMap(batch => batch.reducedDraw ? [batch.fullDraw, batch.reducedDraw] : [batch.fullDraw]));
     return count;
   };
   return { group, batches, objects, textures, meshes, stats, prepareMesh, prepareDrawBatches, update,
