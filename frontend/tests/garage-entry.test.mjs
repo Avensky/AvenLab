@@ -121,6 +121,43 @@ test('the door opens independently, entry keeps planted shoes stable, and seated
       cabin.stop();
       assert.equal(pivot.rotation.y, 0);
     }
+    const { cockpitTakesForWheel } = await vite.ssrLoadModule('/src/game/characters/cockpitEmotes.ts');
+    assert(!cockpitTakesForWheel(true, false).some(take => take.id === 'drive-race-start'));
+    assert(cockpitTakesForWheel(true, true).some(take => take.id === 'drive-race-start'));
+    const race = phase => sampleCockpitMotion('drive-race-start', phase);
+    assert(race(.20).lookYaw > .4 && race(.20).focus > .85, 'looks toward the rival');
+    assert.equal(race(.49).throttle, 1);
+    assert.equal(race(.49).lookYaw, 0, 'eyes return to the road for the throttle beat');
+    assert.equal(race(.69).throttle + race(.69).brake, 0, 'foot transfers before the brake depresses');
+    assert(race(.81).brake === 1 && race(.81).lookPitch > .25, 'braking pitches the head forward');
+    assert.equal(race(1).brake + race(1).throttle + race(1).lookPitch, 0);
+
+    for (const gender of ['female', 'male']) {
+      const { scene: driver } = await new GLTFLoader().parseAsync(await readFile(`tests/fixtures/villager-${gender}-rig.json`, 'utf8'), '');
+      const motion = new Group(), car = new Group(), stand = new Group();
+      motion.add(car, stand);
+      stand.add(driver);
+      stand.position.set(1.2, .023, -.17);
+      const cabin = prepareGarageCockpit(car, [], undefined, GARAGE_STATIONS.brz)(driver, motion);
+      const stage = car.getObjectByName('garage-drive-pedals');
+      const gas = stage.getObjectByName('garage-pedal-throttle');
+      const brake = stage.getObjectByName('garage-pedal-brake');
+      const clutchPedal = stage.getObjectByName('garage-pedal-clutch');
+      const shoe = driver.getObjectByName('ball_r');
+      const error = pedal => shoe.getWorldPosition(new Vector3()).distanceTo(pedal.children[1].localToWorld(new Vector3(0, 0, -.010)));
+      cabin.sample('drive-race-start', .49);
+      assert(gas.rotation.x > .25 && brake.rotation.x === 0);
+      assert(error(gas) < .048, `${gender} throttle contact (${error(gas)})`);
+      cabin.sample('drive-race-start', .81);
+      assert(gas.rotation.x === 0 && brake.rotation.x < -.30);
+      assert(error(brake) < .048, `${gender} brake contact (${error(brake)})`);
+      cabin.sample('drive-clutch', .48);
+      assert(clutchPedal.rotation.x < -.35);
+      cabin.sample(null, 0);
+      assert.equal(brake.rotation.x + gas.rotation.x + clutchPedal.rotation.x, 0);
+      cabin.stop();
+      assert(!car.getObjectByName('garage-drive-pedals'));
+    }
     const drift = phase => sampleCockpitMotion('drive-drift', phase);
     assert(drift(.25).handControl === 'shift' && drift(.25).clutch === 1);
     assert(drift(.60).handControl === 'handbrake' && drift(.60).actuate === 1);

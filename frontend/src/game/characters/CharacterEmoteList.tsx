@@ -2,7 +2,7 @@ import { memo, useMemo } from "react";
 import type { GarageStation } from "../preview/garageStations";
 import type { CharacterChoice } from "./characterCatalog";
 import { CHARACTER_PERSONALITIES, type CharacterPersonality } from "./characterPersonality";
-import { COCKPIT_TAKES } from "./cockpitEmotes";
+import { COCKPIT_TAKES, cockpitTakesForWheel } from "./cockpitEmotes";
 import { FitBadge } from "./FitReview";
 import { EMOTE_GROUPS, emoteCollection, findGaragePreviewEmote, garagePreviewCollection, type EmoteGroup } from "./garageEmotes";
 import { GARAGE_LEAN_ID, GARAGE_LEAN_NAME } from "./garageLean";
@@ -34,7 +34,7 @@ export const CharacterEmoteList = memo(function CharacterEmoteList({
   const picked = useMemo<readonly PreviewEmote[]>(() => {
     if (insideCar) {
       if (!road) return COCKPIT_TAKES.filter(take => take.id === "086").map(take => ({ ...take, name: "Check surroundings" }));
-      return station.steeringParts ? COCKPIT_TAKES : COCKPIT_TAKES.filter(take => take.id !== "199" && take.id !== "200");
+      return cockpitTakesForWheel(Boolean(station.steeringParts), Boolean(station.drivingSet));
     }
     if (personality) return personality.emotes.flatMap(id => findGaragePreviewEmote(id, bag) ?? []);
     if (group === "All") return [...new Map(EMOTE_GROUPS.flatMap(group => emoteCollection(group, bag)).map(item => [item.id, item])).values()];

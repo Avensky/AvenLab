@@ -67,6 +67,23 @@ The lipstick and eyeliner emotes follow rig-specific face landmarks and
 use temporary handheld props. These previews leave saved appearance colors
 as equipped.
 
+## BRZ driving set
+
+In the BRZ cockpit, select **Race start · Stare-down, throttle and brake**
+from Driver gestures. The driver looks toward the neighboring lane, returns
+her gaze to the road, presses the throttle, and moves her right foot onto
+the brake. The shot cuts from her face to the pedals and back for the
+braking dip and recovery. The set plays in the cockpit preview.
+
+The steering grip follows the measured BRZ rim. The source GLB has an empty
+pedal node, so the cockpit creates three lightweight movable pedal plates
+and removes them on exit. The right foot follows the accelerator and brake
+surfaces, and the left foot follows the clutch in Clutch and shift. Floor
+hinge, pedal throw, and contact offsets come from `garagePedalRig.ts`.
+A second vehicle can opt in by supplying a `drivingSet` pedal layout on its
+wheel station and fitting it to that vehicle's seat and footwell. Check the
+steering wheel, seated headroom, and close camera framing on each model.
+
 ## Pose pack
 
 In Character → Emotes → Preview emotes → Pose pack, pick a start pose, a

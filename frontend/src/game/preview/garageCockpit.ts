@@ -6,6 +6,7 @@ import type { DriveOutPose } from "./garageDriveMotion";
 import type { VehiclePartHinge } from "./vehiclePartRig";
 import { GARAGE_STATIONS, garageControlTargets, garageStationCamera, type GarageStation } from "./garageStations";
 
+import { createGaragePedalRig } from "./garagePedalRig";
 import { cockpitWardrobe } from "../characters/cockpitWardrobe";
 import { createGarageHorn } from "../../audio/garageHorn";
 
@@ -39,6 +40,9 @@ export function sampleCockpitMotion(id: TakeId | null, phase: number) {
   const mirrors = id === "086";
   const steeringTest = id === "199" ? 1 : id === "200" ? -1 : 0;
   const drift = id === "drive-drift";
+  const raceStart = id === "drive-race-start";
+  const throttleBeat = pulse(.36, .43, .57, .64);
+  const brakeBeat = pulse(.72, .77, .88, .96);
   const handControl: HandControl | undefined = drift ? phase < .42 ? "shift" : "handbrake"
     : id ? TAKE_HAND_CONTROLS[id] : undefined;
   const reachControl = !handControl ? 0 : !drift ? pulse(.12, .31, .67, .91)
@@ -47,7 +51,7 @@ export function sampleCockpitMotion(id: TakeId | null, phase: number) {
     : handControl === "shift" ? pulse(.17, .23, .27, .31) : pulse(.55, .60, .64, .68);
   const clutch = id === "drive-clutch" ? pulse(.18, .32, .59, .79)
     : drift ? pulse(.055, .15, .29, .38) : 0;
-  const throttle = id === "drive-gas" ? pulse(.20, .42, .64, .88)
+  const throttle = raceStart ? throttleBeat : id === "drive-gas" ? pulse(.20, .42, .64, .88)
     : drift ? pulse(.34, .41, .43, .49) + pulse(.66, .76, .86, .98) : 0;
   const horn = id === "drive-honk" && phase >= .38 && phase < .57;
   const parked = id === null || id === "068" || mirrors || steeringTest !== 0 || id.startsWith("drive-");
@@ -58,20 +62,25 @@ export function sampleCockpitMotion(id: TakeId | null, phase: number) {
   const travel = parked ? 0 : distance * (ease(ROLL_START, .49) - ease(.63, .95));
   const curve = reversing ? -.13 : overtake ? .23 : .12;
   const heading = travel * curve;
-  const steering = steeringTest ? steeringTest * .32 * pulse(.14, .41, .62, .89)
+  const steering = raceStart ? .12 * pulse(.47, .52, .56, .67) : steeringTest ? steeringTest * .32 * pulse(.14, .41, .62, .89)
     : drift ? .36 * pulse(.39, .51, .57, .69) - .34 * pulse(.62, .74, .83, .98)
     : id === "068" ? .23 * (ease(.16, .36) - 2 * ease(.41, .65) + ease(.7, .92))
     : parked ? 0 : Math.atan(2.4 * curve) * (ease(.06, .22) - ease(.78, .98));
-  const brake = id === "drive-brake" ? pulse(.19, .41, .63, .87)
+  const brake = raceStart ? brakeBeat : id === "drive-brake" ? pulse(.19, .41, .63, .87)
     : drift ? pulse(.46, .53, .58, .66)
     : parked ? 0 : pulse(.39, .49, .55, .63) + pulse(.87, .95, .96, 1);
   const sideCheck = reversing ? -.82 * (ease(.045, .14) - ease(.49, .67)) : -.57 * (ease(.035, .115) - ease(.145, .205));
   const farMirror = mirrors ? .62 * (ease(.25, .48) - ease(.61, .83)) : 0;
   const nod = .18 * (ease(.165, .218) - ease(.225, ROLL_START));
   const focus = ease(.19, .29) - ease(.85, 1);
-  return { handControl, reachControl, actuate, clutch, throttle, horn, travel, heading, across: (1 - Math.cos(heading)) / curve, along: Math.sin(heading) / curve, steering, brake,
-    lookYaw: steeringTest ? steering * .66 : sideCheck + farMirror + steering * .24 - gesture * .12,
-    lookPitch: steeringTest ? 0 : nod + reachControl * .10, focus: focus * (1 - gesture * .65),
+  const brakeFoot = raceStart ? pulse(.64, .72, .96, 1)
+    : id === "drive-brake" ? pulse(.07, .19, .87, 1) : brake;
+  const stare = pulse(.05, .22, .90, 1);
+  const brakeNod = .27 * pulse(.73, .80, .83, .93) - .045 * pulse(.88, .93, .95, 1);
+  return { brakeFoot, handControl, reachControl, actuate, clutch, throttle, horn, travel, heading, across: (1 - Math.cos(heading)) / curve, along: Math.sin(heading) / curve, steering, brake,
+    lookYaw: raceStart ? .46 * pulse(.05, .17, .24, .34) : steeringTest ? steering * .66 : sideCheck + farMirror + steering * .24 - gesture * .12,
+    lookPitch: raceStart ? -.085 * throttle + brakeNod : steeringTest ? 0 : nod + reachControl * .10,
+    focus: raceStart ? stare : focus * (1 - gesture * .65),
     gesture, closeShot: parked || id === "077" || id === "101" || id === "102" || phase < ROLL_START };
 }
 
@@ -193,7 +202,7 @@ export function prepareGarageCockpit(
       const hip = driver.getObjectByName(`thigh_${side}`);
       const knee = driver.getObjectByName(`calf_${side}`);
       const foot = driver.getObjectByName(`foot_${side}`);
-      return hip && knee && foot ? [{ hip, knee, foot, side: side === "l" ? 1 : -1 }] : [];
+      return hip && knee && foot ? [{ hip, knee, foot, ball: driver.getObjectByName(`ball_${side}`), side: side === "l" ? 1 : -1 }] : [];
     });
     if (!parent || !head || arms.length !== 2 || legs.length !== 2) return null;
     const motionRest = localRest(motion);
@@ -238,11 +247,18 @@ export function prepareGarageCockpit(
     const pedals = station.kind === "bridge" ? null : new Vector3(...station.pedals);
     const rest = [head, ...(torso ? [torso] : []), ...arms.flatMap(({ shoulder, elbow, hand, rig }) =>
       [shoulder, elbow, hand, ...(rig?.fingers.map(({ joint }) => joint) ?? [])]), ...legs.flatMap(({ hip, knee, foot }) => [hip, knee, foot])].map(localRest);
+    const pedalRig = road?.drivingSet && pedals ? createGaragePedalRig(car, pedals, road.drivingSet) : undefined;
     const expression = (["smile", "brow"] as const).flatMap((shape, channel) => driverFaceTargets(driver, shape)
       .map(({ mesh, index }) => ({ weights: mesh.morphTargetInfluences!, index, rest: mesh.morphTargetInfluences![index],
         focus: RACE_FACE[channel], greeting: channel === 0 ? .55 : .21 })));
     const driverRotation = driver.getWorldQuaternion(new Quaternion()).invert();
     const seatedFeet = legs.map(({ foot }) => driverRotation.clone().multiply(foot.getWorldQuaternion(new Quaternion())).normalize());
+    const ballOffsets = pedalRig ? legs.map(({ foot, ball }, index) => {
+      if (!ball) return new Vector3(0, -.047, .125).applyQuaternion(seatedFeet[index].clone().invert());
+      // The ball joint sits inside the shoe. Move the contact marker down to its sole.
+      const point = driver.worldToLocal(ball.getWorldPosition(new Vector3())).add(new Vector3(0, -.012, 0));
+      return foot.worldToLocal(driver.localToWorld(point));
+    }) : undefined;
     const camera = new Object3D();
     camera.name = `${context}-cockpit-camera`;
     const lens = new Object3D();
@@ -277,9 +293,13 @@ export function prepareGarageCockpit(
     return {
       hasDoor: Boolean(door),
       sample(id, phase, drive) {
+        if (id === "drive-race-start" && !pedalRig) id = null;
         if (!drive && id === null && parked) return;
         parked = !drive && id === null;
         const pose = sampleCockpitMotion(id, phase);
+        const raceStart = Boolean(pedalRig && id === "drive-race-start");
+        const pedalsShot = raceStart && phase >= .34 && phase < .64;
+        camera.userData.drivingSetShot = raceStart ? (pedalsShot ? "pedals" : phase < .34 ? "stare" : "brake") : undefined;
         horn.setPressed(Boolean(road && pose.horn));
         if (!road) {
           camera.position.copy(shotTarget);
@@ -295,6 +315,15 @@ export function prepareGarageCockpit(
             const press = Math.max(pose.brake, pose.throttle);
             camera.position.lerp(pedals, press * .88);
             eye.lerp(new Vector3(seat.x - steeringSide * .22, center.y - .08, seat.z + .22), press);
+          }
+          if (raceStart && !pedalsShot) {
+            camera.position.set(seat.x, seat.y + headHeight + .035, seat.z + .058);
+            eye.set(seat.x - Math.sign(seat.x) * .36, seat.y + headHeight + .09, seat.z + .57);
+          }
+          if (pedalRig && (pedalsShot || id === "drive-gas" || id === "drive-brake")) {
+            const brakeSide = id === "drive-brake" ? pose.brakeFoot : 0;
+            camera.position.copy(pedalRig.throttle(0)).lerp(pedalRig.brake(0), brakeSide);
+            eye.set(seat.x + Math.sign(seat.x) * .27, camera.position.y + .14, camera.position.z - .34);
           }
           lens.position.copy(eye).sub(camera.position);
         } else {
@@ -366,18 +395,24 @@ export function prepareGarageCockpit(
           door.pivot.rotation[door.axis] = door.angle;
           if (driverShadow) driverShadow.visible = enter < .52;
         }
-        if (torso && pose.reachControl) {
+        const bodyPitch = raceStart ? -.055 * pose.throttle + .14 * pose.brake
+          : pedalRig && id === "drive-brake" ? .095 * pose.brake : 0;
+        if (torso && (pose.reachControl || bodyPitch)) {
           torso.getWorldQuaternion(headAxes).invert().multiply(carRotation);
           const lean = pose.handControl === "horn" ? .17 : .06;
-          torso.rotateOnAxis(localAxis.copy(AXLE).applyQuaternion(headAxes), pose.reachControl * lean);
+          torso.rotateOnAxis(localAxis.copy(AXLE).applyQuaternion(headAxes), pose.reachControl * lean + bodyPitch);
         }
         head.getWorldQuaternion(headAxes).invert().multiply(carRotation);
         head.rotateOnAxis(localAxis.copy(UP).applyQuaternion(headAxes), pose.lookYaw);
-        head.rotateOnAxis(localAxis.copy(AXLE).applyQuaternion(headAxes), pose.lookPitch);
+        const brakeHead = pedalRig && id === "drive-brake" ? .13 * pose.brake : 0;
+        head.rotateOnAxis(localAxis.copy(AXLE).applyQuaternion(headAxes), pose.lookPitch + brakeHead);
         for (const { weights, index, rest, focus, greeting } of expression) {
           weights[index] = MathUtils.lerp(MathUtils.lerp(rest, focus, pose.focus), greeting, pose.gesture);
         }
         driver.getWorldQuaternion(rootWorldRotation);
+        const throttlePlate = pedalRig?.throttle(pose.throttle * sit);
+        const brakePlate = pedalRig?.brake((id === null ? drive?.brake ?? pose.brake : pose.brake) * sit);
+        const clutchPlate = pedalRig?.clutch(pose.clutch * sit);
         if (pedals && (enter > 0 || faceDoor > 0)) for (const [index, { hip, knee, foot, side }] of legs.entries()) {
           const brake = road && side < 0 ? (id === null ? drive?.brake ?? pose.brake : pose.brake) : 0;
           const throttle = road && side < 0 ? pose.throttle : 0;
@@ -396,6 +431,14 @@ export function prepareGarageCockpit(
             planted.sub(standingHip).applyQuaternion(shoeTurn).add(standingAtDoor);
             planted.y = standingAnkles[index].y;
           }
+          const pitch = .13 * throttle + .12 * brake + .12 * clutch - .11 * lifted;
+          anklePitch.setFromAxisAngle(AXLE, pitch);
+          footRotation.copy(standingFeet[index]).premultiply(shoeTurn).slerp(seatedFeet[index], step).premultiply(anklePitch);
+          if (throttlePlate && brakePlate && clutchPlate && ballOffsets) {
+            ankle.copy(side > 0 ? clutchPlate : reach.copy(throttlePlate).lerp(brakePlate, id === null && drive ? brake : pose.brakeFoot));
+            ankle.sub(reach.copy(ballOffsets[index]).multiplyScalar(localScale).applyQuaternion(footRotation));
+            if (side < 0) ankle.y -= .023 * Math.sin(Math.PI * pose.brakeFoot);
+          }
           ankle.lerp(planted, 1 - step);
           ankle.y += lifted * .16;
           car.localToWorld(ankle);
@@ -404,9 +447,7 @@ export function prepareGarageCockpit(
           aimLimb(hip, knee, foot, ankle, kneePole);
           // Maintain the parked shoe's world orientation while its ankle is planted.
           // Turn the toes toward the pedals during the swing, independent of knee IK.
-          const pitch = .13 * throttle + .12 * brake + .12 * clutch - .11 * lifted;
-          anklePitch.setFromAxisAngle(AXLE, pitch);
-          footRotation.copy(standingFeet[index]).premultiply(shoeTurn).slerp(seatedFeet[index], step).premultiply(anklePitch).premultiply(carRotation);
+          footRotation.premultiply(carRotation);
           foot.quaternion.copy(knee.getWorldQuaternion(new Quaternion()).invert().multiply(footRotation));
         }
         for (const { shoulder, elbow, hand, rig, side, palmReach } of arms) {
@@ -527,6 +568,7 @@ export function prepareGarageCockpit(
       },
       stop() {
         horn.stop();
+        pedalRig?.dispose();
         wardrobe.stop();
         rest.forEach(restore);
         restore(driverRest);
