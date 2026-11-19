@@ -112,3 +112,17 @@ test('batch warmup never leaves a phantom identity instance visible and disposes
  asset.dispose();assert.equal(disposed,1);assert.equal(sourceDisposals,0);
  f.disposeSource();
 });
+
+test('empty material batches do not render and shared batches stay visible for active sibling parts',()=>{
+ const f=fixture({multiDraw:true},false),{asset}=f;
+ asset.prepareDrawBatches().forEach(job=>job());
+ assert.equal(asset.meshes.length,1);
+ const shared=asset.meshes[0];
+ asset.update([placement(0,-10,'proxy')],frustumAt(),false);
+ assert.equal(shared.visible,false,'all proxy placements disable the shared draw');
+ asset.update([placement(0,-10,'full')],frustumAt(),false);
+ assert.equal(shared.visible,true,'visible placements enable the shared draw');
+ asset.update([placement(1000,-10,'full')],frustumAt(),false);
+ assert.equal(shared.visible,false,'frustum-culling the last placement disables the shared draw');
+ f.dispose();
+});
