@@ -2,6 +2,39 @@
 
 These CSV files are recorded experiments, not configuration. Keep labels, car/map/route/quality/range and warmup comparable. UI changes in this update have deterministic render/sampling checks, not a target-machine FPS claim. Use docs/performance-recording.md to capture a new baseline.
 
+## Next audit: startup data, fitting work, and asset budgets — 2026-11-18
+
+The [complete audit and ordered fix grid](audits/2026-11-18/README.md) inspect
+published runtime `25988e120d8d8b3a84872aa34d51335b4fef073a` on
+[draft PR #36](https://github.com/Avensky/AvenLab/pull/36). This update adds audit
+scripts, raw evidence, and README notes; production runtime and assets are unchanged.
+
+| Area | New evidence | Next action |
+| --- | --- | --- |
+| Startup | Seven initial chunks total about 7.95 MB JS / 2.23 MB gzip. All 44 commercial-building collider records are eager; their standalone compact JSON is 986,520 gzip bytes. Hero selection, workshop, and World Builder panel are already deferred. | Separate light catalog metadata from detailed collider arrays, with valid live gameplay proxies. Deferring editor actions alone cannot remove the gameplay import path. |
+| Cold fitting | Exact repeated position/Jacobian work accounts for 171,292 of 505,709 rays in both the accepted full-tier Gothic 05 fixture and a separate production-desktop case. Gothic 02's full-tier fixture has 204,952 potentially reusable rays. | Try bounded per-warp reuse with unchanged equations, then measure uninstrumented timings. All 48 accepted checks and two separate current-runtime oracle checks match; counts are potential avoided work, not a speedup claim. |
+| Texture tiers | Six underbust variants each embed byte-identical copies of the same 16 images; even the mobile variants estimate 77,595,156 RGBA8+mipmap bytes each. Four active Gothic garage bundles contain 17,578,695 encoded image bytes, of which 5,952,915 are unique by hash. | Review derived compact texture budgets and shared source ownership. These are inventory estimates, not GPU-residency totals. |
+| Recurring work | A ten-kit, 60-frame GLB-mode fixture repeats 600 distance checks and 4,200 ancestor matrix updates. Multi-visual city fixtures repeat identical camera/shadow collection. | Group checks and reuse static centers first; keep demand-mode wake correct. Baseline collider mode skips the kit checks, and city gains depend on actual visual/shadow counts. |
+| Measurement | Capture is sandbox-only; default per-render counters do not guarantee complete totals across every frame pass. Paused previews already support demand mode. | Add explicit preview context and per-renderer frame accumulation before GPU comparisons. Preserve existing idle controls. |
+
+The recommended next implementation is bounded exact fitting reuse. Startup
+catalog separation and compact texture export budgets are the next larger
+targets; increasing a global cache is not justified by this audit. The capture
+correction is a prerequisite for reported render-pass improvements.
+
+Actor and clothing tiers must be recorded separately: normal desktop preview
+uses a portrait base actor with garage clothing. Earlier separate-garment
+`garage` timing fixtures use a garage actor and remain controlled regression/CPU
+cases, not exact default desktop captures. The additional production-selection
+count case matches a separate uninstrumented current-runtime geometry oracle;
+the report records that scope separately from the accepted-merge fixtures.
+
+The asset scan verified 71 installed GLBs, 431 image hashes, and 184 unique image
+dimensions; 247 LFS pointers and unavailable installed maps limit coverage.
+Nine existing scene/preview tests and the production build passed. Browser/GPU,
+visual, and Rust gates remain open. Hair and poses continue on their own
+[documented branches](../docs/readiness/README.md#three-branch-coordination).
+
 ## Second pass: shared buffers and repeated queries — 2026-11-18
 
 This continues `perf/wardrobe-cache-and-gameplay-lods` and [draft PR #36](https://github.com/Avensky/AvenLab/pull/36).

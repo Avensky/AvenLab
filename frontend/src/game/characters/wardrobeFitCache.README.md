@@ -64,4 +64,30 @@ The focused suites passed eight tests with no skips. The twelve fixture looks ab
 
 This change preserves the accepted fitting result, including existing regular-skirt/corset contact failures and remaining fabric/close-up visual issues. It does not rebuild skirt textures, change skirt 02/05 placement, or alter animation clearance. The central readiness grid tracks those work items separately. GPU performance, rendered appearance, and visual fit still require their browser/device gates; these CPU and geometry checks do not establish those passes.
 
-Repeated exact positions at split vertices may permit sharing the expensive warp/Jacobian calculation while still transforming each authored normal/tangent independently. That is a potential later optimization requiring duplicate-rate evidence, bounded storage, and equivalence checks; it is not implemented here.
+Repeated exact positions at split vertices may permit sharing the expensive warp/Jacobian calculation while still transforming each authored normal/tangent independently. The audit below supplies duplicate-rate evidence. A runtime memo still needs bounded storage, ownership and variant rules, measured benefit, and equivalence checks; it is not implemented here.
+
+## Preparation audit at `25988e1`
+
+[`audit-character-preparation.mjs`](../../../scripts/audit-character-preparation.mjs) counts preparation work through in-memory diagnostics without editing runtime sources. Reproduce the [recorded count report](../../../../performance/reports/character-preparation-2026-11-18.json) from `frontend/`:
+
+```sh
+node scripts/audit-character-preparation.mjs --mode counts --include-default-desktop --output /tmp/character-preparation.json
+```
+
+This run checks the twelve accepted fixtures cold/warm, then two ordered sweeps of those twelve looks without clearing the cache. All 48 preparations match their accepted geometry signatures. Exact-position tracking is limited to 50,000 positions per warp and 200,000 per preparation. Keys preserve signed zero and exclude nonfinite coordinates or unsupported getters. No recorded case hit those limits or exclusions. Copy-byte counts are cumulative traffic, not retained memory or CPU time; repeatable rays describe potential avoided work, not an implemented speedup. No new timing or GPU result is claimed.
+
+### Input scope and production-route check
+
+The accepted `garage` fixtures explicitly use the garage base actor. Normal desktop `GarageDriver` uses a portrait base actor with garage garment/corset tiers unless displaying a victory. The old full-garage fixture timings therefore do not measure that exact production route.
+
+One additional, separately reported High Collar case uses `villagerModelUrl`, `resolveWardrobePreview`, and `ReadyVillager`-equivalent preparation options for the default desktop route. It resolves the portrait actor, separate Gothic skirt 05, garage High Collar corset, and Vesper body donor. Its cold/warm geometry matches a fresh oracle generated in a separate, untouched-current-runtime context before diagnostic hooks are installed. This oracle is specific to `25988e1`; it is not an addition to the accepted `0e81afe` fixture set or visual approval. Its 505,709 cold rays and 171,292 potentially repeatable rays confirm that the main fitting finding applies to the actual selected inputs.
+
+The report includes the audit-tool/fixture hashes, individual counting-module hashes, resolved source paths, and SHA-256/byte counts for all 17 loaded GLBs. Other transitive runtime code is identified by the recorded commit rather than individual hashes. Geometry signatures cover attributes, indices, groups and draw ranges; they do not establish texture quality, animation correctness, browser timing, or GPU memory. Changing the base actor requires reconciling ordered skeleton names, bind transforms, named body/face nodes, masks, and accepted arm clearance, rather than choosing a URL from file size alone.
+
+### Ranked follow-ups
+
+1. **Exact point/Jacobian reuse within a stable bind-space warp.** Gothic 02/05 have the strongest counted opportunity: 204,952/171,292 potentially repeatable rays in the garage fixtures and 133,843/129,864 in portrait, roughly 34–38% of total cold rays. The default desktop High Collar case has 45,557 tucked vertices but 29,033 unique positions; 37,452 of 93,300 derivative shape evaluations repeat prior Jacobian work. Any future memo must belong to the current geometry/fit variant, retain each authored normal/tangent independently, and preserve skirt-specific hand clearance. A bounded prototype must establish actual time savings before production changes.
+2. **Cache pressure and admission/representation.** In the deliberate twelve-look mixed-tier sequence, the second sweep records 2 hits and 14 misses across fitting operations. Peak retained cache data is 16,770,416 bytes and 11 entries, within existing bounds. This is a stress sequence, not observed user browsing behavior. Investigate which expensive fits to retain and how to reduce exact snapshot duplication before increasing mobile memory limits.
+3. **Warm copy and verification work.** The default desktop High Collar repeat clones 20 geometries covering 9,697,130 input bytes, hashes 3,694,484 input bytes and confirms the same number by exact comparison, and still performs 37,629 skirt-shape evaluations plus 10,560 rays. Profile these costs before changing clone or verification rules; model ownership, disposal, skinning and mutable shading data remain requirements.
+
+Further generic BVH reuse is a lower priority for the High Collar case: only one exact repeated BVH input appears cold and none warm. Counts include first-encounter setup within the stated case order; existing module/source caches remain in-process, so the first-use clone counts are not equivalent to the warmed cache-cold timing intervals in earlier reports. Hair and pose contracts are unchanged by this audit.

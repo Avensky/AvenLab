@@ -5,6 +5,10 @@ including the latest wardrobe, performance, color, and mobile UI requests.
 The performance implementation is published in [draft PR #36](https://github.com/Avensky/AvenLab/pull/36)
 on `perf/wardrobe-cache-and-gameplay-lods`, based on `0e81afe`.
 Rust and browser/target-device validation remain open; the PR is not merged or deployed.
+The [next performance audit](../../performance/audits/2026-11-18/README.md)
+reviews runtime `25988e1` and adds evidence/priorities without changing production
+behavior. Its A3-01–06 grid tracks the next performance changes separately from
+the already implemented passes.
 
 ## Decisions to preserve
 
@@ -27,14 +31,24 @@ Rust and browser/target-device validation remain open; the PR is not merged or d
 ## Three-branch coordination
 
 The three workstreams are **performance, hair, and poses**. Keep each one's work
-and validation in its own branch; the hair and pose branch names are still to be
-supplied.
+and validation in its own branch. Remote refs were verified for this audit;
+recheck their current heads before integration.
 
 | Workstream | Branch | Responsibility and shared boundaries |
 | --- | --- | --- |
 | Performance | `perf/wardrobe-cache-and-gameplay-lods` | Reduce measured CPU, rendering, loading, and memory costs while preserving accepted appearance and behavior. Coordinate changes to character preparation and shared data before integration. |
-| Hair | Name pending | Hair assets and their character integration. Coordinate stable asset IDs, appearance colors, and headwear compatibility with the existing character/LOD contracts. |
-| Poses | Name pending | Poses and pose/animation transitions. Coordinate rig, animation, and resource-lifecycle interfaces with character preparation. |
+| Hair | `feat/hero-hair` | Hair assets and their character integration. Inspected ref: `0e81afe`. Coordinate stable asset IDs, appearance colors, and headwear compatibility with the existing character/LOD contracts. |
+| Poses | `feature/character-pose-pack` | Poses and pose/animation transitions, [draft PR #37](https://github.com/Avensky/AvenLab/pull/37), inspected head `c726345`. Coordinate rig, held-pose transitions, animation cleanup, and resource-lifecycle interfaces with character preparation. |
+
+At the inspected performance (`25988e1`) and pose (`c726345`) heads, the published
+diffs share `frontend/src/game/preview/VehiclePreviewModel.tsx`: preserve both
+post-rig static batching and the pose branch's seat-side door/mirror targeting.
+The audit's scripts/reports/README paths do not overlap the pose diff. That branch
+also reparents exterior handles under door pivots, so repeat protected-control,
+door-entry, mirror and batch-count checks after integration; the previous vehicle
+counts are not automatically the combined result. Repeat held-pose/transition,
+skirt hand-clearance, fit-cache and source ownership checks as well. Its added
+pose catalog and cockpit work are not included in the `25988e1` performance audit.
 
 - Use a separate worktree for each active branch so unfinished changes remain
   isolated. Record each branch's purpose, base commit, owning README, and dependent
@@ -75,11 +89,11 @@ visual approval. Unassigned work remains open.
 | COLOR-03 | Better curated color combinations with consistent group assignment. Current two-color themes exist; expanded palettes need review. **Open.** | Gate | Keep | Gate | Curated combinations work on the supported clothing groups, have clear names and selected state, and preview correctly across light/dark fabric. Applying a palette preserves unsupported or intentionally untouched groups. |
 | UI-01 | Wider, clearer details pane with color controls retained inside. **Open.** | Gate | Keep | Gate | Desktop details use the available width without crowding the character. Mobile uses an intentional sheet/panel arrangement, readable labels, and no horizontal overflow. Verify portrait, landscape, keyboard, touch, and controller navigation. |
 | UI-02 | Useful, contextual details actions and a cleaner mobile hierarchy. **Open.** | Gate | Keep | Gate | Equip/remove, applicable sleeve/layer controls, reset group/piece, compare with original, and save/apply/cancel behavior are easy to find. Show only meaningful actions; preserve the selected item and scroll position. |
-| PERF-01 | Remove discarded fitting work; cache exact reusable fits; share temporary coverage queries; correct preview resource lifecycle. CPU/equivalence-tested. High Collar cold preparation improves 10–11% in the second pass but remains about one second in garage. | Gate | Keep | Gate | Cold and repeat selections are measured separately; accepted geometry stays identical; bounded caches cannot share mutable/disposed results; development replay prepares one model per committed fit. |
+| PERF-01 | Remove discarded fitting work; cache exact reusable fits; share temporary coverage queries; correct preview resource lifecycle. CPU/equivalence-tested. High Collar cold preparation improves 10–11% in the second pass but remains about one second in the full-tier fixture. Audit A3-01 identifies exact repeated point/Jacobian work; implementation remains open. | Gate | Keep | Gate | Cold and repeat selections are measured separately, recording actor and clothing tiers independently; accepted geometry stays identical; bounded caches cannot share mutable/disposed results; development replay prepares one model per committed fit. |
 | PERF-02 | Cheap gameplay driver LOD with recognizable broad appearance. Implemented and geometry/update-tested; renderer/GPU review pending. | Gate | Keep | Gate | Occupied supported vehicles display the correct body/hair/hat/main colors, empty/static props remain empty, and fleet draw cost is bounded. Test close approach, culling hysteresis, color changes, removal, and cabin clipping on target hardware. |
 | PERF-03 | Group compatible vehicle segments without breaking behavior. BRZ stays at 259 → 143 ranges; exact UV sharing reduces derived buffers from 33.7 MB to 16.1 MB. Original assets are preserved. Cold derivation/offline exports and GPU review remain open. | Gate | Gate | Gate | Measure actual render-range reductions and unchanged triangles/transforms. Doors, wheel/caliper rigs, steering, lights, glass, paint, and animations still work. Source GLB/Blender assets are unchanged. |
-| PERF-04 | Set texture, loaded-source, and frame-time budgets for exposed assets. **Open:** wardrobe source GLTF/texture retention and mobile texture budgets still need work. | Scope | Gate | Gate | Repeated wardrobe browsing and fleet gameplay stay within documented memory/frame budgets on a named desktop and mobile baseline. Record GPU/browser results; CPU geometry timing alone cannot close this gate. |
-| PERF-05 | Real lazy boundaries and a production startup budget. Hero selection/workshop splitting reduces initial gzip JS by 1.7%; remaining eager paths are open. | Gate | Gate | Gate | Bundle manifests show optional screens outside the initial static closure. The game entry does not import research/editor-only modules. Loading and return navigation retain correct state. |
+| PERF-04 | Set texture, loaded-source, and frame-time budgets for exposed assets. **Open:** audit A3-03 confirms mobile texture mismatches/retained source caches; A3-04–06 track capture coverage, shared scene work, and demand wake. | Scope | Gate | Gate | Repeated wardrobe browsing and fleet gameplay stay within documented memory/frame budgets on a named desktop and mobile baseline. Preview context and complete frame-pass counters are verified. Record GPU/browser results; metadata or CPU geometry timing alone cannot close this gate. |
+| PERF-05 | Real lazy boundaries and a production startup budget. Hero selection/workshop splitting reduces initial gzip JS by 1.7%; audit A3-02 finds all 44 commercial collider records still eager through shared gameplay/catalog code. | Gate | Gate | Gate | Bundle manifests show optional screens outside the initial static closure. Separate light metadata and required detailed data without breaking gameplay proxies, bounds, validation, or editor loading. The game entry does not import research/editor-only modules. Loading and return navigation retain correct state. |
 | DATA-01 | One appearance schema across profile save, full preview, and gameplay LOD. Reduced driver contract added; group schema/migrations remain open. | Gate | Gate | Gate | Old saves load safely, the server validates supported fields, reconnect/equip updates are correct, and compact snapshot v1/v2 compatibility plus v3 driver fixtures pass. Draft/Under Development items cannot become unsupported live loadouts. |
 | SPLIT-01 | Explicit research and game entry points, capabilities, routes, and data ownership. **Open; not part of this performance patch.** | — | Gate | Gate | Gameplay can build/start with research services and editor tools absent. Research can consume documented simulation/data APIs without importing game menus or profile stores. Diagnostics remain opt-in. |
 | PKG-01 | Versioned public APIs with independent build/test/example consumers. Existing wardrobe catalog is the first shared data package. **Open for further extraction.** | — | — | Gate | Each extracted package has an owner README, exports, dependencies, compatibility policy, disposal/lifecycle rules where relevant, and two real consumers or a justified independent example. No back-imports into application internals. |
@@ -183,12 +197,19 @@ the entire game.
   the wider vehicle suite as a clean alpha gate; batching does not change that policy.
 - The fitting cache has a budget; this does not bound Drei/useGLTF source caches or
   all decoded textures. Missing mobile garment variants and repeated textures
-  remain tracked under PERF-04.
-- Pausing character playback does not yet establish a fully idle desktop preview
-  pipeline. Camera transitions, reflections, mirrors, loading effects, and wake-up
-  invalidation need one coordinated review before changing frame-loop policy.
+  remain tracked under PERF-04. The latest audit distinguishes unavailable LFS
+  tier evidence from absent mobile declarations and proves identical underbust
+  image payloads across garage/mobile exports.
+- Paused previews already use demand mode; covered previews use `never`, and the
+  compact clock stops while paused/covered. Active reflection reuse, OS/application
+  Reduced Motion consistency, camera/animation/loading wake-up, and the harbor
+  building's final demanded-frame LOD edge remain open. Preserve the working idle
+  controls when grouping computation or changing sampling cadence.
 - The current performance capture UI targets gameplay. Add an explicit preview
-  capture context before reporting fitting-room frame-time comparisons from it.
+  capture context and verify complete render-pass accumulation before reporting
+  fitting-room frame-time/draw comparisons from it. Record the actual selected
+  base actor and clothing tiers; normal desktop preview uses portrait actor plus
+  garage clothing, unlike the older full-tier regression fixture.
 
 ## Updating this checklist
 
