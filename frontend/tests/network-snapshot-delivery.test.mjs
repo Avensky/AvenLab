@@ -49,6 +49,8 @@ test('socket snapshots coalesce without delaying ACKs, life transitions or leaki
     };
     let publications = 0;
     stop = net.subscribe((state,previous)=>{if(state.snapshot!==previous.snapshot)publications++;});
+    send(1,{...body,driver:{body:'invalid'}});render();
+    assert.equal(publications,0,'invalid legacy driver data never reaches instance batches');
     send(1);
     assert.equal(net.getState().tick,1);
     transport.recordInputPacketSent(7,now-8);

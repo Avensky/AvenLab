@@ -35,7 +35,8 @@ export interface CtfFlagEvent {
 }
 export interface PhysicsSnapshot {
   match_state?: CtfMatchState | null;
-  asset_health?: Record<string,number>;
+  /** Immutable packet data; changed damage maps replace the previous object. */
+  asset_health?: Readonly<Record<string,number>>;
   drawbridge?: {start_tick:number;start_angle:number;target_angle:number;next_available_tick?:number;broken:string|null};
   match_clock?: {
     remaining_s: number;
@@ -161,6 +162,8 @@ export interface PhysicsEntitySnapshot {
   /** Canonical selected model id, such as ae86, brz, camaro, or supra. */
   vehicle_id?: string | null;
   appearance?: import("../../vehicles/cosmetics/heroLoadouts").HeroAppearance;
+  /** Absent means no visible occupant; this is the cheap gameplay appearance. */
+  driver?: import("../../game/characters/driverAppearance").DriverAppearance;
   team?: Team;
   room_id: number;
 

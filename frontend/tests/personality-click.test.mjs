@@ -41,11 +41,13 @@ test('character clicks play varied personality clips, resume held poses, and ign
     turns.setState({ suppressClickUntil: 0 });
     // The DOM only hosts React hooks; the real skeleton, clip compiler and mixer are exercised below.
     const error = console.error; t.mock.method(console, 'error', (...args) => { if (/unrecognized|non-boolean attribute/.test(String(args[0]))) return; error(...args); });
-    const baseClips = [];
+    const baseClips = [], sequenceActions = [];
     const clipAction = AnimationMixer.prototype.clipAction;
     t.mock.method(AnimationMixer.prototype, 'clipAction', function (clip, ...args) {
       if (clip.name.startsWith('002 ')) baseClips.push(clip);
-      return clipAction.call(this, clip, ...args);
+      const action = clipAction.call(this, clip, ...args);
+      if (clip.name.startsWith('pose-sequence ')) sequenceActions.push(action);
+      return action;
     });
     renderer = createRoot(document.getElementById('root'));
     const render = props => act(async () => renderer.render(h(GarageEmotePlayer, {
@@ -88,6 +90,43 @@ test('character clicks play varied personality clips, resume held poses, and ign
     assert(replacementClip.tracks.some(track => track.name === replacement.uuid + '.position'));
     await render({ root: replacement, bag: true });
     assert.notEqual(baseClips.at(-1), replacementClip, 'the held bag changes the base clip set');
+
+    for (const model of ['female', 'male']) {
+      const data = await readFile(`tests/fixtures/villager-${model}-rig.json`, 'utf8');
+      const { scene: poseRig } = await new GLTFLoader().parseAsync(data, '');
+      poseRig.name = `garage-villager-${model}`;
+      const head = poseRig.getObjectByName('head');
+      const arm = poseRig.getObjectByName('upperarm_r');
+      await render({ root: poseRig });
+      const play = emote => preview.setState({ emote, playbackPaused: false });
+      play({ id: 'pose-attentive' });
+      tick(2);
+      const start = head.quaternion.clone(), restingArm = arm.quaternion.clone();
+      play({ id: 'pose-weight-shift' });
+      tick(2);
+      const end = head.quaternion.clone();
+      assert(start.angleTo(end) > .05, `${model}: standalone poses are distinct`);
+
+      const sequence = { id: 'pose-sequence', sequence: { from: 'pose-attentive', motion: '010', to: 'pose-weight-shift' } };
+      play(sequence);
+      tick(1.3); // release the previous hold, then settle into the start pose
+      assert(head.quaternion.angleTo(start) < .001, `${model}: sequence holds the selected start`);
+      tick(1.2);
+      assert(arm.quaternion.angleTo(restingArm) > .1, `${model}: the wave moves the arm between poses`);
+      tick(3);
+      assert(head.quaternion.angleTo(end) < .001, `${model}: sequence stays at the selected end`);
+
+      play({ ...sequence, sequence: { ...sequence.sequence, to: 'pose-attentive' } });
+      tick(5);
+      assert(head.quaternion.angleTo(start) < .001, `${model}: replay uses the new endpoint`);
+      play(sequence);
+      tick(.1);
+      assert(sequenceActions.at(-1).time > .9 && sequenceActions.at(-1).getEffectiveWeight() === 1,
+        `${model}: continuing from a matching hold immediately plays the transition at full weight`);
+      play(null);
+      tick(1);
+      assert(head.quaternion.angleTo(start) > .05, `${model}: returning to idle releases the hold`);
+    }
   } finally {
     if (renderer) await act(async () => renderer.unmount()); await vite?.close(); dom.window.close();
     for (const [key, descriptor] of original) { if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key]; }

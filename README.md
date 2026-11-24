@@ -4,6 +4,23 @@ Start with [Project guide](docs/PROJECT_GUIDE.md), [repo audit](docs/REPO_AUDIT.
 
 For character assets, start with the [wardrobe authoring and validation guide](frontend/src/game/characters/README.md#garment-authoring-and-validation) and the [shared wardrobe catalog](packages/wardrobe-catalog/README.md). Run `npm --prefix frontend run audit:wardrobe` for the fast checks or add `-- --full` to test installed GLBs and animated fit.
 
+## Alpha readiness and current work
+
+The [readiness grid](docs/readiness/README.md) tracks the must-have fixes for alpha,
+the later separation of research and game mode, and reusable package extraction.
+It includes the shared color selection tool, outfit color groups, palette quality,
+details-pane/mobile work, accepted wardrobe fits, and remaining performance gates.
+Use the [performance notes](performance/README.md) for measured results and limits;
+feature README files describe implementation ownership and local follow-up work.
+An implemented change is not a completed release gate until its acceptance check
+has been recorded.
+
+## Alpha city rendering audit
+
+At a fixed city junction, Fast mode with shadows and detailed reflections went from **314 to 209 draws** on the instanced fallback and **156 to 141** with native multi-draw. Both paths rendered the same pixels as their respective baselines. The audit covers per-light caster culling, blended road paint and sky reflection generation. Phone frame times and sustained thermal performance still need a matched driving capture. [Measurements and reproduction steps](docs/ALPHA_CITY_RENDER_BUDGET_AUDIT.md#city-render-pass-measurements)
+
+For first city entry, the Fast fallback now uploads the full and reduced building buffers with zero warmup triangle draws. In three cold software-WebGL runs per revision, median building geometry preparation fell from **918 to 420 ms**. The first synchronized display frame fell from **1,288 to 499 ms**. Native multi-draw and Balanced had shorter first frames but slightly longer total load-to-display medians. [Cold-load results and remaining phone checks](docs/ALPHA_CITY_RENDER_BUDGET_AUDIT.md#first-city-load-and-gpu-preparation)
+
 # AvensLab
 
 ```t

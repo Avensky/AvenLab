@@ -1,4 +1,5 @@
 export const EMOTE_PROP_NOTES = {
+  "look-away": { shopBag: "keep", note: "The wardrobe glance leaves both hands relaxed." },
   "001": { shopBag: "keep", note: "Relaxed carrying pose. Keep the bag in the left hand." },
   "002": { shopBag: "keep", note: "Weight shift adds a small natural swing to the bag." },
   "003": { shopBag: "keep", note: "Right-hand gesture leaves the carrying hand available." },

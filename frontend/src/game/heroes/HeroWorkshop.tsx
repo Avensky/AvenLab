@@ -52,17 +52,10 @@ const MARINE_LAMPS = [
  {id:"searchlights", label:"Searchlights"},
 ] as const;
 
-export function HeroLoadoutSync(){
- const owner=useSocialStore(s=>s.view?.profile.id??null);
- const lastOwner=useSocialStore(s=>s.profileOwner);
- const main=useSocialStore(s=>s.view?.profile.progression?.default_hero);
- const loadouts=useSocialStore(s=>s.view?.profile.progression?.hero_loadouts);
- useEffect(()=>{if(owner||!lastOwner)useHeroLoadouts.getState().adopt(owner,main,loadouts);},[owner,main,loadouts,lastOwner]);
- return null;
-}
-
 /** Vehicle styling and the stock-relative performance page share one studio
  * chrome. Appearance edits save to the authenticated player's vehicle loadout. */
+export { HeroLoadoutSync } from "./HeroLoadoutSync";
+
 export function HeroWorkshop({onCharacterViewChange,onCharacterPreviewChange}:{
  onCharacterViewChange?:(tab:CharacterTab|null)=>void;
  onCharacterPreviewChange?:(choice:CharacterChoice|null)=>void;

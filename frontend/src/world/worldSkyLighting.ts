@@ -28,16 +28,30 @@ export function skyReflectionMap(preset: WorldSkyPreset, detailed: boolean) {
   const key = new Color(sky.keyColor), band = new Color(), sample = new Color();
   // Match the direction of the world key light at (-120, 180, -80).
   const keyLength = Math.hypot(-120, 180, -80);
+  const keyXZ = new Float64Array(width);
+  for (let column = 0; column < width; column++) {
+    const longitude = 2 * Math.PI * ((column + .5) / width - .5);
+    keyXZ[column] = -120 * Math.cos(longitude) - 80 * Math.sin(longitude);
+  }
+  const bandPixel = new Uint8Array(4);
+  bandPixel[3] = 255;
   for (let row = 0; row < height; row++) {
     const latitude = Math.PI * ((row + .5) / height - .5);
     const y = Math.sin(latitude), ring = Math.cos(latitude);
     band.copy(horizon).lerp(y < 0 ? ground : zenith, Math.abs(y));
+    sample.copy(band).convertLinearToSRGB();
+    bandPixel[0] = Math.round(sample.r * 255);
+    bandPixel[1] = Math.round(sample.g * 255);
+    bandPixel[2] = Math.round(sample.b * 255);
     for (let column = 0; column < width; column++) {
-      const longitude = 2 * Math.PI * ((column + .5) / width - .5);
-      const towardKey = (-120 * ring * Math.cos(longitude) + 180 * y - 80 * ring * Math.sin(longitude)) / keyLength;
-      const highlight = Math.max(0, towardKey) ** 48 * .22 * sky.keyIntensity;
-      sample.copy(key).multiplyScalar(highlight).add(band).convertLinearToSRGB();
       const offset = (row * width + column) * 4;
+      const towardKey = (ring * keyXZ[column] + 180 * y) / keyLength;
+      if (towardKey <= 0) {
+        pixels.set(bandPixel, offset);
+        continue;
+      }
+      const highlight = towardKey ** 48 * .22 * sky.keyIntensity;
+      sample.copy(key).multiplyScalar(highlight).add(band).convertLinearToSRGB();
       pixels[offset] = Math.min(255, Math.round(sample.r * 255));
       pixels[offset + 1] = Math.min(255, Math.round(sample.g * 255));
       pixels[offset + 2] = Math.min(255, Math.round(sample.b * 255));

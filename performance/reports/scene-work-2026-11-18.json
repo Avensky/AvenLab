@@ -1,0 +1,539 @@
+{
+  "metadata": {
+    "head": "25988e120d8d8b3a84872aa34d51335b4fef073a",
+    "node": "v24.22.3",
+    "threeRevision": "181",
+    "typescript": "5.9.3",
+    "auditScriptSha256": "1a1f6de63119f71c70a3eee65789576e1edefaf4f85a284beb0004f3999c8089",
+    "method": "Current TypeScript AST extracts production useFrame callbacks; dependencies are explicit Three-only fixtures. Actual shared shadow/reflection helpers are called directly. Counts/assertions only, with no React mount, GLB load, WebGL, CPU timing or FPS claim.",
+    "scope": "Counts describe normal visual authored-layout mode. Collision-only/force-detail gates are exercised separately. Generated documents are distinct from unavailable installed documents/live server snapshots."
+  },
+  "maps": {
+    "generated": [
+      {
+        "id": "harbor_canal_red",
+        "origin": "Current generator, using committed build-script seed/default; not an installed/live snapshot",
+        "seed": 417,
+        "objects": 1110,
+        "kitPlacements": 10,
+        "roadPlacements": 0,
+        "autoRoadPlacements": 0,
+        "modelPlacementsAfterGarageReplacement": 6,
+        "parkedVehiclePlacements": 0,
+        "buildingPlacements": 46,
+        "authoredRepeat": false,
+        "base": "replace",
+        "layout": {
+          "kind": "fixed_grid",
+          "origin": [
+            0,
+            0
+          ],
+          "size": [
+            1,
+            1
+          ]
+        },
+        "declaredVisuals": [
+          {
+            "id": "base",
+            "asset": "/models/world/garage.glb"
+          }
+        ]
+      },
+      {
+        "id": "harbor_canal_blue",
+        "origin": "Current generator, using committed build-script seed/default; not an installed/live snapshot",
+        "seed": 1030,
+        "objects": 1110,
+        "kitPlacements": 10,
+        "roadPlacements": 0,
+        "autoRoadPlacements": 0,
+        "modelPlacementsAfterGarageReplacement": 6,
+        "parkedVehiclePlacements": 0,
+        "buildingPlacements": 46,
+        "authoredRepeat": false,
+        "base": "replace",
+        "layout": {
+          "kind": "fixed_grid",
+          "origin": [
+            0,
+            0
+          ],
+          "size": [
+            1,
+            1
+          ]
+        },
+        "declaredVisuals": [
+          {
+            "id": "base",
+            "asset": "/models/world/garage.glb"
+          }
+        ]
+      },
+      {
+        "id": "harbor_canal_fleet",
+        "origin": "Current generator, using committed build-script seed/default; not an installed/live snapshot",
+        "seed": 1643,
+        "objects": 1185,
+        "kitPlacements": 10,
+        "roadPlacements": 0,
+        "autoRoadPlacements": 0,
+        "modelPlacementsAfterGarageReplacement": 6,
+        "parkedVehiclePlacements": 0,
+        "buildingPlacements": 46,
+        "authoredRepeat": false,
+        "base": "replace",
+        "layout": {
+          "kind": "fixed_grid",
+          "origin": [
+            0,
+            0
+          ],
+          "size": [
+            1,
+            1
+          ]
+        },
+        "declaredVisuals": [
+          {
+            "id": "base",
+            "asset": "/models/world/garage.glb"
+          }
+        ]
+      },
+      {
+        "id": "coastal_district",
+        "origin": "Current generator, using committed build-script seed/default; not an installed/live snapshot",
+        "seed": 1,
+        "objects": 76,
+        "kitPlacements": 0,
+        "roadPlacements": 0,
+        "autoRoadPlacements": 0,
+        "modelPlacementsAfterGarageReplacement": 3,
+        "parkedVehiclePlacements": 0,
+        "buildingPlacements": 11,
+        "authoredRepeat": false,
+        "base": "replace",
+        "layout": {
+          "kind": "fixed_grid",
+          "origin": [
+            0,
+            0
+          ],
+          "size": [
+            1,
+            1
+          ]
+        },
+        "declaredVisuals": [
+          {
+            "id": "base",
+            "asset": "/models/world/garage.glb"
+          }
+        ]
+      },
+      {
+        "id": "harbor_exchange",
+        "origin": "Current generator, using committed build-script seed/default; not an installed/live snapshot",
+        "objects": 147,
+        "kitPlacements": 0,
+        "roadPlacements": 0,
+        "autoRoadPlacements": 0,
+        "modelPlacementsAfterGarageReplacement": 0,
+        "parkedVehiclePlacements": 0,
+        "buildingPlacements": 0,
+        "authoredRepeat": false,
+        "base": "replace",
+        "layout": {
+          "kind": "fixed_grid",
+          "origin": [
+            0,
+            0
+          ],
+          "size": [
+            1,
+            1
+          ]
+        },
+        "declaredVisuals": []
+      }
+    ],
+    "installed": [
+      {
+        "id": "coastal_district",
+        "path": "avenlab-server/src/assets/blocks/coastal_district_colliders.json",
+        "available": false
+      },
+      {
+        "id": "harbor_canal_blue",
+        "path": "avenlab-server/src/assets/blocks/harbor_canal_blue_colliders.json",
+        "available": false
+      },
+      {
+        "id": "harbor_canal_fleet_classic",
+        "path": "avenlab-server/src/assets/blocks/harbor_canal_fleet_classic_colliders.json",
+        "available": false
+      },
+      {
+        "id": "harbor_canal_fleet",
+        "path": "avenlab-server/src/assets/blocks/harbor_canal_fleet_colliders.json",
+        "available": false
+      },
+      {
+        "id": "harbor_canal_red",
+        "path": "avenlab-server/src/assets/blocks/harbor_canal_red_colliders.json",
+        "available": false
+      },
+      {
+        "id": "harbor_exchange",
+        "path": "avenlab-server/src/assets/blocks/harbor_exchange_colliders.json",
+        "available": false
+      },
+      {
+        "id": "road_jump_lab",
+        "path": "avenlab-server/src/assets/blocks/road_jump_lab_colliders.json",
+        "available": false
+      },
+      {
+        "id": "road_precision",
+        "path": "avenlab-server/src/assets/blocks/road_precision_colliders.json",
+        "available": false
+      },
+      {
+        "id": "streaming_endless_city",
+        "path": "avenlab-server/src/assets/blocks/streaming_endless_city_colliders.json",
+        "available": false
+      },
+      {
+        "id": "workshop_yard",
+        "path": "avenlab-server/src/assets/blocks/workshop_yard_colliders.json",
+        "available": false
+      }
+    ],
+    "renderPresets": {
+      "BASELINE_SETTINGS": {
+        "environmentMode": "collider",
+        "cityQuality": "fast",
+        "shadows": false
+      },
+      "LOW_DETAIL": {
+        "environmentMode": "glb",
+        "cityQuality": "fast",
+        "shadows": false
+      }
+    },
+    "livePersistedSettings": "Unknown; no signed-in browser or running renderer inspected."
+  },
+  "lod": {
+    "kit": [
+      {
+        "frames": 60,
+        "placements": 10,
+        "mode": {},
+        "counts": {
+          "callbacks": 600,
+          "distanceQueries": 600,
+          "updateWorldMatrixCalls": 4200,
+          "localMatrixComposes": 4200,
+          "statePublications": 10
+        },
+        "hierarchy": "Synthetic minimal CityScene subtree: Scene + city-scene + city-chunk + chunk-position + authored-world + placement + KitMesh. Extra application ancestors and renderer work excluded."
+      },
+      {
+        "frames": 60,
+        "placements": 10,
+        "mode": {
+          "collisionOnly": true
+        },
+        "counts": {
+          "callbacks": 600,
+          "distanceQueries": 0,
+          "updateWorldMatrixCalls": 0,
+          "localMatrixComposes": 0,
+          "statePublications": 0
+        },
+        "hierarchy": "Synthetic minimal CityScene subtree: Scene + city-scene + city-chunk + chunk-position + authored-world + placement + KitMesh. Extra application ancestors and renderer work excluded."
+      },
+      {
+        "frames": 60,
+        "placements": 10,
+        "mode": {
+          "forceDetail": true
+        },
+        "counts": {
+          "callbacks": 600,
+          "distanceQueries": 0,
+          "updateWorldMatrixCalls": 0,
+          "localMatrixComposes": 0,
+          "statePublications": 0
+        },
+        "hierarchy": "Synthetic minimal CityScene subtree: Scene + city-scene + city-chunk + chunk-position + authored-world + placement + KitMesh. Extra application ancestors and renderer work excluded."
+      }
+    ],
+    "roads": [
+      {
+        "frames": 60,
+        "demand": false,
+        "callbacks": 60,
+        "distanceQueries": 3,
+        "statePublications": 0,
+        "fixture": "One synthetic auto road; current harbors have zero RoadModel placements."
+      },
+      {
+        "frames": 60,
+        "demand": true,
+        "callbacks": 60,
+        "distanceQueries": 60,
+        "statePublications": 0,
+        "fixture": "One synthetic auto road; current harbors have zero RoadModel placements."
+      }
+    ],
+    "models": [
+      {
+        "frames": 60,
+        "demand": false,
+        "callbacks": 60,
+        "placements": 6,
+        "scans": 4,
+        "distanceQueries": 24,
+        "candidateVectorAllocations": 24
+      },
+      {
+        "frames": 60,
+        "demand": true,
+        "callbacks": 60,
+        "placements": 6,
+        "scans": 60,
+        "distanceQueries": 360,
+        "candidateVectorAllocations": 360
+      }
+    ],
+    "buildingDemandWake": {
+      "firstFrameSeconds": 0,
+      "cameraJumpFrameSeconds": 0.1,
+      "cameraJumpMeters": 500,
+      "remainsNearAfterJump": true,
+      "correctedOnAnotherFrameAtSeconds": 0.3,
+      "followupInvalidationInCallback": false,
+      "scope": "Existing HarborBuildingLods behavior under a single final demanded render; not a measured visible pop or frame time."
+    }
+  },
+  "sharedCityFrameWork": [
+    {
+      "preparedVisuals": 1,
+      "syntheticNonLightNodes": 1000,
+      "shadowLights": 3,
+      "shadowFaces": 8,
+      "counts": {
+        "callbacks": 1,
+        "cameraUpdates": 1,
+        "cameraFrustumBuilds": 1,
+        "shadowCollections": 1,
+        "visibleNodeVisits": 1007,
+        "lightShadowMatrixUpdates": 8
+      },
+      "equalFrustaAcrossVisuals": true,
+      "scope": "One frame with explicit synthetic scene size; no claim that a currently deployed map has this visual/node count. Shadows-off omits every shadow collection."
+    },
+    {
+      "preparedVisuals": 2,
+      "syntheticNonLightNodes": 1000,
+      "shadowLights": 3,
+      "shadowFaces": 8,
+      "counts": {
+        "callbacks": 2,
+        "cameraUpdates": 2,
+        "cameraFrustumBuilds": 2,
+        "shadowCollections": 2,
+        "visibleNodeVisits": 2016,
+        "lightShadowMatrixUpdates": 16
+      },
+      "equalFrustaAcrossVisuals": true,
+      "scope": "One frame with explicit synthetic scene size; no claim that a currently deployed map has this visual/node count. Shadows-off omits every shadow collection."
+    },
+    {
+      "preparedVisuals": 4,
+      "syntheticNonLightNodes": 1000,
+      "shadowLights": 3,
+      "shadowFaces": 8,
+      "counts": {
+        "callbacks": 4,
+        "cameraUpdates": 4,
+        "cameraFrustumBuilds": 4,
+        "shadowCollections": 4,
+        "visibleNodeVisits": 4040,
+        "lightShadowMatrixUpdates": 32
+      },
+      "equalFrustaAcrossVisuals": true,
+      "scope": "One frame with explicit synthetic scene size; no claim that a currently deployed map has this visual/node count. Shadows-off omits every shadow collection."
+    }
+  ],
+  "preview": {
+    "policies": [
+      {
+        "name": "desktop-active",
+        "frameloop": "always",
+        "compactClockEnabled": false
+      },
+      {
+        "name": "queue-paused",
+        "frameloop": "demand",
+        "compactClockEnabled": false
+      },
+      {
+        "name": "compact-active",
+        "frameloop": "demand",
+        "compactClockEnabled": true
+      },
+      {
+        "name": "preference-reduced-motion",
+        "frameloop": "demand",
+        "compactClockEnabled": false
+      },
+      {
+        "name": "covered-main",
+        "frameloop": "never",
+        "compactClockEnabled": false
+      },
+      {
+        "name": "authoring",
+        "frameloop": "demand",
+        "compactClockEnabled": false
+      }
+    ],
+    "reflections": [
+      {
+        "name": "desktop-floor",
+        "inputRenderFrames": 120,
+        "syntheticFps": 60,
+        "timed": true,
+        "configuredRates": {
+          "floor": 24
+        },
+        "captures": {
+          "floor": 40,
+          "wall": 0
+        },
+        "maxCapturesPerFrame": 1,
+        "scope": "Both planes front-facing, floor submitted first, stationary inputs, original capture replaced with a counter; actual render passes, pixels, GPU time and occlusion excluded."
+      },
+      {
+        "name": "compact-floor",
+        "inputRenderFrames": 60,
+        "syntheticFps": 30,
+        "timed": true,
+        "configuredRates": {
+          "floor": 15
+        },
+        "captures": {
+          "floor": 30,
+          "wall": 0
+        },
+        "maxCapturesPerFrame": 1,
+        "scope": "Both planes front-facing, floor submitted first, stationary inputs, original capture replaced with a counter; actual render passes, pixels, GPU time and occlusion excluded."
+      },
+      {
+        "name": "desktop-fitting-floor-and-wall",
+        "inputRenderFrames": 120,
+        "syntheticFps": 60,
+        "timed": true,
+        "configuredRates": {
+          "floor": 12,
+          "wall": 24
+        },
+        "captures": {
+          "floor": 24,
+          "wall": 36
+        },
+        "maxCapturesPerFrame": 1,
+        "scope": "Both planes front-facing, floor submitted first, stationary inputs, original capture replaced with a counter; actual render passes, pixels, GPU time and occlusion excluded."
+      },
+      {
+        "name": "reduced-motion-one-demanded-frame",
+        "inputRenderFrames": 1,
+        "syntheticFps": 60,
+        "timed": false,
+        "configuredRates": {
+          "floor": 12,
+          "wall": 24
+        },
+        "captures": {
+          "floor": 1,
+          "wall": 1
+        },
+        "maxCapturesPerFrame": 2,
+        "scope": "Both planes front-facing, floor submitted first, stationary inputs, original capture replaced with a counter; actual render passes, pixels, GPU time and occlusion excluded."
+      },
+      {
+        "name": "settled-demand-no-frame",
+        "inputRenderFrames": 0,
+        "syntheticFps": 60,
+        "timed": true,
+        "configuredRates": {
+          "floor": 12,
+          "wall": 24
+        },
+        "captures": {
+          "floor": 0,
+          "wall": 0
+        },
+        "maxCapturesPerFrame": 0,
+        "scope": "Both planes front-facing, floor submitted first, stationary inputs, original capture replaced with a counter; actual render passes, pixels, GPU time and occlusion excluded."
+      }
+    ]
+  },
+  "evidence": {
+    "src/world/props/harborGarage.ts": {
+      "sha256": "90e726faf7d376b264bd17c16a50d55f47fd8d407a83b88f6071dc21e7291b8c"
+    },
+    "src/worldBuilder/mapKit/KitMesh.tsx": {
+      "sha256": "1d5a635f126d4592c6604e5c978e20fad6339b4a3802db64e90e9dded7e249fa",
+      "KitMesh": {
+        "line": 87,
+        "callbackSha256": "c3b87a664a93001892a692006e2c15973d788939af38e6ad2144af5347556df8"
+      }
+    },
+    "src/worldBuilder/roads/RoadMeshes.tsx": {
+      "sha256": "bf31caf4568044a8d48cf7b66c44f4c5ec34730d2a7caaaf30eb73f75c20ccc3",
+      "RoadModel": {
+        "line": 217,
+        "callbackSha256": "ed0f89fc20a89201474031af2aef7656193d69fe7212ef740eb1101b434dd4e5"
+      }
+    },
+    "src/worldBuilder/models/ModelMeshes.tsx": {
+      "sha256": "baf6c783fb8d15a2cf35d322ba0b555cda9818257b14f8ec039e15f6d8023f5d",
+      "ModelInstances": {
+        "line": 302,
+        "callbackSha256": "09604fea800abac765b5c1c0efcf2d75f089a13dc96f48d63b6f0776a71a2f45"
+      }
+    },
+    "src/world/props/HarborStructures.tsx": {
+      "sha256": "4c3020719770fd25fb0d158f7f193d70f3c777cbf954a113e70c61965f246c76",
+      "HarborBuildingLods": {
+        "line": 206,
+        "callbackSha256": "09d76f377900db8e7a674fe1552fb096ac14a86aa0d1dbd9338ce693f36a625f"
+      }
+    },
+    "src/world/CityStreaming.tsx": {
+      "sha256": "7541cb06f61221b714c03bbd7146bb839df8628e1abc96cfc7037a98a4ff1526",
+      "PreparedCityAsset": {
+        "line": 397,
+        "callbackSha256": "95ccb85e5b10560e05d907dc4d4682d2cced6e75348d98f2578a1b463b157503"
+      }
+    },
+    "src/world/cityShadows.ts": {
+      "sha256": "6f58347914adac0006ef7f9a6d0b6828b0c3256337b477e3885fae253e1cf907"
+    },
+    "src/game/preview/garageFloorEffects.ts": {
+      "sha256": "7f07b4184fd03e33cac674962627a370fe141b7a2a6fc959baee6ab0fa8629fe"
+    },
+    "src/FullCanvas.tsx": {
+      "sha256": "55edaeeb8963b9a95af3efcc67e78119d8a705949a62d302de5652d910d7e6e9"
+    },
+    "src/store/presentation/renderSettingsStore.ts": {
+      "sha256": "dfa05cfcdfe1947f2b4a38feddeff22bba8a1feec967ba56b8e86c4b429cae88"
+    }
+  }
+}

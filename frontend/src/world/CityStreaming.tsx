@@ -339,6 +339,7 @@ function PreparedCityAsset({
       {
         multiDraw: gl.extensions.has("WEBGL_multi_draw"),
         castShadow: visual.id !== "roads",
+        assetPath: visual.asset,
       },
     );
     let completed = false,
@@ -391,6 +392,7 @@ function PreparedCityAsset({
     get,
     scene,
     visual.id,
+    visual.asset,
     onReady,
     shadows,
   ]);
@@ -407,7 +409,7 @@ function PreparedCityAsset({
       placements,
       frustum,
       shadows,
-      shadows ? collectCityShadowFrusta(scene, shadowFrusta) : undefined,
+      shadows && visual.id !== "roads" ? collectCityShadowFrusta(scene, shadowFrusta) : undefined,
     );
   }, 0);
   if (!supported)

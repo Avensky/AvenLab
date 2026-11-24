@@ -1,3 +1,4 @@
+import { BRZ_PEDAL_LAYOUT, type GaragePedalLayout } from "./garagePedalRig.ts";
 import { Vector3 } from "three";
 import type { VehicleModelId } from "../../vehicles/tools/vehicleModelPaths";
 
@@ -12,6 +13,7 @@ type WheelStation = {
   radius: number;
   tilt: number;
   steeringParts?: readonly string[];
+  drivingSet?: GaragePedalLayout;
   selector?: "column";
   parkingBrake?: "switch" | "pedal";
 };
@@ -39,7 +41,7 @@ export type GarageStation = WheelStation | LeverStation | BridgeStation;
 export const GARAGE_STATIONS: Record<VehicleModelId, GarageStation> = {
   ae86: { kind: "wheel", seat: [-.397, .42, -.07], roof: 1.21, pedals: [-.397, .24, .565],
     rim: [-.397, .745, .365], radius: .158, tilt: .38, steeringParts: ["SteeringWheel"] },
-  brz: { kind: "wheel", seat: [.36, .40, -.17], roof: 1.19, pedals: [.36, .20, .49],
+  brz: { kind: "wheel", drivingSet: BRZ_PEDAL_LAYOUT, seat: [.36, .40, -.17], roof: 1.19, pedals: [.36, .20, .49],
     rim: [.36, .686, .252], radius: .139, tilt: .34, steeringParts: ["Mesh128__19_0", "Mesh128__Color_B05_3_0", "Mesh128_black1_0"] },
   camaro: { kind: "wheel", seat: [.356, .59, -.23], roof: 1.33, pedals: [.41, .47, .67],
     rim: [.356, .919, .209], radius: .178, tilt: .27,

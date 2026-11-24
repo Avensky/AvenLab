@@ -1,0 +1,154 @@
+{
+  "note": "Headless source geometry and production rig preparation. Image uploads are mocked; draw ranges are base-pass estimates, not measured GPU calls/FPS. Cold timings are local diagnostics, not a browser benchmark.",
+  "results": [
+    {
+      "model": "brz",
+      "source": "/models/vehicles/land/sports-cars/brz/model.glb",
+      "sourceBytes": 18193436,
+      "sha256": "3f6b5f2ebd6c5bbf7f1badfcc6d4d04e4b97d229dcbfe578516a1df0ece06f9d",
+      "before": {
+        "meshes": 259,
+        "drawRanges": 259,
+        "triangles": 204815,
+        "vertices": 592517
+      },
+      "after": {
+        "meshes": 143,
+        "drawRanges": 143,
+        "triangles": 204815,
+        "vertices": 592517
+      },
+      "savedDrawRanges": 116,
+      "reductionPercent": 44.78764478764479,
+      "coldMilliseconds": 147.29045499999984,
+      "derivedGeometryBytes": 33701266,
+      "boundsError": 7.426661197129647e-08,
+      "details": [
+        {
+          "material": "black1",
+          "sourceMeshes": 69,
+          "outputDrawRanges": 1
+        },
+        {
+          "material": "body",
+          "sourceMeshes": 24,
+          "outputDrawRanges": 1
+        },
+        {
+          "material": "Color_B07_2",
+          "sourceMeshes": 4,
+          "outputDrawRanges": 1
+        },
+        {
+          "material": "Color_A05_1",
+          "sourceMeshes": 2,
+          "outputDrawRanges": 1
+        },
+        {
+          "material": "Color_B05_5",
+          "sourceMeshes": 2,
+          "outputDrawRanges": 1
+        },
+        {
+          "material": "Color_B05_1",
+          "sourceMeshes": 4,
+          "outputDrawRanges": 1
+        },
+        {
+          "material": "Color_B06_2",
+          "sourceMeshes": 2,
+          "outputDrawRanges": 1
+        },
+        {
+          "material": "Color_A08_6",
+          "sourceMeshes": 2,
+          "outputDrawRanges": 1
+        },
+        {
+          "material": "Color_B05_3",
+          "sourceMeshes": 2,
+          "outputDrawRanges": 1
+        },
+        {
+          "material": "Color_C03_1",
+          "sourceMeshes": 2,
+          "outputDrawRanges": 1
+        },
+        {
+          "material": "red1",
+          "sourceMeshes": 2,
+          "outputDrawRanges": 1
+        },
+        {
+          "material": "FrontColor",
+          "sourceMeshes": 2,
+          "outputDrawRanges": 1
+        },
+        {
+          "material": "material_15",
+          "sourceMeshes": 6,
+          "outputDrawRanges": 1
+        },
+        {
+          "material": "material",
+          "sourceMeshes": 3,
+          "outputDrawRanges": 1
+        },
+        {
+          "material": "Color_B06_1",
+          "sourceMeshes": 2,
+          "outputDrawRanges": 1
+        },
+        {
+          "material": "material_13",
+          "sourceMeshes": 2,
+          "outputDrawRanges": 1
+        },
+        {
+          "material": "Color_B01",
+          "sourceMeshes": 2,
+          "outputDrawRanges": 1
+        },
+        {
+          "material": "Color_A03",
+          "sourceMeshes": 2,
+          "outputDrawRanges": 1
+        }
+      ]
+    },
+    {
+      "model": "ae86",
+      "source": "/models/vehicles/land/sports-cars/ae86/model.glb",
+      "sourceBytes": 2622332,
+      "sha256": "0094d8bfd5a4cdf720d633c1857e6c29f5e4e4e9a89316e9404d94d45d90bdf8",
+      "before": {
+        "meshes": 46,
+        "drawRanges": 46,
+        "triangles": 706225,
+        "vertices": 456170
+      },
+      "after": {
+        "meshes": 46,
+        "drawRanges": 46,
+        "triangles": 706225,
+        "vertices": 456170
+      },
+      "savedDrawRanges": 0,
+      "reductionPercent": 0,
+      "coldMilliseconds": 0.2326309999998557,
+      "derivedGeometryBytes": 0,
+      "boundsError": 0,
+      "details": []
+    },
+    {
+      "model": "camaro",
+      "source": "/models/vehicles/land/sports-cars/camaro/model.glb",
+      "skipped": "Real asset unavailable; materialize the source with Git LFS"
+    },
+    {
+      "model": "supra",
+      "source": "/models/vehicles/land/sports-cars/supra/model.glb",
+      "skipped": "Real asset unavailable; materialize the source with Git LFS"
+    }
+  ]
+}

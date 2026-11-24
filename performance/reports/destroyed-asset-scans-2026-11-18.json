@@ -1,0 +1,21 @@
+{
+  "metadata": {
+    "baseline": "a0468bde66c13a61fc61355da764bc7f90693d3e",
+    "implementation": "Working tree, including uncommitted changes",
+    "test": "frontend/tests/destroyed-assets.test.mjs",
+    "reproduce": "cd frontend && node --test tests/destroyed-assets.test.mjs",
+    "helperSha256": "bb1dfbdb1661fc565618b8fe2e038763757f06453ba1dc6bae26b73a6b1dc359"
+  },
+  "counts": {
+    "method": "Deterministic map-enumeration counts using the production compact SnapshotDecoder; not timing or FPS",
+    "keyframes": 2,
+    "packetsPerKeyframe": 30,
+    "authoredChunks": 6,
+    "healthEntries": 250,
+    "selectorCalls": 360,
+    "previousMapScans": 360,
+    "cachedMapScans": 2,
+    "previousEntryVisits": 90000,
+    "cachedEntryVisits": 500
+  }
+}

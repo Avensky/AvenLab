@@ -59,6 +59,17 @@ export function updateCityDrawPart(part: CityDrawPart, indices: readonly number[
   mesh.count = indices.length; mesh.visible = indices.length > 0;
 }
 
+// A shared BatchedMesh must remain visible while any constituent part has
+// active instances; an empty batch should not submit an unnecessary draw.
+export function settleCityDrawBatches(parts: readonly CityDrawPart[]) {
+  const active = new Map<BatchedMesh, boolean>();
+  for (const part of parts) if (part.binding) {
+    const mesh = part.binding.mesh;
+    active.set(mesh, (active.get(mesh) ?? false) || part.binding.count > 0);
+  }
+  for (const [mesh, visible] of active) mesh.visible = visible;
+}
+
 export function warmCityMesh(mesh: CityRenderMesh, visible: boolean) {
   mesh.visible = visible;
   if (mesh instanceof BatchedMesh) mesh.setVisibleAt(0, visible);

@@ -1,0 +1,700 @@
+{
+  "status": "complete",
+  "metadata": {
+    "head": "25de3c118f5966283fff088921e7af392085d487",
+    "baselineRef": "25de3c1",
+    "baselineCommit": "25de3c118f5966283fff088921e7af392085d487",
+    "current": "Working source snapshot at process start",
+    "mode": "verification-only",
+    "node": "v24.22.3",
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "samples": 0,
+    "warmupPairs": 2,
+    "benchmarkToolSha256": "2c88b04380c041868da4cb10a786ef433589108f2646a6c9eb7b9bd123e7667c",
+    "acceptedFixtureSha256": "84c0703a65ee4a070e0d2795ba89a99e157503517780ae5050e79bb014504799",
+    "acceptedGeometryCommit": "0e81afeab830870989492bc69d52dfac17c0a23c",
+    "statistic": "Conventional median: arithmetic mean of the two central values for even sample counts; raw ordered runs are retained.",
+    "scope": "Uninstrumented synchronous Node CPU fitting using shared preloaded geometry. No GLB/texture decoding, animation setup, GPU/FPS or browser route timing.",
+    "coldDefinition": "After baseline/current warmup pairs, clear only that environment's bounded wardrobeFitCache before each cache-cold preparation; other module/source/JIT caches remain warm.",
+    "warmDefinition": "Same environment and look immediately after its preceding cache-cold run; geometry validation and disposal occur between runs, outside measured intervals.",
+    "ordering": "Even rounds: baseline cold/warm then current cold/warm. Odd rounds reverse the two environment pairs.",
+    "baselineScope": "Separate Vite SSR contexts over immutable baseline/current frontend/src and wardrobe-catalog snapshots. Tracked dependency manifests, Vite setup and catalog inputs must match baseline. Installed dependencies and currently materialized assets are shared, not reconstructed historical installs; asset hashes identify these exact inputs.",
+    "equivalenceScope": "Original accepted fixture digest plus a baseline digest of morph buffers, mesh transforms/bind matrices, skeleton names/inverses and skirtHandRoom. UUIDs, material/texture behavior, bounding caches and GPU upload counters are excluded.",
+    "fixtureScope": "Accepted tier fixtures keep their historical actor tier. The separate default-desktop oracle uses baseline production resolution: portrait actor plus garage skirt/corset, ReadyVillager-equivalent options; it does not extend visual acceptance.",
+    "sourceSnapshotSha256": {
+      "baseline": "e271976448fe47c1befd3f7cbb83ac0805dec4eb6c44570efee866c84584adf4",
+      "current": "e2647818cf4704954d178cb6abcfd5b457842674a8105b8f8cb12ff35f08a496"
+    },
+    "sourceChanges": [
+      "frontend/src/game/characters/gothicCorsetTuck.ts",
+      "frontend/src/game/characters/warpWardrobeGeometry.ts",
+      "frontend/src/game/characters/wardrobeWarpMemo.ts"
+    ],
+    "loadedSourceHashes": {
+      "baseline": {
+        "frontend/src/game/characters/characterCatalog.ts": "cc68746d60b05b9b0110e8ec68b8be62340ad51affc753bf36676d48f8db8a2e",
+        "frontend/src/game/characters/wardrobe.ts": "4daf9c06ac8a40f000bedde07cd5848e44611c526f15a109ee4325df19b2fea4",
+        "frontend/src/game/characters/wardrobeGarments.ts": "5839052d3410073801e1abbfcb7eff4100028bcabee9d0d35a0c1322848206d6",
+        "frontend/src/game/characters/wardrobeFitCache.ts": "f4aab963e079821c7fb01b925aa3dc462d0dae615c3c840038c4bab6d9b82c16",
+        "frontend/src/game/characters/wardrobePreviewAssets.ts": "c246b331ca21ac2bf259786a5e06b4f7400c38716daa4ae282e4d66b56074c16",
+        "frontend/src/game/characters/animationFit.ts": "a14e360b1d3dfeb1b8855874b3d64b7f946fc0d4c21d8ad1d5f43e48acc884cd",
+        "frontend/src/game/characters/villagerModel.ts": "9615958e757f8e011428ed68a547750f672ca03aa6afa9bc50e02a934a47b98a",
+        "packages/wardrobe-catalog/characters.json": "b1ea07687c9a00e02f02c4012d834f5f7878b728b52271bda254f737a0ed13bb",
+        "packages/wardrobe-catalog/character-wardrobe.json": "e589068a39b6fe1d8e00e1e0646e7e873884de3600c647387873e2ed5a8628ab",
+        "packages/wardrobe-catalog/character-village-pieces.json": "a20f62093504d07ae9d78166c8e0a8a91a3f6d37bde0b256832b16d856a93fbb",
+        "frontend/src/game/characters/wardrobeBody.ts": "7827acc45b34706645dc54408e01df9eaf26d32401d7ba5ad3d8a3b713f0a926",
+        "frontend/src/game/characters/garageEmotes.ts": "810b27886dd807a13a0ad52c928da35af8297eff9276a88efef1ba546a9c461a",
+        "frontend/src/game/characters/lacedStrapFit.ts": "dc6189892d79c7686464101020ecf7f9fc56211a88390ffe4edb0cde064644bf",
+        "packages/wardrobe-catalog/character-garments.json": "f99fdd5ccaba39d0959afd9c03630ee116a80f3d08baec9f49bad5d8ab448ba4",
+        "frontend/src/game/characters/standaloneCorset.ts": "99e4ac462c4e3fd16561e198ce6dbc727a6edeca2008c33af93a8932d24c9e4e",
+        "packages/wardrobe-catalog/character-appearance.json": "8651f5c44f5154a7deae28392955195f33beae927d4a92c61d385a013de0a456",
+        "frontend/src/game/characters/villagerFace.ts": "6ddaf5f9ec0536d929708cddbe98e04f2803a9326ba1b68189d2c1fec8a7ae41",
+        "packages/wardrobe-catalog/discovered-wardrobe-garments.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+        "frontend/src/game/characters/wardrobeCoverage.ts": "49a344a53d27574b3bf7c2c5a3288c0dfc7dbadcb1b2a32d87e9d8d3bc8f9e1d",
+        "frontend/src/game/characters/victoryEmotes.ts": "b9dfcaf4a0deefc38bf2c7444de36948dac51bc4738db96952cc32c9a66f609c",
+        "frontend/src/game/characters/wardrobeSurface.ts": "2a84d479bbbf491db58dcbd21975af12df525c1c51fcaedbef0c6041318b4b4d",
+        "frontend/src/game/characters/playfulEmotes.ts": "85fbe83a0e34b2988bfbb1cc30c77c28d6bc5b8c46695c471850b5787488e86f",
+        "frontend/src/game/characters/overSkirtEase.ts": "3c7039199aac5a96ddaf3482168fa36280adb3f5064dd3009c600fc22a541ff0",
+        "frontend/src/game/characters/highCollarShoulders.ts": "5d92b8370882e23017f85d64eeed2951c4a28265f150a5b4152c7655f3498bf4",
+        "frontend/src/game/characters/shyEmotes.ts": "44c4903fccdeeefa5f37c50fbc9c0f929c1b76668c2106393516bb8325bda16b",
+        "frontend/src/game/characters/sweetheartCorset.ts": "578e33eae56745bc0a0d006248ee1a4c9d427e05525617842bd48f71a337d560",
+        "frontend/src/game/characters/highCollarBust.ts": "3dc484bafacd18542c0ef352fc36b6696f1ef129174583487969bc601e9aff66",
+        "frontend/src/game/characters/walkingEmotes.ts": "29156730710f33eab981fd256a2bf0092167904e68eb329ca29a614e15f9bd8c",
+        "frontend/src/game/characters/wardrobeLining.ts": "45e4f59abd85943b00b64a083326c2612f44eeb4e9a67551739d38df7563e644",
+        "frontend/src/game/characters/tsundereEmotes.ts": "389006d2c914cf3b9f8216292027c2894b9a951c872d49f1088f49c51ef21ed7",
+        "frontend/src/game/characters/highCollarFit.ts": "9f316bc734980867354bf1c211c6c2faf783db13faaa0858afac7d850ad10bfe",
+        "frontend/src/game/characters/garageLean.ts": "95eaa02745aeeffea796c0cfba940bd0494d6eb2d74210cd50b2c3a71f70eafc",
+        "frontend/src/game/characters/expressionEmotes.ts": "06465972411528ab38b6f91f1be359aab0d3fc4e228a8e163636373d210e98e2",
+        "frontend/src/game/characters/underbustColors.ts": "caa8cfdc475370a31ceffa6ba9546791eccd1accfdfada1ccdbea1ff5a3e5478",
+        "frontend/src/game/characters/underbustFit.ts": "e3d3205f94b26df0f33ab2eb92a452e81104581c532e7a0f4b777bb6652a5881",
+        "frontend/src/game/characters/roadsideEmotes.ts": "52ce4a4f95a59b95278cc105afcdd2c9d28140cb3c8c06da1e27270090f61e6c",
+        "frontend/src/game/characters/rivalryEmotes.ts": "2355df29ab3d7a5fbf15b4d1708a62b522ff8dd20e5b422492cfb130f9a60d7b",
+        "frontend/src/game/characters/wardrobeGarmentFit.ts": "b8e41a8c37fd2cc05d8679d69b9321519e659f920c73ccea35d113a27d03729c",
+        "frontend/src/game/characters/pitCrewEmotes.ts": "3d7cf3daa7ae1a68dc3b0d1ab74b40cef2b78c80a0a16004d9ecf07cceb853cc",
+        "frontend/src/game/characters/clothingPieces.ts": "dbad1f0ea3691d02ebb8670640b7e06e9535388ae7686be0356bbaefd9c4ff9c",
+        "frontend/src/game/characters/afterHoursEmotes.ts": "5fd1cf9a8944afdf3beac351d9a13ac9d9c21b69f802d9091db160160df511a6",
+        "packages/wardrobe-catalog/character-clothing-pieces.json": "3130ca293e371fb79b5306296518463f4991da0c504e1f1471fa09f95716278e",
+        "frontend/src/game/characters/gothicCorsetTuck.ts": "c7cba86e3c2af2426a23c12f9366b5e18e28acebd20600a624e2572a79285b62",
+        "frontend/src/game/characters/showroomEmotes.ts": "5a6b71c87e6da4ef1d56d702164a33a38b66d866493f18521e582d6fa42d2b63",
+        "frontend/src/game/characters/elegantEmotes.ts": "b09a6824ea0ef73dd5f1c56f01c1fc8567175c0aee7f09358752b309dffa22e3",
+        "frontend/src/game/characters/skirtWaistProfile.ts": "012e3403233338664a933e0623326f4927ab56e6a771232d0614dcdfceefe528",
+        "frontend/src/game/characters/wardrobeCoverageUnion.ts": "1e5aa1ca8f9da4a192d65a16dd97b5cadcf3195aef38ce874a2f3921c2465241",
+        "frontend/src/game/characters/performerEmotes.ts": "1ae8686e5ba4262a7f8c248c2b5e717eee1eb8591773ce2c62f3c3e26af9f3e1",
+        "frontend/src/game/characters/warpWardrobeGeometry.ts": "7c9f751f93b1477242f2f009383ed0acb55841bb8f064b0281f9008afc242c97",
+        "frontend/src/game/characters/stoicEmotes.ts": "e50e5279ee05fd705a6292494cb0a0c7457e2723049a719054d0f39bc0273d9f",
+        "frontend/src/game/characters/gothicSkirtFit.ts": "d43417b50b34c083dfb3d517701bbc20adca3b25cf9cd5e4412a2cce3b1f6b62",
+        "frontend/src/game/characters/explorerEmotes.ts": "b0d519b780b6e50e78d8a904edcccf34e691f9110f77d9b029791037dab79a1d",
+        "frontend/src/game/characters/gothicSkirtLayers.ts": "367df240f523ef5710ae56a828984298c3699295aaafda4ffdb4fa0d7da82861",
+        "frontend/src/game/characters/techEmotes.ts": "8b94403d184ac7713e6107396becdde0b5fe104848a115cdb8e59633c24f6e2e",
+        "frontend/src/game/characters/gothicSkirtPanels.ts": "3e0839ce08a320f18d70e6986f8f8d888fec0a41539f209e9ad0f5a28fb6658e",
+        "frontend/src/game/characters/workshopEmotes.ts": "8b130d19f71b63bbe5a700a0f022b70dced266340f33c134c965bb2ac8d45fd4",
+        "frontend/src/game/characters/shortSkirtFit.ts": "291b3e415837badf3501575e912ee44b4f1779ad231df1b750053e6bfd29dfc4",
+        "frontend/src/game/characters/starterEmotes.ts": "89f5e58a6686adfee6608816cfbbc71e1fc0682222dbd5534e93e37f21d698cc",
+        "frontend/src/game/characters/shortSkirtFabric.ts": "ff4c72bcea8a5ece96e1616633570ee01891f817f7e3bb81d03f38e1d3d5b158",
+        "frontend/src/game/characters/starterComedyEmotes.ts": "8661e3cd5713ac4769bf751eeeaa1448ec798d50c6babaca4ed5542a3809af00",
+        "frontend/src/game/characters/sockSkirtFit.ts": "b9ad3bce7b97450f0e005e5d330577f5136576f545cd089b98658cf2b8d2aa84",
+        "frontend/src/game/characters/raceReactionEmotes.ts": "2046ebcc38b1f4aef61472b68322ccb2692bfea884baa1d6c0c135b84d992474",
+        "frontend/src/game/characters/wardrobeSocksFit.ts": "00cdbc0b17394dce12e4df04d6f17c31acf7a5827d0603cf68021084570e185a",
+        "frontend/src/game/characters/emoteProps.ts": "99f2933a63fabef797c714606fd1f974692f648fec133b24acde467c74a8cd3b",
+        "frontend/src/game/characters/wardrobeTopFit.ts": "86f92789c84f14b37af36e687850ae6adffbd2c1909c627081b9ec05134d8d64",
+        "frontend/src/game/characters/villagerFaceAccessories.ts": "fe2f5ddbb4e3b4a8f745c47d2bf0fffc2e38d2c9c68bf41636b462ca87bb8646",
+        "frontend/src/game/characters/villageBonnet.ts": "b773d82ddc18ccd61dfbe49b9d4393bf1977997799d21d2476509f382c6645ad",
+        "frontend/src/game/characters/cockpitWardrobe.ts": "5900216511d053f78b13a67cdbe5167e31365ce798fbe4a0492d41ac7411ab09",
+        "frontend/src/game/characters/villagerUnderarm.ts": "4db12e859155c703835f68d93cb41f62340dc101945aa226b6bd4db4c8bed029",
+        "frontend/src/game/characters/wardrobeSkirt.ts": "b1338162096169218128dd7b76a6a47f1261ecb730f05d02c786c589b906310c",
+        "frontend/src/game/characters/villageBraid.ts": "4faf10f06b4bf661dd2df5141ee326325ecce95984ae5ada628bbec91f9eb726",
+        "frontend/src/game/characters/wardrobeShoes.ts": "5caddae59e8eca52c4f3b128cdc6ca9d5e05ce41a4bdeb1b7da52f9ee1c1e875",
+        "frontend/src/game/characters/neckBowFit.ts": "27bfb37ff77196c845059a96df726d5b82683ffd371a95a987e3de3eb65804f6",
+        "frontend/src/game/characters/wardrobeUnderwear.ts": "4e95a4bbce81c50375e4bdb35335a10282dd6544ad3ae7dcc7418b6d7801f982",
+        "frontend/src/game/characters/rebuiltUnderbustDye.ts": "bb57b70b117b8865ef43333fce6c1dcd69a44c19ac3054707415594e038dace4",
+        "frontend/src/game/characters/corsetDye.ts": "9f1e007de33e4a91f26dae5a9a0678a36ee020b17d79417e013d563e19b189ad",
+        "frontend/src/game/characters/lacedBodiceAppearance.ts": "7295f67d3383e00f2b85a84382f491f755ea64a2b59821e7cfd84cd85d2ded8c"
+      },
+      "current": {
+        "frontend/src/game/characters/characterCatalog.ts": "cc68746d60b05b9b0110e8ec68b8be62340ad51affc753bf36676d48f8db8a2e",
+        "frontend/src/game/characters/wardrobe.ts": "4daf9c06ac8a40f000bedde07cd5848e44611c526f15a109ee4325df19b2fea4",
+        "frontend/src/game/characters/wardrobeGarments.ts": "5839052d3410073801e1abbfcb7eff4100028bcabee9d0d35a0c1322848206d6",
+        "frontend/src/game/characters/wardrobeFitCache.ts": "f4aab963e079821c7fb01b925aa3dc462d0dae615c3c840038c4bab6d9b82c16",
+        "frontend/src/game/characters/wardrobePreviewAssets.ts": "c246b331ca21ac2bf259786a5e06b4f7400c38716daa4ae282e4d66b56074c16",
+        "frontend/src/game/characters/animationFit.ts": "a14e360b1d3dfeb1b8855874b3d64b7f946fc0d4c21d8ad1d5f43e48acc884cd",
+        "frontend/src/game/characters/villagerModel.ts": "9615958e757f8e011428ed68a547750f672ca03aa6afa9bc50e02a934a47b98a",
+        "packages/wardrobe-catalog/characters.json": "b1ea07687c9a00e02f02c4012d834f5f7878b728b52271bda254f737a0ed13bb",
+        "packages/wardrobe-catalog/character-wardrobe.json": "e589068a39b6fe1d8e00e1e0646e7e873884de3600c647387873e2ed5a8628ab",
+        "packages/wardrobe-catalog/character-village-pieces.json": "a20f62093504d07ae9d78166c8e0a8a91a3f6d37bde0b256832b16d856a93fbb",
+        "frontend/src/game/characters/wardrobeBody.ts": "7827acc45b34706645dc54408e01df9eaf26d32401d7ba5ad3d8a3b713f0a926",
+        "frontend/src/game/characters/garageEmotes.ts": "810b27886dd807a13a0ad52c928da35af8297eff9276a88efef1ba546a9c461a",
+        "packages/wardrobe-catalog/character-appearance.json": "8651f5c44f5154a7deae28392955195f33beae927d4a92c61d385a013de0a456",
+        "packages/wardrobe-catalog/character-garments.json": "f99fdd5ccaba39d0959afd9c03630ee116a80f3d08baec9f49bad5d8ab448ba4",
+        "frontend/src/game/characters/standaloneCorset.ts": "99e4ac462c4e3fd16561e198ce6dbc727a6edeca2008c33af93a8932d24c9e4e",
+        "frontend/src/game/characters/lacedStrapFit.ts": "dc6189892d79c7686464101020ecf7f9fc56211a88390ffe4edb0cde064644bf",
+        "frontend/src/game/characters/villagerFace.ts": "6ddaf5f9ec0536d929708cddbe98e04f2803a9326ba1b68189d2c1fec8a7ae41",
+        "packages/wardrobe-catalog/discovered-wardrobe-garments.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+        "frontend/src/game/characters/wardrobeCoverage.ts": "49a344a53d27574b3bf7c2c5a3288c0dfc7dbadcb1b2a32d87e9d8d3bc8f9e1d",
+        "frontend/src/game/characters/victoryEmotes.ts": "b9dfcaf4a0deefc38bf2c7444de36948dac51bc4738db96952cc32c9a66f609c",
+        "frontend/src/game/characters/wardrobeSurface.ts": "2a84d479bbbf491db58dcbd21975af12df525c1c51fcaedbef0c6041318b4b4d",
+        "frontend/src/game/characters/playfulEmotes.ts": "85fbe83a0e34b2988bfbb1cc30c77c28d6bc5b8c46695c471850b5787488e86f",
+        "frontend/src/game/characters/overSkirtEase.ts": "3c7039199aac5a96ddaf3482168fa36280adb3f5064dd3009c600fc22a541ff0",
+        "frontend/src/game/characters/highCollarShoulders.ts": "5d92b8370882e23017f85d64eeed2951c4a28265f150a5b4152c7655f3498bf4",
+        "frontend/src/game/characters/shyEmotes.ts": "44c4903fccdeeefa5f37c50fbc9c0f929c1b76668c2106393516bb8325bda16b",
+        "frontend/src/game/characters/sweetheartCorset.ts": "578e33eae56745bc0a0d006248ee1a4c9d427e05525617842bd48f71a337d560",
+        "frontend/src/game/characters/highCollarBust.ts": "3dc484bafacd18542c0ef352fc36b6696f1ef129174583487969bc601e9aff66",
+        "frontend/src/game/characters/walkingEmotes.ts": "29156730710f33eab981fd256a2bf0092167904e68eb329ca29a614e15f9bd8c",
+        "frontend/src/game/characters/tsundereEmotes.ts": "389006d2c914cf3b9f8216292027c2894b9a951c872d49f1088f49c51ef21ed7",
+        "frontend/src/game/characters/wardrobeLining.ts": "45e4f59abd85943b00b64a083326c2612f44eeb4e9a67551739d38df7563e644",
+        "frontend/src/game/characters/highCollarFit.ts": "9f316bc734980867354bf1c211c6c2faf783db13faaa0858afac7d850ad10bfe",
+        "frontend/src/game/characters/garageLean.ts": "95eaa02745aeeffea796c0cfba940bd0494d6eb2d74210cd50b2c3a71f70eafc",
+        "frontend/src/game/characters/expressionEmotes.ts": "06465972411528ab38b6f91f1be359aab0d3fc4e228a8e163636373d210e98e2",
+        "frontend/src/game/characters/underbustColors.ts": "caa8cfdc475370a31ceffa6ba9546791eccd1accfdfada1ccdbea1ff5a3e5478",
+        "frontend/src/game/characters/roadsideEmotes.ts": "52ce4a4f95a59b95278cc105afcdd2c9d28140cb3c8c06da1e27270090f61e6c",
+        "frontend/src/game/characters/underbustFit.ts": "e3d3205f94b26df0f33ab2eb92a452e81104581c532e7a0f4b777bb6652a5881",
+        "frontend/src/game/characters/rivalryEmotes.ts": "2355df29ab3d7a5fbf15b4d1708a62b522ff8dd20e5b422492cfb130f9a60d7b",
+        "frontend/src/game/characters/wardrobeGarmentFit.ts": "b8e41a8c37fd2cc05d8679d69b9321519e659f920c73ccea35d113a27d03729c",
+        "frontend/src/game/characters/pitCrewEmotes.ts": "3d7cf3daa7ae1a68dc3b0d1ab74b40cef2b78c80a0a16004d9ecf07cceb853cc",
+        "frontend/src/game/characters/clothingPieces.ts": "dbad1f0ea3691d02ebb8670640b7e06e9535388ae7686be0356bbaefd9c4ff9c",
+        "packages/wardrobe-catalog/character-clothing-pieces.json": "3130ca293e371fb79b5306296518463f4991da0c504e1f1471fa09f95716278e",
+        "frontend/src/game/characters/afterHoursEmotes.ts": "5fd1cf9a8944afdf3beac351d9a13ac9d9c21b69f802d9091db160160df511a6",
+        "frontend/src/game/characters/gothicCorsetTuck.ts": "c121fcb36a77fbc1a5955adc84cfac95d2b97db637b366354426eec009bc1f60",
+        "frontend/src/game/characters/showroomEmotes.ts": "5a6b71c87e6da4ef1d56d702164a33a38b66d866493f18521e582d6fa42d2b63",
+        "frontend/src/game/characters/elegantEmotes.ts": "b09a6824ea0ef73dd5f1c56f01c1fc8567175c0aee7f09358752b309dffa22e3",
+        "frontend/src/game/characters/skirtWaistProfile.ts": "012e3403233338664a933e0623326f4927ab56e6a771232d0614dcdfceefe528",
+        "frontend/src/game/characters/performerEmotes.ts": "1ae8686e5ba4262a7f8c248c2b5e717eee1eb8591773ce2c62f3c3e26af9f3e1",
+        "frontend/src/game/characters/wardrobeCoverageUnion.ts": "1e5aa1ca8f9da4a192d65a16dd97b5cadcf3195aef38ce874a2f3921c2465241",
+        "frontend/src/game/characters/stoicEmotes.ts": "e50e5279ee05fd705a6292494cb0a0c7457e2723049a719054d0f39bc0273d9f",
+        "frontend/src/game/characters/warpWardrobeGeometry.ts": "11d4eee33b5dc9f20b98e694bc5b043868c2189c11adda298e7761c510738ed4",
+        "frontend/src/game/characters/explorerEmotes.ts": "b0d519b780b6e50e78d8a904edcccf34e691f9110f77d9b029791037dab79a1d",
+        "frontend/src/game/characters/wardrobeWarpMemo.ts": "b5054e04bb9c79ea6a8658fa81a4351660af311ac74a48a8a11c2f8ee8eedeff",
+        "frontend/src/game/characters/techEmotes.ts": "8b94403d184ac7713e6107396becdde0b5fe104848a115cdb8e59633c24f6e2e",
+        "frontend/src/game/characters/gothicSkirtFit.ts": "d43417b50b34c083dfb3d517701bbc20adca3b25cf9cd5e4412a2cce3b1f6b62",
+        "frontend/src/game/characters/workshopEmotes.ts": "8b130d19f71b63bbe5a700a0f022b70dced266340f33c134c965bb2ac8d45fd4",
+        "frontend/src/game/characters/gothicSkirtLayers.ts": "367df240f523ef5710ae56a828984298c3699295aaafda4ffdb4fa0d7da82861",
+        "frontend/src/game/characters/starterEmotes.ts": "89f5e58a6686adfee6608816cfbbc71e1fc0682222dbd5534e93e37f21d698cc",
+        "frontend/src/game/characters/gothicSkirtPanels.ts": "3e0839ce08a320f18d70e6986f8f8d888fec0a41539f209e9ad0f5a28fb6658e",
+        "frontend/src/game/characters/shortSkirtFit.ts": "291b3e415837badf3501575e912ee44b4f1779ad231df1b750053e6bfd29dfc4",
+        "frontend/src/game/characters/starterComedyEmotes.ts": "8661e3cd5713ac4769bf751eeeaa1448ec798d50c6babaca4ed5542a3809af00",
+        "frontend/src/game/characters/shortSkirtFabric.ts": "ff4c72bcea8a5ece96e1616633570ee01891f817f7e3bb81d03f38e1d3d5b158",
+        "frontend/src/game/characters/raceReactionEmotes.ts": "2046ebcc38b1f4aef61472b68322ccb2692bfea884baa1d6c0c135b84d992474",
+        "frontend/src/game/characters/sockSkirtFit.ts": "b9ad3bce7b97450f0e005e5d330577f5136576f545cd089b98658cf2b8d2aa84",
+        "frontend/src/game/characters/emoteProps.ts": "99f2933a63fabef797c714606fd1f974692f648fec133b24acde467c74a8cd3b",
+        "frontend/src/game/characters/wardrobeSocksFit.ts": "00cdbc0b17394dce12e4df04d6f17c31acf7a5827d0603cf68021084570e185a",
+        "frontend/src/game/characters/villagerFaceAccessories.ts": "fe2f5ddbb4e3b4a8f745c47d2bf0fffc2e38d2c9c68bf41636b462ca87bb8646",
+        "frontend/src/game/characters/wardrobeTopFit.ts": "86f92789c84f14b37af36e687850ae6adffbd2c1909c627081b9ec05134d8d64",
+        "frontend/src/game/characters/cockpitWardrobe.ts": "5900216511d053f78b13a67cdbe5167e31365ce798fbe4a0492d41ac7411ab09",
+        "frontend/src/game/characters/wardrobeSkirt.ts": "b1338162096169218128dd7b76a6a47f1261ecb730f05d02c786c589b906310c",
+        "frontend/src/game/characters/villageBonnet.ts": "b773d82ddc18ccd61dfbe49b9d4393bf1977997799d21d2476509f382c6645ad",
+        "frontend/src/game/characters/villagerUnderarm.ts": "4db12e859155c703835f68d93cb41f62340dc101945aa226b6bd4db4c8bed029",
+        "frontend/src/game/characters/wardrobeShoes.ts": "5caddae59e8eca52c4f3b128cdc6ca9d5e05ce41a4bdeb1b7da52f9ee1c1e875",
+        "frontend/src/game/characters/neckBowFit.ts": "27bfb37ff77196c845059a96df726d5b82683ffd371a95a987e3de3eb65804f6",
+        "frontend/src/game/characters/villageBraid.ts": "4faf10f06b4bf661dd2df5141ee326325ecce95984ae5ada628bbec91f9eb726",
+        "frontend/src/game/characters/wardrobeUnderwear.ts": "4e95a4bbce81c50375e4bdb35335a10282dd6544ad3ae7dcc7418b6d7801f982",
+        "frontend/src/game/characters/rebuiltUnderbustDye.ts": "bb57b70b117b8865ef43333fce6c1dcd69a44c19ac3054707415594e038dace4",
+        "frontend/src/game/characters/corsetDye.ts": "9f1e007de33e4a91f26dae5a9a0678a36ee020b17d79417e013d563e19b189ad",
+        "frontend/src/game/characters/lacedBodiceAppearance.ts": "7295f67d3383e00f2b85a84382f491f755ea64a2b59821e7cfd84cd85d2ded8c"
+      }
+    },
+    "sharedSetupHashes": {
+      "frontend/vite.config.ts": "110c6173197bcaf7465acceac1b8fe7e72ba547dbe32e417a8444ff324a5edf4",
+      "frontend/package.json": "40987b4560b11f4756496359d6f6e22c40bad29ca4a76c49149e0c0224b3d87d",
+      "frontend/package-lock.json": "3f8a7ee1ea8f78de3122ef2130c31ab5e6f06dc4a958696afa8a84c15749fded",
+      "frontend/scripts/character-model-paths.mts": "d48fef779fd51a88d2ed39dc532262a8e7e5128decf6caa4903a4e07886d1a95",
+      "frontend/scripts/discover-wardrobe-garments.mts": "162cd6544c80b68498b6549dc09275757aa76fda592ac21b135e330caf04493e",
+      "frontend/scripts/load-wardrobe-geometry.mjs": "3a3f13272e738200c32d3e857c5e0fd8e958ed777d74e8d705bc9acf96bfe5ab"
+    },
+    "installedDependencies": {
+      "three": {
+        "version": "0.181.2",
+        "packageJsonSha256": "4333673f9eedf7a62072f781a8eae5ac673a160fbe253ca1a3d08238469f7145"
+      },
+      "three-mesh-bvh": {
+        "version": "0.8.3",
+        "packageJsonSha256": "d66165aa7e1dc78da5093e0ba019b7b0e4daa6b68185c6c105387b9f5fe5c6a7"
+      },
+      "vite": {
+        "version": "7.2.5",
+        "packageJsonSha256": "3738e9ec4e9bf86dbd384b725e1cd0f00f953ed368677405cb92737f24f03cd5"
+      }
+    },
+    "assetInputs": {
+      "/models/characters/villagers/villager-female/villager-female.garage.glb": {
+        "path": "frontend/public/models/characters/villagers/villager-female/villager-female.garage.glb",
+        "bytes": 4192432,
+        "sha256": "d9d139faaef9b34a0b0b92fe1eb9b7c2d15dceae54f3e19776fdee65dc69c686"
+      },
+      "/models/characters/female/wardrobe/vesper-body.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/vesper-body.glb",
+        "bytes": 505072,
+        "sha256": "b0763508155c0d028414cced0e04341a5513e54e2d07eea1aafe373d08b38eb2"
+      },
+      "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-01.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-01.glb",
+        "bytes": 903768,
+        "sha256": "796c4a5af2cb95dd14a8dc8b008359ea3f02dddb95bc25dc2061f0e829cba7d4"
+      },
+      "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-03.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-03.glb",
+        "bytes": 654112,
+        "sha256": "885861a944fbe50492b91cbe1a46113d21da8841bdfdc3315cba6957b2c8d982"
+      },
+      "/models/characters/female/wardrobe/corsets/gothic-03.garage.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/corsets/gothic-03.garage.glb",
+        "bytes": 2431580,
+        "sha256": "62ec6701dc25998ddcf16f68130b445723bf31e2c53c80628bd89e24bf2a887b"
+      },
+      "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-05.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-05.glb",
+        "bytes": 790368,
+        "sha256": "4f7c1a2ff4c874fee545b7734626634f3fa3c44490fa18025394e4d7dddd5ddf"
+      },
+      "/models/characters/female/wardrobe/corsets/gothic-high-collar.garage.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/corsets/gothic-high-collar.garage.glb",
+        "bytes": 5561348,
+        "sha256": "53a9504e323979b17c6385b7abbcbf1660dc8e6fd987cc7b43c9426c8bae8b27"
+      },
+      "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-02.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-02.glb",
+        "bytes": 975652,
+        "sha256": "c5bf3fb473e8143cd0b52453a2f69db213ce6937b0c70d71b1f72de5d58246bc"
+      },
+      "/models/characters/female/wardrobe/corsets/gothic-02.garage.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/corsets/gothic-02.garage.glb",
+        "bytes": 1313880,
+        "sha256": "cd20c8baae19281ac0979c8430960d30ac5856c2bb131799b4e74140e9a54337"
+      },
+      "/models/characters/female/wardrobe/skirts/skirt-03.garage.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/skirts/skirt-03.garage.glb",
+        "bytes": 708872,
+        "sha256": "b4eb5fe880958a9e8e13cfd6166fedb20a1a0f143d1d9083f0bc8c55883b6557"
+      },
+      "/models/characters/wardrobe/gothic-01.garage.glb": {
+        "path": "frontend/public/models/characters/wardrobe/gothic-01.garage.glb",
+        "bytes": 6831532,
+        "sha256": "9bf110a896db1a9595db93be862930193f132183acd6c368b3f8eb687ae98e47"
+      },
+      "/models/characters/villagers/villager-female/villager-female.portrait.glb": {
+        "path": "frontend/public/models/characters/villagers/villager-female/villager-female.portrait.glb",
+        "bytes": 5499572,
+        "sha256": "488bb531fcd3529e15dfabdf5e44beb1c7d327da18c5b7932a807fb291dbf592"
+      },
+      "/models/characters/female/wardrobe/corsets/gothic-03.mobile.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/corsets/gothic-03.mobile.glb",
+        "bytes": 862612,
+        "sha256": "4573b7753dcc1604149cb13b56f40cfcdacb6edd8a95eea8450087cf044ad738"
+      },
+      "/models/characters/female/wardrobe/corsets/gothic-high-collar.mobile.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/corsets/gothic-high-collar.mobile.glb",
+        "bytes": 2982708,
+        "sha256": "bbd40e7e4fff3b708d9eb2a51995ecef1b9476d8aec0bfceedcf7ed3b465f90d"
+      },
+      "/models/characters/female/wardrobe/corsets/gothic-02.mobile.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/corsets/gothic-02.mobile.glb",
+        "bytes": 799380,
+        "sha256": "47e1becffafba319c208376db27f926b46e5c104fa7287d90943de78c1ec5038"
+      },
+      "/models/characters/female/wardrobe/skirts/skirt-03.mobile.glb": {
+        "path": "frontend/public/models/characters/female/wardrobe/skirts/skirt-03.mobile.glb",
+        "bytes": 404604,
+        "sha256": "94a2f47a316804e93e1aab3f861013d3404f35b83cd264f73319a6b7a8b855a5"
+      },
+      "/models/characters/wardrobe/gothic-01.mobile.glb": {
+        "path": "frontend/public/models/characters/wardrobe/gothic-01.mobile.glb",
+        "bytes": 2991320,
+        "sha256": "19f2143b2473385d08f54dbe57a0ad8197ad0d15f8cc88ae738aa753af87bb18"
+      }
+    },
+    "selectedCases": [
+      "garage:gothic-skirt-01",
+      "garage:gothic-skirt-03+gothic-03",
+      "garage:gothic-skirt-05+gothic-05",
+      "garage:gothic-skirt-02+gothic-02",
+      "garage:skirt-03+gothic-05",
+      "garage:gothic-01",
+      "portrait:gothic-skirt-01",
+      "portrait:gothic-skirt-03+gothic-03",
+      "portrait:gothic-skirt-05+gothic-05",
+      "portrait:gothic-skirt-02+gothic-02",
+      "portrait:skirt-03+gothic-05",
+      "portrait:gothic-01",
+      "default-desktop:gothic-skirt-05+gothic-05"
+    ],
+    "independentModuleContexts": true,
+    "viteDefines": {
+      "__HEROES_VEHICLE_PREVIEWS__": "{}",
+      "__DRESSING_ROOM_IMPORTED_IDS__": "[\"top-01\",\"top-02\",\"top-03\",\"top-04\",\"top-05\",\"skirt-01\",\"skirt-02\",\"skirt-03\",\"skirt-04\",\"socks-01\",\"socks-02\",\"socks-03\",\"socks-04\",\"bowtie-01\",\"bowtie-02\",\"bowtie-03\",\"bowtie-04\",\"bowtie-05\",\"bowtie-06\",\"bowtie-07\",\"bowtie-08\",\"bowtie-09\",\"bowtie-10\",\"bowtie-11\",\"bowtie-12\",\"bowtie-13\",\"bowtie-14\",\"gothic-skirt-01\",\"gothic-skirt-02\",\"gothic-skirt-03\",\"gothic-skirt-04\",\"gothic-skirt-05\"]",
+      "__DRESSING_ROOM_MOBILE_IDS__": "[\"skirt-01\",\"skirt-02\",\"skirt-03\",\"skirt-04\"]",
+      "__DRESSING_ROOM_REVISION_IDS__": "[]",
+      "__STANDALONE_CORSET_LODS__": "{\"gothic-01\":{\"garage\":true,\"mobile\":true},\"gothic-02\":{\"garage\":true,\"mobile\":true},\"gothic-03\":{\"garage\":true,\"mobile\":true},\"gothic-04\":{\"garage\":true,\"mobile\":true},\"gothic-05\":{\"garage\":true,\"mobile\":true},\"gothic-laced-bodice\":{\"garage\":true,\"mobile\":true},\"gothic-underbust-vest\":{\"garage\":true,\"mobile\":true},\"gothic-underbust-vest-original-cut\":{\"garage\":true,\"mobile\":true},\"gothic-underbust-vest-tucked\":{\"garage\":true,\"mobile\":true},\"gothic-high-collar\":{\"garage\":true,\"mobile\":true}}",
+      "__BUNDLED_WARDROBE_LODS__": "{\"gothic-01\":{\"garage\":true,\"mobile\":true},\"gothic-02\":{\"garage\":true,\"mobile\":true},\"gothic-03\":{\"garage\":true,\"mobile\":true},\"gothic-04\":{\"garage\":true,\"mobile\":true},\"gothic-05\":{\"garage\":true,\"mobile\":true}}",
+      "__WARDROBE_SET_IDS__": "[\"gothic-01\",\"gothic-02\",\"gothic-03\",\"gothic-04\",\"gothic-05\"]",
+      "__CHARACTER_BAG_URL__": "null",
+      "__VILLAGER_MODEL_URL__": "\"/models/characters/villagers/villager-female/villager-female.garage.glb\"",
+      "__VILLAGER_PORTRAIT_URL__": "\"/models/characters/villagers/villager-female/villager-female.portrait.glb\"",
+      "__CHARACTER_MODEL_FALLBACKS__": "{}",
+      "__ROOK_MODEL_URL__": "null",
+      "__ROOK_PORTRAIT_URL__": "null"
+    },
+    "completedAt": "2026-11-19T03:03:03.529Z",
+    "sourceBuffersUnchanged": true
+  },
+  "cases": [
+    {
+      "id": "garage:gothic-skirt-01",
+      "inputs": {
+        "kind": "garage",
+        "villageKind": "garage",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-01.glb"
+        ],
+        "actor": "/models/characters/villagers/villager-female/villager-female.garage.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb"
+      },
+      "oracle": {
+        "commit": "25de3c118f5966283fff088921e7af392085d487",
+        "acceptance": "Matches unchanged accepted fixture at 0e81afeab830870989492bc69d52dfac17c0a23c",
+        "geometry": {
+          "accepted": "eade684a3e1b1ec411d21ecbb2b1dd5f8de4fcbbfabddf0891339d1c3b18b790",
+          "buffers": "f6c9f8581c6f7177ae8436c4e91fe727a6e884d7f859f0f77132c8cd884768d4",
+          "complete": "f92060196847a100ec02a9c31b128854faca66464850a6e383c43c51de77fe5f"
+        }
+      },
+      "verification": {
+        "baseline": 3,
+        "current": 2
+      },
+      "rounds": [],
+      "sourceBuffersUnchanged": true
+    },
+    {
+      "id": "garage:gothic-skirt-03+gothic-03",
+      "inputs": {
+        "kind": "garage",
+        "villageKind": "garage",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-03.glb"
+        ],
+        "actor": "/models/characters/villagers/villager-female/villager-female.garage.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb",
+        "corset": "/models/characters/female/wardrobe/corsets/gothic-03.garage.glb"
+      },
+      "oracle": {
+        "commit": "25de3c118f5966283fff088921e7af392085d487",
+        "acceptance": "Matches unchanged accepted fixture at 0e81afeab830870989492bc69d52dfac17c0a23c",
+        "geometry": {
+          "accepted": "ba45db27abd22f41a9d251501825d680a8e7a78bbe0f7a7142a08db229cff4c8",
+          "buffers": "72f2b00d61ba0d196d442bf2926bf4dfcaa16203e64293d9a316065e443c2efe",
+          "complete": "8ccd09925cc95a7423ba250fcbf88533c0d7441bd0b8cdc5b05bef2c4463be06"
+        }
+      },
+      "verification": {
+        "baseline": 3,
+        "current": 2
+      },
+      "rounds": [],
+      "sourceBuffersUnchanged": true
+    },
+    {
+      "id": "garage:gothic-skirt-05+gothic-05",
+      "inputs": {
+        "kind": "garage",
+        "villageKind": "garage",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-05.glb"
+        ],
+        "actor": "/models/characters/villagers/villager-female/villager-female.garage.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb",
+        "corset": "/models/characters/female/wardrobe/corsets/gothic-high-collar.garage.glb"
+      },
+      "oracle": {
+        "commit": "25de3c118f5966283fff088921e7af392085d487",
+        "acceptance": "Matches unchanged accepted fixture at 0e81afeab830870989492bc69d52dfac17c0a23c",
+        "geometry": {
+          "accepted": "15975a829eca52df5985f3711092e4bf665e9e52fc945d72a15078ad0f9dc714",
+          "buffers": "2ce496b154585e1603c03d03efa68b29e379a70349d8710cc876fb19d0b151c6",
+          "complete": "95cde8195b2b97f1fb9a105ee601bc18f8b0b07cceab0ae7482816e3223dbc5c"
+        }
+      },
+      "verification": {
+        "baseline": 3,
+        "current": 2
+      },
+      "rounds": [],
+      "sourceBuffersUnchanged": true
+    },
+    {
+      "id": "garage:gothic-skirt-02+gothic-02",
+      "inputs": {
+        "kind": "garage",
+        "villageKind": "garage",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-02.glb"
+        ],
+        "actor": "/models/characters/villagers/villager-female/villager-female.garage.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb",
+        "corset": "/models/characters/female/wardrobe/corsets/gothic-02.garage.glb"
+      },
+      "oracle": {
+        "commit": "25de3c118f5966283fff088921e7af392085d487",
+        "acceptance": "Matches unchanged accepted fixture at 0e81afeab830870989492bc69d52dfac17c0a23c",
+        "geometry": {
+          "accepted": "3c1dd4715069a1738facd9194a71dfd058aa34f977fbe74e95867c6fa638b8a6",
+          "buffers": "b62123e6d2fd1c132296a4c1182642d994d9a7181717ba45a82d9c38d688b272",
+          "complete": "e8185e587e543e57f0de242324a6c92f82fbd1966ecb524b59bfdfbf0c904360"
+        }
+      },
+      "verification": {
+        "baseline": 3,
+        "current": 2
+      },
+      "rounds": [],
+      "sourceBuffersUnchanged": true
+    },
+    {
+      "id": "garage:skirt-03+gothic-05",
+      "inputs": {
+        "kind": "garage",
+        "villageKind": "garage",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/skirt-03.garage.glb"
+        ],
+        "actor": "/models/characters/villagers/villager-female/villager-female.garage.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb",
+        "corset": "/models/characters/female/wardrobe/corsets/gothic-high-collar.garage.glb"
+      },
+      "oracle": {
+        "commit": "25de3c118f5966283fff088921e7af392085d487",
+        "acceptance": "Matches unchanged accepted fixture at 0e81afeab830870989492bc69d52dfac17c0a23c",
+        "geometry": {
+          "accepted": "92be1a9b07a0b5f3099f615711cc9c173011228425d7bbf704f4bed80780f49f",
+          "buffers": "adfa78da7fa5c23d920f5b9f93d7fb2fdbf2bcaa455e5dbc2ded27d970d3c11e",
+          "complete": "8ac861b14cf6d8b27b2e320092e43deca3cf83d7d74f0058217b6fdb1a354f50"
+        }
+      },
+      "verification": {
+        "baseline": 3,
+        "current": 2
+      },
+      "rounds": [],
+      "sourceBuffersUnchanged": true
+    },
+    {
+      "id": "garage:gothic-01",
+      "inputs": {
+        "kind": "garage",
+        "villageKind": "garage",
+        "garments": [],
+        "actor": "/models/characters/wardrobe/gothic-01.garage.glb"
+      },
+      "oracle": {
+        "commit": "25de3c118f5966283fff088921e7af392085d487",
+        "acceptance": "Matches unchanged accepted fixture at 0e81afeab830870989492bc69d52dfac17c0a23c",
+        "geometry": {
+          "accepted": "1312411b5363e2c9d13b752e1880973c8ce3e8a12ac78ccd8688de66f7f179b9",
+          "buffers": "a75198bdf5111e59a6bbd0099e22a7bb7ed13ab01d0db2e118601fd8cbfb99e1",
+          "complete": "847c275002116a8b77be867e5d28fc3952d82b44c796655e72870fa1cf863374"
+        }
+      },
+      "verification": {
+        "baseline": 3,
+        "current": 2
+      },
+      "rounds": [],
+      "sourceBuffersUnchanged": true
+    },
+    {
+      "id": "portrait:gothic-skirt-01",
+      "inputs": {
+        "kind": "portrait",
+        "villageKind": "portrait",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-01.glb"
+        ],
+        "actor": "/models/characters/villagers/villager-female/villager-female.portrait.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb"
+      },
+      "oracle": {
+        "commit": "25de3c118f5966283fff088921e7af392085d487",
+        "acceptance": "Matches unchanged accepted fixture at 0e81afeab830870989492bc69d52dfac17c0a23c",
+        "geometry": {
+          "accepted": "98a6899c5ae1f14a33e58c6de111442f3479d172056123bbd0ba42317bff2648",
+          "buffers": "6cec2ea760e536ee9b2752cb7276234f88a687a613298ccabd03af108ab64dbd",
+          "complete": "ee7867ee1afd0944e25251844b8c595d7b7b51fc5e61fc159b178dbcf70c1ed3"
+        }
+      },
+      "verification": {
+        "baseline": 3,
+        "current": 2
+      },
+      "rounds": [],
+      "sourceBuffersUnchanged": true
+    },
+    {
+      "id": "portrait:gothic-skirt-03+gothic-03",
+      "inputs": {
+        "kind": "portrait",
+        "villageKind": "portrait",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-03.glb"
+        ],
+        "actor": "/models/characters/villagers/villager-female/villager-female.portrait.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb",
+        "corset": "/models/characters/female/wardrobe/corsets/gothic-03.mobile.glb"
+      },
+      "oracle": {
+        "commit": "25de3c118f5966283fff088921e7af392085d487",
+        "acceptance": "Matches unchanged accepted fixture at 0e81afeab830870989492bc69d52dfac17c0a23c",
+        "geometry": {
+          "accepted": "57da5535e21189d3e4c995d91ec630d6cc5a21f4b035302354f9579f0db5155a",
+          "buffers": "44ab96e7ad23834d598b5d5ce236fbf4946948f6567d55be5eaafdd0c58dda4e",
+          "complete": "861cc1e174f5be9efd24ebbc62b95bc65685340f8d6c54d5314d3534e6a0202e"
+        }
+      },
+      "verification": {
+        "baseline": 3,
+        "current": 2
+      },
+      "rounds": [],
+      "sourceBuffersUnchanged": true
+    },
+    {
+      "id": "portrait:gothic-skirt-05+gothic-05",
+      "inputs": {
+        "kind": "portrait",
+        "villageKind": "portrait",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-05.glb"
+        ],
+        "actor": "/models/characters/villagers/villager-female/villager-female.portrait.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb",
+        "corset": "/models/characters/female/wardrobe/corsets/gothic-high-collar.mobile.glb"
+      },
+      "oracle": {
+        "commit": "25de3c118f5966283fff088921e7af392085d487",
+        "acceptance": "Matches unchanged accepted fixture at 0e81afeab830870989492bc69d52dfac17c0a23c",
+        "geometry": {
+          "accepted": "7de22a68d971de1f10b3da7e844eadf358e1fe4c9e5eb7663d04e65d1050fb95",
+          "buffers": "24fbddd7745559ac45b807eaf5ccf5a0fb53fb3a14a2822741487e0dc55ac6d0",
+          "complete": "8943a0918f6ba802acaf697e9b6b1acabd96254154c5ae78480a49c0e9b2e4dc"
+        }
+      },
+      "verification": {
+        "baseline": 3,
+        "current": 2
+      },
+      "rounds": [],
+      "sourceBuffersUnchanged": true
+    },
+    {
+      "id": "portrait:gothic-skirt-02+gothic-02",
+      "inputs": {
+        "kind": "portrait",
+        "villageKind": "portrait",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-02.glb"
+        ],
+        "actor": "/models/characters/villagers/villager-female/villager-female.portrait.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb",
+        "corset": "/models/characters/female/wardrobe/corsets/gothic-02.mobile.glb"
+      },
+      "oracle": {
+        "commit": "25de3c118f5966283fff088921e7af392085d487",
+        "acceptance": "Matches unchanged accepted fixture at 0e81afeab830870989492bc69d52dfac17c0a23c",
+        "geometry": {
+          "accepted": "37392f63834e8961fef58121cf79576b68a2b35bd929449dea787b6eaca41424",
+          "buffers": "c370b53e239bb0a83c7a77a20a1787b80b63de1687ab0dbf4e5829d644a249e2",
+          "complete": "9a9fedcfe68b842bc8fe80d1cfa02b1e36677e2331587c55af7cfd663ad87e87"
+        }
+      },
+      "verification": {
+        "baseline": 3,
+        "current": 2
+      },
+      "rounds": [],
+      "sourceBuffersUnchanged": true
+    },
+    {
+      "id": "portrait:skirt-03+gothic-05",
+      "inputs": {
+        "kind": "portrait",
+        "villageKind": "portrait",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/skirt-03.mobile.glb"
+        ],
+        "actor": "/models/characters/villagers/villager-female/villager-female.portrait.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb",
+        "corset": "/models/characters/female/wardrobe/corsets/gothic-high-collar.mobile.glb"
+      },
+      "oracle": {
+        "commit": "25de3c118f5966283fff088921e7af392085d487",
+        "acceptance": "Matches unchanged accepted fixture at 0e81afeab830870989492bc69d52dfac17c0a23c",
+        "geometry": {
+          "accepted": "086a5e35244ff2f5607aa8ec21c82eae7aac1a119754d403ac0012495d19a3fa",
+          "buffers": "9bfc4d5c0368d08b5fb79a3dd2c7713895bf072fb6258e5e76346efa17769ec1",
+          "complete": "5b8407355ed7d4967c84b571c81cb65f82e9fd91c40dadeb4fbc88fc606450d9"
+        }
+      },
+      "verification": {
+        "baseline": 3,
+        "current": 2
+      },
+      "rounds": [],
+      "sourceBuffersUnchanged": true
+    },
+    {
+      "id": "portrait:gothic-01",
+      "inputs": {
+        "kind": "portrait",
+        "villageKind": "portrait",
+        "garments": [],
+        "actor": "/models/characters/wardrobe/gothic-01.mobile.glb"
+      },
+      "oracle": {
+        "commit": "25de3c118f5966283fff088921e7af392085d487",
+        "acceptance": "Matches unchanged accepted fixture at 0e81afeab830870989492bc69d52dfac17c0a23c",
+        "geometry": {
+          "accepted": "99e2a4bc181bb8f696001c362f8719f6a352c426211ab826ca5384b80e8cbb90",
+          "buffers": "d5ed287ce8dd77b5f255a67487423499759f5460250440764e19ac954a8cc212",
+          "complete": "fccabf3df0741f33e4da4129497a50b36d61316f34970bbfbf3bef14b1b75bce"
+        }
+      },
+      "verification": {
+        "baseline": 3,
+        "current": 2
+      },
+      "rounds": [],
+      "sourceBuffersUnchanged": true
+    },
+    {
+      "id": "default-desktop:gothic-skirt-05+gothic-05",
+      "inputs": {
+        "kind": "garage",
+        "villageKind": "portrait",
+        "preferredUrl": "/models/characters/villagers/villager-female/villager-female.portrait.glb",
+        "actor": "/models/characters/villagers/villager-female/villager-female.portrait.glb",
+        "garments": [
+          "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-05.glb"
+        ],
+        "corset": "/models/characters/female/wardrobe/corsets/gothic-high-collar.garage.glb",
+        "suppliedBodyDonor": "/models/characters/female/wardrobe/vesper-body.glb",
+        "resolvedAssetUrls": [
+          "/models/characters/villagers/villager-female/villager-female.portrait.glb",
+          "/models/characters/female/wardrobe/skirts/gothic-skirt/gothic-skirt-05.glb",
+          "/models/characters/female/wardrobe/corsets/gothic-high-collar.garage.glb",
+          "/models/characters/female/wardrobe/vesper-body.glb"
+        ]
+      },
+      "oracle": {
+        "commit": "25de3c118f5966283fff088921e7af392085d487",
+        "acceptance": "Separate production-resolver baseline oracle; not visual acceptance",
+        "geometry": {
+          "accepted": "1d50f9370b91b7592c68a50345c142608818fee8a75e74467ba1228f2160e011",
+          "buffers": "e1ac95c7261dd9fc9c8828e807bad4f726a0b7ef8891f5127d0e6eee34b0025f",
+          "complete": "c7ed7d0c848e60c5f327a4eff04b4a05ae153cac0e310de0e20cb52b65b76069"
+        }
+      },
+      "verification": {
+        "baseline": 3,
+        "current": 2
+      },
+      "rounds": [],
+      "sourceBuffersUnchanged": true
+    }
+  ]
+}

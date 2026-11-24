@@ -381,6 +381,7 @@ impl Server {
                 let progression = &mut data.profiles.get_mut(&actor).ok_or("Profile unavailable.")?.progression;
                 progression.character_presets.remove(&choice.id);
                 let active_id = choice.id.clone();
+                let driver = choice.driver_appearance();
                 if let Some(last) = progression.character.replace(choice).filter(|last| last.id != active_id && last.is_equippable()) {
                     progression.character_presets.insert(last.id.clone(), last);
                 }
@@ -388,6 +389,12 @@ impl Server {
                 let confirmed = progression.cosmetics_view();
                 drop(data);
                 self.commit(previous).await?;
+                if let Ok(runtime) = self.runtime(player).await {
+                    let mut room = runtime.lock().await;
+                    if let Some(entity) = room.game.entities.get_mut(player) {
+                        entity.driver = driver;
+                    }
+                }
                 Ok(confirmed)
             }
             "character_outfit_save" | "character_outfit_delete" => {
@@ -718,7 +725,10 @@ impl Server {
         game.apply_spawn_info(&spawn);
         game.attach_body(player, handle);
         game.set_vehicle_id(player, vehicle);
-        if let Some(entity)=game.entities.get_mut(player) { entity.appearance=self.saved_appearance(player,vehicle).await; }
+        if let Some(entity)=game.entities.get_mut(player) {
+            entity.appearance=self.saved_appearance(player,vehicle).await;
+            entity.driver=Some(self.saved_driver(player).await);
+        }
         physics.set_tire_thermals(world.tire_thermals);
         let room = WorldRuntime::from_parts(game, physics);
         let packet = room.physics.map_snapshot_packet(world.id);

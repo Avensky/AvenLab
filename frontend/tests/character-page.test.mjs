@@ -139,6 +139,24 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(find('.character-emote-toggle').getAttribute('aria-expanded'), 'false');
     assert.equal(find('.character-emotes'), null);
     await openEmotes();
+    await chooseEmoteGroup('Pose pack');
+    const poseButton = label => act(async () => {
+      [...document.querySelectorAll('[aria-label="Emote results"] button')].find(button => button.textContent === label).click();
+    });
+    await select('Start pose', 'pose-attentive');
+    await poseButton('Hold start pose');
+    assert.equal(preview.getState().emote.id, 'pose-attentive');
+    await select('Animation', 'walk-casual');
+    assert.equal(find('select[aria-label="Start pose"]').options.length, 121);
+    assert.equal(find('select[aria-label="End pose"]').options.length, 121);
+    const importedPose = 'pose-mh-poses03-anrico_standing10';
+    await select('End pose', importedPose);
+    await poseButton('Play sequence');
+    assert.deepEqual(preview.getState().emote, {
+      id: 'pose-sequence', sequence: { from: 'pose-attentive', motion: 'walk-casual', to: importedPose },
+    });
+    await poseButton('Return to idle');
+    assert.equal(preview.getState().emote, null);
     await chooseEmoteGroup('Garage');
     assert(![...document.querySelectorAll('.character-emotes button')].some(button => button.querySelector('.emote-name')?.textContent === 'Side step and glance'));
     await playEmote('.character-emotes button:first-child');
@@ -376,6 +394,15 @@ test('Heroes opens the character picker, saves one profile choice, and opens Gar
     assert.equal(find('.fitting-camera-panel:not(.fitting-camera-angles)').hidden, false);
     assert(find('.fitting-camera-panel:not(.fitting-camera-angles)').contains(document.activeElement), 'keyboard activation focuses a camera adjustment');
     assert.equal(find('.fitting-camera-panel:not(.fitting-camera-angles)').textContent.trim(), '', 'the camera popup uses icons');
+    await click('.fitting-camera-panel [aria-label="Look away"]');
+    assert.equal(preview.getState().emote?.id, 'look-away', 'wardrobe can play the glance on its own stage');
+    await act(async () => preview.setState({ emote: null }));
+    for (const [label, id] of [['Check makeup', 'makeup-check'], ['Redo lipstick', 'redo-lipstick'], ['Apply eyeliner', 'apply-eyeliner']]) {
+      await click(`.fitting-camera-panel [aria-label="${label}"]`);
+      assert.equal(preview.getState().emote?.id, id);
+      assert.equal(preview.getState().camera, 'Face');
+    }
+    await act(async () => preview.setState({ emote: null, camera: 'Full body' }));
     assert(cameraView('Glasses').querySelector('svg'), 'the clothing close-up has a labeled icon');
     await click('.fitting-camera-panel [aria-label="Zoom in"]');
     assert.equal(preview.getState().zoom, 1.05);
